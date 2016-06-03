@@ -1,0 +1,48 @@
+#!/usr/bin/env python
+
+from __future__ import print_function
+import unittest
+
+from SequentialSimulator.SimulationObject import (EventQueue, SimulationObject)
+
+class TestSimulationObject(unittest.TestCase):
+
+    def setUp(self):
+        self.o1 = SimulationObject('o1')
+        self.o2 = SimulationObject('o2')
+
+    def test_event(self):
+        times=[1.0, 2.0, 0.5]
+        for t in times:
+            self.o1.send_event( t, self.o2, 'test1' )
+        
+        tmp = sorted(times)
+        while self.o2.event_queue.next_event_time() < float('inf'):
+            self.assertEqual( self.o2.event_queue.next_event_time(), tmp.pop(0) )
+            el = self.o2.event_queue.next_events()
+        self.assertEqual( self.o2.event_queue.next_events(), [] )
+    
+    def test_event_ties(self):
+        times=[1.0, 2.0, 1.0]
+        for t in times:
+            self.o1.send_event( t, self.o2, 'test1' )
+        
+        tmp = sorted(times[0:2])
+        while self.o2.event_queue.next_event_time() < float('inf'):
+            self.assertEqual( self.o2.event_queue.next_event_time(), tmp.pop(0) )
+            el = self.o2.event_queue.next_events()
+        self.assertEqual( self.o2.event_queue.next_events(), [] )
+    
+    def test_exceptions(self):
+        delay = -1.0
+        with self.assertRaises(ValueError) as context:
+            self.o1.send_event( delay, self.o2, 'test1' )
+        self.assertEqual( context.exception.message,
+            "delay < 0 in send_event(): {}".format( str( delay ) ) )
+    
+    
+if __name__ == '__main__':
+    try:
+        unittest.main()
+    except KeyboardInterrupt:
+        pass
