@@ -38,6 +38,7 @@ class Event( object ):
         """
         # TODO(Arthur): allow formatting of the returned string, e.g. formatting the precision of time values
         # TODO(Arthur): optionally, output the event_body, by assuming it supports str()
+        # TODO(Arthur): test use of event_body
     
         return '\t'.join( [ '{:8.3f}'.format( self.creation_time ), '{:8.3f}'.format( self.event_time ), 
             self.sending_object.name, self.receiving_object.name, self.event_type ] )

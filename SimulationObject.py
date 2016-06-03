@@ -18,9 +18,9 @@ Created 2016/06/01
 
 class EventQueue(object):
     """A simulation object's event queue.
-
-    Longer class information....
-    # TODO(Arthur): more py doc
+    
+    Stores a heap of an object's events, with each event in a tuple (time, event). The heap's a 'min heap', with the
+        event with the smallest time at the root.
 
     Attributes:
         event_heap: The object's heap of events, sorted by event time; has O(nlogn) get earliest and insert event.
@@ -74,7 +74,8 @@ class EventQueue(object):
         
         
     def next_events( self ):
-        """Get the list of next event(s).
+        """Get the list of next event(s). Events are provided in a list because multiple events may 
+        have the same simultion time, and they must be provided to the simulation object as a unit.
         
         Handle 'ties' properly. That is, since an object may receive multiple events 
         with the same event_time (aka receive_time), pass them all to the object in a list.
@@ -85,7 +86,6 @@ class EventQueue(object):
             A list of next event(s), which is empty if no events are available.
         """
         # TODO(Arthur): order the list by some deterministic criteria based on its contents
-        # TODO(Arthur): perhaps raise exception if event_heap is empty
 
         if not self.event_heap:
             return []
@@ -110,9 +110,9 @@ class EventQueue(object):
 
 class SimulationObject(object):
     """Base class for simulation objects.
-
-    Longer class information....
-    # TODO(Arthur): more py doc
+    
+    SimulationObject is a base class for all simulations objects. It provides basic functionality:
+    the object's name (which must be unique), it's simulation time, a queue of received events, and a send_event() method.
 
     Attributes:
         name: A string with the simulation object's name.
