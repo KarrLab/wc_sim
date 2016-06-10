@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 from Event import Event
 from SimulationEngine import SimulationEngine
 
@@ -168,5 +170,15 @@ class SimulationObject(object):
             event_list: A non-empty list of event messages in the event
         """
         pass
+
+    def print_event_queue( self ):
+        print(  )
+        print( '{} at {:5.3f}'.format( self.name, self.time ) )
+        if self.event_queue.event_heap:
+            print( Event.header() )
+            print( self.event_queue )
+        else:
+            print( 'Empty event queue' )
+    
         
         

@@ -4,10 +4,12 @@ from __future__ import print_function
 import unittest
 
 from SequentialSimulator.SimulationObject import (EventQueue, SimulationObject)
+from SequentialSimulator.SimulationEngine import SimulationEngine
 
 class TestSimulationObject(unittest.TestCase):
 
     def setUp(self):
+        SimulationEngine.reset()
         self.o1 = SimulationObject('o1')
         self.o2 = SimulationObject('o2')
 
@@ -39,7 +41,12 @@ class TestSimulationObject(unittest.TestCase):
             self.o1.send_event( delay, self.o2, 'test1' )
         self.assertEqual( context.exception.message,
             "delay < 0 in send_event(): {}".format( str( delay ) ) )
-    
+        
+        eq = EventQueue()
+        with self.assertRaises(ValueError) as context:
+            eq.schedule_event( 2, 1, None, None, '' )
+        self.assertEqual( context.exception.message,
+            "receive_time < send_time in schedule_event(): {} < {}".format( 1, 2 ) )
     
 if __name__ == '__main__':
     try:

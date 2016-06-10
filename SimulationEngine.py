@@ -50,7 +50,7 @@ class SimulationEngine(object):
             ValueError: if name is in use
         """
         if name in SimulationEngine.simulation_objects:
-            raise ValueError( "cannot register '{}', name already in use".format( name )
+            raise ValueError( "cannot register '{}', name already in use".format( name ) )
         SimulationEngine.simulation_objects[ name ] = simulation_object 
 
     @staticmethod

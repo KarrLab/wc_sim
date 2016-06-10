@@ -7,17 +7,6 @@ from SequentialSimulator.SimulationObject import (EventQueue, SimulationObject)
 from SequentialSimulator.Event import Event
 from SequentialSimulator.SimulationEngine import SimulationEngine
 
-
-def print_event_queue( name, time, event_queue ):
-    print(  )
-    print( '{} at {:5.3f}'.format( name, time ) )
-    if event_queue.event_heap:
-        print( Event.header() )
-        print( event_queue )
-    else:
-        print( 'Empty event queue' )
-
-
 class ExampleSimulationObject(SimulationObject):
 
     def __init__( self, name, debug=False):
@@ -27,7 +16,7 @@ class ExampleSimulationObject(SimulationObject):
     def handle_event( self, event_list ):
         # print events
         if self.debug:
-            print_event_queue( self.name, self.time, self.event_queue )
+            self.print_event_queue( )
         # schedule event
         self.send_event( 2.0, self, 'test event sent by {} at {:6.3f}'.format( self.name, self.time ) )
 
@@ -40,7 +29,7 @@ class InteractingSimulationObject(SimulationObject):
 
     def handle_event( self, event_list ):
         if self.debug:
-            print_event_queue( self.name, self.time, self.event_queue )
+            self.print_event_queue( )
         # schedule events
         # send an event to each InteractingSimulationObject
         for obj in SimulationEngine.simulation_objects.values():
