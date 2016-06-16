@@ -11,8 +11,8 @@ import argparse
 import sys
 import datetime
 
-from SequentialSimulator.SimulationObject import (EventQueue, SimulationObject)
-from SequentialSimulator.SimulationEngine import SimulationEngine
+from SequentialSimulator.core.SimulationObject import (EventQueue, SimulationObject)
+from SequentialSimulator.core.SimulationEngine import SimulationEngine
 
 def obj_name( obj_num ):
     # create object name from index

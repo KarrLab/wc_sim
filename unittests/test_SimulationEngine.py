@@ -3,9 +3,9 @@
 from __future__ import print_function
 import unittest
 
-from SequentialSimulator.SimulationObject import (EventQueue, SimulationObject)
-from SequentialSimulator.Event import Event
-from SequentialSimulator.SimulationEngine import SimulationEngine
+from SequentialSimulator.core.SimulationObject import (EventQueue, SimulationObject)
+from SequentialSimulator.core.Event import Event
+from SequentialSimulator.core.SimulationEngine import SimulationEngine
 
 class ExampleSimulationObject(SimulationObject):
 

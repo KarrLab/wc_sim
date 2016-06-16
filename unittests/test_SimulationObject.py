@@ -3,8 +3,8 @@
 from __future__ import print_function
 import unittest
 
-from SequentialSimulator.SimulationObject import (EventQueue, SimulationObject)
-from SequentialSimulator.SimulationEngine import SimulationEngine
+from SequentialSimulator.core.SimulationObject import (EventQueue, SimulationObject)
+from SequentialSimulator.core.SimulationEngine import SimulationEngine
 
 class TestSimulationObject(unittest.TestCase):
 
