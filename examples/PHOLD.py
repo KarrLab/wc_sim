@@ -83,6 +83,10 @@ class runPHOLD(object):
         args = parser.parse_args()
         if args.num_PHOLD_procs < 1:
             parser.error( "Must create at least 1 PHOLD process." )
+        if args.frac_self_events < 0:
+            parser.error( "Fraction of events sent to self ({}) should be >= 0.".format( args.frac_self_events ) )
+        if 1 < args.frac_self_events:
+            parser.error( "Fraction of events sent to self ({}) should be <= 1.".format( args.frac_self_events ) )
         if args.seed:
             random.seed( args.seed )
         return args
