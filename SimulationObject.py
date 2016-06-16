@@ -123,10 +123,11 @@ class SimulationObject(object):
     """
 
     # TODO(Arthur): optionally start the simulation at a time other than 0
-    def __init__( self, name, start_time=None):
+    def __init__( self, name, start_time=None, plot_output=False):
         self.event_queue = EventQueue()
 
         self.name = name
+        self.plot_output = plot_output
 
         self.time = 0.0
         if start_time:
@@ -169,7 +170,10 @@ class SimulationObject(object):
         Attributes:
             event_list: A non-empty list of event messages in the event
         """
-        pass
+        # print events for plotting by plotSpaceTimeDiagram.py
+        if self.plot_output:
+            for event in event_list:
+                print( event )
 
     def print_event_queue( self ):
         print(  )

@@ -8,6 +8,9 @@ from __future__ import print_function
 
 import random
 import argparse
+import sys
+import datetime
+
 from SequentialSimulator.SimulationObject import (EventQueue, SimulationObject)
 from SequentialSimulator.SimulationEngine import SimulationEngine
 
@@ -24,29 +27,39 @@ def exp_delay( ):
     
 class PHOLDsimulationObject(SimulationObject):
 
-    def __init__( self, name, args, debug=False):
+    def __init__( self, name, args, debug=False, write_plot_output=False):
         self.debug = debug
         self.args = args
-        super(PHOLDsimulationObject, self).__init__( name )
+        super(PHOLDsimulationObject, self).__init__( name, plot_output=write_plot_output )
 
     def handle_event( self, event_list ):
+        """Handle a simulation event."""
+        # call handle_event() in class SimulationObject which might produce plotting output or do other things
+        super(PHOLDsimulationObject, self).handle_event( event_list )
+        
         if self.debug:
             self.print_event_queue( )
         
         # schedule event
         if random.random() < self.args.frac_self_events or self.args.num_PHOLD_procs == 1:
             receiver = self
-            print( "{:8.3f}: {} sending to self".format( self.time, self.name ))
+            if self.debug:
+                print( "{:8.3f}: {} sending to self".format( self.time, self.name ))
         else:
             # send to another process; pick process index in [0,num_PHOLD-2], and increment if self
             index = random.randrange(self.args.num_PHOLD_procs-1)
             if index == obj_index( self.name ):
                 index += 1
             receiver = SimulationEngine.simulation_objects[ obj_name( index ) ]
-            print( "{:8.3f}: {} sending to {}".format( self.time, self.name, obj_name( index ) ))
+            if self.debug:
+                print( "{:8.3f}: {} sending to {}".format( self.time, self.name, obj_name( index ) ))
 
-        self.send_event( exp_delay(), receiver, 'test event sent by {} at {:6.3f}'.format( 
-            self.name, self.time ) )
+        if receiver == self:
+            recipient = 'self'
+        else:
+            recipient = 'other'
+        event_type = "message sent to {}".format( recipient )
+        self.send_event( exp_delay(), receiver, event_type )
 
 
 class runPHOLD(object):
@@ -62,7 +75,10 @@ class runPHOLD(object):
         parser.add_argument( 'num_PHOLD_procs', type=int, help="Number of PHOLD processes to run" )
         parser.add_argument( 'frac_self_events', type=float, help="Fraction of events sent to self" )
         parser.add_argument( 'end_time', type=float, help="End time for the simulation" )
-        parser.add_argument( '--debug', '-d', action='store_true', help='Print debug output' )
+        output_options = parser.add_mutually_exclusive_group()
+        output_options.add_argument( '--debug', '-d', action='store_true', help='Print debug output' )
+        output_options.add_argument( '--plot', '-p', action='store_true', 
+            help='Write plot input for plotSpaceTimeDiagram.py to stdout.' )
         parser.add_argument( '--seed', '-s', type=int, help='Random number seed' )
         args = parser.parse_args()
         if args.num_PHOLD_procs < 1:
@@ -75,10 +91,13 @@ class runPHOLD(object):
     def main():
     
         args = runPHOLD.parseArgs()
+        if args.plot:
+            print( '# {:%Y-%m-%d %H:%M:%S}'.format(datetime.datetime.now()) )
+            print( "# command line: {}".format( " ".join( sys.argv ) ) )
 
         # create simulation objects
         for obj_id in range( args.num_PHOLD_procs ):
-            PHOLDsimulationObject( obj_name( obj_id ), args, debug=args.debug ) 
+            PHOLDsimulationObject( obj_name( obj_id ), args, debug=args.debug, write_plot_output=args.plot ) 
         
         # send initial event messages, to self
         for obj_id in range( args.num_PHOLD_procs ):
@@ -86,8 +105,9 @@ class runPHOLD(object):
             obj.send_event( exp_delay(), obj, 'init_msg' )
 
         # run the simulation
-        SimulationEngine.simulate( args.end_time )
-        
+        event_num = SimulationEngine.simulate( args.end_time )
+        sys.stderr.write( "Executed {} events.\n".format( event_num ) )
+       
 
 if __name__ == '__main__':
     try:
