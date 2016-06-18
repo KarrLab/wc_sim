@@ -40,26 +40,29 @@ class PHOLDsimulationObject(SimulationObject):
         if self.debug:
             self.print_event_queue( )
         
-        # schedule event
-        if random.random() < self.args.frac_self_events or self.args.num_PHOLD_procs == 1:
-            receiver = self
-            if self.debug:
-                print( "{:8.3f}: {} sending to self".format( self.time, self.name ))
-        else:
-            # send to another process; pick process index in [0,num_PHOLD-2], and increment if self
-            index = random.randrange(self.args.num_PHOLD_procs-1)
-            if index == obj_index( self.name ):
-                index += 1
-            receiver = SimulationEngine.simulation_objects[ obj_name( index ) ]
-            if self.debug:
-                print( "{:8.3f}: {} sending to {}".format( self.time, self.name, obj_name( index ) ))
-
-        if receiver == self:
-            recipient = 'self'
-        else:
-            recipient = 'other'
-        event_type = "message sent to {}".format( recipient )
-        self.send_event( exp_delay(), receiver, event_type )
+        # Although P[receiving multiple messages simultaneously] = 0 because wait times are 
+        # exponentially distributed, we handle each event in event_list separately
+        for i in range( len( event_list ) ):
+            # schedule event
+            if random.random() < self.args.frac_self_events or self.args.num_PHOLD_procs == 1:
+                receiver = self
+                if self.debug:
+                    print( "{:8.3f}: {} sending to self".format( self.time, self.name ))
+            else:
+                # send to another process; pick process index in [0,num_PHOLD-2], and increment if self
+                index = random.randrange(self.args.num_PHOLD_procs-1)
+                if index == obj_index( self.name ):
+                    index += 1
+                receiver = SimulationEngine.simulation_objects[ obj_name( index ) ]
+                if self.debug:
+                    print( "{:8.3f}: {} sending to {}".format( self.time, self.name, obj_name( index ) ))
+    
+            if receiver == self:
+                recipient = 'self'
+            else:
+                recipient = 'other'
+            event_type = "message sent to {}".format( recipient )
+            self.send_event( exp_delay(), receiver, event_type )
 
 
 class runPHOLD(object):

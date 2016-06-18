@@ -3,6 +3,7 @@ from __future__ import print_function
 from Event import Event
 from SimulationEngine import SimulationEngine
 
+import copy
 import heapq
 import warnings
 import logging
@@ -120,6 +121,8 @@ class SimulationObject(object):
         name: A string with the simulation object's name.
         time: A float containing the simulation object's current simulation time.
         event_queue: The object's EventQueue.
+        plot_output: A boolean, indicating whether to print events, formatted for later plotting
+        # TODO(Arthur): use Python logging for printing events
     """
 
     # TODO(Arthur): optionally start the simulation at a time other than 0
@@ -142,7 +145,7 @@ class SimulationObject(object):
         """
         SimulationEngine.add_object( self.name, self ) 
 
-    def send_event( self, delay, receiving_object, event_type, event_body=None ):
+    def send_event( self, delay, receiving_object, event_type, event_body=None, copy=True ):
         """Send a simulation event message. 
         
         Args:
@@ -150,6 +153,8 @@ class SimulationObject(object):
             receiving_object: object; the object that will receive the event
             event_type: string; a string type for the event, used by objects and in debugging output
             event_body: object; an optional object containing the body of the event
+            copy: boolean; if True, copy the event_body;
+                True by default as a safety measure to avoid unexpected changes to shared objects; set False to optimize
             
         Raises:
             ValueError: if delay < 0
@@ -157,6 +162,10 @@ class SimulationObject(object):
         if delay < 0:
             raise ValueError( "delay < 0 in send_event(): {}".format( str( delay ) ) )
             
+        event_body_copy = None
+        if event_body and copy:
+            event_body_copy = deepcopy( event_body )
+        
         receiving_object.event_queue.schedule_event( self.time, self.time + delay, self,
             receiving_object, event_type, event_body )
         logger.debug( ": (%s, %f) -> (%s, %f): %s" , self.name, self.time, receiving_object.name, self.time + delay, event_type )
