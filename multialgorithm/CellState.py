@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+    #!/usr/bin/env python
 
 from SequentialSimulator.core.SimulationObject import (EventQueue, SimulationObject)
 from MessageTypes import MessageTypes
@@ -35,11 +35,10 @@ class Specie(object):
             interp = (t - C_time)*C_flux
         p = R_pop + interp
 
-    This approach is completely general, and can be applied to any simulation attribute.
+    This approach is completely general, and can be applied to any simulation value.
     
     Attributes:
         last_population: population after the most recent update
-        # last_time: time of the population's most recent update
         continuous_flux: flux provided by the most recent update by a continuous model
         continuous_time: time of the most recent update by a continuous model; None if the specie has not
             received a continuous update
@@ -56,38 +55,75 @@ class Specie(object):
         Args:
             initial_population: float; initial population of the specie
         """
+        assert 0 <= initial_population, '__init__(): population should be >= 0'
         self.last_population = initial_population
-        self.continuous_flux = initial_flux
         self.continuous_time = None
-        if initial_flux:
-            self.continuous_time = last_time
       
-    def discrete_update( self, time, population_change ):
-        """Update specie population from a discrete model.
-        """
-        self.last_time = time
-        self.last_population =+ population_change
-    
-    def continuous_update( self, time, population_change, flux ):
-        """Update specie population from a continuous model.
-        """
-        self.last_time = time
-        self.last_population =+ population_change
-        self.continuous_time = time
-        self.continuous_flux = flux
-    
-    def get_population( self, time ):
-        """Get the specie's population at time.
+    def discrete_update( self, population_change ):
+        """A discrete model updates the Specie's population.
 
-            interp = 0
-            if C_time:
-                interp = (t - C_time)*C_flux
-            p = R_pop + interp
+        Args:
+            population_change: number; modeled change in the specie's population
+            
+        Raises:
+            ValueError: if population goes negative
         """
-        interpolation = 0.0
-        if self.continuous_time:
+        # TODO(Arthur): optimization: disable test in production, perhaps
+        if self.last_population + population_change < 0:
+            raise ValueError( "discrete_update(): negative population from "
+                "self.last_population + population_change ({:.2f} + {:.2f})\n".format( 
+                self.last_population, population_change ) )
+        self.last_population += population_change
+    
+    def continuous_update( self, population_change, time, flux ):
+        """A continuous model updates the specie's population.
+
+        Args:
+            population_change: number; modeled change in the specie's population
+            
+        Raises:
+            ValueError: if time is <= the time of the most recent continuous update
+            ValueError: if population goes negative
+        """
+        # updates at a time that does not advance the specie's state do not make sense
+        if self.continuous_time and time <= self.continuous_time:
+            raise ValueError( "continuous_update(): time <= self.continuous_time: {:.2f} < {:.2f}\n".format( 
+                time, self.continuous_time ) )
+        if self.last_population + population_change < 0:
+            raise ValueError( "continuous_update(): negative population from "
+                "self.last_population + population_change ({:.2f} + {:.2f})\n".format( 
+                self.last_population, population_change ) )
+        assert 0 <= time, 'negative time: {:.2f}'.format( time )
+        self.continuous_time = time
+        assert 0 <= flux, 'negative flux: {:.2f}'.format( flux )
+        self.continuous_flux = flux
+        self.last_population += population_change
+    
+    def get_population( self, time=None ):
+        """Get the specie's population at time.
+        
+        Interpolate continuous values as described in the documentation of class Specie.
+        
+        Args:
+            time: number; optional; simulation time of the request; 
+                time is required if the specie has had a continuous update
+            
+        Raises:
+            ValueError: if time is required and not provided
+            ValueError: time is earlier than a previous continuous update
+        """
+        if not self.continuous_time:
+            return self.last_population
+        else:
+            if not time:
+                raise ValueError( "get_population(): time needed because "
+                    "continuous updates received at time {:.2f}.\n".format( self.continuous_time ) )
+            if time < self.continuous_time:
+                raise ValueError( "get_population(): time < self.continuous_time: {:.2f} < {:.2f}\n".format( 
+                    time, self.continuous_time ) )
             interpolation = (time - self.continuous_time) * self.continuous_flux
-        return self.last_population + interpolation
+            return self.last_population + interpolation
+
     
 class CellState( SimulationObject ): 
     """The cell's state, which represents the state of its species.
