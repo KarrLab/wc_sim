@@ -1,13 +1,94 @@
 #!/usr/bin/env python
 
 from SequentialSimulator.core.SimulationObject import (EventQueue, SimulationObject)
-import MessageTypes
+from MessageTypes import MessageTypes
 
 """
 The cell's state, which represents the state of its species.
 """
 # TODO(Arthur): COVERAGE TESTING
 
+class Specie(object):
+    """
+    CellState tracks the population of a set of species. To enable multi-algorithmic modeling, 
+    it supports updates to a specie's population by both discrete and continuous models. E.g., discrete models
+    might synthesize proteins while a continuous model degrades them.
+    We have these cases. Suppose that a specie's population is updated by:
+        DISCRETE model only: estimating the population obtains the last value written
+        CONTINUOUS model only: estimating the population obtains the last value written plus an interpolated change
+            since the last continuous update
+        Both model types: reading the populations obtains the last value written plus an interpolated change based on
+            the last continuous update
+    Without loss of generality, we assume that all species can be updated by both model types and that at most
+    one continuous model updates a specie's population. (Multiple continuous models of a specie - or any 
+    model attribute - would be non-sensical, as it implies multiple conflicting, simultaneous rates of change.) 
+    We also assume that if a population is updated by a continuous model then the updates occur sufficiently 
+    frequently that the last update alway provides a useful estimate of flux. Updates take the following form:
+        DISCRETE update: (time, population_change)
+        CONTINUOUS update: (time, population_change, flux_estimate_at_time)
+    
+    Each Specie stores the (time, population) of the most recent update and (time, flux) of the most
+    recent continuous update. Naming these R_time, R_pop, C_time, and C_flux, the population p at time t is 
+    estimated by:
+        interp = 0
+        if C_time:
+            interp = (t - C_time)*C_flux
+        p = R_pop + interp
+
+    This approach is completely general, and can be applied to any simulation attribute.
+    
+    Attributes:
+        last_population: population after the most recent update
+        # last_time: time of the population's most recent update
+        continuous_flux: flux provided by the most recent update by a continuous model
+        continuous_time: time of the most recent update by a continuous model; None if the specie has not
+            received a continuous update
+    
+    # TODO(Arthur): optimization: put Specie functionality into CellState, avoiding overhead of a Class instance
+        for each Specie. I'm writing it in a class now while the math and logic are being developed.
+    """
+    # use __slots__ to save space
+    __slots__ = "last_population continuous_time continuous_flux".split()
+
+    def __init__( self, initial_population  ):
+        """Initialize a Specie object.
+        
+        Args:
+            initial_population: float; initial population of the specie
+        """
+        self.last_population = initial_population
+        self.continuous_flux = initial_flux
+        self.continuous_time = None
+        if initial_flux:
+            self.continuous_time = last_time
+      
+    def discrete_update( self, time, population_change ):
+        """Update specie population from a discrete model.
+        """
+        self.last_time = time
+        self.last_population =+ population_change
+    
+    def continuous_update( self, time, population_change, flux ):
+        """Update specie population from a continuous model.
+        """
+        self.last_time = time
+        self.last_population =+ population_change
+        self.continuous_time = time
+        self.continuous_flux = flux
+    
+    def get_population( self, time ):
+        """Get the specie's population at time.
+
+            interp = 0
+            if C_time:
+                interp = (t - C_time)*C_flux
+            p = R_pop + interp
+        """
+        interpolation = 0.0
+        if self.continuous_time:
+            interpolation = (time - self.continuous_time) * self.continuous_flux
+        return self.last_population + interpolation
+    
 class CellState( SimulationObject ): 
     """The cell's state, which represents the state of its species.
     
@@ -47,7 +128,7 @@ class CellState( SimulationObject ):
     
     # at a time instant, CHANGE_POPULATION has priority over GET_POPULATION
     MESSAGE_TYPES_BY_PRIORITY = [ MessageTypes.CHANGE_POPULATION, MessageTypes.GET_POPULATION ]
-            
+
     def __init__( self, name, initial_population, type, debug=False, write_plot_output=False):
         """Initialize a CellState object.
         

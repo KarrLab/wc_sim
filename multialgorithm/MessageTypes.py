@@ -7,7 +7,9 @@ Event message types, bodies and reply message:
     For sequential simulator, store message bodies as a copy of sender's data structure
     # TODO(Arthur): for parallel simulation, use Pickle to serialize and deserialize message bodies
 """
-CHANGE_POPULATION = 'CHANGE_POPULATION'
-GET_POPULATION = 'GET_POPULATION'
-GIVE_POPULATION = 'GIVE_POPULATION'
+
+class MessageTypes(object):
+    CHANGE_POPULATION = 'CHANGE_POPULATION'
+    GET_POPULATION = 'GET_POPULATION'
+    GIVE_POPULATION = 'GIVE_POPULATION'
 
