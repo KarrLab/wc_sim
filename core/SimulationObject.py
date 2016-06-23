@@ -3,7 +3,7 @@ from __future__ import print_function
 from Event import Event
 from SimulationEngine import SimulationEngine
 
-import copy
+from copy import deepcopy
 import heapq
 import warnings
 import logging
@@ -104,6 +104,7 @@ class EventQueue(object):
     @staticmethod
     def event_list_to_string( event_list ):
         '''return event_list members as a table; formatted as a multi-line, tab-separated string'''
+        # TODO(Arthur): since event_list is a heap, the printed list is not in event order; sort before printing
         return "\n".join( [event.__str__() for event in event_list] )
 
     def __str__( self ):
@@ -168,7 +169,8 @@ class SimulationObject(object):
         
         receiving_object.event_queue.schedule_event( self.time, self.time + delay, self,
             receiving_object, event_type, event_body )
-        logger.debug( ": (%s, %f) -> (%s, %f): %s" , self.name, self.time, receiving_object.name, self.time + delay, event_type )
+        logger.debug( ": (%s, %f) -> (%s, %f): %s" , self.name, self.time, receiving_object.name, self.time + delay, 
+            event_type )
         
 
     def handle_event( self, event_list ):

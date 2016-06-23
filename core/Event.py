@@ -7,16 +7,27 @@ Created 2016/05/31
 @author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
 """
 
-# each event is represented by an Event record
-# Event = recordtype( 'Event', 'creation_time event_time sending_object receiving_object event_type event_body' )
+# Each event is represented by an Event object
 
 class Event( object ):
     """An object that holds DES events.
     
-    the event_body is the payload, opaque content that can only be interpreted by the sending and receiving objects
+    More desc. 
+    
+    Attributes:
+        creation_time: 
+        event_time: 
+        sending_object: 
+        receiving_object: 
+        event_type: 
+        event_body: the message payload, opaque content that can only be interpreted by the sending and receiving objects
+        
+        
+    # TODO(Arthur): finish documentation
     """
-    # TODO(Arthur): make Event a slots object, to conserve space
     # TODO(Arthur): for performance, perhaps pre-allocate and reuse events
+    # use __slots__ to save space
+    __slots__ = "creation_time event_time sending_object receiving_object event_type event_body".split()
     def __init__( self, creation_time, event_time, sending_object, receiving_object, event_type, 
         event_body=None):
         self.creation_time = creation_time
