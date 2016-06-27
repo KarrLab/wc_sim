@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 
 import sys
+import logging
+logger = logging.getLogger(__name__)
+# control logging level with: logger.setLevel()
+# this enables debug output: logging.basicConfig( level=logging.DEBUG )
 
 from SequentialSimulator.core.SimulationObject import (EventQueue, SimulationObject)
 from MessageTypes import (MessageTypes, ADJUST_POPULATION_BY_DISCRETE_MODEL_body, 
@@ -156,16 +160,22 @@ class CellState( SimulationObject ):
     
     """
     
+    SENT_MESSAGE_TYPES = [ MessageTypes.GIVE_POPULATION ]
+    # TODO(Arthur): is there a way to automatically get the object name (e.g. 'CellState') here?
+    MessageTypes.set_sent_message_types( 'CellState', SENT_MESSAGE_TYPES )
+
     # at any time instant, process messages in this order
     MESSAGE_TYPES_BY_PRIORITY = [ 
         MessageTypes.ADJUST_POPULATION_BY_DISCRETE_MODEL, 
         MessageTypes.ADJUST_POPULATION_BY_CONTINUOUS_MODEL, 
         MessageTypes.GET_POPULATION ]
 
+    MessageTypes.set_receiver_priorities( 'CellState', MESSAGE_TYPES_BY_PRIORITY )
+
     def __init__( self, name, initial_population, debug=False, write_plot_output=False):
         """Initialize a CellState object.
         
-        More desc. 
+        Initialize a CellState object. Establish its initial population, and set debugging booleans.
         
         Args:
             name: 
@@ -175,8 +185,7 @@ class CellState( SimulationObject ):
                 # TODO(Arthur): evalaute whether this is a good assumption
             
         Raises:
-
-        # TODO(Arthur): complete pydoc
+            AssertionError: if the population cannot be initialized.
         """
         super( CellState, self ).__init__( name, plot_output=write_plot_output )
 
@@ -190,9 +199,10 @@ class CellState( SimulationObject ):
         self.debug = debug
 
     def handle_event( self, event_list ):
-        """Handle a simulation event.
+        """Handle a CellState simulation event.
         
-        If an event message adjusts the population of a specie that is not known, initialize it with no population.
+        If an event message adjusts the population of a specie that is not known, initialize the Specie with
+        no population. 
         
         More desc. 
         
@@ -200,29 +210,16 @@ class CellState( SimulationObject ):
             event_list: list of event messages to process
             
         Raises:
+            ValueError: if a GET_POPULATION message requests the population of an unknown species
 
-        # TODO(Arthur): complete pydoc
         """
-        # call handle_event() in class SimulationObject which might produce plotting output or do other things
+        # call handle_event() in class SimulationObject which performs generic tasks on the event list
         super( CellState, self ).handle_event( event_list )
         
-        # TODO(Arthur): use logging instead
         if self.debug:
-            self.print_event_queue( )
-        
-        # check for messages with invalid types
-        # TODO(Arthur): do this checking at send time, probably in SimulationObject.send_event()
-        invalid_types = (set( map( lambda x: x.event_type, event_list ) ) - 
-            set( CellState.MESSAGE_TYPES_BY_PRIORITY ))
-        if len( invalid_types ):
-            raise ValueError( "Error: invalid event event_type(s) '{}' in event_list:\n{}\n".format( 
-                ', '.join( list( invalid_types ) ),
-                '\n'.join( [ str( ev_msg ) for ev_msg in event_list ] ) ) )
-        
-        # sort event_list by type priority, anticipating non-deterministic arrival order in a parallel implementation
-        # this scales for arbitrarily many message types
-        for event_message in sorted( event_list, 
-            key=lambda event: CellState.MESSAGE_TYPES_BY_PRIORITY.index( event.event_type ) ):
+            logger.debug( ' ' + self.event_queue_to_str() )
+            
+        for event_message in event_list:
             # switch/case on event message type
             if event_message.event_type == MessageTypes.ADJUST_POPULATION_BY_DISCRETE_MODEL:
 
@@ -255,7 +252,7 @@ class CellState( SimulationObject ):
 
             elif event_message.event_type == MessageTypes.GET_POPULATION:
 
-                # species is an GET_POPULATION_body object
+                # species is a GET_POPULATION_body object
                 species = event_message.event_body
                 # detect species requested that are not stored by this CellState
                 invalid_species = species.species - set( self.population.keys() )

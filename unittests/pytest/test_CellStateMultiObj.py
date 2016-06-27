@@ -41,6 +41,14 @@ for line in pop_history.split('\n')[2:]:
 
 class TestSimulationObject(SimulationObject):
 
+    SENT_MESSAGE_TYPES = [ ]
+    MessageTypes.set_sent_message_types( 'TestSimulationObject', SENT_MESSAGE_TYPES )
+
+    # at any time instant, process messages in this order
+    MESSAGE_TYPES_BY_PRIORITY = [ MessageTypes.GIVE_POPULATION ]
+
+    MessageTypes.set_receiver_priorities( 'TestSimulationObject', MESSAGE_TYPES_BY_PRIORITY )
+
     def __init__( self, name, debug=False, write_plot_output=False):
         self.debug = debug
         super(TestSimulationObject, self).__init__( name, plot_output=write_plot_output )

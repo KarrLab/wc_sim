@@ -1,6 +1,8 @@
 from __future__ import print_function
 
 from Event import Event
+from SequentialSimulator.multialgorithm.MessageTypes import MessageTypes 
+
 import warnings
 import logging
 logger = logging.getLogger(__name__)
@@ -38,7 +40,6 @@ class SimulationEngine(object):
     """
 
     time=0.0
-    # TODO(Arthur): optionally, start a simulation at a time other than 0
     simulation_objects={}
 
 
@@ -83,7 +84,18 @@ class SimulationEngine(object):
             print(  )
 
     @staticmethod
-    def simulate( end_time ):
+    def print_simulation_state( ):
+
+        logger.debug( ' ' + '\t'.join( ['Sender', 'Message types sent'] ) )
+        for sender in MessageTypes.senders.keys():
+            logger.debug( ' ' + sender + '\t' + ', '.join( MessageTypes.senders[sender] ) )
+
+        logger.debug( ' ' + '\t'.join( ['Receiver', 'Message types by priority'] ) )
+        for receiver in MessageTypes.receiver_priorities.keys():
+            logger.debug( ' ' + sender + '\t' + ', '.join( MessageTypes.receiver_priorities[receiver] ) )
+
+    @staticmethod
+    def simulate( end_time, debug=False ):
         """Run the simulation; return number of events.
         
         Args:
@@ -93,6 +105,10 @@ class SimulationEngine(object):
             The number of times a simulation object executes handle_event(). This may be larger than the number
             of events sent, because times are handled together.
         """
+        
+        if debug:
+            SimulationEngine.print_simulation_state()
+        
         handle_event_invocations = 0
         logger.debug( ' ' + "\t".join( 'Time Object_type Object_name'.split() ) )
         while SimulationEngine.time <= end_time:
@@ -120,6 +136,10 @@ class SimulationEngine(object):
             
             # dispatch object that's ready to execute next event
             SimulationEngine.time = next_time
+            # This assertion cannot be violoated unless init message sent to negative time or objects decrease their time
+            assert next_sim_obj.time <= next_time, ("Dispatching '{}', but find object time "
+            "{} > event time {}.".format( next_sim_obj.name, next_sim_obj.time, next_time ) )
+
             next_sim_obj.time = next_time
             next_sim_obj.handle_event( next_sim_obj.event_queue.next_events() )
             

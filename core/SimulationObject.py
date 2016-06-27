@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 from Event import Event
+from SequentialSimulator.multialgorithm.MessageTypes import MessageTypes 
 from SimulationEngine import SimulationEngine
 
 from copy import deepcopy
@@ -60,7 +61,7 @@ class EventQueue(object):
             
         event = Event( send_time, receive_time, sending_object, receiving_object, event_type, event_body )
         """
-        # TODO(Arthur): logging support
+        # TODO(Arthur): optionally log the scheduling of an event
         """
         heapq.heappush( self.event_heap, ( receive_time, event ) )
     
@@ -88,7 +89,8 @@ class EventQueue(object):
         Return:
             A list of next event(s), which is empty if no events are available.
         """
-        # TODO(Arthur): order the list by some deterministic criteria based on its contents
+        # TODO(Arthur): in a Time Warp simulation, order the list by some deterministic criteria
+        # TODO(Arthur): based on its contents; see David's lecture on this
 
         if not self.event_heap:
             return []
@@ -123,20 +125,22 @@ class SimulationObject(object):
         time: A float containing the simulation object's current simulation time.
         event_queue: The object's EventQueue.
         plot_output: A boolean, indicating whether to print events, formatted for later plotting
-        # TODO(Arthur): use Python logging for printing events
+        # TODO(Arthur): use Python logging for printing the event_queue; in general, remove print statements
     """
 
-    # TODO(Arthur): optionally start the simulation at a time other than 0
-    def __init__( self, name, start_time=None, plot_output=False):
+    def __init__( self, name, plot_output=False):
+        """Initialize a SimulationObject. 
+        
+        Create its event queue, initialize its name, and set its start time to 0.
+        
+        Args:
+            name: string; the object's unique name, used as a key in the dict of objects
+            plot_output: boolean; if true, print a line for each executed event, suitable for plotting
+        """
         self.event_queue = EventQueue()
-
         self.name = name
         self.plot_output = plot_output
-
         self.time = 0.0
-        if start_time:
-            self.time = start_time
-            
         self.register()
         
     def register( self ):
@@ -159,9 +163,22 @@ class SimulationObject(object):
             
         Raises:
             ValueError: if delay < 0
+            ValueError: if the sending object type is not registered to send a message type
+            ValueError: if the receiving simulation object type is not registered to receive the message type
+            
         """
         if delay < 0:
             raise ValueError( "delay < 0 in send_event(): {}".format( str( delay ) ) )
+            
+        # check that the sending object type is registered to send the message type
+        if not event_type in MessageTypes.senders[ self.__class__.__name__ ]:
+            raise ValueError( "'{}' simulation objects not registered to send '{}' messages".format( 
+                self.__class__.__name__, event_type ) )
+
+        # check that the receiving simulation object type is registered to receive the message type
+        if not event_type in MessageTypes.receiver_priorities[ receiving_object.__class__.__name__ ]:
+            raise ValueError( "'{}' simulation objects not registered to receive '{}' messages".format( 
+                receiving_object.__class__.__name__, event_type ) )
             
         event_body_copy = None
         if event_body and copy:
@@ -180,7 +197,27 @@ class SimulationObject(object):
 
         Attributes:
             event_list: A non-empty list of event messages in the event
+
+        Raises:
+            ValueError: if some event message in event_list has an invalid type
         """
+        
+        # check for messages with invalid types
+        # TODO(Arthur): do this checking at send time, probably in SimulationObject.send_event()
+        invalid_types = (set( map( lambda x: x.event_type, event_list ) ) - 
+            set( MessageTypes.receiver_priorities[ self.__class__.__name__ ] ))
+        if len( invalid_types ):
+            raise ValueError( "Error: invalid event event_type(s) '{}' in event_list:\n{}\n".format( 
+                ', '.join( list( invalid_types ) ),
+                '\n'.join( [ str( ev_msg ) for ev_msg in event_list ] ) ) )
+
+        # sort event_list by type priority, anticipating non-deterministic arrival order in a parallel implementation
+        # this scales for arbitrarily many message types
+        # TODO(Arthur): unittest this code
+        event_list = sorted( event_list, 
+            key=lambda event:
+            MessageTypes.receiver_priorities[ self.__class__.__name__ ].index( event.event_type ) )
+
         # print events for plotting by plotSpaceTimeDiagram.py
         if self.plot_output:
             for event in event_list:
@@ -188,12 +225,12 @@ class SimulationObject(object):
 
     def print_event_queue( self ):
         print(  )
-        print( '{} at {:5.3f}'.format( self.name, self.time ) )
+        print( self.event_queue_to_str() )
+
+    def event_queue_to_str( self ):
+        eq = '{} at {:5.3f}\n'.format( self.name, self.time ) 
         if self.event_queue.event_heap:
-            print( Event.header() )
-            print( self.event_queue )
+            eq += Event.header() + '\n' + str(self.event_queue) + '\n' 
         else:
-            print( 'Empty event queue' )
-    
-        
-        
+            eq += 'Empty event queue'
+        return eq

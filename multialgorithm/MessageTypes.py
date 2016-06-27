@@ -2,7 +2,6 @@ from collections import namedtuple
 
 """
 Event message types, bodies and reply message:
-    # TODO(Arthur): include types of objects that send and receive these messages
     ADJUST_POPULATION_BY_DISCRETE_MODEL: a discrete (stochastic) model increases or decreases some species copy
         numbers: data: dict: species_name -> population_change; no reply message
     ADJUST_POPULATION_BY_CONTINUOUS_MODEL: a continuous model integrated by a time-step simulation increases or
@@ -13,14 +12,43 @@ Event message types, bodies and reply message:
     
     For sequential simulator, store message bodies as a copy of or reference to sender's data structure
     # TODO(Arthur): for parallel simulation, use Pickle to serialize and deserialize message bodies
+
+Created 2016/06/10
+@author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
 """
+'''
+TODO(Arthur): drive event message functionality into generic simulation code: 
+3. in SimulationObject ensure that message types are only sent by suitable senders
+'''
 
 class MessageTypes(object):
+    """A simulation's static set of message types.
+    
+    Attributes:
+        These are global attributes, since the MessageTypes is static.
 
+        senders: dict: SimulationObject type -> list of messages it sends
+        receiver_priorities: dict: SimulationObject type -> list of messages it receives, in priority order
+        
+    """
+    
     ADJUST_POPULATION_BY_DISCRETE_MODEL = 'ADJUST_POPULATION_BY_DISCRETE_MODEL'
     ADJUST_POPULATION_BY_CONTINUOUS_MODEL = 'ADJUST_POPULATION_BY_CONTINUOUS_MODEL'
     GET_POPULATION = 'GET_POPULATION'
     GIVE_POPULATION = 'GIVE_POPULATION'
+    
+    senders = {}
+    receiver_priorities = {}
+    
+    @staticmethod
+    def set_sent_message_types( sim_obj_name, message_types ):
+        MessageTypes.senders[ sim_obj_name ] = message_types
+    
+    @staticmethod
+    def set_receiver_priorities( sim_obj_name, message_priorities ):
+        MessageTypes.receiver_priorities[ sim_obj_name ] = message_priorities
+    
+    
 
 '''
 Define a class that stores the body of each message type. This avoids confusing the structure of a message body.

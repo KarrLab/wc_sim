@@ -5,13 +5,21 @@ import unittest
 
 from SequentialSimulator.core.SimulationObject import (EventQueue, SimulationObject)
 from SequentialSimulator.core.SimulationEngine import SimulationEngine
+from SequentialSimulator.multialgorithm.MessageTypes import MessageTypes
+
+class ExampleSimulationObject(SimulationObject):
+
+    ALL_MESSAGE_TYPES = 'init_msg test1'.split()
+    MessageTypes.set_sent_message_types( 'ExampleSimulationObject', ALL_MESSAGE_TYPES )
+    MessageTypes.set_receiver_priorities( 'ExampleSimulationObject', ALL_MESSAGE_TYPES )
+
 
 class TestSimulationObject(unittest.TestCase):
 
     def setUp(self):
         SimulationEngine.reset()
-        self.o1 = SimulationObject('o1')
-        self.o2 = SimulationObject('o2')
+        self.o1 = ExampleSimulationObject('o1')
+        self.o2 = ExampleSimulationObject('o2')
 
     def test_event(self):
         times=[1.0, 2.0, 0.5]
@@ -34,7 +42,7 @@ class TestSimulationObject(unittest.TestCase):
             self.assertEqual( self.o2.event_queue.next_event_time(), tmp.pop(0) )
             el = self.o2.event_queue.next_events()
         self.assertEqual( self.o2.event_queue.next_events(), [] )
-    
+
     def test_exceptions(self):
         delay = -1.0
         with self.assertRaises(ValueError) as context:
