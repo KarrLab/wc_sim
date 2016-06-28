@@ -13,6 +13,7 @@ import datetime
 
 from SequentialSimulator.core.SimulationObject import (EventQueue, SimulationObject)
 from SequentialSimulator.core.SimulationEngine import SimulationEngine
+from SequentialSimulator.multialgorithm.MessageTypes import MessageTypes
 
 def obj_name( obj_num ):
     # create object name from index
@@ -26,6 +27,10 @@ def exp_delay( ):
     return random.expovariate( 1.0 )
     
 class PHOLDsimulationObject(SimulationObject):
+
+    MESSAGE_TYPES = [ 'message_sent_to_other_object', 'init_msg' ]
+    MessageTypes.set_sent_message_types( 'PHOLDsimulationObject', MESSAGE_TYPES )
+    MessageTypes.set_receiver_priorities( 'PHOLDsimulationObject', MESSAGE_TYPES )
 
     def __init__( self, name, args, debug=False, write_plot_output=False):
         self.debug = debug
@@ -61,8 +66,7 @@ class PHOLDsimulationObject(SimulationObject):
                 recipient = 'self'
             else:
                 recipient = 'other'
-            event_type = "message sent to {}".format( recipient )
-            self.send_event( exp_delay(), receiver, event_type )
+            self.send_event( exp_delay(), receiver, 'message_sent_to_other_object' )
 
 
 class runPHOLD(object):

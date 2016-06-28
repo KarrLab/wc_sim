@@ -9,12 +9,7 @@ from SequentialSimulator.core.SimulationEngine import SimulationEngine
 from SequentialSimulator.multialgorithm.CellState import (Specie, CellState)
 from SequentialSimulator.multialgorithm.MessageTypes import (MessageTypes, ADJUST_POPULATION_BY_DISCRETE_MODEL_body, 
     Continuous_change, ADJUST_POPULATION_BY_CONTINUOUS_MODEL_body, GET_POPULATION_body, GIVE_POPULATION_body)
-
-class UniversalSenderReceiverSimulationObject(SimulationObject):
-
-    ALL_MESSAGE_TYPES = 'ADJUST_POPULATION_BY_DISCRETE_MODEL ADJUST_POPULATION_BY_CONTINUOUS_MODEL GET_POPULATION GIVE_POPULATION'.split()
-    MessageTypes.set_sent_message_types( 'UniversalSenderReceiverSimulationObject', ALL_MESSAGE_TYPES )
-    MessageTypes.set_receiver_priorities( 'UniversalSenderReceiverSimulationObject', ALL_MESSAGE_TYPES )
+from UniversalSenderReceiverSimulationObject import UniversalSenderReceiverSimulationObject
 
 class TestCellState(unittest.TestCase):
 

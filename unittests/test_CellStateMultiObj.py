@@ -1,32 +1,44 @@
 #!/usr/bin/env python
 
+'''
+Use multiple simulation objects (curently 3) to test the simulator. One object (a 
+UniversalSenderReceiverSimulationObject) sends initialization events. Another object, a CellState, manages the
+population of one species, 'x'. And another object, a TestSimulationObject, monitors the population of x and 
+compares the correct population with the simulated population.
+
+'''
+
+import unittest
 import sys
 import re
 
+# TODO(Arthur): test the exceptions in these modules
 from SequentialSimulator.core.SimulationObject import (EventQueue, SimulationObject)
 from SequentialSimulator.core.SimulationEngine import SimulationEngine
 from SequentialSimulator.multialgorithm.MessageTypes import (MessageTypes, ADJUST_POPULATION_BY_DISCRETE_MODEL_body, 
     Continuous_change, ADJUST_POPULATION_BY_CONTINUOUS_MODEL_body, GET_POPULATION_body, GIVE_POPULATION_body)
 from SequentialSimulator.multialgorithm.CellState import (Specie, CellState)
+from UniversalSenderReceiverSimulationObject import UniversalSenderReceiverSimulationObject
 
 # population dynamics of specie 'x'
-# See spreadsheet test_pop_history.ods
+# See spreadsheet test_pop_history.ods in the current directory.
 pop_history = '''
-Time	Event	Pop_adjust	Flux	Population
-0	init	NA	NA	3
-0	get_pop	NA	NA	3
-1	discrete_adjust	1	NA	4
-1	get_pop	NA	NA	4
-2	continuous_adjust	2	0.5	6
-2	get_pop	NA	NA	6
-3	get_pop	NA	NA	6.5
-4	discrete_adjust	-1	NA	6
-4	get_pop	NA	NA	6
-5	get_pop	NA	NA	6.5'''
-pop_history_dict = {}   # event_type -> time -> (Pop_adjust, Flux, Population)
+Time                 Event                Pop_adjust           Flux                 Population
+0                    init                 NA                   NA                   3
+0                    get_pop              NA                   NA                   3
+1                    discrete_adjust      1                    NA                   4
+1                    get_pop              NA                   NA                   4
+2                    continuous_adjust    2                    0.5                  6
+2                    get_pop              NA                   NA                   6
+3                    get_pop              NA                   NA                   6.5
+4                    discrete_adjust      -1                   NA                   6
+4                    get_pop              NA                   NA                   6
+5                    get_pop              NA                   NA                   6.5'''
+pop_history_dict = {}   # event_type -> event_time -> (Pop_adjust, Flux, Population)
+# build pop_history_dict from pop_history
 for line in pop_history.split('\n')[2:]:
     line=line.strip()
-    values = re.split( '\s', line )
+    values = re.split( '\s+', line )
     for i in range(len(values)):
         t = values[i]
         try:
@@ -41,12 +53,11 @@ for line in pop_history.split('\n')[2:]:
 
 class TestSimulationObject(SimulationObject):
 
-    SENT_MESSAGE_TYPES = [ ]
+    SENT_MESSAGE_TYPES = [ MessageTypes.GET_POPULATION ]
     MessageTypes.set_sent_message_types( 'TestSimulationObject', SENT_MESSAGE_TYPES )
 
     # at any time instant, process messages in this order
     MESSAGE_TYPES_BY_PRIORITY = [ MessageTypes.GIVE_POPULATION ]
-
     MessageTypes.set_receiver_priorities( 'TestSimulationObject', MESSAGE_TYPES_BY_PRIORITY )
 
     def __init__( self, name, debug=False, write_plot_output=False):
@@ -55,16 +66,13 @@ class TestSimulationObject(SimulationObject):
 
     def handle_event( self, event_list ):
         super( TestSimulationObject, self).handle_event( event_list )
-        # print events
-        if self.debug:
-            self.print_event_queue( )
 
         '''
         Test for the population of x, at various times in a sequence of ADJUST_POPULATION_BY_* events. These 
-        events are described in pop_history_dict and scheduled for the CellState object by test_CellState_with_other_SimObj() 
-        below. 
-        test_CellState_with_other_SimObj() also schedules GET_POPULATION events sent by otherSimObj, an instance of this
-        TestSimulationObject, at the times in the sequence.
+        events are described in pop_history and pop_history_dict and scheduled for the CellState object by
+        test_CellState_with_other_SimObj() below. 
+        test_CellState_with_other_SimObj() also schedules GET_POPULATION events sent by TestSimObj, 
+        an instance of this TestSimulationObject, at the times in the sequence.
         '''
         specie = 'x'
         
@@ -78,38 +86,50 @@ class TestSimulationObject(SimulationObject):
                 if specie in populations.population:
                     if event_message.event_time in pop_history_dict['get_pop']:
                         (Pop_adjust, Flux, correct_pop) = pop_history_dict['get_pop'][event_message.event_time]
-                        print 'is', populations.population[specie], 'should_be', correct_pop
-                        assert populations.population[specie] == correct_pop
+                        # Key point: TestSimulationObject.TestCaseRef is a reference to a unittest.TestCase, 
+                        # which is set by TestSimulation.testSimulation( ) below
+                        TestSimulationObject.TestCaseRef.assertEqual( populations.population[specie], correct_pop )
             else:
                 print "Shouldn't get here - event_message.event_type should be covered in the "
                 "if statement above"
 
-class test_CellStateMultiObj( object ):
+class TestSimulation(unittest.TestCase):
 
     id = 0
     @staticmethod
     def get_name():
-        test_CellStateMultiObj.id += 1
-        return "CellState_{:d}".format( test_CellStateMultiObj.id )
+        TestSimulation.id += 1
+        return "CellState_{:d}".format( TestSimulation.id )
      
     @staticmethod
-    def test_CellState_with_other_SimObj():
+    def make_CellState( pop, debug=False, write_plot_output=False, name=None ):
+        if not name:
+            name = TestSimulation.get_name()
+        if debug:
+            print "Creating CellState( {}, --population--, debug={}, write_plot_output={} ) ".format(
+                name, debug, write_plot_output )
+        return CellState( name, pop, debug=debug, write_plot_output=write_plot_output )
         
+    def testSimulation( self ):
+
         specie = 'x'
         (unused_Pop_adjust, unused_Flux, init_pop) = pop_history_dict['init'][0]
-        cs1 = test_CellStateMultiObj.make_CellState( { specie: init_pop, 'y': 3 },
-            write_plot_output=False, debug=False )
-        otherSimObj = TestSimulationObject( 'otherSimObj', write_plot_output=False )
+        cs1 = TestSimulation.make_CellState( { specie: init_pop } )
+        TestSimObj = TestSimulationObject( 'TestSimObj' )
+        # give TestSimulationObject.TestCaseRef a reference to this unittest.TestCase:
+        TestSimulationObject.TestCaseRef = self
+
+        usr = UniversalSenderReceiverSimulationObject( 'usr1' )
     
-        # events
+        # create initial events
         # ADJUST_POPULATION_BY_DISCRETE_MODEL
         for time, (Pop_adjust, unused_Flux, unused_Population) in pop_history_dict['discrete_adjust'].items():
-            cs1.send_event( time, cs1, MessageTypes.ADJUST_POPULATION_BY_DISCRETE_MODEL, 
+            usr.send_event( time, cs1, MessageTypes.ADJUST_POPULATION_BY_DISCRETE_MODEL, 
                 event_body=ADJUST_POPULATION_BY_DISCRETE_MODEL_body( { specie:Pop_adjust } ) )
         
         # ADJUST_POPULATION_BY_CONTINUOUS_MODEL
         for time, (Pop_adjust, Flux, unused_Population) in pop_history_dict['continuous_adjust'].items():
-            cs1.send_event( time, cs1, MessageTypes.ADJUST_POPULATION_BY_CONTINUOUS_MODEL, 
+            usr.send_event( time, cs1, MessageTypes.ADJUST_POPULATION_BY_CONTINUOUS_MODEL, 
                 event_body=ADJUST_POPULATION_BY_CONTINUOUS_MODEL_body( 
                     { specie: Continuous_change( Pop_adjust, Flux ) }
                 )
@@ -117,22 +137,13 @@ class test_CellStateMultiObj( object ):
 
         # GET_POPULATION
         for time in pop_history_dict['get_pop'].keys():
-            otherSimObj.send_event( time, cs1, MessageTypes.GET_POPULATION, 
+            TestSimObj.send_event( time, cs1, MessageTypes.GET_POPULATION, 
                 event_body=GET_POPULATION_body( set(['x']) )
             )
         SimulationEngine.simulate( 5.0 )
     
-    @staticmethod
-    def make_CellState( pop, debug=False, write_plot_output=False, name=None ):
-        if not name:
-            name = test_CellStateMultiObj.get_name()
-        print "Creating CellState( {}, --population--, debug={}, write_plot_output={} ) ".format(
-            name, debug, write_plot_output )
-        return CellState( name, pop, debug=debug, write_plot_output=write_plot_output ) 
-    
 if __name__ == '__main__':
     try:
-        test_CellStateMultiObj.test_CellState_with_other_SimObj()
+        unittest.main()
     except KeyboardInterrupt:
         pass
-
