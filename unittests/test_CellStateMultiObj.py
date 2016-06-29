@@ -95,6 +95,9 @@ class TestSimulationObject(SimulationObject):
 
 class TestSimulation(unittest.TestCase):
 
+    def setUp(self):
+        SimulationEngine.reset()
+
     id = 0
     @staticmethod
     def get_name():

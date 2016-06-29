@@ -10,18 +10,15 @@ Created 2016/05/31
 # Each event is represented by an Event object
 
 class Event( object ):
-    """An object that holds DES events.
-    
-    More desc. 
+    """An object that holds a DES event.
     
     Attributes:
-        creation_time: 
-        event_time: 
-        sending_object: 
-        receiving_object: 
-        event_type: 
-        event_body: the message payload, opaque content that can only be interpreted by the sending and receiving objects
-        
+        creation_time: float; simulation time when the event is created (aka send_time)
+        event_time: float; simulation time when the event must be executed (aka receive_time)
+        sending_object: reference to the object that sends the event
+        receiving_object: reference to the object that receives (aka executes) the event
+        event_type: string; the event's type; a constant declared in MessageTypes
+        event_body: reference to an object declared in MessageTypes; the message payload
         
     # TODO(Arthur): finish documentation
     """

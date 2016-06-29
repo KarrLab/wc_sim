@@ -16,11 +16,9 @@ The cell's state, which represents the state of its species.
 
 class Specie(object):
     """
-    CellState tracks the population of a set of species. After initialization, population values 
-    are incremented or decremented, not written. To enable multi-algorithmic modeling, 
-    it supports adjustments to a specie's population by both discrete and continuous models. E.g., discrete models
-    might synthesize proteins while a continuous model degrades them.
-    We have these cases. Suppose that a specie's population is adjusted by:
+    Specie tracks the population of a single specie.
+    
+    We have these cases. Suppose that the specie's population is adjusted by:
         DISCRETE model only: estimating the population obtains the last value written
         CONTINUOUS model only: estimating the population obtains the last value written plus an interpolated change
             since the last continuous adjustment
@@ -34,7 +32,7 @@ class Specie(object):
         DISCRETE adjustment: (time, population_change)
         CONTINUOUS adjustment: (time, population_change, flux_estimate_at_time)
     
-    Each Specie stores the (time, population) of the most recent adjustment and (time, flux) of the most
+    A Specie stores the (time, population) of the most recent adjustment and (time, flux) of the most
     recent continuous adjustment. Naming these R_time, R_pop, C_time, and C_flux, the population p at time t is 
     estimated by:
         interp = 0
@@ -47,7 +45,7 @@ class Specie(object):
     Attributes:
         last_population: population after the most recent adjustment
         continuous_flux: flux provided by the most recent adjustment by a continuous model, 
-            if there has been an adjustment by a continuous model; otherwise, uninitializes
+            if there has been an adjustment by a continuous model; otherwise, uninitialized
         continuous_time: time of the most recent adjustment by a continuous model; None if the specie has not
             received a continuous adjustment
             
@@ -66,6 +64,8 @@ class Specie(object):
         Args:
             initial_population: number; initial population of the specie
         """
+        # TODO(Arthur): might want initial continuous flux; but that can be done by 
+        # sending a continuous adjustment at time 0
         assert 0 <= initial_population, '__init__(): population should be >= 0'
         self.last_population = initial_population
         self.continuous_time = None
@@ -139,7 +139,12 @@ class Specie(object):
 class CellState( SimulationObject ): 
     """The cell's state, which represents the state of its species.
     
-    More desc. 
+    CellState tracks the population of a set of species. After initialization, population values 
+    are incremented or decremented, not written. To enable multi-algorithmic modeling, 
+    it supports adjustments to a specie's population by both discrete and continuous models. E.g., discrete models
+    might synthesize proteins while a continuous model degrades them.
+
+    # TODO(Arthur): More desc.
     
     Attributes:
         population: a set species, represented by Specie objects

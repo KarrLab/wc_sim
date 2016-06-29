@@ -16,20 +16,18 @@ Event message types, bodies and reply message:
 Created 2016/06/10
 @author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
 """
-'''
-TODO(Arthur): drive event message functionality into generic simulation code: 
-3. in SimulationObject ensure that message types are only sent by suitable senders
-'''
 
 class MessageTypes(object):
-    """A simulation's static set of message types.
+    """A simulation application's static set of message types and their content.
+    
+    Declare
+        1. Event message types as string constants
+        2. For each message type which has an event_body, a class that represents the body
     
     Attributes:
-        These are global attributes, since the MessageTypes is static.
-
+        These are global attributes, since MessageTypes is static.
         senders: dict: SimulationObject type -> list of messages it sends
         receiver_priorities: dict: SimulationObject type -> list of messages it receives, in priority order
-        
     """
     
     ADJUST_POPULATION_BY_DISCRETE_MODEL = 'ADJUST_POPULATION_BY_DISCRETE_MODEL'
