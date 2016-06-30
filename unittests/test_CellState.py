@@ -71,24 +71,8 @@ class TestCellState(unittest.TestCase):
             event_body=ADJUST_POPULATION_BY_CONTINUOUS_MODEL_body( d ) )
         SimulationEngine.simulate( 5.0 )
         
+        # TODO(Arthur): test simultaneous recept of ADJUST_POPULATION_BY_DISCRETE_MODEL and ADJUST_POPULATION_BY_CONTINUOUS_MODEL
 
-    '''
-    # not very useful; messages don't have bodies
-    @unittest.skip("demonstrating skipping")
-    def test_init_options(self):
-        for debug_val in [True, False]:
-            for plot_output in [True, False]:
-                SimulationEngine.reset()
-                cs1 = TestCellState.make_CellState( TestCellState.pop, debug=debug_val, write_plot_output=plot_output )
-                for msg_type in [ MessageTypes.ADJUST_POPULATION_BY_DISCRETE_MODEL, 
-                    MessageTypes.ADJUST_POPULATION_BY_CONTINUOUS_MODEL, 
-                    MessageTypes.GET_POPULATION ]:
-                    # initial events
-                    cs1.send_event( 1.0, cs1, msg_type )
-                    cs1.send_event( 1.0, cs1, msg_type )
-                SimulationEngine.simulate( 5.0 )
-    '''
-    
 if __name__ == '__main__':
     try:
         unittest.main()

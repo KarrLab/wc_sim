@@ -11,8 +11,10 @@ compares the correct population with the simulated population.
 import unittest
 import sys
 import re
+import math
 
 # TODO(Arthur): test the exceptions in these modules
+# TODO(Arthur): techniques for testing complex math to Jonathan
 from SequentialSimulator.core.SimulationObject import (EventQueue, SimulationObject)
 from SequentialSimulator.core.SimulationEngine import SimulationEngine
 from SequentialSimulator.multialgorithm.MessageTypes import (MessageTypes, ADJUST_POPULATION_BY_DISCRETE_MODEL_body, 
@@ -88,7 +90,9 @@ class TestSimulationObject(SimulationObject):
                         (Pop_adjust, Flux, correct_pop) = pop_history_dict['get_pop'][event_message.event_time]
                         # Key point: TestSimulationObject.TestCaseRef is a reference to a unittest.TestCase, 
                         # which is set by TestSimulation.testSimulation( ) below
-                        TestSimulationObject.TestCaseRef.assertEqual( populations.population[specie], correct_pop )
+                        # This test works for any sequence of the stochastic rounding because either round matches
+                        TestSimulationObject.TestCaseRef.assertTrue( populations.population[specie] == math.ceil(correct_pop) or
+                            populations.population[specie] == math.floor(correct_pop) )
             else:
                 print "Shouldn't get here - event_message.event_type should be covered in the "
                 "if statement above"

@@ -134,6 +134,7 @@ class SimulationEngine(object):
             handle_event_invocations += 1
             logger.debug( " %f\t%s\t%s" , next_time, next_sim_obj.__class__.__name__, next_sim_obj.name )
             
+            # TODO(Arthur): IMPORTANT: test situation when multiple objects have events at minimum simulation time
             # dispatch object that's ready to execute next event
             SimulationEngine.time = next_time
             # This assertion cannot be violoated unless init message sent to negative time or objects decrease their time

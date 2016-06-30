@@ -28,7 +28,7 @@ def exp_delay( ):
     
 class PHOLDsimulationObject(SimulationObject):
 
-    MESSAGE_TYPES = [ 'message_sent_to_other_object', 'init_msg' ]
+    MESSAGE_TYPES = [ 'message_sent_to_self', 'message_sent_to_other_object', 'init_msg' ]
     MessageTypes.set_sent_message_types( 'PHOLDsimulationObject', MESSAGE_TYPES )
     MessageTypes.set_receiver_priorities( 'PHOLDsimulationObject', MESSAGE_TYPES )
 
@@ -61,12 +61,14 @@ class PHOLDsimulationObject(SimulationObject):
                 receiver = SimulationEngine.simulation_objects[ obj_name( index ) ]
                 if self.debug:
                     print( "{:8.3f}: {} sending to {}".format( self.time, self.name, obj_name( index ) ))
-    
+
             if receiver == self:
                 recipient = 'self'
+                event_type = 'message_sent_to_self'
             else:
                 recipient = 'other'
-            self.send_event( exp_delay(), receiver, 'message_sent_to_other_object' )
+                event_type = 'message_sent_to_other_object'
+            self.send_event( exp_delay(), receiver, event_type )
 
 
 class runPHOLD(object):

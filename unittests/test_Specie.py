@@ -12,8 +12,9 @@ from SequentialSimulator.multialgorithm.CellState import (Specie, CellState)
 
 class TestSpecie(unittest.TestCase):
 
+    # these tests cover all executable statements in Specie(), including exceptions, and 
+    # all branches
     def test_Specie(self):
-        # covers all executable statements in Specie(), including exceptions
         s1 = Specie( 10 )
         
         self.assertEqual( s1.get_population( ), 10 )
@@ -61,6 +62,31 @@ class TestSpecie(unittest.TestCase):
             s1.continuous_adjustment( 2, 5, -22 )
         self.assertIn( 'negative flux:', context.exception.message )
     
+    def test_Specie_stochastic_rounding(self):
+        s1 = Specie( 10.5 )
+        
+        samples = 1000
+        for i in range(samples):
+            pop = s1.get_population( )
+            self.assertTrue( pop == 10 or pop == 11 )
+        
+        mean = sum(s1.get_population( ) for i in range(samples) ) / float(samples)
+        # TODO(Arthur): make sure P[ 10.4 <= mean <= 10.6 ] is high enough 
+        self.assertTrue( 10.4 <= mean <= 10.6 )
+        
+        s1.continuous_adjustment( 0, 1, 0.25 )
+        for i in range(samples):
+            self.assertEqual( s1.get_population( 3 ), 11.0 )
+            
+
+        s2 = Specie( 10.5, randomSeed=123 )
+        pops=[]
+        for i in range(10):
+            pops.append( s2.get_population( ) )
+        expected_pops = [11.0, 11.0, 11.0, 11.0, 10.0, 11.0, 10.0, 11.0, 10.0, 11.0]
+        self.assertEqual( pops, expected_pops )
+
+        
 if __name__ == '__main__':
     try:
         unittest.main()

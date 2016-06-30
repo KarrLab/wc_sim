@@ -14,6 +14,12 @@ from MessageTypes import (MessageTypes, ADJUST_POPULATION_BY_DISCRETE_MODEL_body
 The cell's state, which represents the state of its species.
 """
 
+# use stochastic rounding from https://github.com/dmaust/rounding
+import rounding
+import random
+
+# TODO(Arthur): generate plots of copy number vs. time; better colors and symbols than in ppt
+
 class Specie(object):
     """
     Specie tracks the population of a single specie.
@@ -42,6 +48,14 @@ class Specie(object):
 
     This approach is completely general, and can be applied to any simulation value.
     
+    Real versus integer copy numbers: Clearly, specie copy number values are non-negative integers. However,
+    continuous models may estimate copy numbers as real number values. E.g., ODEs calculate real valued concentrations.
+    But SSA models do not naturally handle non-integral copy numbers, and models that represent the state of 
+    individual species -- such as a bound molecule -- are not compatible with non-integral copy numbers. Therefore,
+    Specie stores a real valued population, but reports only a non-negative integral population. 
+    In particular, the population reported by get_population() is rounded. Rounding is done  stochastically to avoid the 
+    bias that would arise from always using floor() or ceiling(), especially with small populations.
+    
     Attributes:
         last_population: population after the most recent adjustment
         continuous_flux: flux provided by the most recent adjustment by a continuous model, 
@@ -54,21 +68,29 @@ class Specie(object):
     
     # TODO(Arthur): optimization: put Specie functionality into CellState, avoiding overhead of a Class instance
         for each Specie. I'm writing it in a class now while the math and logic are being developed.
+    # TODO(Arthur): look at how COPASI handles 
     """
     # use __slots__ to save space
-    __slots__ = "last_population continuous_time continuous_flux".split()
+    __slots__ = "last_population continuous_time continuous_flux stochasticRounder".split()
 
-    def __init__( self, initial_population  ):
+    def __init__( self, initial_population, randomSeed=None  ):
         """Initialize a Specie object.
         
         Args:
             initial_population: number; initial population of the specie
+            randomSeed: optional; seed for the random number generator;
+                the generator is initialized as described in the random module documentation
         """
-        # TODO(Arthur): might want initial continuous flux; but that can be done by 
-        # sending a continuous adjustment at time 0
+        # TODO(Arthur): important: optional initial continuous flux
+        # TODO(Arthur): perhaps: add optional arg to not round copy number values reported
         assert 0 <= initial_population, '__init__(): population should be >= 0'
         self.last_population = initial_population
         self.continuous_time = None
+        if randomSeed:
+            self.stochasticRounder = rounding.StochasticRound(random_generator=random.Random(randomSeed)).round
+        else:
+            self.stochasticRounder = rounding.StochasticRound().round
+
       
     def discrete_adjustment( self, population_change ):
         """A discrete model adjusts the specie's population.
@@ -110,6 +132,20 @@ class Specie(object):
         self.continuous_flux = flux
         self.last_population += population_change
     
+    def roundToIngeger( self, population ):
+        """Stochastically round population to an integer.
+
+        # TODO(Arthur): more documentation
+
+        Args:
+            population: float
+        """
+        # convert float population to an integer; do so stochastically, to avoid the 
+        # bias that would arise from always using floor() or ceiling(), especially with small populations
+        integer_copy_num = self.stochasticRounder( population )
+        # print population, 'rounds to', integer_copy_num
+        return integer_copy_num
+    
     def get_population( self, time=None ):
         """Get the specie's population at time.
         
@@ -124,16 +160,17 @@ class Specie(object):
             ValueError: time is earlier than a previous continuous adjustment
         """
         if not self.continuous_time:
-            return self.last_population
+            return self.roundToIngeger( self.last_population )
         else:
-            if not time:
+            if time == None:
                 raise ValueError( "get_population(): time needed because "
                     "continuous adjustment received at time {:.2f}.\n".format( self.continuous_time ) )
             if time < self.continuous_time:
                 raise ValueError( "get_population(): time < self.continuous_time: {:.2f} < {:.2f}\n".format( 
                     time, self.continuous_time ) )
             interpolation = (time - self.continuous_time) * self.continuous_flux
-            return self.last_population + interpolation
+            real_copy_number = self.last_population + interpolation
+            return self.roundToIngeger( real_copy_number )
 
     
 class CellState( SimulationObject ): 
@@ -162,11 +199,10 @@ class CellState( SimulationObject ):
     # TODO(Arthur): extend beyond population, e.g., to represent binding sites for individual macromolecules
     # TODO(Arthur): optimize to represent just the state of shared species
     # TODO(Arthur): abstract the functionality of CellState so it can be integrated into a submodel
-    
     """
     
     SENT_MESSAGE_TYPES = [ MessageTypes.GIVE_POPULATION ]
-    # TODO(Arthur): is there a way to automatically get the object name (e.g. 'CellState') here?
+    # TODO(Arthur): can Python automatically get the object name (e.g. 'CellState') here?
     MessageTypes.set_sent_message_types( 'CellState', SENT_MESSAGE_TYPES )
 
     # at any time instant, process messages in this order
@@ -188,6 +224,8 @@ class CellState( SimulationObject ):
                 dict: specie -> population
                 species that are not initialized in this argument are assumed to be initialized with no population
                 # TODO(Arthur): evalaute whether this is a good assumption
+
+        # TODO(Arthur): add an arg that creates all species with a specified random seed, so results are deterministic
             
         Raises:
             AssertionError: if the population cannot be initialized.

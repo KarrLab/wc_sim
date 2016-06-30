@@ -6,6 +6,7 @@
 python -m unittest discover .
 # RUN coverage tests on multiple unittests
 for test_file in test_*py; do
-    coverage run --append $test_file
+    coverage run --branch --append $test_file
 done
-coverage html
+# don't test third party libraries 
+coverage html --omit "/Users/goldbera/Library/Python/2.7/lib/python/site-packages/rounding-0.03-py2.7.egg/rounding/*"
