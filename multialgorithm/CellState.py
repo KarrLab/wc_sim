@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import sys
+import math
 import logging
 logger = logging.getLogger(__name__)
 # control logging level with: logger.setLevel()
@@ -15,9 +16,31 @@ The cell's state, which represents the state of its species.
 """
 
 # use stochastic rounding from https://github.com/dmaust/rounding
-import rounding
-import random
+# import rounding
+from random import Random
 
+class StochasticRound( object ):
+    """
+    # TODO(Arthur): document
+    """
+
+    def __init__( self, seed=None ):
+        if seed:
+            self.RNG = Random( seed )
+        else:
+            self.RNG = Random( )
+        
+    def Round( self, x ):
+        floor_x = math.floor( x )
+        fraction = x - floor_x
+        if 0==fraction:
+            return x
+        else:
+            if self.RNG.random( ) < fraction:
+                return floor_x + 1
+            else:
+                return floor_x
+    
 # TODO(Arthur): generate plots of copy number vs. time; better colors and symbols than in ppt
 
 class Specie(object):
@@ -87,9 +110,9 @@ class Specie(object):
         self.last_population = initial_population
         self.continuous_time = None
         if randomSeed:
-            self.stochasticRounder = rounding.StochasticRound(random_generator=random.Random(randomSeed)).round
+            self.stochasticRounder = StochasticRound( seed=randomSeed ).Round
         else:
-            self.stochasticRounder = rounding.StochasticRound().round
+            self.stochasticRounder = StochasticRound( ).Round
 
       
     def discrete_adjustment( self, population_change ):
@@ -143,7 +166,6 @@ class Specie(object):
         # convert float population to an integer; do so stochastically, to avoid the 
         # bias that would arise from always using floor() or ceiling(), especially with small populations
         integer_copy_num = self.stochasticRounder( population )
-        # print population, 'rounds to', integer_copy_num
         return integer_copy_num
     
     def get_population( self, time=None ):
