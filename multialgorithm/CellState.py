@@ -15,8 +15,6 @@ from MessageTypes import (MessageTypes, ADJUST_POPULATION_BY_DISCRETE_MODEL_body
 The cell's state, which represents the state of its species.
 """
 
-# use stochastic rounding from https://github.com/dmaust/rounding
-# import rounding
 from random import Random
 
 class StochasticRound( object ):
