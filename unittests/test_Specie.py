@@ -58,9 +58,6 @@ class TestSpecie(unittest.TestCase):
         with self.assertRaises(AssertionError) as context:
             s1 = Specie( -10 )
         self.assertIn( '__init__(): population should be >= 0', context.exception.message )
-        with self.assertRaises(AssertionError) as context:
-            s1.continuous_adjustment( 2, 5, -22 )
-        self.assertIn( 'negative flux:', context.exception.message )
     
     def test_Specie_stochastic_rounding(self):
         s1 = Specie( 10.5 )
@@ -79,7 +76,7 @@ class TestSpecie(unittest.TestCase):
             self.assertEqual( s1.get_population( 3 ), 11.0 )
             
 
-        s2 = Specie( 10.5, randomSeed=123 )
+        s2 = Specie( 10.5, random_seed=123 )
         pops=[]
         for i in range(10):
             pops.append( s2.get_population( ) )
