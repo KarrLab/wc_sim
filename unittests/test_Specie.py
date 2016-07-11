@@ -12,10 +12,11 @@ from Sequential_WC_Simulator.multialgorithm.CellState import (Specie, CellState)
 
 class TestSpecie(unittest.TestCase):
 
+    # TODO(Arthur): make sure this is still true:
     # these tests cover all executable statements in Specie(), including exceptions, and 
     # all branches
     def test_Specie(self):
-        s1 = Specie( 10 )
+        s1 = Specie( 10, initial_flux=0 )
         
         self.assertEqual( s1.get_population( ), 10 )
         s1.discrete_adjustment( 1 )
@@ -60,7 +61,7 @@ class TestSpecie(unittest.TestCase):
         self.assertIn( '__init__(): population should be >= 0', context.exception.message )
     
     def test_Specie_stochastic_rounding(self):
-        s1 = Specie( 10.5 )
+        s1 = Specie( 10.5, initial_flux=0 )
         
         samples = 1000
         for i in range(samples):
@@ -75,7 +76,6 @@ class TestSpecie(unittest.TestCase):
         for i in range(samples):
             self.assertEqual( s1.get_population( 3 ), 11.0 )
             
-
         s2 = Specie( 10.5, random_seed=123 )
         pops=[]
         for i in range(10):

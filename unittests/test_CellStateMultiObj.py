@@ -26,7 +26,7 @@ from UniversalSenderReceiverSimulationObject import UniversalSenderReceiverSimul
 # See spreadsheet test_pop_history.ods in the current directory.
 pop_history = '''
 Time                 Event                Pop_adjust           Flux                 Population
-0                    init                 NA                   NA                   3
+0                    init                 NA                   0                    3
 0                    get_pop              NA                   NA                   3
 1                    discrete_adjust      1                    NA                   4
 1                    get_pop              NA                   NA                   4
@@ -109,19 +109,19 @@ class TestSimulation(unittest.TestCase):
         return "CellState_{:d}".format( TestSimulation.id )
      
     @staticmethod
-    def make_CellState( pop, debug=False, write_plot_output=False, name=None ):
+    def make_CellState( pop, init_flux, debug=False, write_plot_output=False, name=None ):
         if not name:
             name = TestSimulation.get_name()
         if debug:
             print "Creating CellState( {}, --population--, debug={}, write_plot_output={} ) ".format(
                 name, debug, write_plot_output )
-        return CellState( name, pop, debug=debug, write_plot_output=write_plot_output )
+        return CellState( name, pop, initial_fluxes=init_flux, debug=debug, write_plot_output=write_plot_output )
         
     def testSimulation( self ):
 
         specie = 'x'
-        (unused_Pop_adjust, unused_Flux, init_pop) = pop_history_dict['init'][0]
-        cs1 = TestSimulation.make_CellState( { specie: init_pop } )
+        (unused_Pop_adjust, init_flux, init_pop) = pop_history_dict['init'][0]
+        cs1 = TestSimulation.make_CellState( { specie: init_pop }, {specie: init_flux} )
         TestSimObj = TestSimulationObject( 'TestSimObj' )
         # give TestSimulationObject.TestCaseRef a reference to this unittest.TestCase:
         TestSimulationObject.TestCaseRef = self

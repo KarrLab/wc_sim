@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import sys
-import math
 import logging
 logger = logging.getLogger(__name__)
 # control logging level with: logger.setLevel()
@@ -10,57 +9,11 @@ logger = logging.getLogger(__name__)
 from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, SimulationObject)
 from MessageTypes import (MessageTypes, ADJUST_POPULATION_BY_DISCRETE_MODEL_body, 
     ADJUST_POPULATION_BY_CONTINUOUS_MODEL_body, GET_POPULATION_body, GIVE_POPULATION_body)
+from Sequential_WC_Simulator.core.utilities import StochasticRound
     
 """
 The cell's state, which represents the state of its species.
 """
-
-from random import Random
-
-class StochasticRound( object ):
-    """Stochastically round floating point values.
-    
-    A float is rounded to one of the two nearest integers. The mean of the rounded values for a set of floats
-    converges to the mean of the floats. This is achieved by making P[rounding x down] = 1 - (x - floor(x) ), and
-    P[rounding x up] = 1 - P[rounding x down].
-    This avoids the bias that would arise from always using floor() or ceiling(), especially with 
-    small populations.
-    
-    Attributes:
-        RNG: A Random instance, initialized on creation of a StochasticRound.
-    """
-
-    def __init__( self, seed=None ):
-        """Initialize a StochasticRound.
-        
-        Args:
-            seed: a hashable object; optional; to deterministically initialize the basic random number generator 
-            provide seed. Otherwise some system-dependent randomness source will be used to initialize 
-            the generator. See Python documentation for random.seed().
-        """
-        if seed:
-            self.RNG = Random( seed )
-        else:
-            self.RNG = Random( )
-        
-    def Round( self, x ):
-        """Stochastically round a floating point value.
-        
-        Args:
-            x: a float to be stochastically rounded.
-            
-        Returns:
-            A stochastically round of x.
-        """
-        floor_x = math.floor( x )
-        fraction = x - floor_x
-        if 0==fraction:
-            return x
-        else:
-            if self.RNG.random( ) < fraction:
-                return floor_x + 1
-            else:
-                return floor_x
     
 # TODO(Arthur): generate plots of copy number vs. time; better colors and symbols than in ppt
 
@@ -70,10 +23,10 @@ class Specie(object):
     
     We have these cases. Suppose that the specie's population is adjusted by:
         DISCRETE model only: estimating the population obtains the last value written
-        CONTINUOUS model only: estimating the population obtains the last value written plus an interpolated change
+        CONTINUOUS model only: estimating the population obtains the last value written plus a linear interpolated change
             since the last continuous adjustment
-        Both model types: reading the populations obtains the last value written plus an interpolated change based on
-            the last continuous adjustment
+        Both model types: reading the populations obtains the last value written plus a linear interpolated change 
+            based on the last continuous adjustment
     Without loss of generality, we assume that all species can be adjusted by both model types and that at most
     one continuous model adjusts a specie's population. (Multiple continuous models of a specie - or any 
     model attribute - would be non-sensical, as it implies multiple conflicting, simultaneous rates of change.) 
@@ -85,10 +38,10 @@ class Specie(object):
     A Specie stores the (time, population) of the most recent adjustment and (time, flux) of the most
     recent continuous adjustment. Naming these R_time, R_pop, C_time, and C_flux, the population p at time t is 
     estimated by:
-        interp = 0
+        interpolation = 0
         if C_time:
-            interp = (t - C_time)*C_flux
-        p = R_pop + interp
+            interpolation = (t - C_time)*C_flux
+        p = R_pop + interpolation
 
     This approach is completely general, and can be applied to any simulation value.
     
@@ -113,29 +66,35 @@ class Specie(object):
     # TODO(Arthur): optimization: put Specie functionality into CellState, avoiding overhead of a Class instance
         for each Specie. I'm writing it in a class now while the math and logic are being developed.
     # TODO(Arthur): look at how COPASI handles 
+    # TODO(Arthur): perhaps add specie name as an attribute; would help error reporting and logging
     """
     # use __slots__ to save space
     __slots__ = "last_population continuous_time continuous_flux stochasticRounder".split()
 
-    def __init__( self, initial_population, randomSeed=None  ):
+    def __init__( self, initial_population, initial_flux=None, random_seed=None  ):
         """Initialize a Specie object.
         
         Args:
-            initial_population: number; initial population of the specie
-            randomSeed: optional; seed for the random number generator;
-                the generator is initialized as described in the random module documentation
+            initial_population: non-negative number; initial population of the specie
+            initial_flux: number; required for Specie whose population is partially estimated by a 
+                continuous mode; initial flux for the specie
+            random_seed: hashable object; optional; seed for the random number generator;
+                the generator is initialized as described in Python's random module documentation
         """
-        # TODO(Arthur): important: optional initial continuous flux
+        
         # TODO(Arthur): perhaps: add optional arg to not round copy number values reported
         assert 0 <= initial_population, '__init__(): population should be >= 0'
         self.last_population = initial_population
-        self.continuous_time = None
-        if randomSeed:
-            self.stochasticRounder = StochasticRound( seed=randomSeed ).Round
+        if initial_flux == None:
+            self.continuous_time = None
+        else:
+            self.continuous_time = 0
+            self.continuous_flux = initial_flux
+        if random_seed:
+            self.stochasticRounder = StochasticRound( seed=random_seed ).Round
         else:
             self.stochasticRounder = StochasticRound( ).Round
 
-      
     def discrete_adjustment( self, population_change ):
         """A discrete model adjusts the specie's population.
 
@@ -159,9 +118,15 @@ class Specie(object):
             population_change: number; modeled increase or decrease in the specie's population
             
         Raises:
+            ValueError: if initial flux was not provided for a continuously updated variable
             ValueError: if time is <= the time of the most recent continuous adjustment
             ValueError: if population goes negative
+            AssertionError: if the time is negative
         """
+        # TODO(Arthur): important: COVERAGE test these exceptions
+        if self.continuous_time == None:
+            raise ValueError( "continuous_adjustment(): initial flux was not provided\n" )
+        assert 0 <= time, 'negative time: {:.2f}'.format( time )
         # multiple continuous adjustments at a time that does not advance the specie's state do not make sense
         if time <= self.continuous_time:
             raise ValueError( "continuous_adjustment(): time <= self.continuous_time: {:.2f} < {:.2f}\n".format( 
@@ -170,9 +135,7 @@ class Specie(object):
             raise ValueError( "continuous_adjustment(): negative population from "
                 "self.last_population + population_change ({:.2f} + {:.2f})\n".format( 
                 self.last_population, population_change ) )
-        assert 0 <= time, 'negative time: {:.2f}'.format( time )
         self.continuous_time = time
-        assert 0 <= flux, 'negative flux: {:.2f}'.format( flux )
         self.continuous_flux = flux
         self.last_population += population_change
     
@@ -229,6 +192,7 @@ class CellState( SimulationObject ):
     # TODO(Arthur): extend beyond population, e.g., to represent binding sites for individual macromolecules
     # TODO(Arthur): optimize to represent just the state of shared species
     # TODO(Arthur): abstract the functionality of CellState so it can be integrated into a submodel
+    # TODO(Arthur): REPORT error if a Specie instance is updated by multiple continuous sub-models
     """
     
     SENT_MESSAGE_TYPES = [ MessageTypes.GIVE_POPULATION ]
@@ -243,20 +207,24 @@ class CellState( SimulationObject ):
 
     MessageTypes.set_receiver_priorities( 'CellState', MESSAGE_TYPES_BY_PRIORITY )
 
-    def __init__( self, name, initial_population, debug=False, write_plot_output=False):
+    def __init__( self, name, initial_population, initial_fluxes=None, 
+        shared_random_seed=None, debug=False, write_plot_output=False):
         """Initialize a CellState object.
         
         Initialize a CellState object. Establish its initial population, and set debugging booleans.
         
         Args:
-            name: 
+            name: string; name of this simulation object
             initial_population: initial population for some species;
-                dict: specie -> population
+                dict: specie_name -> initial_population
                 species that are not initialized in this argument are assumed to be initialized with no population
                 # TODO(Arthur): evalaute whether this is a good assumption
+            initial_fluxes: optional; dict: specie_name -> initial_flux; 
+                initial fluxes for all species whose populations are estimated by a continuous model
+                fluxes are ignored for species not specified in initial_population
+            shared_random_seed: hashable object; optional; set to deterministically initialize all random number
+                generators used by the Specie objects
 
-        # TODO(Arthur): add an arg that creates all species with a specified random seed, so results are deterministic
-            
         Raises:
             AssertionError: if the population cannot be initialized.
         """
@@ -265,7 +233,11 @@ class CellState( SimulationObject ):
         self.population = {}
         try:
             for specie_name in initial_population.keys():
-                self.population[specie_name] = Specie( initial_population[specie_name] )
+                initial_flux_given = None
+                if initial_fluxes and specie_name in initial_fluxes:
+                    initial_flux_given = initial_fluxes[specie_name]
+                self.population[specie_name] = Specie( initial_population[specie_name], 
+                    initial_flux=initial_flux_given, random_seed=shared_random_seed )
         except AssertionError as e:
             sys.stderr.write( "Cannot initialize CellState: {}.\n".format( e.message ) )
 

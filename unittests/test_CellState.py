@@ -24,7 +24,8 @@ class TestCellState(unittest.TestCase):
         # initial events
         with self.assertRaises(ValueError) as context:
             cs1.send_event( 1.0, cs1, 'init_msg1' )
-        self.assertIn( "'CellState' simulation objects not registered to send 'init_msg1' messages", context.exception.message )
+        self.assertIn( "'CellState' simulation objects not registered to send 'init_msg1' messages", 
+            context.exception.message )
 
     id = 0
     @staticmethod
@@ -34,19 +35,21 @@ class TestCellState(unittest.TestCase):
  
     species = 's1 s2 s3'.split()
     pop = dict( zip( species, map( lambda x: x*7, range(3,6) ) ) )
+    fluxes = dict( zip( species, [0] * len(species) ) )
 
     @staticmethod
-    def make_CellState( pop, debug=False, write_plot_output=False, name=None ):
+    def make_CellState( my_pop, my_fluxes, debug=False, write_plot_output=False, name=None ):
         if not name:
             name = TestCellState.get_name()
         '''
         print "Creating CellState( {}, --population--, debug={}, write_plot_output={} ) ".format(
             name, debug, write_plot_output )
         '''
-        return CellState( name, pop, debug=debug, write_plot_output=write_plot_output ) 
+        return CellState( name, my_pop, initial_fluxes=my_fluxes, debug=debug, 
+            write_plot_output=write_plot_output ) 
         
     def test_CellState_debugging(self):
-        cs1 = TestCellState.make_CellState( TestCellState.pop, debug=False )
+        cs1 = TestCellState.make_CellState( TestCellState.pop, None, debug=False )
         usr = UniversalSenderReceiverSimulationObject( 'usr1' )
         usr.send_event( 1.0, cs1, MessageTypes.GET_POPULATION )
         eq = cs1.event_queue_to_str()
@@ -55,7 +58,7 @@ class TestCellState(unittest.TestCase):
         
         
     def test_simple_CellState(self):
-        cs1 = TestCellState.make_CellState( TestCellState.pop, write_plot_output=False )
+        cs1 = TestCellState.make_CellState( TestCellState.pop, TestCellState.fluxes, write_plot_output=False )
         # initial events
         usr = UniversalSenderReceiverSimulationObject( 'usr1' )
         usr.send_event( 1.0, cs1, MessageTypes.ADJUST_POPULATION_BY_DISCRETE_MODEL, 
@@ -71,7 +74,7 @@ class TestCellState(unittest.TestCase):
             event_body=ADJUST_POPULATION_BY_CONTINUOUS_MODEL_body( d ) )
         SimulationEngine.simulate( 5.0 )
         
-        # TODO(Arthur): test simultaneous recept of ADJUST_POPULATION_BY_DISCRETE_MODEL and ADJUST_POPULATION_BY_CONTINUOUS_MODEL
+        # TODO(Arthur): important: test simultaneous recept of ADJUST_POPULATION_BY_DISCRETE_MODEL and ADJUST_POPULATION_BY_CONTINUOUS_MODEL
 
 if __name__ == '__main__':
     try:
