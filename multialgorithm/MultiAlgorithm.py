@@ -11,7 +11,7 @@ partition the cell state as described in our PADS 2016 paper.
 Both SSA and FBA are self-clocking.
 """
 
-from SequentialSimulator.core.SimulationObject import (EventQueue, SimulationObject)
+from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, SimulationObject)
 from CellState import CellState
 import MessageTypes
 

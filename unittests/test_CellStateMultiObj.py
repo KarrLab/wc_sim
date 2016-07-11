@@ -15,11 +15,11 @@ import math
 
 # TODO(Arthur): test the exceptions in these modules
 # TODO(Arthur): techniques for testing complex math to Jonathan
-from SequentialSimulator.core.SimulationObject import (EventQueue, SimulationObject)
-from SequentialSimulator.core.SimulationEngine import SimulationEngine
-from SequentialSimulator.multialgorithm.MessageTypes import (MessageTypes, ADJUST_POPULATION_BY_DISCRETE_MODEL_body, 
+from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, SimulationObject)
+from Sequential_WC_Simulator.core.SimulationEngine import SimulationEngine
+from Sequential_WC_Simulator.multialgorithm.MessageTypes import (MessageTypes, ADJUST_POPULATION_BY_DISCRETE_MODEL_body, 
     Continuous_change, ADJUST_POPULATION_BY_CONTINUOUS_MODEL_body, GET_POPULATION_body, GIVE_POPULATION_body)
-from SequentialSimulator.multialgorithm.CellState import (Specie, CellState)
+from Sequential_WC_Simulator.multialgorithm.CellState import (Specie, CellState)
 from UniversalSenderReceiverSimulationObject import UniversalSenderReceiverSimulationObject
 
 # population dynamics of specie 'x'

@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 # control logging level with: logger.setLevel()
 # this enables debug output: logging.basicConfig( level=logging.DEBUG )
 
-from SequentialSimulator.core.SimulationObject import (EventQueue, SimulationObject)
+from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, SimulationObject)
 from MessageTypes import (MessageTypes, ADJUST_POPULATION_BY_DISCRETE_MODEL_body, 
     ADJUST_POPULATION_BY_CONTINUOUS_MODEL_body, GET_POPULATION_body, GIVE_POPULATION_body)
     
@@ -18,17 +18,40 @@ The cell's state, which represents the state of its species.
 from random import Random
 
 class StochasticRound( object ):
-    """
-    # TODO(Arthur): document
+    """Stochastically round floating point values.
+    
+    A float is rounded to one of the two nearest integers. The mean of the rounded values for a set of floats
+    converges to the mean of the floats. This is achieved by making P[rounding x down] = 1 - (x - floor(x) ), and
+    P[rounding x up] = 1 - P[rounding x down].
+    This avoids the bias that would arise from always using floor() or ceiling(), especially with 
+    small populations.
+    
+    Attributes:
+        RNG: A Random instance, initialized on creation of a StochasticRound.
     """
 
     def __init__( self, seed=None ):
+        """Initialize a StochasticRound.
+        
+        Args:
+            seed: a hashable object; optional; to deterministically initialize the basic random number generator 
+            provide seed. Otherwise some system-dependent randomness source will be used to initialize 
+            the generator. See Python documentation for random.seed().
+        """
         if seed:
             self.RNG = Random( seed )
         else:
             self.RNG = Random( )
         
     def Round( self, x ):
+        """Stochastically round a floating point value.
+        
+        Args:
+            x: a float to be stochastically rounded.
+            
+        Returns:
+            A stochastically round of x.
+        """
         floor_x = math.floor( x )
         fraction = x - floor_x
         if 0==fraction:
@@ -153,19 +176,6 @@ class Specie(object):
         self.continuous_flux = flux
         self.last_population += population_change
     
-    def roundToIngeger( self, population ):
-        """Stochastically round population to an integer.
-
-        # TODO(Arthur): more documentation
-
-        Args:
-            population: float
-        """
-        # convert float population to an integer; do so stochastically, to avoid the 
-        # bias that would arise from always using floor() or ceiling(), especially with small populations
-        integer_copy_num = self.stochasticRounder( population )
-        return integer_copy_num
-    
     def get_population( self, time=None ):
         """Get the specie's population at time.
         
@@ -180,7 +190,7 @@ class Specie(object):
             ValueError: time is earlier than a previous continuous adjustment
         """
         if not self.continuous_time:
-            return self.roundToIngeger( self.last_population )
+            return self.stochasticRounder( self.last_population )
         else:
             if time == None:
                 raise ValueError( "get_population(): time needed because "
@@ -190,7 +200,7 @@ class Specie(object):
                     time, self.continuous_time ) )
             interpolation = (time - self.continuous_time) * self.continuous_flux
             real_copy_number = self.last_population + interpolation
-            return self.roundToIngeger( real_copy_number )
+            return self.stochasticRounder( real_copy_number )
 
     
 class CellState( SimulationObject ): 

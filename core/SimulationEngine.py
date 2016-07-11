@@ -1,7 +1,7 @@
 from __future__ import print_function
 
 from Event import Event
-from SequentialSimulator.multialgorithm.MessageTypes import MessageTypes 
+from Sequential_WC_Simulator.multialgorithm.MessageTypes import MessageTypes 
 
 import warnings
 import logging

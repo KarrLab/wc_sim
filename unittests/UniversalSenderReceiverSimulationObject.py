@@ -1,5 +1,5 @@
-from SequentialSimulator.core.SimulationObject import SimulationObject
-from SequentialSimulator.multialgorithm.MessageTypes import MessageTypes
+from Sequential_WC_Simulator.core.SimulationObject import SimulationObject
+from Sequential_WC_Simulator.multialgorithm.MessageTypes import MessageTypes
 
 class UniversalSenderReceiverSimulationObject(SimulationObject):
 

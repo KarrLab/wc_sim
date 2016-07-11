@@ -3,7 +3,7 @@
 import unittest
 from random import Random
 
-from SequentialSimulator.multialgorithm.CellState import StochasticRound
+from Sequential_WC_Simulator.multialgorithm.CellState import StochasticRound
 
 class TestStochasticRound(unittest.TestCase):
 

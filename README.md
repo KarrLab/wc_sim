@@ -1,1 +1,1 @@
-# SequentialWC-Simulator
+# Sequential_WC_Simulator
