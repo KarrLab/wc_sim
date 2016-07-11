@@ -1,6 +1,6 @@
 #!/bin/bash        
 # 
-# @author: goldbera
+# @author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
 # run all unittests
 
 function usage {
