@@ -35,9 +35,11 @@ done
 shift $(($OPTIND - 1))
 
 python -m unittest discover .
-# RUN coverage tests on multiple unittests
+
 if [[ -n "$OPT_COVERAGE" ]]
 then
+    # run coverage tests on all unittests
+    coverage erase
     # TODO: have coverage test print a summary
     for test_file in test_*py; do
         coverage run --branch --append $test_file

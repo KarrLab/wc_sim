@@ -12,7 +12,6 @@ from Sequential_WC_Simulator.multialgorithm.CellState import (Specie, CellState)
 
 class TestSpecie(unittest.TestCase):
 
-    # TODO(Arthur): make sure this is still true:
     # these tests cover all executable statements in Specie(), including exceptions, and 
     # all branches
     def test_Specie(self):
@@ -54,6 +53,11 @@ class TestSpecie(unittest.TestCase):
             s1.continuous_adjustment( -22, 5, 2 )
         self.assertIn( 'continuous_adjustment(): negative population from self.last_population + population_change',
             context.exception.message )
+
+        s1 = Specie( 10 )
+        with self.assertRaises(ValueError) as context:
+            s1.continuous_adjustment( 2, 2, 1 )
+        self.assertIn( 'initial flux was not provided', context.exception.message )
 
         # raise asserts
         with self.assertRaises(AssertionError) as context:

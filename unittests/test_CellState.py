@@ -47,7 +47,7 @@ class TestCellState(unittest.TestCase):
         '''
         return CellState( name, my_pop, initial_fluxes=my_fluxes, debug=debug, 
             write_plot_output=write_plot_output ) 
-        
+
     def test_CellState_debugging(self):
         cs1 = TestCellState.make_CellState( TestCellState.pop, None, debug=False )
         usr = UniversalSenderReceiverSimulationObject( 'usr1' )

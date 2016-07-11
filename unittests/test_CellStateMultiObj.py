@@ -14,7 +14,6 @@ import re
 import math
 
 # TODO(Arthur): test the exceptions in these modules
-# TODO(Arthur): techniques for testing complex math to Jonathan
 from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, SimulationObject)
 from Sequential_WC_Simulator.core.SimulationEngine import SimulationEngine
 from Sequential_WC_Simulator.multialgorithm.MessageTypes import (MessageTypes, ADJUST_POPULATION_BY_DISCRETE_MODEL_body, 
@@ -22,37 +21,26 @@ from Sequential_WC_Simulator.multialgorithm.MessageTypes import (MessageTypes, A
 from Sequential_WC_Simulator.multialgorithm.CellState import (Specie, CellState)
 from UniversalSenderReceiverSimulationObject import UniversalSenderReceiverSimulationObject
 
-# population dynamics of specie 'x'
-# See spreadsheet test_pop_history.ods in the current directory.
-pop_history = '''
-Time                 Event                Pop_adjust           Flux                 Population
-0                    init                 NA                   0                    3
-0                    get_pop              NA                   NA                   3
-1                    discrete_adjust      1                    NA                   4
-1                    get_pop              NA                   NA                   4
-2                    continuous_adjust    2                    0.5                  6
-2                    get_pop              NA                   NA                   6
-3                    get_pop              NA                   NA                   6.5
-4                    discrete_adjust      -1                   NA                   6
-4                    get_pop              NA                   NA                   6
-5                    get_pop              NA                   NA                   6.5'''
-pop_history_dict = {}   # event_type -> event_time -> (Pop_adjust, Flux, Population)
-# build pop_history_dict from pop_history
-for line in pop_history.split('\n')[2:]:
-    line=line.strip()
-    values = re.split( '\s+', line )
-    for i in range(len(values)):
-        t = values[i]
-        try:
-            t = float( values[i] )
-        except:
-            pass
-        values[i] = t
-    (Time, Event, Pop_adjust, Flux, Population) = values
-    if not Event in pop_history_dict:
-        pop_history_dict[Event] = {}
-    pop_history_dict[Event][Time] = (Pop_adjust, Flux, Population)
-
+def parse_population_history( pop_history ):
+    # build pop_history_dict from pop_history
+    pop_history_dict = {}   # event_type -> event_time -> (Pop_adjust, Flux, Population)
+    
+    for line in pop_history.split('\n')[2:]:
+        line=line.strip()
+        values = re.split( '\s+', line )
+        for i in range(len(values)):
+            t = values[i]
+            try:
+                t = float( values[i] )
+            except:
+                pass
+            values[i] = t
+        (Time, Event, Pop_adjust, Flux, Population) = values
+        if not Event in pop_history_dict:
+            pop_history_dict[Event] = {}
+        pop_history_dict[Event][Time] = (Pop_adjust, Flux, Population)
+    return pop_history_dict
+    
 class TestSimulationObject(SimulationObject):
 
     SENT_MESSAGE_TYPES = [ MessageTypes.GET_POPULATION ]
@@ -61,9 +49,11 @@ class TestSimulationObject(SimulationObject):
     # at any time instant, process messages in this order
     MESSAGE_TYPES_BY_PRIORITY = [ MessageTypes.GIVE_POPULATION ]
     MessageTypes.set_receiver_priorities( 'TestSimulationObject', MESSAGE_TYPES_BY_PRIORITY )
-
-    def __init__( self, name, debug=False, write_plot_output=False):
+    
+    def __init__( self, name, pop_history, specie, debug=False, write_plot_output=False):
         self.debug = debug
+        self.pop_history_dict = parse_population_history( pop_history )
+        self.specie = specie
         super(TestSimulationObject, self).__init__( name, plot_output=write_plot_output )
 
     def handle_event( self, event_list ):
@@ -76,7 +66,6 @@ class TestSimulationObject(SimulationObject):
         test_CellState_with_other_SimObj() also schedules GET_POPULATION events sent by TestSimObj, 
         an instance of this TestSimulationObject, at the times in the sequence.
         '''
-        specie = 'x'
         
         for event_message in event_list:
             # switch/case on event message type
@@ -85,14 +74,15 @@ class TestSimulationObject(SimulationObject):
                 # populations is a GIVE_POPULATION_body instance
                 populations = event_message.event_body
                 
-                if specie in populations.population:
-                    if event_message.event_time in pop_history_dict['get_pop']:
-                        (Pop_adjust, Flux, correct_pop) = pop_history_dict['get_pop'][event_message.event_time]
+                if self.specie in populations.population:
+                    if event_message.event_time in self.pop_history_dict['get_pop']:
+                        (Pop_adjust, Flux, correct_pop) = self.pop_history_dict['get_pop'][event_message.event_time]
                         # Key point: TestSimulationObject.TestCaseRef is a reference to a unittest.TestCase, 
                         # which is set by TestSimulation.testSimulation( ) below
                         # This test works for any sequence of the stochastic rounding because either round matches
-                        TestSimulationObject.TestCaseRef.assertTrue( populations.population[specie] == math.ceil(correct_pop) or
-                            populations.population[specie] == math.floor(correct_pop) )
+                        TestSimulationObject.TestCaseRef.assertTrue( 
+                            populations.population[self.specie] == math.ceil(correct_pop) or
+                            populations.population[self.specie] == math.floor(correct_pop) )
             else:
                 print "Shouldn't get here - event_message.event_type should be covered in the "
                 "if statement above"
@@ -120,9 +110,26 @@ class TestSimulation(unittest.TestCase):
     def testSimulation( self ):
 
         specie = 'x'
+        # Population dynamics of specie 'x'. See spreadsheet test_pop_history.ods in the current directory.
+        # This table is used to both create a test simulation and to verify its execution.
+        pop_history_of_x = '''
+Time                 Event                Pop_adjust           Flux                 Population
+0                    init                 NA                   0                    3
+0                    get_pop              NA                   NA                   3
+1                    discrete_adjust      1                    NA                   4
+1                    get_pop              NA                   NA                   4
+2                    continuous_adjust    2                    0.5                  6
+2                    get_pop              NA                   NA                   6
+3                    get_pop              NA                   NA                   6.5
+4                    discrete_adjust      -1                   NA                   6
+4                    get_pop              NA                   NA                   6
+5                    get_pop              NA                   NA                   6.5'''
+        pop_history_dict = parse_population_history( pop_history_of_x )
         (unused_Pop_adjust, init_flux, init_pop) = pop_history_dict['init'][0]
         cs1 = TestSimulation.make_CellState( { specie: init_pop }, {specie: init_flux} )
-        TestSimObj = TestSimulationObject( 'TestSimObj' )
+
+
+        TestSimObj = TestSimulationObject( 'TestSimObj', pop_history_of_x, specie )
         # give TestSimulationObject.TestCaseRef a reference to this unittest.TestCase:
         TestSimulationObject.TestCaseRef = self
 
@@ -149,6 +156,36 @@ class TestSimulation(unittest.TestCase):
             )
         SimulationEngine.simulate( 5.0 )
     
+    def testSimulationDefaultPop( self ):
+        # test code that assumes an unknown specie is initialized with a population of 0
+
+        cs = CellState( TestSimulation.get_name(), {} )
+        pop_history_of_y = '''
+Time                 Event                Pop_adjust           Flux                 Population
+1                    discrete_adjust      1                    NA                   1
+2                    get_pop              NA                   NA                   1'''
+        specie = 'y'
+        pop_history_dict = parse_population_history( pop_history_of_y )
+        TestSimObj = TestSimulationObject( 'TestSimObj', pop_history_of_y, specie )
+        # give TestSimulationObject.TestCaseRef a reference to this unittest.TestCase:
+        TestSimulationObject.TestCaseRef = self
+
+        usr = UniversalSenderReceiverSimulationObject( 'usr1' )
+
+        # create initial events
+        # ADJUST_POPULATION_BY_DISCRETE_MODEL
+        for time, (Pop_adjust, unused_Flux, unused_Population) in pop_history_dict['discrete_adjust'].items():
+            usr.send_event( time, cs, MessageTypes.ADJUST_POPULATION_BY_DISCRETE_MODEL, 
+                event_body=ADJUST_POPULATION_BY_DISCRETE_MODEL_body( { specie:Pop_adjust } ) )
+
+        # GET_POPULATION
+        for time in pop_history_dict['get_pop'].keys():
+            TestSimObj.send_event( time, cs, MessageTypes.GET_POPULATION, 
+                event_body=GET_POPULATION_body( set([ specie ]) )
+            )
+        SimulationEngine.simulate( 5.0 )
+        
+
 if __name__ == '__main__':
     try:
         unittest.main()

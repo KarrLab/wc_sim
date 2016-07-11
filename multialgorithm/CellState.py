@@ -104,7 +104,7 @@ class Specie(object):
         Raises:
             ValueError: if population goes negative
         """
-        # TODO(Arthur): optimization: disable test in production, perhaps
+        # TODO(Arthur): perhaps: an optimization: disable test in production
         if self.last_population + population_change < 0:
             raise ValueError( "discrete_adjustment(): negative population from "
                 "self.last_population + population_change ({:.2f} + {:.2f})\n".format( 
