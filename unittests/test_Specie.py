@@ -15,7 +15,7 @@ class TestSpecie(unittest.TestCase):
     # these tests cover all executable statements in Specie(), including exceptions, and 
     # all branches
     def test_Specie(self):
-        s1 = Specie( 10, initial_flux=0 )
+        s1 = Specie( 'specie', 10, initial_flux=0 )
         
         self.assertEqual( s1.get_population( ), 10 )
         s1.discrete_adjustment( 1 )
@@ -54,18 +54,18 @@ class TestSpecie(unittest.TestCase):
         self.assertIn( 'continuous_adjustment(): negative population from self.last_population + population_change',
             context.exception.message )
 
-        s1 = Specie( 10 )
+        s1 = Specie( 'specie', 10 )
         with self.assertRaises(ValueError) as context:
             s1.continuous_adjustment( 2, 2, 1 )
         self.assertIn( 'initial flux was not provided', context.exception.message )
 
         # raise asserts
         with self.assertRaises(AssertionError) as context:
-            s1 = Specie( -10 )
+            s1 = Specie( 'specie', -10 )
         self.assertIn( '__init__(): population should be >= 0', context.exception.message )
     
     def test_Specie_stochastic_rounding(self):
-        s1 = Specie( 10.5, initial_flux=0 )
+        s1 = Specie( 'specie', 10.5, initial_flux=0 )
         
         samples = 1000
         for i in range(samples):
@@ -80,7 +80,7 @@ class TestSpecie(unittest.TestCase):
         for i in range(samples):
             self.assertEqual( s1.get_population( 3 ), 11.0 )
             
-        s2 = Specie( 10.5, random_seed=123 )
+        s2 = Specie( 'specie', 10.5, random_seed=123 )
         pops=[]
         for i in range(10):
             pops.append( s2.get_population( ) )

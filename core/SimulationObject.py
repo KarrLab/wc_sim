@@ -39,7 +39,7 @@ class EventQueue(object):
         """Insert an event in this event queue, scheduled to execute at receive_time.
         
         Object X sends an event to object Y by invoking
-            Y.event_queue.send_event( send_time, receive_time, X, Y, event_type )
+            Y.event_queue.send_event( send_time, receive_time, X, Y, event_type, <event_body=value> )
         
         Args:
             send_time: number; the simulation time at which the message was generated (sent)
@@ -125,7 +125,8 @@ class SimulationObject(object):
         time: A float containing the simulation object's current simulation time.
         event_queue: The object's EventQueue.
         plot_output: A boolean, indicating whether to print events, formatted for later plotting
-        # TODO(Arthur): use Python logging for printing the event_queue; in general, remove print statements
+        # TODO(Arthur): use Python logging for printing the event_queue
+        # TODO(Arthur): important: in general, replace print statements with logging
     """
 
     def __init__( self, name, plot_output=False):

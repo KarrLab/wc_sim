@@ -17,6 +17,7 @@ Created 2016/06/10
 @author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
 """
 
+# TODO(Arthur): IMPORTANT: disentangle the simulation-generic from the WC-simulation specific parts MessageTypes
 class MessageTypes(object):
     """A simulation application's static set of message types and their content.
     

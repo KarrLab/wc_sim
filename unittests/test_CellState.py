@@ -3,6 +3,7 @@
 import unittest
 import sys
 import re
+import os.path as path
 
 from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, SimulationObject)
 from Sequential_WC_Simulator.core.SimulationEngine import SimulationEngine
@@ -10,6 +11,7 @@ from Sequential_WC_Simulator.multialgorithm.CellState import (Specie, CellState)
 from Sequential_WC_Simulator.multialgorithm.MessageTypes import (MessageTypes, ADJUST_POPULATION_BY_DISCRETE_MODEL_body, 
     Continuous_change, ADJUST_POPULATION_BY_CONTINUOUS_MODEL_body, GET_POPULATION_body, GIVE_POPULATION_body)
 from UniversalSenderReceiverSimulationObject import UniversalSenderReceiverSimulationObject
+from Sequential_WC_Simulator.core.LoggingConfig import LOGGING_ROOT_DIR
 
 class TestCellState(unittest.TestCase):
 
@@ -38,7 +40,7 @@ class TestCellState(unittest.TestCase):
     fluxes = dict( zip( species, [0] * len(species) ) )
 
     @staticmethod
-    def make_CellState( my_pop, my_fluxes, debug=False, write_plot_output=False, name=None ):
+    def make_CellState( my_pop, my_fluxes, debug=False, write_plot_output=False, name=None, log=False ):
         if not name:
             name = TestCellState.get_name()
         '''
@@ -46,7 +48,7 @@ class TestCellState(unittest.TestCase):
             name, debug, write_plot_output )
         '''
         return CellState( name, my_pop, initial_fluxes=my_fluxes, debug=debug, 
-            write_plot_output=write_plot_output ) 
+            write_plot_output=write_plot_output, log=log ) 
 
     def test_CellState_debugging(self):
         cs1 = TestCellState.make_CellState( TestCellState.pop, None, debug=False )
@@ -58,7 +60,8 @@ class TestCellState(unittest.TestCase):
         
         
     def test_simple_CellState(self):
-        cs1 = TestCellState.make_CellState( TestCellState.pop, TestCellState.fluxes, write_plot_output=False )
+        SimulationEngine.reset()
+        cs1 = TestCellState.make_CellState( TestCellState.pop, TestCellState.fluxes, log=True )
         # initial events
         usr = UniversalSenderReceiverSimulationObject( 'usr1' )
         usr.send_event( 1.0, cs1, MessageTypes.ADJUST_POPULATION_BY_DISCRETE_MODEL, 
@@ -74,7 +77,17 @@ class TestCellState(unittest.TestCase):
             event_body=ADJUST_POPULATION_BY_CONTINUOUS_MODEL_body( d ) )
         SimulationEngine.simulate( 5.0 )
         
-        # TODO(Arthur): important: test simultaneous recept of ADJUST_POPULATION_BY_DISCRETE_MODEL and ADJUST_POPULATION_BY_CONTINUOUS_MODEL
+        text_in_log_s1_by_line = '''.* : s1 : .* #Sim_time\tAdjustment_type\tNew_population\tNew_flux
+.* #1.0\tdiscrete_adjustment\t22\t0
+.* #2.0\tcontinuous_adjustment\t24.0\t1.0'''
+        expected_patterns = text_in_log_s1_by_line.split('\n')
+        log_file = path.join( LOGGING_ROOT_DIR, 's1' + '.log' )
+        fh = open( log_file, 'r' )
+        for pattern in expected_patterns:
+            self.assertRegexpMatches( fh.readline().strip(), pattern )
+        fh.close()
+        
+    # TODO(Arthur): important: test simultaneous recept of ADJUST_POPULATION_BY_DISCRETE_MODEL and ADJUST_POPULATION_BY_CONTINUOUS_MODEL
 
 if __name__ == '__main__':
     try:

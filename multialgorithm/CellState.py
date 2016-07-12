@@ -2,9 +2,7 @@
 
 import sys
 import logging
-logger = logging.getLogger(__name__)
-# control logging level with: logger.setLevel()
-# this enables debug output: logging.basicConfig( level=logging.DEBUG )
+from Sequential_WC_Simulator.core.LoggingConfig import setup_logger
 
 from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, SimulationObject)
 from MessageTypes import (MessageTypes, ADJUST_POPULATION_BY_DISCRETE_MODEL_body, 
@@ -66,15 +64,15 @@ class Specie(object):
     # TODO(Arthur): optimization: put Specie functionality into CellState, avoiding overhead of a Class instance
         for each Specie. I'm writing it in a class now while the math and logic are being developed.
     # TODO(Arthur): look at how COPASI handles 
-    # TODO(Arthur): perhaps add specie name as an attribute; would help error reporting and logging
     """
     # use __slots__ to save space
-    __slots__ = "last_population continuous_time continuous_flux stochasticRounder".split()
+    __slots__ = "specie_name last_population continuous_time continuous_flux stochasticRounder".split()
 
-    def __init__( self, initial_population, initial_flux=None, random_seed=None  ):
+    def __init__( self, specie_name, initial_population, initial_flux=None, random_seed=None ):
         """Initialize a Specie object.
         
         Args:
+            specie_name: string; the specie's name; not logically needed, but may be helpful for logging, debugging, etc.
             initial_population: non-negative number; initial population of the specie
             initial_flux: number; required for Specie whose population is partially estimated by a 
                 continuous mode; initial flux for the specie
@@ -84,6 +82,7 @@ class Specie(object):
         
         # TODO(Arthur): perhaps: add optional arg to not round copy number values reported
         assert 0 <= initial_population, '__init__(): population should be >= 0'
+        self.specie_name = specie_name
         self.last_population = initial_population
         if initial_flux == None:
             self.continuous_time = None
@@ -123,7 +122,6 @@ class Specie(object):
             ValueError: if population goes negative
             AssertionError: if the time is negative
         """
-        # TODO(Arthur): important: COVERAGE test these exceptions
         if self.continuous_time == None:
             raise ValueError( "continuous_adjustment(): initial flux was not provided\n" )
         assert 0 <= time, 'negative time: {:.2f}'.format( time )
@@ -192,7 +190,7 @@ class CellState( SimulationObject ):
     # TODO(Arthur): extend beyond population, e.g., to represent binding sites for individual macromolecules
     # TODO(Arthur): optimize to represent just the state of shared species
     # TODO(Arthur): abstract the functionality of CellState so it can be integrated into a submodel
-    # TODO(Arthur): REPORT error if a Specie instance is updated by multiple continuous sub-models
+    # TODO(Arthur): report error if a Specie instance is updated by multiple continuous sub-models
     """
     
     SENT_MESSAGE_TYPES = [ MessageTypes.GIVE_POPULATION ]
@@ -208,7 +206,7 @@ class CellState( SimulationObject ):
     MessageTypes.set_receiver_priorities( 'CellState', MESSAGE_TYPES_BY_PRIORITY )
 
     def __init__( self, name, initial_population, initial_fluxes=None, 
-        shared_random_seed=None, debug=False, write_plot_output=False):
+        shared_random_seed=None, debug=False, write_plot_output=False, log=False):
         """Initialize a CellState object.
         
         Initialize a CellState object. Establish its initial population, and set debugging booleans.
@@ -224,6 +222,10 @@ class CellState( SimulationObject ):
                 fluxes are ignored for species not specified in initial_population
             shared_random_seed: hashable object; optional; set to deterministically initialize all random number
                 generators used by the Specie objects
+            debug: boolean; print debugging output
+            write_plot_output: boolean; print output for plotting simulation 
+            log: boolean; log population dynamics of species
+            # TODO(Arthur): remove debug and write_plot_output, incoporate into logging
 
         Raises:
             AssertionError: if the population cannot be initialized.
@@ -236,12 +238,23 @@ class CellState( SimulationObject ):
                 initial_flux_given = None
                 if initial_fluxes and specie_name in initial_fluxes:
                     initial_flux_given = initial_fluxes[specie_name]
-                self.population[specie_name] = Specie( initial_population[specie_name], 
+                self.population[specie_name] = Specie( specie_name, initial_population[specie_name], 
                     initial_flux=initial_flux_given, random_seed=shared_random_seed )
         except AssertionError as e:
             sys.stderr.write( "Cannot initialize CellState: {}.\n".format( e.message ) )
 
         self.debug = debug
+
+        my_level = logging.NOTSET
+        if log:
+            my_level = logging.DEBUG
+        # make a logger for each specie
+        for specie_name in initial_population.keys():
+            setup_logger(specie_name, level=my_level )
+            log = logging.getLogger(specie_name)
+            # write log header
+            log.debug( '\t'.join( 'Sim_time Adjustment_type New_population New_flux'.split() ) )
+
 
     def handle_event( self, event_list ):
         """Handle a CellState simulation event.
@@ -274,10 +287,11 @@ class CellState( SimulationObject ):
                     print( "ADJUST_POPULATION_BY_DISCRETE_MODEL: {}".format( str(population_changes) ) )
                 for specie_name in population_changes.population_change.keys():
                     if not specie_name in self.population:
-                        self.population[specie_name] = Specie( 0 )
+                        self.population[specie_name] = Specie( specie_name, 0 )
                     
                     self.population[specie_name].discrete_adjustment( 
                         population_changes.population_change[specie_name] )
+                    self.log_event( 'discrete_adjustment', self.population[specie_name] )
                     
             elif event_message.event_type == MessageTypes.ADJUST_POPULATION_BY_CONTINUOUS_MODEL:
             
@@ -286,6 +300,7 @@ class CellState( SimulationObject ):
                 if self.debug:
                     print( "ADJUST_POPULATION_BY_CONTINUOUS_MODEL: {}".format( str(population_changes) ) )
                 for specie_name in population_changes.population_change.keys():
+                    # TODO(Arthur): IMPORTANT: remove, as this fails because it has no flux
                     if not specie_name in self.population:
                         self.population[specie_name] = Specie( 0 )
                     
@@ -294,6 +309,7 @@ class CellState( SimulationObject ):
                         population_changes.population_change[specie_name].change, 
                         self.time, 
                         population_changes.population_change[specie_name].flux )
+                    self.log_event( 'continuous_adjustment', self.population[specie_name] )
 
             elif event_message.event_type == MessageTypes.GET_POPULATION:
 
@@ -320,3 +336,23 @@ class CellState( SimulationObject ):
             else:
                 assert False, "Shouldn't get here - event_message.event_type should be covered in the "
                 "if statement above"
+
+    def log_event( self, event_type, specie ):
+        """Log simulation events that modify a specie's population.
+        
+        Log the simulation time, event type, specie population, and current flux for each simulation
+        event message that adjusts the population. The log record is written to a separate log for each specie.
+        
+        Args:
+            event_type: string; description of the event's type
+            specie: Specie object; the object whose adjustment is being logged
+        """
+        log = logging.getLogger( specie.specie_name )
+        try:
+            flux = specie.continuous_flux
+        except AttributeError:
+            flux = None
+        values = [ self.time, event_type, specie.last_population, flux ]
+        values = map( lambda x: str(x), values )
+        # log Sim_time Adjustment_type New_population New_flux
+        log.debug( '\t'.join( values ) )
