@@ -254,6 +254,8 @@ class CellState( SimulationObject ):
             log = logging.getLogger(specie_name)
             # write log header
             log.debug( '\t'.join( 'Sim_time Adjustment_type New_population New_flux'.split() ) )
+            # log initial state
+            self.log_event( 'initial_state', self.population[specie_name] )
 
 
     def handle_event( self, event_list ):
@@ -317,6 +319,7 @@ class CellState( SimulationObject ):
                 species = event_message.event_body
                 # detect species requested that are not stored by this CellState
                 invalid_species = species.species - set( self.population.keys() )
+                # TODO(Arthur): test this case:                
                 if len( invalid_species ):
                     raise ValueError( "Error: {} message requests population of unknown species {} in {}\n".format(
                         MessageTypes.GET_POPULATION,

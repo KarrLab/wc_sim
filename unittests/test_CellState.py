@@ -78,6 +78,7 @@ class TestCellState(unittest.TestCase):
         SimulationEngine.simulate( 5.0 )
         
         text_in_log_s1_by_line = '''.* : s1 : .* #Sim_time\tAdjustment_type\tNew_population\tNew_flux
+.* #0.0\tinitial_state\t21\t0
 .* #1.0\tdiscrete_adjustment\t22\t0
 .* #2.0\tcontinuous_adjustment\t24.0\t1.0'''
         expected_patterns = text_in_log_s1_by_line.split('\n')

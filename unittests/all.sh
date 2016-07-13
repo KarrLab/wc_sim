@@ -42,7 +42,7 @@ then
     coverage erase
     # TODO: have coverage test print a summary
     for test_file in test_*py; do
-        coverage run --branch --append $test_file
+        coverage run --branch --append --omit="*__init__.py" $test_file 
     done
     # don't test third party libraries 
     # TODO: make this portable

@@ -7,6 +7,8 @@ from SimulationEngine import SimulationEngine
 from copy import deepcopy
 import heapq
 import warnings
+
+# TODO(Arthur): remove old logging commands & comments; use new loggers
 import logging
 logger = logging.getLogger(__name__)
 

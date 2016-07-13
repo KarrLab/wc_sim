@@ -103,8 +103,9 @@ class SimulationEngine(object):
             
         Return:
             The number of times a simulation object executes handle_event(). This may be larger than the number
-            of events sent, because times are handled together.
+            of events sent, because simultaneous events are handled together.
         """
+        # TODO(Arthur): IMPORTANT: add optional logical termation condition(s)
         
         if debug:
             SimulationEngine.print_simulation_state()
@@ -144,4 +145,5 @@ class SimulationEngine(object):
             next_sim_obj.time = next_time
             next_sim_obj.handle_event( next_sim_obj.event_queue.next_events() )
             
+        # TODO(Arthur): IMPORTANT: need to record simulation state at the end
         return handle_event_invocations

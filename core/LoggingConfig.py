@@ -25,6 +25,7 @@ def setup_logger(logger_name, log_file=None, level=logging.INFO, to_stdout=False
     l.setLevel(level)
     l.addHandler(fileHandler)
     
+    # TODO(Arthur): test this code
     if to_stdout:
         streamHandler = logging.StreamHandler()
         streamHandler.setFormatter(formatter)
