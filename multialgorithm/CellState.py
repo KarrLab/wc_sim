@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import sys
 import logging
 from Sequential_WC_Simulator.core.LoggingConfig import setup_logger
@@ -221,7 +219,6 @@ class CellState( SimulationObject ):
             debug: boolean; log debugging output
             write_plot_output: boolean; log output for plotting simulation 
             log: boolean; log population dynamics of species
-            # TODO(Arthur): remove debug and write_plot_output, incoporate into logging
 
         Raises:
             AssertionError: if the population cannot be initialized.
@@ -250,6 +247,7 @@ class CellState( SimulationObject ):
             mylog.debug( "initial_fluxes: {}".format( str(initial_fluxes) ) )
             mylog.debug( "shared_random_seed: {}".format( str(shared_random_seed) ) )
             mylog.debug( "write_plot_output: {}".format( str(write_plot_output) ) )
+            mylog.debug( "debug: {}".format( str(debug) ) )
             mylog.debug( "log: {}".format( str(log) ) )
 
         # if log, make a logger for each specie
@@ -271,7 +269,7 @@ class CellState( SimulationObject ):
         If an event message adjusts the population of a specie that is not known, initialize the Specie with
         no population. 
         
-        More desc. 
+        # TODO(Arthur): More desc. 
         
         Args:
             event_list: list of event messages to process
