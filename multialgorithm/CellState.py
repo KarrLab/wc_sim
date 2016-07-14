@@ -171,8 +171,6 @@ class CellState( SimulationObject ):
     are incremented or decremented, not written. To enable multi-algorithmic modeling, 
     it supports adjustments to a specie's population by both discrete and continuous models. E.g., discrete models
     might synthesize proteins while a continuous model degrades them.
-
-    # TODO(Arthur): More desc.
     
     Attributes:
         population: a set species, represented by Specie objects
@@ -302,7 +300,7 @@ class CellState( SimulationObject ):
                 if self.debug:
                     print( "ADJUST_POPULATION_BY_CONTINUOUS_MODEL: {}".format( str(population_changes) ) )
                 for specie_name in population_changes.population_change.keys():
-                    # TODO(Arthur): IMPORTANT: remove, as this fails because it has no flux
+                    # TODO(Arthur): IMPORTANT: remove, as this fails because it has no flux, and we don't want a default flux
                     if not specie_name in self.population:
                         self.population[specie_name] = Specie( 0 )
                     

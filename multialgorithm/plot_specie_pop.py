@@ -172,6 +172,7 @@ if __name__ == '__main__':
     try:
         # TODO(Arthur): important: plot multiple species simultaneously, either on one plot and/or in a grid
         # TODO(Arthur): time units
+        # TODO(Arthur): important: label with species name
         # TODO(Arthur): command line control of markers, colors, labels, etc.
         
         PlotPopulationDynamics.main()

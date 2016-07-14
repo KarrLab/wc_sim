@@ -109,6 +109,7 @@ class TestSimulation(unittest.TestCase):
         
     def testSimulation( self ):
 
+        # TODO(Arthur): to test situation when multiple objects have events at minimum simulation time, add recipient column to pop_history:
         specie = 'x'
         # Population dynamics of specie 'x'. See spreadsheet test_pop_history.ods in the current directory.
         # This table is used to both create a test simulation and to verify its execution.
@@ -156,7 +157,7 @@ Time                 Event                Pop_adjust           Flux             
             )
         SimulationEngine.simulate( 5.0 )
     
-    def testSimulationDefaultPop( self ):
+    def testSimulationDefaultPopulation( self ):
         # test code that assumes an unknown specie is initialized with a population of 0
 
         cs = CellState( TestSimulation.get_name(), {} )

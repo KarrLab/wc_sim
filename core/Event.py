@@ -12,6 +12,9 @@ Created 2016/05/31
 class Event( object ):
     """An object that holds a DES event.
     
+    Each DES event is scheduled by an Event instance. To reduce interface errors event_type and
+    event_body attributes are structured as specified in the MessageTypes module.
+    
     Attributes:
         creation_time: float; simulation time when the event is created (aka send_time)
         event_time: float; simulation time when the event must be executed (aka receive_time)
@@ -19,8 +22,6 @@ class Event( object ):
         receiving_object: reference to the object that receives (aka executes) the event
         event_type: string; the event's type; a constant declared in MessageTypes
         event_body: reference to an object declared in MessageTypes; the message payload
-        
-    # TODO(Arthur): finish documentation
     """
     # TODO(Arthur): for performance, perhaps pre-allocate and reuse events
     # use __slots__ to save space

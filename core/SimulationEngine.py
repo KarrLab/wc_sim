@@ -9,7 +9,6 @@ logger = logging.getLogger(__name__)
 
 # control logging level with: logger.setLevel()
 # this enables debug output: logging.basicConfig( level=logging.DEBUG )
-# TODO(Arthur): learn how to control logging independently for each python module (file)
 
 """
 General-purpose simulation mechanisms, including the event queue for each simulation object and
