@@ -13,8 +13,6 @@ from Sequential_WC_Simulator.core.utilities import StochasticRound
 The cell's state, which represents the state of its species.
 """
     
-# TODO(Arthur): generate plots of copy number vs. time; better colors and symbols than in ppt
-
 class Specie(object):
     """
     Specie tracks the population of a single specie.
@@ -174,7 +172,7 @@ class CellState( SimulationObject ):
     
     Attributes:
         population: a set species, represented by Specie objects
-        debug: whether to print debugging data
+        debug: whether to log debugging data
     
     Event messages:
 
@@ -220,8 +218,8 @@ class CellState( SimulationObject ):
                 fluxes are ignored for species not specified in initial_population
             shared_random_seed: hashable object; optional; set to deterministically initialize all random number
                 generators used by the Specie objects
-            debug: boolean; print debugging output
-            write_plot_output: boolean; print output for plotting simulation 
+            debug: boolean; log debugging output
+            write_plot_output: boolean; log output for plotting simulation 
             log: boolean; log population dynamics of species
             # TODO(Arthur): remove debug and write_plot_output, incoporate into logging
 
@@ -240,13 +238,24 @@ class CellState( SimulationObject ):
                     initial_flux=initial_flux_given, random_seed=shared_random_seed )
         except AssertionError as e:
             sys.stderr.write( "Cannot initialize CellState: {}.\n".format( e.message ) )
+            
+        self.logger_name = "CellState_{}".format( name )
+        if debug:
+            # make a logger for this CellState
+            # TODO(Arthur): eventually control logging when creating SimulationObjects, and pass in the logger
+            setup_logger( self.logger_name, level=logging.DEBUG )
+            mylog = logging.getLogger(self.logger_name)
+            # write initialization data
+            mylog.debug( "initial_population: {}".format( str(initial_population) ) )
+            mylog.debug( "initial_fluxes: {}".format( str(initial_fluxes) ) )
+            mylog.debug( "shared_random_seed: {}".format( str(shared_random_seed) ) )
+            mylog.debug( "write_plot_output: {}".format( str(write_plot_output) ) )
+            mylog.debug( "log: {}".format( str(log) ) )
 
-        self.debug = debug
-
+        # if log, make a logger for each specie
         my_level = logging.NOTSET
         if log:
             my_level = logging.DEBUG
-        # make a logger for each specie
         for specie_name in initial_population.keys():
             setup_logger(specie_name, level=my_level )
             log = logging.getLogger(specie_name)
@@ -269,22 +278,23 @@ class CellState( SimulationObject ):
             
         Raises:
             ValueError: if a GET_POPULATION message requests the population of an unknown species
+            ValueError: if an ADJUST_POPULATION_BY_CONTINUOUS_MODEL event acts on a non-existent species
 
         """
         # call handle_event() in class SimulationObject which performs generic tasks on the event list
         super( CellState, self ).handle_event( event_list )
         
-        if self.debug:
-            logger.debug( ' ' + self.event_queue_to_str() )
-            
+        logging.getLogger( self.logger_name ).debug( self.event_queue_to_str() ) 
+
         for event_message in event_list:
             # switch/case on event message type
             if event_message.event_type == MessageTypes.ADJUST_POPULATION_BY_DISCRETE_MODEL:
 
                 # population_changes is an ADJUST_POPULATION_BY_DISCRETE_MODEL_body object
                 population_changes = event_message.event_body
-                if self.debug:
-                    print( "ADJUST_POPULATION_BY_DISCRETE_MODEL: {}".format( str(population_changes) ) )
+
+                logging.getLogger( self.logger_name ).debug( 
+                    "ADJUST_POPULATION_BY_DISCRETE_MODEL: {}".format( str(population_changes) ) ) 
                 for specie_name in population_changes.population_change.keys():
                     if not specie_name in self.population:
                         self.population[specie_name] = Specie( specie_name, 0 )
@@ -297,12 +307,15 @@ class CellState( SimulationObject ):
             
                 # population_changes is an ADJUST_POPULATION_BY_CONTINUOUS_MODEL_body object
                 population_changes = event_message.event_body
-                if self.debug:
-                    print( "ADJUST_POPULATION_BY_CONTINUOUS_MODEL: {}".format( str(population_changes) ) )
+                logging.getLogger( self.logger_name ).debug( 
+                    "ADJUST_POPULATION_BY_CONTINUOUS_MODEL: {}".format( str(population_changes) ) ) 
+
                 for specie_name in population_changes.population_change.keys():
-                    # TODO(Arthur): IMPORTANT: remove, as this fails because it has no flux, and we don't want a default flux
+                    # raise exeception if an ADJUST_POPULATION_BY_CONTINUOUS_MODEL event acts on a 
+                    # non-existent species because the species has no flux, and we don't want a default flux
                     if not specie_name in self.population:
-                        self.population[specie_name] = Specie( 0 )
+                        raise ValueError( "Error: {} message requests population of unknown species '{}' in {}\n".format(
+                            MessageTypes.ADJUST_POPULATION_BY_CONTINUOUS_MODEL, specie_name, event_message ) )
                     
                     #(population_change, flux) = population_changes[specie_name]
                     self.population[specie_name].continuous_adjustment( 

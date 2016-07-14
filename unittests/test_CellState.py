@@ -59,7 +59,7 @@ class TestCellState(unittest.TestCase):
         self.assertIn( 'creation_time\tevent_time\tsending_object\treceiving_object\tevent_type', eq )
         
         
-    def test_simple_CellState(self):
+    def test_CellState_species_logging(self):
         SimulationEngine.reset()
         cs1 = TestCellState.make_CellState( TestCellState.pop, TestCellState.fluxes, log=True )
         # initial events
@@ -83,6 +83,45 @@ class TestCellState(unittest.TestCase):
 .* #2.0\tcontinuous_adjustment\t24.0\t1.0'''
         expected_patterns = text_in_log_s1_by_line.split('\n')
         log_file = path.join( LOGGING_ROOT_DIR, 's1' + '.log' )
+        fh = open( log_file, 'r' )
+        for pattern in expected_patterns:
+            self.assertRegexpMatches( fh.readline().strip(), pattern )
+        fh.close()
+        
+    def test_CellState_logging(self):
+        SimulationEngine.reset()
+        cs1 = TestCellState.make_CellState( TestCellState.pop, TestCellState.fluxes, debug=True )
+        # TODO(Arthur): avoid copying this code
+        # initial events
+        usr = UniversalSenderReceiverSimulationObject( 'usr1' )
+        usr.send_event( 1.0, cs1, MessageTypes.ADJUST_POPULATION_BY_DISCRETE_MODEL, 
+            event_body=ADJUST_POPULATION_BY_DISCRETE_MODEL_body(
+                dict( zip( TestCellState.species, [1]*len( TestCellState.species ) ) )
+            )
+        )
+        t = 2.0
+        d = dict( zip( TestCellState.species,
+                map( lambda x: Continuous_change(2.0, 1.0), [1]*len( TestCellState.species ) ) ) )
+
+        usr.send_event( t, cs1, MessageTypes.ADJUST_POPULATION_BY_CONTINUOUS_MODEL, 
+            event_body=ADJUST_POPULATION_BY_CONTINUOUS_MODEL_body( d ) )
+        SimulationEngine.simulate( 5.0 )
+        
+        text_in_log_CellState_CellState_2_by_line = '''.*initial_population: {'s3': 35, 's2': 28, 's1': 21}
+.*initial_fluxes: {'s3': 0, 's2': 0, 's1': 0}
+.*shared_random_seed: None
+.*write_plot_output: False
+.*log: False
+.*CellState_2 at 1.000
+.*creation_time\tevent_time\tsending_object\treceiving_object\tevent_type
+.*0.000\t   2.000\tusr1\tCellState_2\tADJUST_POPULATION_BY_CONTINUOUS_MODEL
+.*
+.*ADJUST_POPULATION_BY_DISCRETE_MODEL: specie:change: s3:1.0, s2:1.0, s1:1.0
+.*CellState_2 at 2.000
+.*Empty event queue
+.*ADJUST_POPULATION_BY_CONTINUOUS_MODEL: specie:\(change,flux\): s3:\(2.0,1.0\), s2:\(2.0,1.0\), s1:\(2.0,1.0\)'''
+        expected_patterns = text_in_log_CellState_CellState_2_by_line.split('\n')
+        log_file = path.join( LOGGING_ROOT_DIR, cs1.logger_name + '.log' )
         fh = open( log_file, 'r' )
         for pattern in expected_patterns:
             self.assertRegexpMatches( fh.readline().strip(), pattern )

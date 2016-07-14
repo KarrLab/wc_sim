@@ -90,6 +90,8 @@ class ADJUST_POPULATION_BY_CONTINUOUS_MODEL_body( object ):
 
     # use __slots__ to save space
     __slots__ = ["population_change"]
+
+    # TODO(Arthur): IMPORTANT: make sure that change and flux are floats, otherwise __str__ will fail
     def __init__( self, population_change  ):
         self.population_change = population_change
 

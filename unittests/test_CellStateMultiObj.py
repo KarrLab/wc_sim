@@ -186,6 +186,31 @@ Time                 Event                Pop_adjust           Flux             
             )
         SimulationEngine.simulate( 5.0 )
         
+    def testSimulation_exception( self ):
+        # test code that raises exception when ADJUST_POPULATION_BY_CONTINUOUS_MODEL message requests population of unknown species
+
+        SimulationEngine.reset()
+        cs = CellState( TestSimulation.get_name(), {}, debug=True )
+        pop_history = '''
+Time                 Event                Pop_adjust           Flux                 Population
+1                    continuous_adjust      1                    0                   1'''
+        specie = 'y'
+        pop_history_dict = parse_population_history( pop_history )
+
+        # create ADJUST_POPULATION_BY_CONTINUOUS_MODEL event
+        usr = UniversalSenderReceiverSimulationObject( 'usr1' )
+        for time, (Pop_adjust, Flux, unused_Population) in pop_history_dict['continuous_adjust'].items():
+            usr.send_event( time, cs, MessageTypes.ADJUST_POPULATION_BY_CONTINUOUS_MODEL, 
+                event_body=ADJUST_POPULATION_BY_CONTINUOUS_MODEL_body( 
+                    { specie: Continuous_change( Pop_adjust, Flux ) }
+                )
+            )
+
+        with self.assertRaises(ValueError) as context:
+            SimulationEngine.simulate( 5.0 )
+        self.assertIn( "Error: ADJUST_POPULATION_BY_CONTINUOUS_MODEL message requests population of unknown species 'y'", 
+            context.exception.message )
+        
 
 if __name__ == '__main__':
     try:
