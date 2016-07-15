@@ -66,6 +66,31 @@ class ADJUST_POPULATION_BY_DISCRETE_MODEL_body( object ):
         return "specie:change: {}".format( ', '.join( l ) )
 
 Continuous_change = namedtuple( 'Continuous_change', 'change, flux' )
+class Continuous_change(Continuous_change):
+    def type_check(self):
+        """Check that the fields in Continuous_change are numbers.
+        
+        Raises:
+            ValueError: if one of the fields is non-numeric.
+        """
+        # https://docs.python.org/2.7/library/collections.html#collections.namedtuple documents namedtuple
+        # and this approach for extending its functionality
+        for f in self._fields:
+            v = getattr(self,f)
+            if not ( isinstance( v, int ) or isinstance( v, float ) ):
+                raise ValueError( "Continuous_change.type_check(): {} is '{}' "
+                    "which is not an int or float".format( f, v ) )        
+                    
+    def __init__( self, change, flux ):
+        """Initialize a Continuous_change.
+        
+        Raises:
+            ValueError: if some fields are not numbers.
+        """
+        super( Continuous_change, self ).__init__( change, flux )
+        self.type_check()
+
+
 class ADJUST_POPULATION_BY_CONTINUOUS_MODEL_body( object ):
     """Body of an ADJUST_POPULATION_BY_CONTINUOUS_MODEL message.
     
@@ -78,7 +103,6 @@ class ADJUST_POPULATION_BY_CONTINUOUS_MODEL_body( object ):
     # use __slots__ to save space
     __slots__ = ["population_change"]
 
-    # TODO(Arthur): IMPORTANT: make sure that change and flux are floats, otherwise __str__ will fail
     def __init__( self, population_change  ):
         self.population_change = population_change
 
@@ -98,17 +122,6 @@ class ADJUST_POPULATION_BY_CONTINUOUS_MODEL_body( object ):
             x, self.population_change[x].change, self.population_change[x].flux ), 
             self.population_change.keys() )
         return "specie:(change,flux): {}".format( ', '.join( l ) )
-
-
-# TODO(Arthur): MOVE to unittests
-'''
-d={
-'x':Continuous_change(4,.5) ,
-'y':Continuous_change(3,1) 
-}
-t=ADJUST_POPULATION_BY_CONTINUOUS_MODEL_body( d )
-print t
-'''
 
 class GET_POPULATION_body( object ):
     """Body of a GET_POPULATION message.
@@ -166,10 +179,3 @@ class EXECUTE_SSA_REACTION_body( object ):
         '''
         pass
         return ''
-
-'''
-# TODO(Arthur): MOVE to unittests
-v={ 'x':5, 'y':222}
-t=GIVE_POPULATION_body( v )
-print t
-'''
