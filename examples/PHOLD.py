@@ -12,7 +12,7 @@ import sys
 import datetime
 
 from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, SimulationObject)
-from Sequential_WC_Simulator.core.SimulationEngine import SimulationEngine
+from Sequential_WC_Simulator.core.SimulationEngine import (SimulationEngine, MessageTypesRegistry)
 from Sequential_WC_Simulator.multialgorithm.MessageTypes import MessageTypes
 
 def obj_name( obj_num ):
@@ -29,8 +29,8 @@ def exp_delay( ):
 class PHOLDsimulationObject(SimulationObject):
 
     MESSAGE_TYPES = [ 'message_sent_to_self', 'message_sent_to_other_object', 'init_msg' ]
-    MessageTypes.set_sent_message_types( 'PHOLDsimulationObject', MESSAGE_TYPES )
-    MessageTypes.set_receiver_priorities( 'PHOLDsimulationObject', MESSAGE_TYPES )
+    MessageTypesRegistry.set_sent_message_types( 'PHOLDsimulationObject', MESSAGE_TYPES )
+    MessageTypesRegistry.set_receiver_priorities( 'PHOLDsimulationObject', MESSAGE_TYPES )
 
     def __init__( self, name, args, debug=False, write_plot_output=False):
         self.debug = debug

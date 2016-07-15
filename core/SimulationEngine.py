@@ -21,6 +21,22 @@ Created 2016/05/31
 @author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
 """
 
+class MessageTypesRegistry( object ):
+    """A registry of message types, which is used to check that objects are sending and receiving
+    the right types of messages.
+    """
+
+    senders = {}
+    receiver_priorities = {}
+    
+    @staticmethod
+    def set_sent_message_types( sim_obj_name, message_types ):
+        MessageTypesRegistry.senders[ sim_obj_name ] = message_types
+    
+    @staticmethod
+    def set_receiver_priorities( sim_obj_name, message_priorities ):
+        MessageTypesRegistry.receiver_priorities[ sim_obj_name ] = message_priorities
+
 class SimulationEngine(object):
     """A simulation's static engine.
     
@@ -86,12 +102,12 @@ class SimulationEngine(object):
     def print_simulation_state( ):
 
         logger.debug( ' ' + '\t'.join( ['Sender', 'Message types sent'] ) )
-        for sender in MessageTypes.senders.keys():
-            logger.debug( ' ' + sender + '\t' + ', '.join( MessageTypes.senders[sender] ) )
+        for sender in MessageTypesRegistry.senders.keys():
+            logger.debug( ' ' + sender + '\t' + ', '.join( MessageTypesRegistry.senders[sender] ) )
 
         logger.debug( ' ' + '\t'.join( ['Receiver', 'Message types by priority'] ) )
-        for receiver in MessageTypes.receiver_priorities.keys():
-            logger.debug( ' ' + sender + '\t' + ', '.join( MessageTypes.receiver_priorities[receiver] ) )
+        for receiver in MessageTypesRegistry.receiver_priorities.keys():
+            logger.debug( ' ' + sender + '\t' + ', '.join( MessageTypesRegistry.receiver_priorities[receiver] ) )
 
     @staticmethod
     def simulate( end_time, debug=False ):

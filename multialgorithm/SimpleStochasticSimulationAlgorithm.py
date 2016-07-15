@@ -11,8 +11,8 @@ Created 2016/07/14
 import sys
 import logging
 from Sequential_WC_Simulator.core.LoggingConfig import setup_logger
-
 from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, SimulationObject)
+from Sequential_WC_Simulator.core.SimulationEngine import MessageTypesRegistry
 from MessageTypes import (MessageTypes, 
     ADJUST_POPULATION_BY_DISCRETE_MODEL_body, 
     GET_POPULATION_body, 
@@ -47,14 +47,14 @@ class SimpleStochasticSimulationAlgorithm( SimulationObject ):
     SENT_MESSAGE_TYPES = [ MessageTypes.ADJUST_POPULATION_BY_DISCRETE_MODEL, 
         MessageTypes.EXECUTE_SSA_REACTION ]
 
-    MessageTypes.set_sent_message_types( 'SimpleStochasticSimulationAlgorithm', SENT_MESSAGE_TYPES )
+    MessageTypesRegistry.set_sent_message_types( 'SimpleStochasticSimulationAlgorithm', SENT_MESSAGE_TYPES )
 
     # at any time instant, process messages in this order
     MESSAGE_TYPES_BY_PRIORITY = [ 
         MessageTypes.GIVE_POPULATION, 
         MessageTypes.EXECUTE_SSA_REACTION ]
 
-    MessageTypes.set_receiver_priorities( 'SimpleStochasticSimulationAlgorithm', MESSAGE_TYPES_BY_PRIORITY )
+    MessageTypesRegistry.set_receiver_priorities( 'SimpleStochasticSimulationAlgorithm', MESSAGE_TYPES_BY_PRIORITY )
 
     def __init__( self, name, random_seed=None, debug=False, write_plot_output=False, ):
         """Initialize a SimpleStochasticSimulationAlgorithm object.

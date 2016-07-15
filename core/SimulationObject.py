@@ -2,7 +2,7 @@ from __future__ import print_function
 
 from Event import Event
 from Sequential_WC_Simulator.multialgorithm.MessageTypes import MessageTypes 
-from SimulationEngine import SimulationEngine
+from Sequential_WC_Simulator.core.SimulationEngine import (SimulationEngine, MessageTypesRegistry)
 
 from copy import deepcopy
 import heapq
@@ -174,12 +174,12 @@ class SimulationObject(object):
             raise ValueError( "delay < 0 in send_event(): {}".format( str( delay ) ) )
             
         # check that the sending object type is registered to send the message type
-        if not event_type in MessageTypes.senders[ self.__class__.__name__ ]:
+        if not event_type in MessageTypesRegistry.senders[ self.__class__.__name__ ]:
             raise ValueError( "'{}' simulation objects not registered to send '{}' messages".format( 
                 self.__class__.__name__, event_type ) )
 
         # check that the receiving simulation object type is registered to receive the message type
-        if not event_type in MessageTypes.receiver_priorities[ receiving_object.__class__.__name__ ]:
+        if not event_type in MessageTypesRegistry.receiver_priorities[ receiving_object.__class__.__name__ ]:
             raise ValueError( "'{}' simulation objects not registered to receive '{}' messages".format( 
                 receiving_object.__class__.__name__, event_type ) )
             
@@ -208,7 +208,7 @@ class SimulationObject(object):
         # check for messages with invalid types
         # TODO(Arthur): do this checking at send time, probably in SimulationObject.send_event()
         invalid_types = (set( map( lambda x: x.event_type, event_list ) ) - 
-            set( MessageTypes.receiver_priorities[ self.__class__.__name__ ] ))
+            set( MessageTypesRegistry.receiver_priorities[ self.__class__.__name__ ] ))
         if len( invalid_types ):
             raise ValueError( "Error: invalid event event_type(s) '{}' in event_list:\n{}\n".format( 
                 ', '.join( list( invalid_types ) ),
@@ -219,7 +219,7 @@ class SimulationObject(object):
         # TODO(Arthur): unittest this code
         event_list = sorted( event_list, 
             key=lambda event:
-            MessageTypes.receiver_priorities[ self.__class__.__name__ ].index( event.event_type ) )
+            MessageTypesRegistry.receiver_priorities[ self.__class__.__name__ ].index( event.event_type ) )
 
         # print events for plotting by plotSpaceTimeDiagram.py
         if self.plot_output:

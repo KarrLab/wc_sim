@@ -6,7 +6,8 @@ from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, Simulatio
 from MessageTypes import (MessageTypes, ADJUST_POPULATION_BY_DISCRETE_MODEL_body, 
     ADJUST_POPULATION_BY_CONTINUOUS_MODEL_body, GET_POPULATION_body, GIVE_POPULATION_body)
 from Sequential_WC_Simulator.core.utilities import StochasticRound
-    
+from Sequential_WC_Simulator.core.SimulationEngine import MessageTypesRegistry
+
 """
 The cell's state, which represents the state of its species.
 """
@@ -189,7 +190,7 @@ class CellState( SimulationObject ):
     
     SENT_MESSAGE_TYPES = [ MessageTypes.GIVE_POPULATION ]
     # TODO(Arthur): can Python automatically get the object name (e.g. 'CellState') here?
-    MessageTypes.set_sent_message_types( 'CellState', SENT_MESSAGE_TYPES )
+    MessageTypesRegistry.set_sent_message_types( 'CellState', SENT_MESSAGE_TYPES )
 
     # at any time instant, process messages in this order
     MESSAGE_TYPES_BY_PRIORITY = [ 
@@ -197,7 +198,7 @@ class CellState( SimulationObject ):
         MessageTypes.ADJUST_POPULATION_BY_CONTINUOUS_MODEL, 
         MessageTypes.GET_POPULATION ]
 
-    MessageTypes.set_receiver_priorities( 'CellState', MESSAGE_TYPES_BY_PRIORITY )
+    MessageTypesRegistry.set_receiver_priorities( 'CellState', MESSAGE_TYPES_BY_PRIORITY )
 
     def __init__( self, name, initial_population, initial_fluxes=None, 
         shared_random_seed=None, debug=False, write_plot_output=False, log=False):

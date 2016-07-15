@@ -5,14 +5,14 @@ import unittest
 
 from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, SimulationObject)
 from Sequential_WC_Simulator.core.Event import Event
-from Sequential_WC_Simulator.core.SimulationEngine import SimulationEngine
+from Sequential_WC_Simulator.core.SimulationEngine import (SimulationEngine, MessageTypesRegistry)
 from Sequential_WC_Simulator.multialgorithm.MessageTypes import MessageTypes
 
 class ExampleSimulationObject(SimulationObject):
 
     ALL_MESSAGE_TYPES = 'init_msg'.split()
-    MessageTypes.set_sent_message_types( 'ExampleSimulationObject', ALL_MESSAGE_TYPES )
-    MessageTypes.set_receiver_priorities( 'ExampleSimulationObject', ALL_MESSAGE_TYPES )
+    MessageTypesRegistry.set_sent_message_types( 'ExampleSimulationObject', ALL_MESSAGE_TYPES )
+    MessageTypesRegistry.set_receiver_priorities( 'ExampleSimulationObject', ALL_MESSAGE_TYPES )
 
     def __init__( self, name, debug=False):
         self.debug = debug
@@ -28,8 +28,8 @@ class ExampleSimulationObject(SimulationObject):
 class InteractingSimulationObject(SimulationObject):
 
     ALL_MESSAGE_TYPES = 'init_msg'.split()
-    MessageTypes.set_sent_message_types( 'InteractingSimulationObject', ALL_MESSAGE_TYPES )
-    MessageTypes.set_receiver_priorities( 'InteractingSimulationObject', ALL_MESSAGE_TYPES )
+    MessageTypesRegistry.set_sent_message_types( 'InteractingSimulationObject', ALL_MESSAGE_TYPES )
+    MessageTypesRegistry.set_receiver_priorities( 'InteractingSimulationObject', ALL_MESSAGE_TYPES )
 
     def __init__( self, name, debug=False):
         self.debug = debug

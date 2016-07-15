@@ -4,14 +4,14 @@ from __future__ import print_function
 import unittest
 
 from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, SimulationObject)
-from Sequential_WC_Simulator.core.SimulationEngine import SimulationEngine
+from Sequential_WC_Simulator.core.SimulationEngine import (SimulationEngine, MessageTypesRegistry)
 from Sequential_WC_Simulator.multialgorithm.MessageTypes import MessageTypes
 
 class ExampleSimulationObject(SimulationObject):
 
     ALL_MESSAGE_TYPES = 'init_msg test1'.split()
-    MessageTypes.set_sent_message_types( 'ExampleSimulationObject', ALL_MESSAGE_TYPES )
-    MessageTypes.set_receiver_priorities( 'ExampleSimulationObject', ALL_MESSAGE_TYPES )
+    MessageTypesRegistry.set_sent_message_types( 'ExampleSimulationObject', ALL_MESSAGE_TYPES )
+    MessageTypesRegistry.set_receiver_priorities( 'ExampleSimulationObject', ALL_MESSAGE_TYPES )
 
 
 class TestSimulationObject(unittest.TestCase):

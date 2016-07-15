@@ -15,7 +15,7 @@ import math
 
 # TODO(Arthur): test the exceptions in these modules
 from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, SimulationObject)
-from Sequential_WC_Simulator.core.SimulationEngine import SimulationEngine
+from Sequential_WC_Simulator.core.SimulationEngine import (SimulationEngine, MessageTypesRegistry)
 from Sequential_WC_Simulator.multialgorithm.MessageTypes import (MessageTypes, ADJUST_POPULATION_BY_DISCRETE_MODEL_body, 
     Continuous_change, ADJUST_POPULATION_BY_CONTINUOUS_MODEL_body, GET_POPULATION_body, GIVE_POPULATION_body)
 from Sequential_WC_Simulator.multialgorithm.CellState import (Specie, CellState)
@@ -44,11 +44,11 @@ def parse_population_history( pop_history ):
 class TestSimulationObject(SimulationObject):
 
     SENT_MESSAGE_TYPES = [ MessageTypes.GET_POPULATION ]
-    MessageTypes.set_sent_message_types( 'TestSimulationObject', SENT_MESSAGE_TYPES )
+    MessageTypesRegistry.set_sent_message_types( 'TestSimulationObject', SENT_MESSAGE_TYPES )
 
     # at any time instant, process messages in this order
     MESSAGE_TYPES_BY_PRIORITY = [ MessageTypes.GIVE_POPULATION ]
-    MessageTypes.set_receiver_priorities( 'TestSimulationObject', MESSAGE_TYPES_BY_PRIORITY )
+    MessageTypesRegistry.set_receiver_priorities( 'TestSimulationObject', MESSAGE_TYPES_BY_PRIORITY )
     
     def __init__( self, name, pop_history, specie, debug=False, write_plot_output=False):
         self.debug = debug

@@ -6,7 +6,7 @@ import re
 import os.path as path
 
 from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, SimulationObject)
-from Sequential_WC_Simulator.core.SimulationEngine import SimulationEngine
+from Sequential_WC_Simulator.core.SimulationEngine import (SimulationEngine, MessageTypesRegistry)
 from Sequential_WC_Simulator.multialgorithm.CellState import (Specie, CellState)
 from Sequential_WC_Simulator.multialgorithm.MessageTypes import (MessageTypes, ADJUST_POPULATION_BY_DISCRETE_MODEL_body, 
     Continuous_change, ADJUST_POPULATION_BY_CONTINUOUS_MODEL_body, GET_POPULATION_body, GIVE_POPULATION_body)
@@ -111,6 +111,7 @@ class TestCellState(unittest.TestCase):
 .*initial_fluxes: {'s3': 0, 's2': 0, 's1': 0}
 .*shared_random_seed: None
 .*write_plot_output: False
+.*#debug: True
 .*log: False
 .*CellState_2 at 1.000
 .*creation_time\tevent_time\tsending_object\treceiving_object\tevent_type

@@ -18,7 +18,7 @@ import sys
 import logging
 
 from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, SimulationObject)
-from Sequential_WC_Simulator.core.SimulationEngine import SimulationEngine
+from Sequential_WC_Simulator.core.SimulationEngine import (SimulationEngine, MessageTypesRegistry)
 from Sequential_WC_Simulator.multialgorithm.CellState import CellState
 from Sequential_WC_Simulator.multialgorithm.SimpleStochasticSimulationAlgorithm import SimpleStochasticSimulationAlgorithm
 # TODO(Arthur): remove from produciton code:

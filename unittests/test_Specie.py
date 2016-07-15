@@ -5,7 +5,7 @@ import sys
 import re
 
 from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, SimulationObject)
-from Sequential_WC_Simulator.core.SimulationEngine import SimulationEngine
+from Sequential_WC_Simulator.core.SimulationEngine import (SimulationEngine, MessageTypesRegistry)
 from Sequential_WC_Simulator.multialgorithm.MessageTypes import MessageTypes
 from Sequential_WC_Simulator.multialgorithm.CellState import (Specie, CellState)
 

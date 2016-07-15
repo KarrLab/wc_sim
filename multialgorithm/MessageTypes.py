@@ -17,7 +17,6 @@ Created 2016/06/10
 @author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
 """
 
-# TODO(Arthur): IMPORTANT: disentangle the simulation-generic from the WC-simulation specific parts MessageTypes
 class MessageTypes(object):
     """A simulation application's static set of message types and their content.
     
@@ -37,19 +36,6 @@ class MessageTypes(object):
     GIVE_POPULATION = 'GIVE_POPULATION'
     EXECUTE_SSA_REACTION = 'EXECUTE_SSA_REACTION'
     
-    senders = {}
-    receiver_priorities = {}
-    
-    @staticmethod
-    def set_sent_message_types( sim_obj_name, message_types ):
-        MessageTypes.senders[ sim_obj_name ] = message_types
-    
-    @staticmethod
-    def set_receiver_priorities( sim_obj_name, message_priorities ):
-        MessageTypes.receiver_priorities[ sim_obj_name ] = message_priorities
-    
-    
-
 '''
 Define a class that stores the body of each message type. This avoids confusing the structure of a message body.
 These classes should be used by all message senders and receivers.
