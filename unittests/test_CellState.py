@@ -5,9 +5,9 @@ import sys
 import re
 import os.path as path
 
-from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, SimulationObject)
-from Sequential_WC_Simulator.core.SimulationEngine import (SimulationEngine, MessageTypesRegistry)
-from Sequential_WC_Simulator.multialgorithm.CellState import (Specie, CellState)
+from Sequential_WC_Simulator.core.SimulationObject import EventQueue, SimulationObject
+from Sequential_WC_Simulator.core.SimulationEngine import SimulationEngine, MessageTypesRegistry
+from Sequential_WC_Simulator.multialgorithm.CellState import CellState
 from Sequential_WC_Simulator.multialgorithm.MessageTypes import (MessageTypes, ADJUST_POPULATION_BY_DISCRETE_MODEL_body, 
     Continuous_change, ADJUST_POPULATION_BY_CONTINUOUS_MODEL_body, GET_POPULATION_body, GIVE_POPULATION_body)
 from UniversalSenderReceiverSimulationObject import UniversalSenderReceiverSimulationObject

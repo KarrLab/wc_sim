@@ -14,6 +14,8 @@ with warnings.catch_warnings():
     from cobra import Reaction as CobraReaction
 from itertools import chain
 from numpy import random
+from collections import namedtuple
+
 from Sequential_WC_Simulator.core.utilities import N_AVOGADRO
 import Sequential_WC_Simulator.core.utilities
 import math
@@ -21,36 +23,6 @@ import numpy as np
 import re
 from Sequential_WC_Simulator.multialgorithm.model_representation import Model, ExchangedSpecies
 
-
-class SpeciesCount(object):
-    '''
-    operations:
-        val = read()
-        write( val )
-    All operations occur at the current simulation time.
-    '''
-    __slots__ = 'id val time'.split()
-    def __init__( self, id, val = None ):
-        if val:
-            self.val = val
-        else:
-            self.val = 0
-        self.time = 0
-        # report val to CellState
-    
-    def read( self, now ):
-        if self.time == now:
-            return self.val
-        else:
-            # get val from CellState
-            pass
-            
-    def write( self, now, val ):
-        if self.time == now and self.val = val:
-            # nothing to update
-            return
-        # report val to CellState
-            
     
 #Represents a submodel
 # DES PLANNING COMMENT(Arthur): should be a SimulationObject
@@ -65,14 +37,6 @@ class Submodel(object):
         
     def setupSimulation(self):
         #initialize species counts dictionary
-        '''
-        DES PLANNING COMMENT(Arthur):
-        Plan for species counts:
-        0) prototype: all species counts in local SpeciesCounts objects that wrap simulation scheduled accesses to CellState
-        1) locality optimization: local species counts distinguish between shared and private species
-            shared species accesses all mapped into scheduled accesses to CellState
-            private species accesses simply access local species counts
-        '''
         # self.speciesCounts = { species.id : 0 for species in self.species}
         self.speciesCounts = { species.id : SpeciesCount( species.id, 0) for species in self.species}
         
@@ -87,7 +51,7 @@ class Submodel(object):
     #sets global species counts from local species counts 
     # COMMENT(Arthur): so this just overwrites global counts with local counts
     def updateGlobalCellState(self, model):
-        # DES PLANNING COMMENT(Arthur): DES must replace this with SpeciesCounts objects
+        # DES PLANNING COMMENT(Arthur): DES will SKIP THIS
         for species in self.species:
             model.speciesCounts[species.species.index, species.compartment.index] = self.speciesCounts[species.id]
             
@@ -129,6 +93,7 @@ class Submodel(object):
     def executeReaction(speciesCounts, reaction):
         # DES PLANNING COMMENT(Arthur): DES can use this
         for part in reaction.participants:
+            # DES PLANNING COMMENT(Arthur): HERE IS the population ADJUSTMENT we expect in Specie()
             speciesCounts[part.id] += part.coefficient
         return speciesCounts
     
@@ -263,6 +228,7 @@ class FbaSubmodel(Submodel):
         self.growth = self.reactionFluxes[self.metabolismProductionReaction['index']] #fraction cell/s
         
     def updateMetabolites(self, timeStep = 1):
+        # DES PLANNING COMMENT(Arthur): HERE IS the population ADJUSTMENT we expect in Specie()
         #biomass production
         for part in self.metabolismProductionReaction['reaction'].participants:
             self.speciesCounts[part.id] -= self.growth * part.coefficient * timeStep

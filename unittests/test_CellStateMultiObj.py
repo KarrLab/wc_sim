@@ -14,11 +14,11 @@ import re
 import math
 
 # TODO(Arthur): test the exceptions in these modules
-from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, SimulationObject)
-from Sequential_WC_Simulator.core.SimulationEngine import (SimulationEngine, MessageTypesRegistry)
+from Sequential_WC_Simulator.core.SimulationObject import EventQueue, SimulationObject
+from Sequential_WC_Simulator.core.SimulationEngine import SimulationEngine, MessageTypesRegistry
 from Sequential_WC_Simulator.multialgorithm.MessageTypes import (MessageTypes, ADJUST_POPULATION_BY_DISCRETE_MODEL_body, 
     Continuous_change, ADJUST_POPULATION_BY_CONTINUOUS_MODEL_body, GET_POPULATION_body, GIVE_POPULATION_body)
-from Sequential_WC_Simulator.multialgorithm.CellState import (Specie, CellState)
+from Sequential_WC_Simulator.multialgorithm.CellState import CellState
 from UniversalSenderReceiverSimulationObject import UniversalSenderReceiverSimulationObject
 
 def parse_population_history( pop_history ):
@@ -80,9 +80,16 @@ class TestSimulationObject(SimulationObject):
                         # Key point: TestSimulationObject.TestCaseRef is a reference to a unittest.TestCase, 
                         # which is set by TestSimulation.testSimulation( ) below
                         # This test works for any sequence of the stochastic rounding because either round matches
+                        # on 2016/07/20 I saw a single, non-reproducible (in over 10,000 attempts) failure of this test; 
+                        # the msg will make such a failure be more easily tracked if it reappears
                         TestSimulationObject.TestCaseRef.assertTrue( 
                             populations.population[self.specie] == math.ceil(correct_pop) or
-                            populations.population[self.specie] == math.floor(correct_pop) )
+                            populations.population[self.specie] == math.floor(correct_pop), 
+                            msg="At event_time {} for specie: '{}': with rounding, the correct population "
+                            "should be {} or {}; but the actual population is {}".format( 
+                                event_message.event_time, self.specie,
+                                math.floor(correct_pop), math.ceil(correct_pop), 
+                                populations.population[self.specie] ))
             else:
                 print "Shouldn't get here - event_message.event_type should be covered in the "
                 "if statement above"
@@ -100,7 +107,7 @@ class TestSimulation(unittest.TestCase):
      
     @staticmethod
     def make_CellState( pop, init_flux, debug=False, write_plot_output=False, name=None ):
-        if not name:
+        if name is None:
             name = TestSimulation.get_name()
         if debug:
             print "Creating CellState( {}, --population--, debug={}, write_plot_output={} ) ".format(

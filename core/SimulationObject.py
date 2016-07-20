@@ -1,5 +1,12 @@
 from __future__ import print_function
 
+"""
+Base class for simulation objects. 
+
+Created 2016/06/01
+@author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+"""
+
 from Event import Event
 from Sequential_WC_Simulator.multialgorithm.MessageTypes import MessageTypes 
 from Sequential_WC_Simulator.core.SimulationEngine import (SimulationEngine, MessageTypesRegistry)
@@ -14,13 +21,6 @@ logger = logging.getLogger(__name__)
 
 # control logging level with: logger.setLevel()
 # this enables debug output: logging.basicConfig( level=logging.DEBUG )
-
-"""
-Base class for simulation objects. 
-
-Created 2016/06/01
-@author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
-"""
 
 class EventQueue(object):
     """A simulation object's event queue.

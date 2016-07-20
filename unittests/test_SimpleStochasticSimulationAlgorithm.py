@@ -17,6 +17,7 @@ class TestSimpleStochasticSimulationAlgorithm(unittest.TestCase):
     def setUp(self):
         SimulationEngine.reset()
 
+    @unittest.skip("skip, as not a test")
     def test_SimpleStochasticSimulationAlgorithm(self):
 
         # TODO(Arthur): use assert for testing; stop printing

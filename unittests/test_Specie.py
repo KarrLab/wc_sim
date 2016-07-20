@@ -7,7 +7,7 @@ import re
 from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, SimulationObject)
 from Sequential_WC_Simulator.core.SimulationEngine import (SimulationEngine, MessageTypesRegistry)
 from Sequential_WC_Simulator.multialgorithm.MessageTypes import MessageTypes
-from Sequential_WC_Simulator.multialgorithm.CellState import (Specie, CellState)
+from Sequential_WC_Simulator.multialgorithm.specie import Specie
 
 
 class TestSpecie(unittest.TestCase):
@@ -15,7 +15,7 @@ class TestSpecie(unittest.TestCase):
     # these tests cover all executable statements in Specie(), including exceptions, and 
     # all branches
     def test_Specie(self):
-        s1 = Specie( 'specie', 10, initial_flux=0 )
+        s1 = Specie( 'specie', 10 )
         
         self.assertEqual( s1.get_population( ), 10 )
         s1.discrete_adjustment( 1 )
@@ -23,6 +23,9 @@ class TestSpecie(unittest.TestCase):
         s1.discrete_adjustment( -1 )
         self.assertEqual( s1.get_population( ), 10 )
 
+        s1 = Specie( 'specie', 10, initial_flux=0 )
+        self.assertEqual( 'specie_name:specie; last_population:10; continuous_time:0; continuous_flux:0', str(s1) )
+        
         with self.assertRaises(AssertionError) as context:
             s1.continuous_adjustment( 2, -23, 1 )
         self.assertIn( 'negative time:', context.exception.message )
@@ -65,7 +68,7 @@ class TestSpecie(unittest.TestCase):
         self.assertIn( '__init__(): population should be >= 0', context.exception.message )
     
     def test_Specie_stochastic_rounding(self):
-        s1 = Specie( 'specie', 10.5, initial_flux=0 )
+        s1 = Specie( 'specie', 10.5 )
         
         samples = 1000
         for i in range(samples):
@@ -76,6 +79,7 @@ class TestSpecie(unittest.TestCase):
         # TODO(Arthur): make sure P[ 10.4 <= mean <= 10.6 ] is high enough 
         self.assertTrue( 10.4 <= mean <= 10.6 )
         
+        s1 = Specie( 'specie', 10.5, initial_flux=0 )
         s1.continuous_adjustment( 0, 1, 0.25 )
         for i in range(samples):
             self.assertEqual( s1.get_population( 3 ), 11.0 )
