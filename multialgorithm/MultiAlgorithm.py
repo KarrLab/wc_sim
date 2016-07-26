@@ -17,6 +17,8 @@ Created 2016/07/14
 @author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
 """
 
+# TODO(Arthur): IMPORTANT: provide 'returns' documentation for all return operations
+
 import sys
 import logging
 import argparse
@@ -26,7 +28,6 @@ import warnings
 # Use refactored WcModelingTutorial modules
 from Sequential_WC_Simulator.multialgorithm.model_representation import Model
 from Sequential_WC_Simulator.multialgorithm.model_loader import getModelFromExcel
-
 '''
 import inspect
 print inspect.getfile( load_workbook )
@@ -35,16 +36,15 @@ for p in sys.path:
     if 'Library' in p:
         print p
 '''
-
 from Sequential_WC_Simulator.core.SimulationObject import EventQueue, SimulationObject
 from Sequential_WC_Simulator.core.SimulationEngine import SimulationEngine, MessageTypesRegistry
 from Sequential_WC_Simulator.multialgorithm.CellState import CellState
-from Sequential_WC_Simulator.multialgorithm.SimpleStochasticSimulationAlgorithm import SimpleStochasticSimulationAlgorithm
+from Sequential_WC_Simulator.multialgorithm.submodels.simple_SSA_submodel import simple_SSA_submodel
+from Sequential_WC_Simulator.multialgorithm.submodels.FBA_submodel import FbaSubmodel
 from Sequential_WC_Simulator.multialgorithm.MessageTypes import (MessageTypes, 
     ADJUST_POPULATION_BY_DISCRETE_MODEL_body, 
     Continuous_change, ADJUST_POPULATION_BY_CONTINUOUS_MODEL_body, 
-    GET_POPULATION_body, GIVE_POPULATION_body,
-    EXECUTE_SSA_REACTION_body )
+    GET_POPULATION_body, GIVE_POPULATION_body )
 from Sequential_WC_Simulator.core.LoggingConfig import setup_logger
 
 class MultiAlgorithm( object ):
@@ -80,10 +80,9 @@ class MultiAlgorithm( object ):
         '''
         Steps:
         0. read model description
-        1. create and configure simulation objects
-        2. create initial events
-        3. run simulation
-        4. plot results
+        1. create and configure simulation objects, including their initial events
+        2. run simulation
+        3. plot results
         '''
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -91,14 +90,28 @@ class MultiAlgorithm( object ):
             print "Reading model from '{}'".format( args.model_filename )
             the_model = getModelFromExcel( args.model_filename )
             print the_model.summary()
+            
+            '''Prepare submodels for computation'''
+            the_model.setupSimulation()
         
-        # 1. create and configure simulation submodels
-        # SSA
-        # FBA
-        
-        # 2. create initial events
+        # 1. create and configure simulation submodels, including initial events
+        shared_cell_states=[ the_model.the_SharedMemoryCellState ]
+        for submodel_spec in the_model.submodels:
+            if submodel_spec.algorithm == 'SSA':
+                print 'create SSA submodel:', submodel_spec.name, submodel_spec.algorithm
+                submodel_spec.the_submodel = simple_SSA_submodel( the_model, submodel_spec.name, submodel_spec.id, 
+                    None, shared_cell_states, submodel_spec.reactions, submodel_spec.species )
+            elif submodel_spec.algorithm == 'FBA':
+                print 'donot create FBA submodel:', submodel_spec.name, submodel_spec.algorithm
+                '''
+                submodel_spec.the_submodel = FbaSubmodel( the_model, submodel_spec.name, submodel_spec.id, 
+                    None, shared_cell_states, submodel_spec.reactions, submodel_spec.species )
+                '''
+            else:
+                raise Exception("Undefined algorithm '{}' for submodel '{}'".format(
+                    submodel_spec.algorithm, submodel_spec.name ) )
 
-        # 3. run simulation
+        # 2. run simulation
         SimulationEngine.simulate( args.end_time )
     
 if __name__ == '__main__':

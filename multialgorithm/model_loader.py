@@ -17,7 +17,7 @@ import math
 import re
 
 from Sequential_WC_Simulator.multialgorithm.model_representation import *
-from Sequential_WC_Simulator.multialgorithm.integrate_model import Submodel, FbaSubmodel, SsaSubmodel
+from Sequential_WC_Simulator.multialgorithm.submodels import submodel
 
 
 #Reads model from Excel file into a Python object
@@ -33,21 +33,29 @@ def getModelFromExcel(filename):
     #submodels
     ws = wb['Submodels']
     for iRow in range(2, ws.max_row + 1):
-        # COMMENT(Arthur): make this more concise & data driven, 
+        # COMMENT(Arthur): make this more concise & data driven; column numbers very fragile
         # e.g., write ws.getNextRow() to get next row
         # and id = ws.get( 'ID' ), id = ws.get( 'Name' ), etc. where 'ID' refers to the column heading
         # even better, write  id, name, algorithm = ws.get( 'ID', 'Name', 'Algorithm' ) 
         id = ws.cell(row = iRow, column = 1).value
         name = ws.cell(row = iRow, column = 2).value
         algorithm = ws.cell(row = iRow, column = 3).value
+        '''
+        COMMENT(Arthur): 
+        Must not instantiate submodels yet, as they may be objects running on other nodes, either for
+        parallel execution of sequential simulations or parallel simulations.
+        Rather, save them in submodel structures.
+
         if algorithm == 'FBA':
-            subModel = FbaSubmodel(id = id, name = name)
+            subModel = FbaSubmodel( model, id = id, name = name)
         elif algorithm == 'SSA':
-            subModel = SsaSubmodel(id = id, name = name)
+            subModel = SsaSubmodel( model, id = id, name = name)
         else:
             # COMMENT(Arthur): can use "".format()
             raise Exception('Undefined algorithm "%s" for submodel "%s"' % (algorithm, id))
-        model.submodels.append(subModel)
+        '''
+        the_submodel = SubmodelSpecification( id, name, algorithm )
+        model.submodels.append(the_submodel)
             
     #compartments
     ws = wb['Compartments']
@@ -97,7 +105,6 @@ def getModelFromExcel(filename):
             
     #reactions
     ws = wb['Reactions']
-        
     for iRow in range(2, ws.max_row + 1):
         stoichiometry = parseStoichiometry(ws.cell(row = iRow, column = 4).value)
         
@@ -110,7 +117,7 @@ def getModelFromExcel(filename):
         model.reactions.append(Reaction(
             id = ws.cell(row = iRow, column = 1).value,
             name = ws.cell(row = iRow, column = 2).value,
-            submodel = ws.cell(row = iRow, column = 3).value,
+            submodel_spec = ws.cell(row = iRow, column = 3).value,
             reversible = stoichiometry['reversible'],
             participants = stoichiometry['participants'],
             enzyme = ws.cell(row = iRow, column = 5).value,
@@ -132,7 +139,7 @@ def getModelFromExcel(filename):
         model.parameters.append(Parameter(
             id = ws.cell(row = iRow, column = 1).value,
             name = ws.cell(row = iRow, column = 2).value,
-            submodel = ws.cell(row = iRow, column = 3).value,
+            submodel_spec = ws.cell(row = iRow, column = 3).value,
             value = float(ws.cell(row = iRow, column = 4).value),
             units = ws.cell(row = iRow, column = 5).value,
             comments = ws.cell(row = iRow, column = 6).value,
@@ -157,6 +164,7 @@ def getModelFromExcel(filename):
     model.setComponentIndices()
             
     '''deserialize references'''
+    # ensure that all components are defined
     undefinedComponents = []
     
     #species concentration 
@@ -170,11 +178,11 @@ def getModelFromExcel(filename):
             
     #reaction submodel, participant species, participant compartments, enzymes
     for reaction in model.reactions:
-        id = reaction.submodel        
+        id = reaction.submodel_spec
         obj = model.getComponentById(id, model.submodels)
         if id and obj is None:
             undefinedComponents.append(id)
-        reaction.submodel = obj
+        reaction.submodel_spec = obj
         
         for part in reaction.participants:
             id = part.species            
@@ -199,35 +207,35 @@ def getModelFromExcel(filename):
 
     #parameter submodels
     for param in model.parameters:
-        id = param.submodel
+        id = param.submodel_spec
         if id:
             obj = model.getComponentById(id, model.submodels)
             if obj is None:
                 undefinedComponents.append(id)
-            param.submodel = obj
+            param.submodel_spec = obj
 
     if len(undefinedComponents) > 0:
         undefinedComponents = list(set(undefinedComponents))
         undefinedComponents.sort()
         raise Exception('Undefined components:\n- %s' % ('\n- '.join(undefinedComponents)))
         
-    ''' Assemble back rerferences'''
-    for subModel in model.submodels:
-        subModel.reactions = []
-        subModel.species = []
-        subModel.parameters = []
+    ''' Assemble back references'''
+    for submodel_spec in model.submodels:
+        submodel_spec.reactions = []
+        submodel_spec.species = []
+        submodel_spec.parameters = []
     for rxn in model.reactions:
-        rxn.submodel.reactions.append(rxn)
+        rxn.submodel_spec.reactions.append(rxn)
         for part in rxn.participants:
-            rxn.submodel.species.append('%s[%s]' % (part.species.id, part.compartment.id))
+            rxn.submodel_spec.species.append('%s[%s]' % (part.species.id, part.compartment.id))
         if rxn.enzyme:
-            rxn.submodel.species.append('%s[%s]' % (rxn.enzyme.id, 'c'))
+            rxn.submodel_spec.species.append('%s[%s]' % (rxn.enzyme.id, 'c'))
         if rxn.rateLaw:
-            rxn.submodel.species += rxn.rateLaw.getModifiers(model.species, model.compartments)
+            rxn.submodel_spec.species += rxn.rateLaw.getModifiers(model.species, model.compartments)
     
     for param in model.parameters:
-        if param.submodel:
-            param.submodel.parameters.append(param)
+        if param.submodel_spec:
+            param.submodel_spec.parameters.append(param)
             
     for subModel in model.submodels:
         speciesStrArr = list(set(subModel.species))
@@ -249,10 +257,6 @@ def getModelFromExcel(filename):
         if rxn.rateLaw:
             rxn.rateLaw.transcode(model.species, model.compartments)
         
-    '''Prepare submodels for computation'''
-    model.setupSimulation()
-        
-    '''Return'''
     return model
     
 #Parse a string representing the stoichiometry of a reaction into a Python object

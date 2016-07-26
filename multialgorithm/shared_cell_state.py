@@ -24,7 +24,8 @@ class SharedMemoryCellState( object ):
     Attributes:
         name: the name of this object
         time: the time of the current operation
-        population: a set of species, represented by Specie objects
+        population: dict: specie_name -> Specie(); the species whose counts are stored,
+            represented by Specie objects
         logger_name: string; name of logger for the SharedMemoryCellState
     
     # TODO(Arthur): extend beyond population, e.g., to represent binding sites for individual macromolecules
@@ -93,17 +94,36 @@ class SharedMemoryCellState( object ):
                 self.log_event( 'initial_state', self.population[specie_name] )
 
     def check_species( self, species ):
-        """Check whether the species are known by this SharedMemoryCellState.
+        """Check whether the species are a list, and not known by this SharedMemoryCellState.
         
         Raises:
+            ValueError: species are not a list
             ValueError: adjustment attempts to change the population of a non-existent species
         """
+        if not isinstance( species, list ):
+            raise ValueError( "Error: species '{}' must be a list\n".format( species ) )
         unknown_species = set( species ) - set( self.population.keys() ) 
         if unknown_species:
             # raise exeception if some species are non-existent
             raise ValueError( "Error: request for population of unknown specie(s): {}\n".format( 
                 ', '.join(map( lambda x: "'{}'".format( str(x) ), unknown_species ) ) ) )
 
+    def init( self, specie_name, population, initial_flux_given=None ):
+        """Initialize a specie with the given population.
+        
+        Args:
+            specie: string; a unique specie name
+            population: float; initial population of the specie
+            initial_flux_given: float; optional; initial flux for the specie
+
+        Raises:
+            ValueError: if the specie is already stored by this SharedMemoryCellState
+        """
+        if specie_name in self.population:
+            raise ValueError( "Error: specie_name '{}' already stored by this SharedMemoryCellState\n".format( specie_name ) )
+        self.population[specie_name] = Specie( specie_name, population, 
+                    initial_flux=initial_flux_given )
+                    
     def read( self, time, species ):
         """Read the predicted population of a list of species at a particular time.
         
@@ -136,7 +156,11 @@ class SharedMemoryCellState( object ):
         self.check_species( adjustments.keys() )
         self.time = time
         for specie in adjustments.keys():
-            self.population[specie].discrete_adjustment( adjustments[specie] )
+            try:
+                self.population[specie].discrete_adjustment( adjustments[specie] )
+            except ValueError as e:
+                print e
+                raise ValueError( "Error: on specie {}: {}".format( specie, e ) )
             self.log_event( 'discrete_adjustment', self.population[specie] )
     
     def adjust_continuously( self, time, adjustments ):

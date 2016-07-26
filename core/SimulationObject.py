@@ -127,6 +127,7 @@ class SimulationObject(object):
         time: A float containing the simulation object's current simulation time.
         event_queue: The object's EventQueue.
         plot_output: A boolean, indicating whether to print events, formatted for later plotting
+        num_events: int; number of events processed
         # TODO(Arthur): use Python logging for printing the event_queue
         # TODO(Arthur): important: in general, replace print statements with logging
     """
@@ -144,6 +145,7 @@ class SimulationObject(object):
         self.name = name
         self.plot_output = plot_output
         self.time = 0.0
+        self.num_events = 0
         self.register()
         
     def register( self ):
@@ -204,6 +206,8 @@ class SimulationObject(object):
         Raises:
             ValueError: if some event message in event_list has an invalid type
         """
+        
+        self.num_events += 1
         
         # check for messages with invalid types
         # TODO(Arthur): do this checking at send time, probably in SimulationObject.send_event()

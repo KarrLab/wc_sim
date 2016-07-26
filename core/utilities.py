@@ -48,7 +48,7 @@ class StochasticRound( object ):
             x: a float to be stochastically rounded.
             
         Returns:
-            A stochastically round of x.
+            A stochastic round of x.
         """
         floor_x = math.floor( x )
         fraction = x - floor_x

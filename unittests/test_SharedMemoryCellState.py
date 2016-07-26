@@ -30,7 +30,11 @@ class TestSharedMemoryCellState(unittest.TestCase):
         # test both discrete and hybrid species
         
         with self.assertRaises(ValueError) as context:
-            the_SM_CellState.check_species( 'x' )
+            the_SM_CellState.check_species( 2 )
+        self.assertIn( "must be a list", context.exception.message )
+        
+        with self.assertRaises(ValueError) as context:
+            the_SM_CellState.check_species( ['x'] )
         self.assertIn( "Error: request for population of unknown specie(s):", context.exception.message )
         
         self.assertEqual( the_SM_CellState.read( 0, self.species ), self.init_populations )
@@ -50,6 +54,14 @@ class TestSharedMemoryCellState(unittest.TestCase):
         for (SM_CellState, flux) in [(self.a_SM_CellState,self.flux), (self.a_SM_CellState_no_init_flux,None)]:
             self.reusable_test( SM_CellState, flux )
             
+    def test_init(self):
+        a_SM_CellState = SharedMemoryCellState( 'test', {} )
+        a_SM_CellState.init( 's1', 2 )
+        self.assertEqual( a_SM_CellState.read( 0, ['s1'] ),  {'s1': 2} )
+        with self.assertRaises(ValueError) as context:
+            a_SM_CellState.init( 's1', 2 )
+        self.assertIn( "Error: specie_name 's1' already stored by this SharedMemoryCellState", context.exception.message )
+
 if __name__ == '__main__':
     try:
         unittest.main()

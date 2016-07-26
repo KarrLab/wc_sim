@@ -6,6 +6,8 @@ Represents a model as a set of objects.
 @author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
 '''
 
+# TODO(Arthur): clean up comments
+
 from itertools import chain
 import math
 import numpy as np
@@ -17,12 +19,36 @@ with warnings.catch_warnings():
     from cobra import Reaction as CobraReaction
 
 from Sequential_WC_Simulator.core.utilities import N_AVOGADRO
+from Sequential_WC_Simulator.multialgorithm.shared_cell_state import SharedMemoryCellState
 
-#Represents a model (submodels, compartments, species, reactions, parameters, references)
-# COMMENT(Arthur): tabs were providing indentation, which confused the parser; converted them to spaces
 class Model(object):
+    """Model represents all the data in a whole-cell model.
+    
+    Currently, a model is instantiated and loaded from a stored representation in an Excel by
+    model_loader.getModelFromExcel().
+
+    Attributes:
+        name: type; description
+        submodels: list; submodel specifications and references
+        compartments: list; compartment specifications 
+        species: list; species specifications 
+        reactions: list; reactions specifications 
+        parameters: type; description
+        references: list; submodel specifications 
+        fractionDryWeight: type; description
+        volume: type; description
+        extracellularVolume: type; description
+        density: type; description
+        growth: type; description
+        the_SharedMemoryCellState: type; description
+        mass: type; description
+        dryWeight: type; description
+        speciesCounts: type; description
+    # TODO(Arthur): expand this attribute documentation
+    """
     
     def __init__(self, submodels = [], compartments = [], species = [], reactions = [], parameters = [], references = []):
+        self.name = 'temp_name'         # TODO(Arthur): get real name
         self.submodels = submodels
         self.compartments = compartments
         self.species = species
@@ -31,17 +57,28 @@ class Model(object):
         self.references = references       
         
     def setupSimulation(self):
-        # COMMENT(Arthur): minor point, but as we discussed fractionDryWeight isn't standard
-        # python naming for a variable; here's the Google Python Style Guide
-        # https://google.github.io/styleguide/pyguide.html
+        """Set up a discrete-event simulation from the specification.
+        """
         self.fractionDryWeight = self.getComponentById('fractionDryWeight', self.parameters).value
     
+        '''
         for subModel in self.submodels:
             subModel.setupSimulation()
-
+        '''
         self.calcInitialConditions()
             
+    @staticmethod
+    def species_compartment_name( species, compartment ):
+        """Provide a unique identifier for a species in a compartment, of the form species_id[compartment_it].
+        """
+        return "{}[{}]".format( species.id, compartment.id )
+        
     def calcInitialConditions(self):
+        """Set up the initial conditions for a simulation. 
+        
+        Prepare data that has been loaded into a model.
+        The primary simulation data are species counts, stored in a SharedMemoryCellState().
+        """
         cellComp = self.getComponentById('c', self.compartments)
         extrComp = self.getComponentById('e', self.compartments)
         
@@ -50,13 +87,21 @@ class Model(object):
         self.extracellularVolume = extrComp.initialVolume
         
         #species counts
-        self.speciesCounts = np.zeros((len(self.species), len(self.compartments)))
+        self.the_SharedMemoryCellState = SharedMemoryCellState( "the_CellState_for_{}".format( self.name ), {} )
         for species in self.species:
             for conc in species.concentrations:
-                self.speciesCounts[species.index, conc.compartment.index] = conc.value * conc.compartment.initialVolume * N_AVOGADRO
+                '''
+                print "species_id: {}; conc: {}, count: {}".format( 
+                    Model.species_compartment_name( species, conc.compartment ),
+                    conc.value,
+                    conc.value * conc.compartment.initialVolume * N_AVOGADRO )
+                '''
+                self.the_SharedMemoryCellState.init( 
+                    Model.species_compartment_name( species, conc.compartment ), 
+                    conc.value * conc.compartment.initialVolume * N_AVOGADRO )
         
         #cell mass
-        self.calcMass()                
+        self.calcMass( 0. )  # initial conditiona at now=0
          
         #density
         self.density = self.mass / self.volume
@@ -64,20 +109,38 @@ class Model(object):
         #growth
         self.growth = np.nan
         
-        #sync submodels
-        for subModel in self.submodels:
-            subModel.updateLocalCellState(self)
+    def getSpeciesCountArray(self, now):
+        """Map current species counts into an np array.
         
-    def calcMass(self):
+        Args:
+            now: float; the current time
+            
+        Return:
+            numpy array, #species x # compartments, containing count of specie in compartment
+        """
+        # TODO(Arthur): avoid wastefully converting between dictionary and array representations of copy numbers
+        speciesCounts = np.zeros((len(self.species), len(self.compartments)))
+        for species in self.species:
+            for compartment in self.compartments:
+                specie_name = Model.species_compartment_name(species, compartment)
+                speciesCounts[ species.index, compartment.index ] = \
+                    self.the_SharedMemoryCellState.read( now, [specie_name] )[specie_name]
+        return speciesCounts
+        
+    def calcMass(self, now):
+        # now: the current simulation time
         for comp in self.compartments:
             if comp.id == 'c':
                 iCellComp = comp.index
+                the_cytoplasm = comp
     
         mass = 0.
+        speciesCounts = self.getSpeciesCountArray( now )
         for species in self.species:
             # COMMENT(Arthur): isn't a weight of None an error, hopefully caught earlier
             if species.molecularWeight is not None:
-                mass += self.speciesCounts[species.index, iCellComp] * species.molecularWeight
+                mass += speciesCounts[species.index, iCellComp] * species.molecularWeight
+                
         mass /= N_AVOGADRO
         
         self.mass = mass
@@ -103,28 +166,33 @@ class Model(object):
             obj.index = index
         
     #get species counts as dictionary
+    # DES PLAN: not used, so do not worry
+    """
     def getSpeciesCountsDict(self):           
         speciesCountsDict = {}
         for species in self.species:
             for compartment in self.compartments:
                 speciesCountsDict['%s[%s]' % (species.id, compartment.id)] = self.speciesCounts[species.index, compartment.index]                
         return speciesCountsDict
+    """
     
     #set species counts from dictionary
+    # DES PLAN: also not used, so do not worry
+    """
     def setSpeciesCountsDict(self, speciesCountsDict):
         for species in self.species:
             for compartment in self.compartments:
                 self.speciesCounts[species.index, compartment.index] = speciesCountsDict['%s[%s]' % (species.id, compartment.id)]
-                
+    """
+    
     #get species concentrations
-    def getSpeciesConcentrations(self):
-        # COMMENT(Arthur): I added parens so one doesn't need to know 
-        # Python operator precedence to understand the code
-        return (self.speciesCounts / self.getSpeciesVolumes()) / N_AVOGADRO
+    def getSpeciesConcentrations(self, now ):
+        speciesCounts = self.getSpeciesCountArray( now )
+        return ( speciesCounts / self.getSpeciesVolumes() ) / N_AVOGADRO
         
     #get species concentrations
-    def getSpeciesConcentrationsDict(self):
-        concs = self.getSpeciesConcentrations()
+    def getSpeciesConcentrationsDict(self, now ):
+        concs = self.getSpeciesConcentrations( now )
         speciesConcsDict = {}
         for species in self.species:
             for compartment in self.compartments:
@@ -157,18 +225,22 @@ class Model(object):
     def getTotalRnaCount(self):
         cellComp = self.getComponentById('c', self.compartments)
         tot = 0
+        # DES PLAN: use a temporary speciesCounts array
+        speciesCounts = self.getSpeciesCountArray( now )
         for species in self.species:
             if species.type == 'RNA':
-               tot += self.speciesCounts[species.index, cellComp.index]
+                tot += speciesCounts[species.index, cellComp.index]
         return tot
          
     #get total protein copy number
     def getTotalProteinCount(self):
         cellComp = self.getComponentById('c', self.compartments)
         tot = 0
+        # DES PLAN: use a temporary speciesCounts array
+        speciesCounts = self.getSpeciesCountArray( now )
         for species in self.species:
             if species.type == 'Protein':
-               tot += self.speciesCounts[species.index, cellComp.index]
+                tot += speciesCounts[species.index, cellComp.index]
         return tot
     
     def getComponentById(self, id, components = None):
@@ -187,13 +259,38 @@ class Model(object):
             counts.append( "{}: {}".format( attr, len( getattr( self, attr ) ) ) )
         return "Model contains:\n{}".format( '\n'.join( counts ) )
         
+    # TODO(Arthur): need a consistency checker
+    
+
+# represent a submodel
+class SubmodelSpecification(object):
+    """Specification for a submodel, obtained from the input spec.
+
+    Attributes:
+        id: string; a unique identifier for the submodel
+        name: string; a unique name for the submodel
+        algorithm: string; the algorithm used to integrate the submodel
+        the_submodel: reference; the Submodel object, after it has been instantiated
+    """
+    
+    def __init__(self, id, name, algorithm ):
+        self.id = id
+        self.name = name
+        self.algorithm = algorithm
+        self.the_submodel = None
+    
 #Represents a compartment
 class Compartment(object):
-    index = None
-    id = ''
-    name = ''
-    initialVolume = None
-    comments = ''
+    """Specification for a Compartment, obtained from the input spec.
+
+    Attributes:
+        index = None
+        id = ''
+        name = ''
+        initialVolume = None
+        comments = ''
+    # TODO(Arthur): expand this attribute documentation
+    """
     
     def __init__(self, id = '', name = '', initialVolume = None, comments = ''):
         self.id = id
@@ -203,17 +300,24 @@ class Compartment(object):
         
 #Represents a species
 class Species(object):
-    index = None
-    id = ''
-    name = ''
-    structure = ''
-    empiricalFormula = ''
-    molecularWeight = None
-    charge = None
-    type = ''
-    concentrations = []
-    crossRefs = []
-    comments = ''
+    """Specification for a molecular specie, obtained from the input spec.
+    
+    # TODO(Arthur): fix singular and plural use of specie & species; e.g., this should be a Specie.
+
+    Attributes:
+        index = None
+        id = ''
+        name = ''
+        structure = ''
+        empiricalFormula = ''
+        molecularWeight = None
+        charge = None
+        type = ''
+        concentrations = []
+        crossRefs = []
+        comments = ''
+    # TODO(Arthur): expand this attribute documentation
+    """
     
     def __init__(self, id = '', name = '', structure = '', empiricalFormula = '', molecularWeight = None, 
         charge = None, type = '', concentrations = [], crossRefs = [], comments = ''):
@@ -235,21 +339,26 @@ class Species(object):
 
 #Represents a reaction
 class Reaction(object):
-    index = None
-    id = ''
-    name = ''
-    submodel = ''
-    reversible = None
-    participants = []
-    enzyme = ''
-    rateLaw = None
-    vmax = None
-    km = None
-    crossRefs = []
-    comments = ''
+    """Specification for a Reaction, obtained from the input spec.
 
-    # COMMENT(Arthur): for debugging would be nice to retain the initial Stoichiometry text
-    def __init__(self, id = '', name = '', submodel = '', reversible = None, participants = [], 
+    Attributes:
+        index = None
+        id = ''
+        name = ''
+        submodel_spec = None
+        reversible = None
+        participants = []
+        enzyme = ''
+        rateLaw = None
+        vmax = None
+        km = None
+        crossRefs = []
+        comments = ''
+    # TODO(Arthur): expand this attribute documentation
+    """
+
+    # COMMENT(Arthur): for debugging would be nice to retain the initial reaction text
+    def __init__(self, id = '', name = '', submodel_spec = None, reversible = None, participants = [], 
         enzyme = '', rateLaw = '', vmax = None, km = None, crossRefs = [], comments = ''):
         
         if vmax:
@@ -259,7 +368,7 @@ class Reaction(object):
         
         self.id = id    
         self.name = name
-        self.submodel = submodel
+        self.submodel_spec = submodel_spec
         self.reversible = reversible
         self.participants = participants
         self.enzyme = enzyme
@@ -312,29 +421,39 @@ class Reaction(object):
         
 #Represents a model parameter
 class Parameter(object):
-    index = None
-    id = ''
-    name = ''
-    submodel = None
-    value = None
-    units = ''
-    comments = ''
+    """Specification for a Parameter, obtained from the input spec.
+
+    Attributes:
+        index = None
+        id = ''
+        name = ''
+        submodel_spec = None
+        value = None
+        units = ''
+        comments = ''
+    # TODO(Arthur): expand this attribute documentation
+    """
     
-    def __init__(self, id = '', name = '', submodel = '', value = None, units = '', comments = ''):
+    def __init__(self, id = '', name = '', submodel_spec = '', value = None, units = '', comments = ''):
         self.id = id
         self.name = name
-        self.submodel = submodel
+        self.submodel_spec = submodel_spec
         self.value = value
         self.units = units
         self.comments = comments
             
 #Represents a reference
 class Reference(object):
-    index = None
-    id = ''
-    name = ''
-    crossRefs = []
-    comments = ''
+    """Specification for a Reference, obtained from the input spec.
+
+    Attributes:
+        index = None
+        id = ''
+        name = ''
+        crossRefs = []
+        comments = ''
+    # TODO(Arthur): expand this attribute documentation
+    """
     
     def __init__(self, id = '', name = '', crossRefs = [], comments = ''):
         self.id = id
@@ -344,8 +463,13 @@ class Reference(object):
 
 #Represents a concentration in a compartment
 class Concentration(object):
-    compartment = ''
-    value = None
+    """Specification for a Concentration, obtained from the input spec.
+
+    Attributes:
+        compartment = ''
+        value = None
+    # TODO(Arthur): expand this attribute documentation
+    """
     
     def __init__(self, compartment = '', value = None):
         self.compartment = compartment
@@ -353,12 +477,14 @@ class Concentration(object):
     
 #Represents a participant in a submodel
 class SpeciesCompartment(object):
-    index = None    
-    species = ''
-    compartment = ''
-    
-    id = ''
-    name = ''
+    """Specification for a SpeciesCompartment, obtained from the input spec.
+
+    Attributes:
+        index = None    
+        species = ''
+        compartment = ''
+    # TODO(Arthur): expand this attribute documentation
+    """
     
     def __init__(self, index = None, species = '', compartment = ''):
         self.index = index
@@ -371,21 +497,29 @@ class SpeciesCompartment(object):
       
 #Represents an external 
 class ExchangedSpecies(object):
-    id = ''
-    reactionIndex = None
+    """Specification for a ExchangedSpecies, obtained from the input spec.
+
+    Attributes:
+        id = ''
+        reactionIndex = None
+    # TODO(Arthur): expand this attribute documentation
+    """
     
     def __init__(self, id = '', reactionIndex = None):
         self.id = id
         self.reactionIndex = reactionIndex
     
-#Represents a participant in a reaction
 class ReactionParticipant(object):
-    species = ''
-    compartment = ''
-    coefficient = None
-    
-    id = ''
-    name = ''
+    """Specification for a ReactionParticipant, obtained from the input spec.
+
+    Attributes:
+        species = ''
+        compartment = ''
+        coefficient = None
+        id
+        name
+    # TODO(Arthur): expand this attribute documentation
+    """
     
     def __init__(self, species = '', compartment = '', coefficient = None):
         self.species = species
@@ -393,13 +527,25 @@ class ReactionParticipant(object):
         self.coefficient = coefficient
         
     def calcIdName(self):
+        # TODO(Arthur): IMPORTANT: dangerous: need to call calcIdName whenever self.species or 
+        # self.compartment changes; much safer better to not precompute these, and just create them dynamically
+        # applies to other calcIdName() methods too
         self.id = '%s[%s]' % (self.species.id, self.compartment.id)
         self.name = '%s (%s)' % (self.species.name, self.compartment.name)
+        
+    def __str__(self):
+        return "specie: {}; compartment: {}; coefficient: {}".format( 
+            self.species.id, self.compartment.id, self.coefficient )
 
 #Represents a rate law
 class RateLaw(object):
-    native = ''
-    transcoded = ''
+    """Specification for a RateLaw, obtained from the model spec.
+
+    Attributes:
+        native = ''
+        transcoded = ''
+    # TODO(Arthur): expand this attribute documentation
+    """
     
     def __init__(self, native = ''):
         self.native = native or ''
@@ -422,11 +568,18 @@ class RateLaw(object):
             for comp in compartments:
                 id = '%s[%s]' % (spec.id, comp.id)
                 self.transcoded = self.transcoded.replace(id, "speciesConcentrations['%s']" % id)
-        
-#Represents a cross reference to an external database
+                
+    def __str__(self):
+        return "native: {}\ntranscoded for python: {}".format(self.native, self.transcoded) 
+
 class CrossReference(object):
-    source = ''
-    id = ''    
+    """Specification for a CrossReference, obtained from the input spec.
+
+    Attributes:
+        source = ''
+        id = ''    
+    # TODO(Arthur): expand this attribute documentation
+    """
 
     def __init__(self, source = '', id = ''):
         self.source = source

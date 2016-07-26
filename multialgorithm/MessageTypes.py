@@ -17,6 +17,27 @@ Created 2016/06/10
 @author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
 """
 
+'''
+# TODO(Arthur): integrated message types and their bodies more closely with this structure:
+
+class MessageTypes(object):
+
+    class ADJUST_POPULATION_BY_DISCRETE_MODEL(object):
+        msg_type = 'ADJUST_POPULATION_BY_DISCRETE_MODEL'
+        
+        class body(object):
+            __slots__ = ["value"]
+            def __init__( self, value ):
+                self.value = value
+                
+
+print MessageTypes.ADJUST_POPULATION_BY_DISCRETE_MODEL.msg_type
+u = t.body( 3 )
+print u.value
+print 'dir(t)', dir(t)
+print 'dir(u)', dir(u)
+'''
+
 class MessageTypes(object):
     """A simulation application's static set of message types and their content.
     
@@ -35,6 +56,7 @@ class MessageTypes(object):
     GET_POPULATION = 'GET_POPULATION'
     GIVE_POPULATION = 'GIVE_POPULATION'
     EXECUTE_SSA_REACTION = 'EXECUTE_SSA_REACTION'
+    SSA_WAIT = 'SSA_WAIT'
     
 '''
 Define a class that stores the body of each message type. This avoids confusing the structure of a message body.
@@ -160,22 +182,3 @@ class GIVE_POPULATION_body( object ):
         l = map( lambda x: "{}:{:.1f}".format( x, self.population[x] ), self.population.keys() )
         return "specie:population: {}".format( ', '.join( l ) )
 
-class EXECUTE_SSA_REACTION_body( object ):
-    """Body of an EXECUTE_SSA_REACTION message.
-
-        Attributes:
-            reaction: string; the reaction to execute
-            ??
-    """
-
-    # use __slots__ to save space
-    __slots__ = ["reaction"]
-    def __init__( self, reaction ):
-        self.reaction = reaction
-
-    def __str__( self  ):
-        '''Return string representation of an EXECUTE_SSA_REACTION message body.
-        # TODO(Arthur): TBD
-        '''
-        pass
-        return ''
