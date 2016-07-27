@@ -102,18 +102,18 @@ class simple_SSA_submodel( Submodel ):
         self.schedule_next_reaction()
 
     def determine_reaction_propensities(self):
-        """Schedule the current reaction propensities for this submodel.
+        """Determine the current reaction propensities for this submodel.
         
         Method:
         1. calculate concentrations
         # TODO(Arthur): optimization: simply use counts to calculate propensities
         2. calculate propensities for this submodel
-            if total propensity == 0, then try again later
         3. avoid reactions with inadequate specie counts
+        4. if totalPropensities == 0:
+            schedule SSA_WAIT
         
         Returns:
-            reaction propensities
-
+            reaction (propensities, totalPropensities)
         """
 
         # calculate concentrations
@@ -133,21 +133,6 @@ class simple_SSA_submodel( Submodel ):
         # avoid reactions with inadequate specie counts
         enabled_reactions = self.identify_enabled_reactions( propensities ) 
         propensities = enabled_reactions * propensities
-        return propensities
-
-    def schedule_next_reaction(self):
-        """Schedule the execution time of the next reaction for this SSA submodel.
-        
-        If the sum of propensities is positive, the time of the next reaction is an exponential
-        sample with mean 1/sum(propensities). Otherwise, wait and try again.
-        
-        Method:
-        1. calculate propensities
-        2. select time of next reaction
-
-        """
-
-        propensities = self.determine_reaction_propensities()
         totalPropensities = np.sum(propensities)
 
         # handle totalPropensities == 0
@@ -157,6 +142,23 @@ class simple_SSA_submodel( Submodel ):
             # print "Warning: submodel: {} at {} totalPropensities == 0; sending SSA_WAIT".format( self.name, self.time )
             # schedule a wait
             self.send_event( self.inter_reaction_time, self, MessageTypes.SSA_WAIT )
+        return (propensities, totalPropensities)
+
+    def schedule_next_reaction(self):
+        """Schedule the execution time of the next reaction for this SSA submodel.
+        
+        If the sum of propensities is positive, the time of the next reaction is an exponential
+        sample with mean 1/sum(propensities). Otherwise, wait and try again.
+        
+        Method:
+        1. calculate propensities
+            if total propensity == 0:
+                give up
+        2. select time of next reaction
+        """
+
+        (propensities, totalPropensities) = self.determine_reaction_propensities()
+        if totalPropensities == 0:
             return
 
         # Select time to next reaction from exponential distribution
@@ -168,8 +170,8 @@ class simple_SSA_submodel( Submodel ):
     def handle_event( self, event_list ):
         """Handle a simple_SSA_submodel simulation event.
         
-        In this shared-memory SSA, the only event is EXECUTE_SSA_REACTION, and event_list should always
-        contain one event.
+        In this shared-memory SSA, the only event is EXECUTE_SSA_REACTION, and event_list should
+        always contain one event.
         
         Args:
             event_list: list of event messages to process
@@ -194,18 +196,15 @@ class simple_SSA_submodel( Submodel ):
             elif event_message.event_type == MessageTypes.EXECUTE_SSA_REACTION:
             
                 # select the reaction
-                propensities = self.determine_reaction_propensities()
-                totalPropensities = np.sum(propensities)
+                (propensities, totalPropensities) = self.determine_reaction_propensities()
                 if totalPropensities == 0:
-                    # TODO(Arthur): write warning to debug log
-                    # print "Warning: submodel: {} at {} totalPropensities == 0; sending SSA_WAIT".format( self.name, self.time )
-                    # schedule a wait
-                    self.send_event( self.inter_reaction_time, self, MessageTypes.SSA_WAIT )
+                    logging.getLogger( self.logger_name ).debug( "{:8.3f}: {} submodel: "
+                    "no reaction to execute".format( self.time, self.name ) ) 
                     return
 
                 iRxn = self.random.choice( len(propensities), p = propensities/totalPropensities)
-                logging.getLogger( self.logger_name ).debug( "{}: {}: executing reaction {}".format( 
-                    self.time, self.name, self.reactions[iRxn].id ) ) 
+                logging.getLogger( self.logger_name ).debug( "{:8.3f}: {} submodel: "
+                "executing reaction {}".format( self.time, self.name, self.reactions[iRxn].id ) ) 
                 self.executeReaction( self.model.the_SharedMemoryCellState, self.reactions[iRxn] )
                 self.schedule_next_reaction()
 
