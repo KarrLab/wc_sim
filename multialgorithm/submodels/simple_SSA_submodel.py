@@ -22,7 +22,7 @@ from Sequential_WC_Simulator.core.SimulationEngine import MessageTypesRegistry
 from Sequential_WC_Simulator.core.utilities import N_AVOGADRO
 from Sequential_WC_Simulator.multialgorithm.submodels.submodel import Submodel
 
-from MessageTypes import (MessageTypes, 
+from Sequential_WC_Simulator.multialgorithm.MessageTypes import (MessageTypes, 
     ADJUST_POPULATION_BY_DISCRETE_MODEL_body, 
     GET_POPULATION_body, 
     GIVE_POPULATION_body )

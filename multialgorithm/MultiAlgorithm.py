@@ -70,7 +70,6 @@ class MultiAlgorithm( object ):
         parser.add_argument( '--seed', '-s', type=int, help='Random number seed' )
         args = parser.parse_args()
         if args.seed:
-            # TODO(Arthur): pass seed to submodels
             random.seed( args.seed )
         return args
     
