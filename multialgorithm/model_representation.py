@@ -96,9 +96,12 @@ class Model(object):
                     conc.value,
                     conc.value * conc.compartment.initialVolume * N_AVOGADRO )
                 '''
+                # TODO(Arthur): initializing all fluxes to 0 so that continuous adjustments can be made; 
+                # just initialize species that participate in continuous models
                 self.the_SharedMemoryCellState.init( 
                     Model.species_compartment_name( species, conc.compartment ), 
-                    conc.value * conc.compartment.initialVolume * N_AVOGADRO )
+                    conc.value * conc.compartment.initialVolume * N_AVOGADRO,
+                    initial_flux_given = 0 )
         
         #cell mass
         self.calcMass( 0. )  # initial conditiona at now=0

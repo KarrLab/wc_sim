@@ -57,6 +57,7 @@ class MessageTypes(object):
     GIVE_POPULATION = 'GIVE_POPULATION'
     EXECUTE_SSA_REACTION = 'EXECUTE_SSA_REACTION'
     SSA_WAIT = 'SSA_WAIT'
+    RUN_FBA = 'RUN_FBA'
     
 '''
 Define a class that stores the body of each message type. This avoids confusing the structure of a message body.

@@ -14,12 +14,11 @@ Created 2016/07/14
 import sys
 import logging
 import numpy as np
-from numpy import random
 
 from Sequential_WC_Simulator.core.LoggingConfig import setup_logger
 from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, SimulationObject)
 from Sequential_WC_Simulator.core.SimulationEngine import MessageTypesRegistry
-from Sequential_WC_Simulator.core.utilities import N_AVOGADRO
+from Sequential_WC_Simulator.core.utilities import N_AVOGADRO, ExponentialMovingAverage
 from Sequential_WC_Simulator.multialgorithm.submodels.submodel import Submodel
 
 from Sequential_WC_Simulator.multialgorithm.MessageTypes import (MessageTypes, 
@@ -35,17 +34,21 @@ class simple_SSA_submodel( Submodel ):
     # TODO(Arthur): expand description
 
     Attributes:
-        random: random object; private PRNG
-        inter_reaction_time: float; weighted mean of recent reaction interarrival times
-        decay: float; decay used to compute inter_reaction_time
+        random: a numpy RandomState() instance object; private PRNG; may be reproducible, as
+            determined by the main program, MultiAlgorithm
+        num_SSA_WAITs: integer; count of SSA_WAITs
+        ema_of_inter_event_time: an ExponentialMovingAverage; an EMA of the time between
+            EXECUTE_SSA_REACTION events; when total propensities == 0, ema_of_inter_event_time
+            is used as the time between SSA_WAIT events
         Plus see superclasses.
 
     Event messages:
+        EXECUTE_SSA_REACTION
+        SSA_WAIT
+        # messages after future enhancement
         ADJUST_POPULATION_BY_DISCRETE_MODEL
         GET_POPULATION
         GIVE_POPULATION
-        EXECUTE_SSA_REACTION
-        SSA_WAIT
     """
 
     SENT_MESSAGE_TYPES = [ MessageTypes.ADJUST_POPULATION_BY_DISCRETE_MODEL, 
@@ -63,7 +66,7 @@ class simple_SSA_submodel( Submodel ):
     MessageTypesRegistry.set_receiver_priorities( 'simple_SSA_submodel', MESSAGE_TYPES_BY_PRIORITY )
 
     def __init__( self, model, name, id, private_cell_state, shared_cell_states, 
-        reactions, species, random_seed=None, debug=False, write_plot_output=False, ):
+        reactions, species, numpy_random, debug=False, write_plot_output=False, default_center_of_mass=10 ):
         """Initialize a simple_SSA_submodel object.
         
         # TODO(Arthur): expand description
@@ -72,15 +75,16 @@ class simple_SSA_submodel( Submodel ):
             See pydocs of super classes.
             debug: boolean; log debugging output
             write_plot_output: boolean; log output for plotting simulation; simply passed to SimulationObject
-
+            default_center_of_mass: number; the center_of_mass for the ExponentialMovingAverage
+                
         """
         Submodel.__init__( self, model, name, id, private_cell_state, shared_cell_states,
-            reactions, species, write_plot_output=write_plot_output )
+            reactions, species, write_plot_output=write_plot_output,  )
 
-        # TODO(Arthur): IMPORTANT; if lab agrees, initialize and maintain; also see decay 
-        self.inter_reaction_time = 1
-        # TODO(Arthur): use seed if provided
-        self.random = random.RandomState()
+        self.num_SSA_WAITs=0
+        self.ema_of_inter_event_time=ExponentialMovingAverage( 0, center_of_mass=default_center_of_mass )
+        # TODO(Arthur): IMPORTANT: deploy use of ReproducibleRandom everywhere, as has been done here
+        self.random = numpy_random
         self.logger_name = "simple_SSA_submodel_{}".format( name )
         if debug:
             # make a logger for this simple_SSA_submodel
@@ -88,7 +92,9 @@ class simple_SSA_submodel( Submodel ):
             setup_logger( self.logger_name, level=logging.DEBUG )
             mylog = logging.getLogger(self.logger_name)
             # write initialization data
-            mylog.debug( "random_seed: {}".format( str(random_seed) ) )
+            mylog.debug( "name: {}".format( name ) )
+            mylog.debug( "id: {}".format( id ) )
+            mylog.debug( "species: {}".format( str([s.name for s in species]) ) )
             mylog.debug( "write_plot_output: {}".format( str(write_plot_output) ) )
             mylog.debug( "debug: {}".format( str(debug) ) )
         self.set_up_ssa_submodel()
@@ -98,7 +104,7 @@ class simple_SSA_submodel( Submodel ):
         
         Creates initial event(s) for this SSA submodel.
         """
-        Submodel.set_up_submodel( self )
+        # Submodel.set_up_submodel( self )
         self.schedule_next_reaction()
 
     def determine_reaction_propensities(self):
@@ -116,19 +122,12 @@ class simple_SSA_submodel( Submodel ):
             reaction (propensities, totalPropensities)
         """
 
-        # calculate concentrations
-        counts = self.get_specie_counts()
-        ids = map( lambda s: s.id, self.species )
-        speciesConcentrations = {}
-        speciesConcentrations = { specie_id:(counts[specie_id] / self.model.volume)/N_AVOGADRO 
-            for specie_id in ids }
-            
         # calculate propensities
         # TODO(Arthur): optimization: I understand physicality of concentrations and propensities, 
         # but wasteful to divide by volume & N_AVOGADRO and then multiply by them; stop doing this
         # TODO(Arthur): optimization: only calculate new reaction rates for species whose 
         # speciesConcentrations (counts) have changed
-        propensities = np.maximum(0, Submodel.calcReactionRates(self.reactions, speciesConcentrations) 
+        propensities = np.maximum(0, Submodel.calcReactionRates(self.reactions, self.get_specie_concentrations()) 
             * self.model.volume * N_AVOGADRO)
         # avoid reactions with inadequate specie counts
         enabled_reactions = self.identify_enabled_reactions( propensities ) 
@@ -141,11 +140,12 @@ class simple_SSA_submodel( Submodel ):
             # TODO(Arthur): write warning to debug log
             # print "Warning: submodel: {} at {} totalPropensities == 0; sending SSA_WAIT".format( self.name, self.time )
             # schedule a wait
-            self.send_event( self.inter_reaction_time, self, MessageTypes.SSA_WAIT )
+            self.send_event( self.ema_of_inter_event_time.get_value(), self, MessageTypes.SSA_WAIT )
+            self.num_SSA_WAITs += 1
         return (propensities, totalPropensities)
 
     def schedule_next_reaction(self):
-        """Schedule the execution time of the next reaction for this SSA submodel.
+        """Schedule the execution of the next reaction for this SSA submodel.
         
         If the sum of propensities is positive, the time of the next reaction is an exponential
         sample with mean 1/sum(propensities). Otherwise, wait and try again.
@@ -166,6 +166,9 @@ class simple_SSA_submodel( Submodel ):
         
         # schedule next event
         self.send_event( dt, self, MessageTypes.EXECUTE_SSA_REACTION )
+        
+        # maintain EMA of the time between EXECUTE_SSA_REACTION events
+        self.ema_of_inter_event_time.add_value( dt )
         
     def handle_event( self, event_list ):
         """Handle a simple_SSA_submodel simulation event.
@@ -207,6 +210,9 @@ class simple_SSA_submodel( Submodel ):
                 "executing reaction {}".format( self.time, self.name, self.reactions[iRxn].id ) ) 
                 self.executeReaction( self.model.the_SharedMemoryCellState, self.reactions[iRxn] )
                 self.schedule_next_reaction()
+                logging.getLogger( self.logger_name ).debug( "{:8.3f}: {} submodel: "
+                "ema_of_inter_event_time: {:3.2f}; num_SSA_WAITs: {}".format( self.time, self.name, 
+                self.ema_of_inter_event_time.get_value(), self.num_SSA_WAITs ) ) 
 
             elif event_message.event_type == MessageTypes.SSA_WAIT:
     

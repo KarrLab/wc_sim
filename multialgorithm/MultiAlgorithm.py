@@ -22,12 +22,12 @@ Created 2016/07/14
 import sys
 import logging
 import argparse
-from numpy import random
 import warnings
 
 # Use refactored WcModelingTutorial modules
 from Sequential_WC_Simulator.multialgorithm.model_representation import Model
 from Sequential_WC_Simulator.multialgorithm.model_loader import getModelFromExcel
+from Sequential_WC_Simulator.core.utilities import ReproducibleRandom
 '''
 import inspect
 print inspect.getfile( load_workbook )
@@ -58,10 +58,16 @@ class MultiAlgorithm( object ):
         # TODO(Arthur): attempt to simulate to 'cell division'
         parser.add_argument( 'end_time', type=float, help="End time for the simulation (s)" )
 
+        # TODO(Arthur): move some of these options to a configuration file
         DEFAULT_OUTPUT_DIRECTORY = '.'
         parser.add_argument( '--output_directory', '-o', type=str, 
             help="Output directory; default '{}'".format(DEFAULT_OUTPUT_DIRECTORY), 
             default=DEFAULT_OUTPUT_DIRECTORY )
+
+        DEFAULT_FBA_TIME_STEP = 1.0
+        parser.add_argument( '--FBA_time_step', '-F', type=float, 
+            help="FBA time step in sec; default: '{:3.1f}'".format(DEFAULT_FBA_TIME_STEP), 
+            default=DEFAULT_FBA_TIME_STEP )
 
         output_options = parser.add_mutually_exclusive_group()
         output_options.add_argument( '--debug', '-d', action='store_true', help='Print debug output' )
@@ -69,8 +75,6 @@ class MultiAlgorithm( object ):
             help='Write plot input for plotSpaceTimeDiagram.py to stdout.' )
         parser.add_argument( '--seed', '-s', type=int, help='Random number seed' )
         args = parser.parse_args()
-        if args.seed:
-            random.seed( args.seed )
         return args
     
     @staticmethod
@@ -93,19 +97,28 @@ class MultiAlgorithm( object ):
             '''Prepare submodels for computation'''
             the_model.setupSimulation()
         
+        # setup PRNG
+        if args.seed:
+            ReproducibleRandom.init( seed=args.seed )
+        else:
+            ReproducibleRandom.init()
+        
         # 1. create and configure simulation submodels, including initial events
+        algs_to_run = 'FBA SSA'.split()
         shared_cell_states=[ the_model.the_SharedMemoryCellState ]
         for submodel_spec in the_model.submodels:
             if submodel_spec.algorithm == 'SSA':
-                print 'create SSA submodel:', submodel_spec.name, submodel_spec.algorithm
-                submodel_spec.the_submodel = simple_SSA_submodel( the_model, submodel_spec.name, submodel_spec.id, 
-                    None, shared_cell_states, submodel_spec.reactions, submodel_spec.species )
+                if submodel_spec.algorithm in algs_to_run:
+                    print 'create SSA submodel:', submodel_spec.name, submodel_spec.algorithm
+                    submodel_spec.the_submodel = simple_SSA_submodel( the_model, submodel_spec.name, submodel_spec.id, 
+                        None, shared_cell_states, submodel_spec.reactions, submodel_spec.species, 
+                        ReproducibleRandom.get_numpy_random_state(), debug=True )
             elif submodel_spec.algorithm == 'FBA':
-                print 'donot create FBA submodel:', submodel_spec.name, submodel_spec.algorithm
-                '''
-                submodel_spec.the_submodel = FbaSubmodel( the_model, submodel_spec.name, submodel_spec.id, 
-                    None, shared_cell_states, submodel_spec.reactions, submodel_spec.species )
-                '''
+                if submodel_spec.algorithm in algs_to_run:
+                    print 'create FBA submodel:', submodel_spec.name, submodel_spec.algorithm
+                    submodel_spec.the_submodel = FbaSubmodel( the_model, submodel_spec.name, submodel_spec.id, 
+                        None, shared_cell_states, submodel_spec.reactions, submodel_spec.species,
+                        args.FBA_time_step, debug=True )
             else:
                 raise Exception("Undefined algorithm '{}' for submodel '{}'".format(
                     submodel_spec.algorithm, submodel_spec.name ) )

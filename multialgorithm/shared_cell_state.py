@@ -31,6 +31,7 @@ class SharedMemoryCellState( object ):
     # TODO(Arthur): extend beyond population, e.g., to represent binding sites for individual macromolecules
     # TODO(Arthur): optimize to represent just the state of shared species
     # TODO(Arthur): report error if a Specie instance is updated by multiple continuous sub-models
+    # TODO(Arthur): IMPORTANT: optionally retain species count history, for analysis
     """
     
     def __init__( self, name, initial_population, initial_fluxes=None, 
@@ -147,7 +148,8 @@ class SharedMemoryCellState( object ):
         
         Args:
             time: float; the time at which the population is being adjusted
-            adjustments: dict: specie_ids -> population_adjustment; adjustments to be made to some species populations
+            adjustments: dict: specie_ids -> population_adjustment; adjustments to be made to 
+                some species populations
 
         Raises:
             ValueError: adjustment attempts to change the population of a non-existent species
@@ -159,7 +161,6 @@ class SharedMemoryCellState( object ):
             try:
                 self.population[specie].discrete_adjustment( adjustments[specie] )
             except ValueError as e:
-                print e
                 raise ValueError( "Error: on specie {}: {}".format( specie, e ) )
             self.log_event( 'discrete_adjustment', self.population[specie] )
     
@@ -168,7 +169,8 @@ class SharedMemoryCellState( object ):
         
         Args:
             time: float; the time at which the population is being adjusted
-            adjustments: dict: specie_ids -> (population_adjustment, flux); adjustments to be made to some species populations
+            adjustments: dict: specie_ids -> (population_adjustment, flux); adjustments to be made 
+                to some species populations
 
         Raises:
             ValueError: adjustment attempts to change the population of a non-existent species
@@ -177,7 +179,10 @@ class SharedMemoryCellState( object ):
         self.check_species( adjustments.keys() )
         self.time = time
         for specie,(adjustment,flux) in adjustments.items():
-            self.population[specie].continuous_adjustment( adjustment, time, flux )
+            try:
+                self.population[specie].continuous_adjustment( adjustment, time, flux )
+            except ValueError as e:
+                raise ValueError( "Error: on specie {}: {}".format( specie, e ) )
             self.log_event( 'continuous_adjustment', self.population[specie] )
 
     def log_event( self, event_type, specie ):

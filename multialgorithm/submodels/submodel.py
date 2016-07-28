@@ -1,5 +1,5 @@
 #Represents a submodel
-# TODO(Arthur): IMPORTANT: unittest
+# TODO(Arthur): IMPORTANT: unittest all these methods
 # TODO(Arthur): IMPORTANT: document with Sphinx
 
 ''' 
@@ -8,12 +8,6 @@
 @author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
 '''
 
-import warnings
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore")
-    from cobra import Metabolite as CobraMetabolite
-    from cobra import Model as CobraModel
-    from cobra import Reaction as CobraReaction
 from itertools import chain
 from numpy import random
 from collections import namedtuple
@@ -64,12 +58,14 @@ class Submodel(SimulationObject):
         self.species = species
         SimulationObject.__init__( self, name, plot_output=write_plot_output )
 
+    '''
     def set_up_submodel(self):
         """Set up this submodel for simulation.
         """
         #initialize species counts dictionary
         # self.speciesCounts = { species.id : SpeciesCount( species.id, 0) for species in self.species}
         pass
+    '''
     
     #sets local species counts from global species counts
     def updateLocalCellState(self):
@@ -94,18 +90,29 @@ class Submodel(SimulationObject):
         ids = map( lambda s: s.id, self.species )
         return self.model.the_SharedMemoryCellState.read( self.time, ids )
 
+    def get_specie_concentrations(self):
+        """Get a dictionary of current species concentrations for this submodel.
+        
+        Return:
+            Current species concentrations, in a dict: species_id -> concentration
+        """
+        counts = self.get_specie_counts()
+        ids = map( lambda s: s.id, self.species )
+        return { specie_id:(counts[specie_id] / self.model.volume)/N_AVOGADRO for specie_id in ids }
+
+    '''
+    # TODO(Arthur): IMPORTANT: discard code I'm not using
     #get species concentrations
     def getSpeciesConcentrations(self, now):
         # DES PLANNING COMMENT(Arthur): DES can use this; just access SpeciesCounts objects
         # DES PLAN: eliminate; just use global concentrations
         return self.model.getSpeciesConcentrationsDict( now )
-        '''
         volumes = self.getSpeciesVolumes()
         concs = {}
         for species in self.species:
             concs[species.id] = (self.speciesCounts[species.id] / volumes[species.id]) / N_AVOGADRO
         return concs
-        '''
+    '''
         
     #get container volume. for each species
     # TODO(Arthur): IMPORTANT: this doesn't work; is it used?
@@ -122,6 +129,7 @@ class Submodel(SimulationObject):
         return volumes
         '''
         
+    # TODO(Arthur): make this an instance method, and drop the arguments
     @staticmethod
     def calcReactionRates(reactions, speciesConcentrations):
         """Calculate the rates for a submodel's reactions.
