@@ -23,19 +23,12 @@ import sys
 import logging
 import argparse
 import warnings
+import errno
 
 # Use refactored WcModelingTutorial modules
 from Sequential_WC_Simulator.multialgorithm.model_representation import Model
 from Sequential_WC_Simulator.multialgorithm.model_loader import getModelFromExcel
 from Sequential_WC_Simulator.core.utilities import ReproducibleRandom
-'''
-import inspect
-print inspect.getfile( load_workbook )
-import sys
-for p in sys.path:
-    if 'Library' in p:
-        print p
-'''
 from Sequential_WC_Simulator.core.SimulationObject import EventQueue, SimulationObject
 from Sequential_WC_Simulator.core.SimulationEngine import SimulationEngine, MessageTypesRegistry
 from Sequential_WC_Simulator.multialgorithm.CellState import CellState
@@ -90,7 +83,7 @@ class MultiAlgorithm( object ):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             # 0. read model description
-            print "Reading model from '{}'".format( args.model_filename )
+            print "Reading model from '{}'".format( args.model_filename, debug=args.debug )
             the_model = getModelFromExcel( args.model_filename )
             print the_model.summary()
             
@@ -110,15 +103,15 @@ class MultiAlgorithm( object ):
             if submodel_spec.algorithm == 'SSA':
                 if submodel_spec.algorithm in algs_to_run:
                     print 'create SSA submodel:', submodel_spec.name, submodel_spec.algorithm
-                    submodel_spec.the_submodel = simple_SSA_submodel( the_model, submodel_spec.name, submodel_spec.id, 
-                        None, shared_cell_states, submodel_spec.reactions, submodel_spec.species, 
-                        ReproducibleRandom.get_numpy_random_state(), debug=True )
+                    submodel_spec.the_submodel = simple_SSA_submodel( the_model, submodel_spec.name,
+                        submodel_spec.id, None, shared_cell_states, submodel_spec.reactions, 
+                        submodel_spec.species, ReproducibleRandom.get_numpy_random_state(), debug=args.debug )
             elif submodel_spec.algorithm == 'FBA':
                 if submodel_spec.algorithm in algs_to_run:
                     print 'create FBA submodel:', submodel_spec.name, submodel_spec.algorithm
-                    submodel_spec.the_submodel = FbaSubmodel( the_model, submodel_spec.name, submodel_spec.id, 
-                        None, shared_cell_states, submodel_spec.reactions, submodel_spec.species,
-                        args.FBA_time_step, debug=True )
+                    submodel_spec.the_submodel = FbaSubmodel( the_model, submodel_spec.name, 
+                        submodel_spec.id, None, shared_cell_states, submodel_spec.reactions,
+                        submodel_spec.species, args.FBA_time_step, debug=args.debug )
             else:
                 raise Exception("Undefined algorithm '{}' for submodel '{}'".format(
                     submodel_spec.algorithm, submodel_spec.name ) )
@@ -131,3 +124,9 @@ if __name__ == '__main__':
         MultiAlgorithm.main()
     except KeyboardInterrupt:
         pass
+    # do not report IOError: [Errno 32] Broken pipe
+    except IOError as e:
+        if isinstance(e.args, tuple):
+            if e[0] != errno.EPIPE:
+               # determine and handle different error
+               raise Exception( e )

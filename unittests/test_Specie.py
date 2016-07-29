@@ -49,12 +49,12 @@ class TestSpecie(unittest.TestCase):
         
         with self.assertRaises(ValueError) as context:
             s1.discrete_adjustment( -20 )
-        self.assertIn( 'discrete_adjustment(): negative population from self.last_population + population_change',
+        self.assertIn( 'discrete_adjustment(): negative population: last_population + population_change = ',
             context.exception.message )
 
         with self.assertRaises(ValueError) as context:
             s1.continuous_adjustment( -22, 5, 2 )
-        self.assertIn( 'continuous_adjustment(): negative population from self.last_population + population_change',
+        self.assertIn( 'continuous_adjustment(): negative population: last_population + population_change = ',
             context.exception.message )
 
         s1 = Specie( 'specie', 10 )

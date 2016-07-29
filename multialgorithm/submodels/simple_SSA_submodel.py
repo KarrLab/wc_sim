@@ -59,7 +59,7 @@ class simple_SSA_submodel( Submodel ):
 
     # at any time instant, process messages in this order
     MESSAGE_TYPES_BY_PRIORITY = [ 
-        MessageTypes.SSA_WAIT ,
+        MessageTypes.SSA_WAIT,
         MessageTypes.GIVE_POPULATION, 
         MessageTypes.EXECUTE_SSA_REACTION ]
 
@@ -79,7 +79,7 @@ class simple_SSA_submodel( Submodel ):
                 
         """
         Submodel.__init__( self, model, name, id, private_cell_state, shared_cell_states,
-            reactions, species, write_plot_output=write_plot_output,  )
+            reactions, species, debug=debug, write_plot_output=write_plot_output )
 
         self.num_SSA_WAITs=0
         self.ema_of_inter_event_time=ExponentialMovingAverage( 0, center_of_mass=default_center_of_mass )
@@ -92,11 +92,11 @@ class simple_SSA_submodel( Submodel ):
             setup_logger( self.logger_name, level=logging.DEBUG )
             mylog = logging.getLogger(self.logger_name)
             # write initialization data
-            mylog.debug( "name: {}".format( name ) )
-            mylog.debug( "id: {}".format( id ) )
-            mylog.debug( "species: {}".format( str([s.name for s in species]) ) )
-            mylog.debug( "write_plot_output: {}".format( str(write_plot_output) ) )
-            mylog.debug( "debug: {}".format( str(debug) ) )
+            mylog.debug( "init: name: {}".format( name ) )
+            mylog.debug( "init: id: {}".format( id ) )
+            mylog.debug( "init: species: {}".format( str([s.name for s in species]) ) )
+            mylog.debug( "init: write_plot_output: {}".format( str(write_plot_output) ) )
+            mylog.debug( "init: debug: {}".format( str(debug) ) )
         self.set_up_ssa_submodel()
         
     def set_up_ssa_submodel( self ):
@@ -136,9 +136,6 @@ class simple_SSA_submodel( Submodel ):
 
         # handle totalPropensities == 0
         if totalPropensities == 0:
-            # raise ValueError( "Error: submodel: {} totalPropensities == 0; ".format( self.name,  ) )
-            # TODO(Arthur): write warning to debug log
-            # print "Warning: submodel: {} at {} totalPropensities == 0; sending SSA_WAIT".format( self.name, self.time )
             # schedule a wait
             self.send_event( self.ema_of_inter_event_time.get_value(), self, MessageTypes.SSA_WAIT )
             self.num_SSA_WAITs += 1
@@ -206,17 +203,17 @@ class simple_SSA_submodel( Submodel ):
                     return
 
                 iRxn = self.random.choice( len(propensities), p = propensities/totalPropensities)
-                logging.getLogger( self.logger_name ).debug( "{:8.3f}: {} submodel: "
+                logging.getLogger( self.logger_name ).debug( "{:8.2f}: {} submodel: "
                 "executing reaction {}".format( self.time, self.name, self.reactions[iRxn].id ) ) 
                 self.executeReaction( self.model.the_SharedMemoryCellState, self.reactions[iRxn] )
                 self.schedule_next_reaction()
-                logging.getLogger( self.logger_name ).debug( "{:8.3f}: {} submodel: "
-                "ema_of_inter_event_time: {:3.2f}; num_SSA_WAITs: {}".format( self.time, self.name, 
-                self.ema_of_inter_event_time.get_value(), self.num_SSA_WAITs ) ) 
+                logging.getLogger( self.logger_name ).debug( "{:8.2f}: "
+                "ema_of_inter_event_time: {:3.2f}; num_events: {}; num_SSA_WAITs: {}".format( self.time, 
+                self.ema_of_inter_event_time.get_value(), self.num_events, self.num_SSA_WAITs ) ) 
 
             elif event_message.event_type == MessageTypes.SSA_WAIT:
     
-                # TODO(Arthur): notification of accumulating SSA_WAITs
+                # TODO(Arthur): generate error for many, or a high fraction of, SSA_WAITs
                 # no reaction to execute
                 logging.getLogger( self.logger_name ).debug( "SSA_WAIT: at {}".format( self.time ) )
                 self.schedule_next_reaction()

@@ -20,8 +20,6 @@ class Testsimple_SSA_submodel(unittest.TestCase):
     def test_simple_SSA_submodel(self):
 
         # TODO(Arthur): use assert for testing; stop printing
-        print 'test_simple_SSA_submodel.py:'
-        print '# TODO(Arthur): EXPAND into tests'
         ssa1 = simple_SSA_submodel( 'name1' )
         ssa2 = simple_SSA_submodel( 'name2', random_seed=123, debug=True, write_plot_output=True )
         

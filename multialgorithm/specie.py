@@ -93,8 +93,8 @@ class Specie(object):
             ValueError: if population goes negative
         """
         if self.last_population + population_change < 0:
-            raise ValueError( "discrete_adjustment(): negative population from "
-                "self.last_population + population_change ({:.2f} + {:.2f})\n".format( 
+            raise ValueError( "discrete_adjustment(): negative population: "
+                "last_population + population_change = {:.2f} + {:.2f}\n".format( 
                 self.last_population, population_change ) )
         self.last_population += population_change
     
@@ -118,8 +118,8 @@ class Specie(object):
             raise ValueError( "continuous_adjustment(): time <= self.continuous_time: {:.2f} < {:.2f}\n".format( 
                 time, self.continuous_time ) )
         if self.last_population + population_change < 0:
-            raise ValueError( "continuous_adjustment(): negative population from "
-                "self.last_population + population_change ({:.2f} + {:.2f})\n".format( 
+            raise ValueError( "continuous_adjustment(): negative population: "
+                "last_population + population_change = {:.2f} + {:.2f}\n".format( 
                 self.last_population, population_change ) )
         self.continuous_time = time
         self.continuous_flux = flux

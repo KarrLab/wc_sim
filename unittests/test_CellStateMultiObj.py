@@ -91,8 +91,8 @@ class TestSimulationObject(SimulationObject):
                                 math.floor(correct_pop), math.ceil(correct_pop), 
                                 populations.population[self.specie] ))
             else:
-                print "Shouldn't get here - event_message.event_type should be covered in the "
-                "if statement above"
+                raise ValueError( "Error: shouldn't get here - event_message.event_type '{}' should "
+                "be covered in the if statement above".format( event_message.event_type ) )
 
 class TestSimulation(unittest.TestCase):
 

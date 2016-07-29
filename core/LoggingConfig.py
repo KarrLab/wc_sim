@@ -16,7 +16,8 @@ except OSError:
 def setup_logger(logger_name, log_file=None, level=logging.INFO, to_stdout=False):
     """create and config a logger"""
     l = logging.getLogger(logger_name)
-    formatter = logging.Formatter('%(asctime)s : %(name)s : %(pathname)s:%(lineno)d #%(message)s')
+    formatter = logging.Formatter('%(asctime)s; %(name)s; %(filename)s:%(lineno)d #%(message)s', 
+        "%Y-%m-%d %H:%M:%S")
     if not log_file:
         log_file = logger_name + '.log'
     log_file = path.join( LOGGING_ROOT_DIR, log_file )

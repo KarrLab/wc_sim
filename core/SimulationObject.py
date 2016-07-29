@@ -225,6 +225,7 @@ class SimulationObject(object):
             key=lambda event:
             MessageTypesRegistry.receiver_priorities[ self.__class__.__name__ ].index( event.event_type ) )
 
+        # TODO(Arthur): write this to a plot input log
         # print events for plotting by plotSpaceTimeDiagram.py
         if self.plot_output:
             for event in event_list:

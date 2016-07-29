@@ -9,18 +9,19 @@
 '''
 
 from itertools import chain
-from numpy import random
 from collections import namedtuple
+import logging
 
 import math
 import numpy as np
 import re
 
 import Sequential_WC_Simulator.core.utilities
+from Sequential_WC_Simulator.core.SimulationObject import SimulationObject
+from Sequential_WC_Simulator.core.LoggingConfig import setup_logger
 from Sequential_WC_Simulator.core.utilities import N_AVOGADRO
 from Sequential_WC_Simulator.multialgorithm.model_representation import Model, ExchangedSpecies
 from Sequential_WC_Simulator.multialgorithm.shared_cell_state import SharedMemoryCellState
-from Sequential_WC_Simulator.core.SimulationObject import SimulationObject
 
 class Submodel(SimulationObject):
     """
@@ -34,7 +35,7 @@ class Submodel(SimulationObject):
     """
     
     def __init__(self, model, name, id, private_cell_state, shared_cell_states,
-        reactions, species, write_plot_output=False):
+        reactions, species, debug=False, write_plot_output=False):
         """Initialize a submodel.
 
         Args:
@@ -58,15 +59,15 @@ class Submodel(SimulationObject):
         self.species = species
         SimulationObject.__init__( self, name, plot_output=write_plot_output )
 
-    '''
-    def set_up_submodel(self):
-        """Set up this submodel for simulation.
-        """
-        #initialize species counts dictionary
-        # self.speciesCounts = { species.id : SpeciesCount( species.id, 0) for species in self.species}
-        pass
-    '''
-    
+        self.Submodel_logger_name = "Submodel {}".format( name )
+        if debug:
+            # make a logger for this Submodel
+            # TODO(Arthur): eventually control logging centrally
+            setup_logger( self.Submodel_logger_name, level=logging.DEBUG )
+            mylog = logging.getLogger(self.Submodel_logger_name)
+            # write initialization data
+            mylog.debug( "name: {}".format( name ) )
+
     #sets local species counts from global species counts
     def updateLocalCellState(self):
         # DES PLAN: eliminate
@@ -185,11 +186,11 @@ class Submodel(SimulationObject):
 
             for participant in rxn.participants:
                 species_id = Model.species_compartment_name( participant.species, participant.compartment )
+                # 'participant.coefficient < 0' constrains the test to reactants
                 if participant.coefficient < 0 and counts[ species_id ] < -participant.coefficient:
-                    '''
-                    print "reaction: {} of {}: insufficient counts for {}; available: {}".format( 
-                        iRxn, len(self.reactions), participant, counts[ species_id ] )
-                    '''
+                    logging.getLogger( self.Submodel_logger_name ).debug( 
+                        "reaction: {} of {}: insufficient counts for {}; available: {}".format( 
+                        iRxn, len(self.reactions), participant, counts[ species_id ] ) )
                     enabled[iRxn] = 0
                     continue
         return enabled

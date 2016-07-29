@@ -11,6 +11,7 @@ Represents a model as a set of objects.
 from itertools import chain
 import math
 import numpy as np
+import logging
 import warnings
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
@@ -18,6 +19,7 @@ with warnings.catch_warnings():
     from cobra import Model as CobraModel
     from cobra import Reaction as CobraReaction
 
+from Sequential_WC_Simulator.core.LoggingConfig import setup_logger
 from Sequential_WC_Simulator.core.utilities import N_AVOGADRO
 from Sequential_WC_Simulator.multialgorithm.shared_cell_state import SharedMemoryCellState
 
@@ -47,7 +49,7 @@ class Model(object):
     # TODO(Arthur): expand this attribute documentation
     """
     
-    def __init__(self, submodels = [], compartments = [], species = [], reactions = [], parameters = [], references = []):
+    def __init__(self, submodels = [], compartments = [], species = [], reactions = [], parameters = [], references = [], debug=False ):
         self.name = 'temp_name'         # TODO(Arthur): get real name
         self.submodels = submodels
         self.compartments = compartments
@@ -55,6 +57,15 @@ class Model(object):
         self.reactions = reactions
         self.parameters = parameters
         self.references = references       
+        self.logger_name = "Model"
+        if debug:
+            # make a logger for this Model
+            # TODO(Arthur): eventually control logging more comprehensively in LoggingConfig
+            setup_logger( self.logger_name, level=logging.DEBUG )
+            mylog = logging.getLogger(self.logger_name)
+            # write initialization data
+            mylog.debug( "init: species: {}".format( str([str(s.name) for s in species]) ) )
+            mylog.debug( "init: reactions: {}".format( str([str(r.name) for r in reactions]) ) )
         
     def setupSimulation(self):
         """Set up a discrete-event simulation from the specification.
@@ -87,17 +98,11 @@ class Model(object):
         self.extracellularVolume = extrComp.initialVolume
         
         #species counts
-        self.the_SharedMemoryCellState = SharedMemoryCellState( "the_CellState_for_{}".format( self.name ), {} )
+        self.the_SharedMemoryCellState = SharedMemoryCellState( "CellState", {}, debug=True )
         for species in self.species:
             for conc in species.concentrations:
-                '''
-                print "species_id: {}; conc: {}, count: {}".format( 
-                    Model.species_compartment_name( species, conc.compartment ),
-                    conc.value,
-                    conc.value * conc.compartment.initialVolume * N_AVOGADRO )
-                '''
-                # TODO(Arthur): initializing all fluxes to 0 so that continuous adjustments can be made; 
-                # just initialize species that participate in continuous models
+                # initializing all fluxes to 0 so that continuous adjustments can be made
+                # TODO(Arthur): just initialize species that participate in continuous models
                 self.the_SharedMemoryCellState.init( 
                     Model.species_compartment_name( species, conc.compartment ), 
                     conc.value * conc.compartment.initialVolume * N_AVOGADRO,

@@ -178,11 +178,16 @@ class SharedMemoryCellState( object ):
         """
         self.check_species( adjustments.keys() )
         self.time = time
+        # TODO(Arthur): IMPORTANT: record simulation state history; may want to also do it 
+        # in adjust_discretely, or before executeReaction() in simple_SSA_submodel(), as JK recommended
         for specie,(adjustment,flux) in adjustments.items():
             try:
                 self.population[specie].continuous_adjustment( adjustment, time, flux )
             except ValueError as e:
-                raise ValueError( "Error: on specie {}: {}".format( specie, e ) )
+                # raise ValueError( "Error: on specie {}: {}".format( specie, e ) )
+                e = str(e).strip()
+                logging.getLogger(self.logger_name).debug( "Error: on specie {}: {}".format( specie, e ) )
+
             self.log_event( 'continuous_adjustment', self.population[specie] )
 
     def log_event( self, event_type, specie ):

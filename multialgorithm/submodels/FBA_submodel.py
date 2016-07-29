@@ -83,9 +83,9 @@ class FbaSubmodel(Submodel):
             debug: boolean; log debugging output
             write_plot_output: boolean; log output for plotting simulation; simply passed to SimulationObject
         """
-
         Submodel.__init__( self, model, name, id, private_cell_state, shared_cell_states,
-            reactions, species, write_plot_output=write_plot_output )
+            reactions, species, debug=debug, write_plot_output=write_plot_output )
+
         self.algorithm = 'FBA'
         self.time_step = time_step
 
@@ -95,13 +95,12 @@ class FbaSubmodel(Submodel):
             # TODO(Arthur): eventually control logging when creating SimulationObjects, and pass in the logger
             setup_logger( self.logger_name, level=logging.DEBUG )
             mylog = logging.getLogger(self.logger_name)
-            # write initialization data
-            mylog.debug( "name: {}".format( name ) )
-            mylog.debug( "id: {}".format( id ) )
-            mylog.debug( "species: {}".format( str([s.name for s in species]) ) )
-            mylog.debug( "time_step: {}".format( str(time_step) ) )
+            # log initialization data
+            mylog.debug( "init: name: {}".format( name ) )
+            mylog.debug( "init: id: {}".format( id ) )
+            mylog.debug( "init: species: {}".format( str([s.name for s in species]) ) )
+            mylog.debug( "init: time_step: {}".format( str(time_step) ) )
         
-
         self.metabolismProductionReaction = None 
         self.exchangedSpecies = None
         
@@ -110,7 +109,6 @@ class FbaSubmodel(Submodel):
         self.exchangeRateBounds = None
         
         self.defaultFbaBound = 1e15
-        
         self.reactionFluxes = np.zeros(0)
 
         self.set_up_fba_submodel()
@@ -206,7 +204,7 @@ class FbaSubmodel(Submodel):
             }
 
         self.schedule_next_FBA_analysis()
-            
+        
     def schedule_next_FBA_analysis(self):
         """Schedule the next analysis by this FBA submodel.
         """
@@ -222,7 +220,6 @@ class FbaSubmodel(Submodel):
             ?
         """
         self.cobraModel.optimize()
-        
         self.reactionFluxes = self.cobraModel.solution.x
         '''
         print 'self.reactionFluxes', self.reactionFluxes
@@ -230,7 +227,6 @@ class FbaSubmodel(Submodel):
         print 'reactionFluxes', len(self.reactionFluxes)
         print 'species', len(self.species)
         '''
-        
         self.model.growth = self.reactionFluxes[self.metabolismProductionReaction['index']] #fraction cell/s
         
     def updateMetabolites(self):
@@ -250,10 +246,9 @@ class FbaSubmodel(Submodel):
             adjustments[exSpecies.id] = (self.reactionFluxes[exSpecies.reactionIndex] * self.time_step, 0)
 
         cts = self.get_specie_counts()
-        # print '\t'.join( 'specie count adjust go_negative'.split() )
         for s in self.metabolismProductionReaction['reaction'].participants:    # self.species:
             if cts[s.id]+adjustments[s.id][0] < 0:
-                print "{}\t{}\t{}\t{}".format( s.id, cts[s.id], adjustments[s.id], cts[s.id]+adjustments[s.id][0] < 0)
+                pass
         self.model.the_SharedMemoryCellState.adjust_continuously( self.time, adjustments )
         
     def calcReactionBounds(self):

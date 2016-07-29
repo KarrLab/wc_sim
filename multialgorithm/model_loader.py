@@ -21,13 +21,13 @@ from Sequential_WC_Simulator.multialgorithm.submodels import submodel
 
 
 #Reads model from Excel file into a Python object
-def getModelFromExcel(filename):
+def getModelFromExcel(filename, debug_option=False ):
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", "Discarded range with reserved name", UserWarning)
         wb = load_workbook(filename = filename)
 
     #initialize model object
-    model = Model()
+    model = Model( debug=debug_option )
 
     '''Read details from Excel'''
     #submodels

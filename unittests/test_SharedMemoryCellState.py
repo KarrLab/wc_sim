@@ -23,9 +23,6 @@ class TestSharedMemoryCellState(unittest.TestCase):
         self.a_SM_CellState_no_init_flux = SharedMemoryCellState( 'test', init_populations, 
             debug=False, log=False)
 
-    def dump(self, specie ):
-        print self.a_SM_CellState.population[ specie ]
-
     def reusable_test(self, the_SM_CellState, flux ):
         # test both discrete and hybrid species
         

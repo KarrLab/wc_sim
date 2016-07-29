@@ -43,10 +43,6 @@ class TestCellState(unittest.TestCase):
     def make_CellState( my_pop, my_fluxes, debug=False, write_plot_output=False, name=None, log=False ):
         if not name:
             name = TestCellState.get_name()
-        '''
-        print "Creating CellState( {}, --population--, debug={}, write_plot_output={} ) ".format(
-            name, debug, write_plot_output )
-        '''
         return CellState( name, my_pop, initial_fluxes=my_fluxes, debug=debug, 
             write_plot_output=write_plot_output, log=log ) 
 
@@ -77,7 +73,7 @@ class TestCellState(unittest.TestCase):
             event_body=ADJUST_POPULATION_BY_CONTINUOUS_MODEL_body( d ) )
         SimulationEngine.simulate( 5.0 )
         
-        text_in_log_s1_by_line = '''.* : s1 : .* #Sim_time\tAdjustment_type\tNew_population\tNew_flux
+        text_in_log_s1_by_line = '''.*; s1; .* #Sim_time\tAdjustment_type\tNew_population\tNew_flux
 .* #0.0\tinitial_state\t21\t0
 .* #1.0\tdiscrete_adjustment\t22\t0
 .* #2.0\tcontinuous_adjustment\t24.0\t1.0'''

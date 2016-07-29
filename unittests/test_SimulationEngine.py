@@ -19,9 +19,6 @@ class ExampleSimulationObject(SimulationObject):
         super(ExampleSimulationObject, self).__init__( name )
 
     def handle_event( self, event_list ):
-        # print events
-        if self.debug:
-            self.print_event_queue( )
         # schedule event
         self.send_event( 2.0, self, 'init_msg' )
 
