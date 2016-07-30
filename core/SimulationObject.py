@@ -214,7 +214,7 @@ class SimulationObject(object):
         invalid_types = (set( map( lambda x: x.event_type, event_list ) ) - 
             set( MessageTypesRegistry.receiver_priorities[ self.__class__.__name__ ] ))
         if len( invalid_types ):
-            raise ValueError( "Error: invalid event event_type(s) '{}' in event_list:\n{}\n".format( 
+            raise ValueError( "Error: invalid event event_type(s) '{}' in event_list:\n{}".format( 
                 ', '.join( list( invalid_types ) ),
                 '\n'.join( [ str( ev_msg ) for ev_msg in event_list ] ) ) )
 

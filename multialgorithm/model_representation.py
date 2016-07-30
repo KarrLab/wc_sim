@@ -46,10 +46,12 @@ class Model(object):
         mass: type; description
         dryWeight: type; description
         speciesCounts: type; description
+        debug: boolean; debug status
     # TODO(Arthur): expand this attribute documentation
     """
     
-    def __init__(self, submodels = [], compartments = [], species = [], reactions = [], parameters = [], references = [], debug=False ):
+    def __init__(self, submodels = [], compartments = [], species = [], reactions = [], parameters = [], 
+        references = [], debug=False ):
         self.name = 'temp_name'         # TODO(Arthur): get real name
         self.submodels = submodels
         self.compartments = compartments
@@ -58,6 +60,7 @@ class Model(object):
         self.parameters = parameters
         self.references = references       
         self.logger_name = "Model"
+        self.debug = debug
         if debug:
             # make a logger for this Model
             # TODO(Arthur): eventually control logging more comprehensively in LoggingConfig
@@ -98,12 +101,13 @@ class Model(object):
         self.extracellularVolume = extrComp.initialVolume
         
         #species counts
-        self.the_SharedMemoryCellState = SharedMemoryCellState( "CellState", {}, debug=True )
+        self.the_SharedMemoryCellState = SharedMemoryCellState( "CellState", {}, 
+            retain_history=self.debug, debug=self.debug )
         for species in self.species:
             for conc in species.concentrations:
                 # initializing all fluxes to 0 so that continuous adjustments can be made
                 # TODO(Arthur): just initialize species that participate in continuous models
-                self.the_SharedMemoryCellState.init( 
+                self.the_SharedMemoryCellState.init_cell_state_specie( 
                     Model.species_compartment_name( species, conc.compartment ), 
                     conc.value * conc.compartment.initialVolume * N_AVOGADRO,
                     initial_flux_given = 0 )

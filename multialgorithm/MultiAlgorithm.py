@@ -17,7 +17,7 @@ Created 2016/07/14
 @author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
 """
 
-# TODO(Arthur): IMPORTANT: provide 'returns' documentation for all return operations
+# TODO(Arthur): provide 'returns' documentation for all return operations
 
 import sys
 import logging
@@ -84,7 +84,7 @@ class MultiAlgorithm( object ):
             warnings.simplefilter("ignore")
             # 0. read model description
             print "Reading model from '{}'".format( args.model_filename, debug=args.debug )
-            the_model = getModelFromExcel( args.model_filename )
+            the_model = getModelFromExcel( args.model_filename, debug_option=args.debug )
             print the_model.summary()
             
             '''Prepare submodels for computation'''
@@ -118,6 +118,10 @@ class MultiAlgorithm( object ):
 
         # 2. run simulation
         SimulationEngine.simulate( args.end_time )
+        
+        if args.debug:
+            print the_model.the_SharedMemoryCellState._recording_history()
+            the_model.the_SharedMemoryCellState.history_debug()
     
 if __name__ == '__main__':
     try:

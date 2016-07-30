@@ -168,7 +168,7 @@ class CellState( SimulationObject ):
                     # raise exeception if an ADJUST_POPULATION_BY_CONTINUOUS_MODEL event acts on a 
                     # non-existent species because the species has no flux, and we don't want a default flux
                     if not specie_name in self.population:
-                        raise ValueError( "Error: {} message requests population of unknown species '{}' in {}\n".format(
+                        raise ValueError( "Error: {} message requests population of unknown species '{}' in {}".format(
                             MessageTypes.ADJUST_POPULATION_BY_CONTINUOUS_MODEL, specie_name, event_message ) )
                     
                     #(population_change, flux) = population_changes[specie_name]
@@ -186,7 +186,7 @@ class CellState( SimulationObject ):
                 invalid_species = species.species - set( self.population.keys() )
                 # TODO(Arthur): test this case:                
                 if len( invalid_species ):
-                    raise ValueError( "Error: {} message requests population of unknown species {} in {}\n".format(
+                    raise ValueError( "Error: {} message requests population of unknown species {} in {}".format(
                         MessageTypes.GET_POPULATION,
                         str( list( invalid_species ) ),
                         str( event_message ) ) )

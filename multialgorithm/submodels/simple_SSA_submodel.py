@@ -7,9 +7,6 @@ I may be able to design a SSA sub-model simulation object that executes either.
 Created 2016/07/14
 @author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
 """
-
-# TODO(Arthur): IMPORTANT: need debugging logging framework: log entries automatically include
-# submodel algorithm and id, time, message type, etc.
     
 import sys
 import logging
@@ -31,7 +28,35 @@ class simple_SSA_submodel( Submodel ):
     simple_SSA_submodel employs Gillespie's Stochastic Simulation Algorithm 
     to predict the dynamics of a set of chemical species in a 'well-mixed' container. 
     
-    # TODO(Arthur): expand description
+    # TODO(Arthur): IMPORTANT: make this as close to the 'direct' method as possible
+    algorithm:
+        implement the 'direct' method, except under unusual circumstances.
+        
+        determine_next_reaction():
+            determine reactant concentrations
+            determine propensities
+            eliminate reactions that are not stoichiometrically enabled *
+            if sum(propensities) == 0: **
+                schedule schedule_next_event after delay of mean inter-reaction time **
+                return None
+            reaction delay = random sample of exp( 1/sum(propensities) )
+            select a reaction weighted by propensities
+            return (delay, selected_reaction)
+            
+        schedule_next_event():
+            if determine_next_reaction():
+                schedule the reaction at time + reaction delay
+
+        execute_reaction():
+            if selected reaction is stoichiometrically enabled:
+                execute it
+                schedule_next_event()
+            else: *
+                if determine_next_reaction(): **
+                    execute the reaction **
+        
+        *   avoid reactions that are not stoichiometrically enabled
+        **  2nd order recovery because other submodels can modify shared species counts
 
     Attributes:
         random: a numpy RandomState() instance object; private PRNG; may be reproducible, as
@@ -80,6 +105,7 @@ class simple_SSA_submodel( Submodel ):
         """
         Submodel.__init__( self, model, name, id, private_cell_state, shared_cell_states,
             reactions, species, debug=debug, write_plot_output=write_plot_output )
+        # TODO(Arthur): use private_cell_state & shared_cell_states, or get rid of them
 
         self.num_SSA_WAITs=0
         self.ema_of_inter_event_time=ExponentialMovingAverage( 0, center_of_mass=default_center_of_mass )

@@ -94,7 +94,7 @@ class Specie(object):
         """
         if self.last_population + population_change < 0:
             raise ValueError( "discrete_adjustment(): negative population: "
-                "last_population + population_change = {:.2f} + {:.2f}\n".format( 
+                "last_population + population_change = {:.2f} + {:.2f}".format( 
                 self.last_population, population_change ) )
         self.last_population += population_change
     
@@ -111,15 +111,15 @@ class Specie(object):
             AssertionError: if the time is negative
         """
         if self.continuous_time == None:
-            raise ValueError( "continuous_adjustment(): initial flux was not provided\n" )
+            raise ValueError( "continuous_adjustment(): initial flux was not provided" )
         assert 0 <= time, 'negative time: {:.2f}'.format( time )
         # multiple continuous adjustments at a time that does not advance the specie's state do not make sense
         if time <= self.continuous_time:
-            raise ValueError( "continuous_adjustment(): time <= self.continuous_time: {:.2f} < {:.2f}\n".format( 
+            raise ValueError( "continuous_adjustment(): time <= self.continuous_time: {:.2f} < {:.2f}".format( 
                 time, self.continuous_time ) )
         if self.last_population + population_change < 0:
             raise ValueError( "continuous_adjustment(): negative population: "
-                "last_population + population_change = {:.2f} + {:.2f}\n".format( 
+                "last_population + population_change = {:.2f} + {:.2f}".format( 
                 self.last_population, population_change ) )
         self.continuous_time = time
         self.continuous_flux = flux
@@ -143,7 +143,7 @@ class Specie(object):
         else:
             if time == None:
                 raise ValueError( "get_population(): time needed because "
-                    "continuous adjustment received at time {:.2f}.\n".format( self.continuous_time ) )
+                    "continuous adjustment received at time {:.2f}".format( self.continuous_time ) )
             if time < self.continuous_time:
                 raise ValueError( "get_population(): time < self.continuous_time: {:.2f} < {:.2f}\n".format( 
                     time, self.continuous_time ) )
