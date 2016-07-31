@@ -20,8 +20,8 @@ class Event( object ):
         event_time: float; simulation time when the event must be executed (aka receive_time)
         sending_object: reference to the object that sends the event
         receiving_object: reference to the object that receives (aka executes) the event
-        event_type: string; the event's type; a constant declared in MessageTypes
-        event_body: reference to an object declared in MessageTypes; the message payload
+        event_type: string; the event's type; the name of a class declared in MessageTypes
+        event_body: reference to a body subclass of a message type declared in MessageTypes; the message payload
     """
     # TODO(Arthur): for performance, perhaps pre-allocate and reuse events
     # use __slots__ to save space

@@ -34,10 +34,7 @@ from Sequential_WC_Simulator.core.SimulationEngine import SimulationEngine, Mess
 from Sequential_WC_Simulator.multialgorithm.CellState import CellState
 from Sequential_WC_Simulator.multialgorithm.submodels.simple_SSA_submodel import simple_SSA_submodel
 from Sequential_WC_Simulator.multialgorithm.submodels.FBA_submodel import FbaSubmodel
-from Sequential_WC_Simulator.multialgorithm.MessageTypes import (MessageTypes, 
-    ADJUST_POPULATION_BY_DISCRETE_MODEL_body, 
-    Continuous_change, ADJUST_POPULATION_BY_CONTINUOUS_MODEL_body, 
-    GET_POPULATION_body, GIVE_POPULATION_body )
+from Sequential_WC_Simulator.multialgorithm.MessageTypes import *
 from Sequential_WC_Simulator.core.LoggingConfig import setup_logger
 
 class MultiAlgorithm( object ):

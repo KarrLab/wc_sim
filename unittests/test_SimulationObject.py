@@ -5,11 +5,11 @@ import unittest
 
 from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, SimulationObject)
 from Sequential_WC_Simulator.core.SimulationEngine import (SimulationEngine, MessageTypesRegistry)
-from Sequential_WC_Simulator.multialgorithm.MessageTypes import MessageTypes
+from Sequential_WC_Simulator.unittests.SomeMessageTypes import *
 
 class ExampleSimulationObject(SimulationObject):
 
-    ALL_MESSAGE_TYPES = 'init_msg test1'.split()
+    ALL_MESSAGE_TYPES = [init_msg, test1]
     MessageTypesRegistry.set_sent_message_types( 'ExampleSimulationObject', ALL_MESSAGE_TYPES )
     MessageTypesRegistry.set_receiver_priorities( 'ExampleSimulationObject', ALL_MESSAGE_TYPES )
 

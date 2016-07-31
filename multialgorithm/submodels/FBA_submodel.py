@@ -22,9 +22,7 @@ from Sequential_WC_Simulator.core.LoggingConfig import setup_logger
 from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, SimulationObject)
 from Sequential_WC_Simulator.core.SimulationEngine import MessageTypesRegistry
 from Sequential_WC_Simulator.multialgorithm.submodels.submodel import Submodel
-from Sequential_WC_Simulator.multialgorithm.MessageTypes import (MessageTypes, 
-    GET_POPULATION_body, 
-    GIVE_POPULATION_body)
+from Sequential_WC_Simulator.multialgorithm.MessageTypes import *
 import Sequential_WC_Simulator.core.utilities as utilities
 from Sequential_WC_Simulator.core.utilities import N_AVOGADRO
 
@@ -56,16 +54,16 @@ class FbaSubmodel(Submodel):
         GIVE_POPULATION
     """
 
-    SENT_MESSAGE_TYPES = [ MessageTypes.RUN_FBA, 
-        MessageTypes.ADJUST_POPULATION_BY_CONTINUOUS_MODEL, 
-        MessageTypes.GET_POPULATION ]
+    SENT_MESSAGE_TYPES = [ RUN_FBA, 
+        ADJUST_POPULATION_BY_CONTINUOUS_MODEL, 
+        GET_POPULATION ]
 
     MessageTypesRegistry.set_sent_message_types( 'FbaSubmodel', SENT_MESSAGE_TYPES )
 
     # at any time instant, process messages in this order
     MESSAGE_TYPES_BY_PRIORITY = [ 
-        MessageTypes.GIVE_POPULATION, 
-        MessageTypes.RUN_FBA ]
+        GIVE_POPULATION, 
+        RUN_FBA ]
 
     MessageTypesRegistry.set_receiver_priorities( 'FbaSubmodel', MESSAGE_TYPES_BY_PRIORITY )
     
@@ -208,7 +206,7 @@ class FbaSubmodel(Submodel):
     def schedule_next_FBA_analysis(self):
         """Schedule the next analysis by this FBA submodel.
         """
-        self.send_event( self.time_step, self, MessageTypes.RUN_FBA )
+        self.send_event( self.time_step, self, RUN_FBA )
 
     def calcReactionFluxes(self):
         """calculate growth rate.
@@ -297,7 +295,7 @@ class FbaSubmodel(Submodel):
             print "{:7.1f}: submodel {}, event {}".format( self.time, self.name, self.num_events )
 
         for event_message in event_list:
-            if event_message.event_type == MessageTypes.GIVE_POPULATION:
+            if event_message.event_type == GIVE_POPULATION.__name__:
                 
                 pass
                 # TODO(Arthur): add this functionality; currently, handling RUN_FBA accesses memory directly
@@ -308,7 +306,7 @@ class FbaSubmodel(Submodel):
                 logging.getLogger( self.logger_name ).debug( "GIVE_POPULATION: {}".format( str(population_values) ) ) 
                 # store population_values in some local cache ...
                     
-            elif event_message.event_type == MessageTypes.RUN_FBA:
+            elif event_message.event_type == RUN_FBA.__name__:
             
                 logging.getLogger( self.logger_name ).debug( "{:8.3f}: {} submodel: "
                 "executing".format( self.time, self.name ) ) 
@@ -320,6 +318,6 @@ class FbaSubmodel(Submodel):
                 self.schedule_next_FBA_analysis()
 
             else:
-                assert False, "Error: the 'if' statement should handle "
+                assert False, "Error: the 'if' statement should handle "\
                 "event_message.event_type '{}'".format(event_message.event_type)
         

@@ -13,7 +13,6 @@ import datetime
 
 from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, SimulationObject)
 from Sequential_WC_Simulator.core.SimulationEngine import (SimulationEngine, MessageTypesRegistry)
-from Sequential_WC_Simulator.multialgorithm.MessageTypes import MessageTypes
 
 def obj_name( obj_num ):
     # create object name from index
@@ -26,9 +25,20 @@ def obj_index( obj_name ):
 def exp_delay( ):
     return random.expovariate( 1.0 )
     
+class message_sent_to_self( object ):
+    """A message_sent_to_self message.
+    """
+    pass
+
+class message_sent_to_other_object( object ):
+    pass
+
+class init_msg( object ):
+    pass
+
 class PHOLDsimulationObject(SimulationObject):
 
-    MESSAGE_TYPES = [ 'message_sent_to_self', 'message_sent_to_other_object', 'init_msg' ]
+    MESSAGE_TYPES = [ message_sent_to_self, message_sent_to_other_object, init_msg ]
     MessageTypesRegistry.set_sent_message_types( 'PHOLDsimulationObject', MESSAGE_TYPES )
     MessageTypesRegistry.set_receiver_priorities( 'PHOLDsimulationObject', MESSAGE_TYPES )
 

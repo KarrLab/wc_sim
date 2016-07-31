@@ -16,8 +16,7 @@ import math
 # TODO(Arthur): test the exceptions in these modules
 from Sequential_WC_Simulator.core.SimulationObject import EventQueue, SimulationObject
 from Sequential_WC_Simulator.core.SimulationEngine import SimulationEngine, MessageTypesRegistry
-from Sequential_WC_Simulator.multialgorithm.MessageTypes import (MessageTypes, ADJUST_POPULATION_BY_DISCRETE_MODEL_body, 
-    Continuous_change, ADJUST_POPULATION_BY_CONTINUOUS_MODEL_body, GET_POPULATION_body, GIVE_POPULATION_body)
+from Sequential_WC_Simulator.multialgorithm.MessageTypes import *
 from Sequential_WC_Simulator.multialgorithm.CellState import CellState
 from UniversalSenderReceiverSimulationObject import UniversalSenderReceiverSimulationObject
 
@@ -43,11 +42,11 @@ def parse_population_history( pop_history ):
     
 class TestSimulationObject(SimulationObject):
 
-    SENT_MESSAGE_TYPES = [ MessageTypes.GET_POPULATION ]
+    SENT_MESSAGE_TYPES = [ GET_POPULATION ]
     MessageTypesRegistry.set_sent_message_types( 'TestSimulationObject', SENT_MESSAGE_TYPES )
 
     # at any time instant, process messages in this order
-    MESSAGE_TYPES_BY_PRIORITY = [ MessageTypes.GIVE_POPULATION ]
+    MESSAGE_TYPES_BY_PRIORITY = [ GIVE_POPULATION ]
     MessageTypesRegistry.set_receiver_priorities( 'TestSimulationObject', MESSAGE_TYPES_BY_PRIORITY )
     
     def __init__( self, name, pop_history, specie, debug=False, write_plot_output=False):
@@ -69,7 +68,7 @@ class TestSimulationObject(SimulationObject):
         
         for event_message in event_list:
             # switch/case on event message type
-            if event_message.event_type == MessageTypes.GIVE_POPULATION:
+            if event_message.event_type == GIVE_POPULATION.__name__:
             
                 # populations is a GIVE_POPULATION_body instance
                 populations = event_message.event_body
@@ -91,7 +90,7 @@ class TestSimulationObject(SimulationObject):
                                 math.floor(correct_pop), math.ceil(correct_pop), 
                                 populations.population[self.specie] ))
             else:
-                raise ValueError( "Error: shouldn't get here - event_message.event_type '{}' should "
+                raise ValueError( "Error: shouldn't get here - event_message.event_type '{}' should "\
                 "be covered in the if statement above".format( event_message.event_type ) )
 
 class TestSimulation(unittest.TestCase):
@@ -146,21 +145,21 @@ Time                 Event                Pop_adjust           Flux             
         # create initial events
         # ADJUST_POPULATION_BY_DISCRETE_MODEL
         for time, (Pop_adjust, unused_Flux, unused_Population) in pop_history_dict['discrete_adjust'].items():
-            usr.send_event( time, cs1, MessageTypes.ADJUST_POPULATION_BY_DISCRETE_MODEL, 
-                event_body=ADJUST_POPULATION_BY_DISCRETE_MODEL_body( { specie:Pop_adjust } ) )
+            usr.send_event( time, cs1, ADJUST_POPULATION_BY_DISCRETE_MODEL, 
+                event_body=ADJUST_POPULATION_BY_DISCRETE_MODEL.body( { specie:Pop_adjust } ) )
         
         # ADJUST_POPULATION_BY_CONTINUOUS_MODEL
         for time, (Pop_adjust, Flux, unused_Population) in pop_history_dict['continuous_adjust'].items():
-            usr.send_event( time, cs1, MessageTypes.ADJUST_POPULATION_BY_CONTINUOUS_MODEL, 
-                event_body=ADJUST_POPULATION_BY_CONTINUOUS_MODEL_body( 
+            usr.send_event( time, cs1, ADJUST_POPULATION_BY_CONTINUOUS_MODEL, 
+                event_body=ADJUST_POPULATION_BY_CONTINUOUS_MODEL.body( 
                     { specie: Continuous_change( Pop_adjust, Flux ) }
                 )
             )
 
         # GET_POPULATION
         for time in pop_history_dict['get_pop'].keys():
-            TestSimObj.send_event( time, cs1, MessageTypes.GET_POPULATION, 
-                event_body=GET_POPULATION_body( set(['x']) )
+            TestSimObj.send_event( time, cs1, GET_POPULATION, 
+                event_body=GET_POPULATION.body( set(['x']) )
             )
         SimulationEngine.simulate( 5.0 )
     
@@ -183,13 +182,13 @@ Time                 Event                Pop_adjust           Flux             
         # create initial events
         # ADJUST_POPULATION_BY_DISCRETE_MODEL
         for time, (Pop_adjust, unused_Flux, unused_Population) in pop_history_dict['discrete_adjust'].items():
-            usr.send_event( time, cs, MessageTypes.ADJUST_POPULATION_BY_DISCRETE_MODEL, 
-                event_body=ADJUST_POPULATION_BY_DISCRETE_MODEL_body( { specie:Pop_adjust } ) )
+            usr.send_event( time, cs, ADJUST_POPULATION_BY_DISCRETE_MODEL, 
+                event_body=ADJUST_POPULATION_BY_DISCRETE_MODEL.body( { specie:Pop_adjust } ) )
 
         # GET_POPULATION
         for time in pop_history_dict['get_pop'].keys():
-            TestSimObj.send_event( time, cs, MessageTypes.GET_POPULATION, 
-                event_body=GET_POPULATION_body( set([ specie ]) )
+            TestSimObj.send_event( time, cs, GET_POPULATION, 
+                event_body=GET_POPULATION.body( set([ specie ]) )
             )
         SimulationEngine.simulate( 5.0 )
         
@@ -207,8 +206,8 @@ Time                 Event                Pop_adjust           Flux             
         # create ADJUST_POPULATION_BY_CONTINUOUS_MODEL event
         usr = UniversalSenderReceiverSimulationObject( 'usr1' )
         for time, (Pop_adjust, Flux, unused_Population) in pop_history_dict['continuous_adjust'].items():
-            usr.send_event( time, cs, MessageTypes.ADJUST_POPULATION_BY_CONTINUOUS_MODEL, 
-                event_body=ADJUST_POPULATION_BY_CONTINUOUS_MODEL_body( 
+            usr.send_event( time, cs, ADJUST_POPULATION_BY_CONTINUOUS_MODEL, 
+                event_body=ADJUST_POPULATION_BY_CONTINUOUS_MODEL.body( 
                     { specie: Continuous_change( Pop_adjust, Flux ) }
                 )
             )

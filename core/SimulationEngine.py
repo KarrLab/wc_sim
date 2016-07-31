@@ -1,14 +1,12 @@
 from __future__ import print_function
 
-from Event import Event
-from Sequential_WC_Simulator.multialgorithm.MessageTypes import MessageTypes 
-
 import warnings
 import logging
 logger = logging.getLogger(__name__)
-
 # control logging level with: logger.setLevel()
 # this enables debug output: logging.basicConfig( level=logging.DEBUG )
+
+from Event import Event
 
 """
 General-purpose simulation mechanisms, including the event queue for each simulation object and
@@ -31,11 +29,17 @@ class MessageTypesRegistry( object ):
     
     @staticmethod
     def set_sent_message_types( sim_obj_name, message_types ):
-        MessageTypesRegistry.senders[ sim_obj_name ] = message_types
+        """Register message types that sim_obj_name will send.
+        
+        Store the types as strings, because they are also used in event messages, which 
+            should not contain references.
+        """
+        MessageTypesRegistry.senders[ sim_obj_name ] = map( lambda x: x.__name__, message_types )
     
     @staticmethod
     def set_receiver_priorities( sim_obj_name, message_priorities ):
-        MessageTypesRegistry.receiver_priorities[ sim_obj_name ] = message_priorities
+        MessageTypesRegistry.receiver_priorities[ sim_obj_name ] = \
+            map( lambda x: x.__name__, message_priorities )
 
 class SimulationEngine(object):
     """A simulation's static engine.

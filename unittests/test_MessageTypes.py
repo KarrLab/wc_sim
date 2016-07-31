@@ -2,8 +2,7 @@
 
 import unittest
 
-from Sequential_WC_Simulator.multialgorithm.MessageTypes import (MessageTypes, ADJUST_POPULATION_BY_DISCRETE_MODEL_body, 
-    Continuous_change, ADJUST_POPULATION_BY_CONTINUOUS_MODEL_body, GET_POPULATION_body, GIVE_POPULATION_body)
+from Sequential_WC_Simulator.multialgorithm.MessageTypes import *
 
 class TestMessageTypes(unittest.TestCase):
     
@@ -19,6 +18,15 @@ class TestMessageTypes(unittest.TestCase):
                 Continuous_change( change, flux )
             self.assertRegexpMatches( context.exception.message, 
                 "Continuous_change.type_check\(\): .* is '.*' which is not an int or float" )
+
+    def test_one_message_type(self):
+    
+        self.assertEqual( ADJUST_POPULATION_BY_CONTINUOUS_MODEL.__name__,
+            'ADJUST_POPULATION_BY_CONTINUOUS_MODEL' )
+        specie_id = 'x'
+        adjustment = 7
+        body = ADJUST_POPULATION_BY_CONTINUOUS_MODEL.body( { specie_id:adjustment } )
+        self.assertEqual( body.population_change[specie_id], adjustment )
 
 if __name__ == '__main__':
     try:

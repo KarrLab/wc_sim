@@ -17,12 +17,7 @@ from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, Simulatio
 from Sequential_WC_Simulator.core.SimulationEngine import MessageTypesRegistry
 from Sequential_WC_Simulator.core.utilities import N_AVOGADRO, ExponentialMovingAverage
 from Sequential_WC_Simulator.multialgorithm.submodels.submodel import Submodel
-
-from Sequential_WC_Simulator.multialgorithm.MessageTypes import (MessageTypes, 
-    ADJUST_POPULATION_BY_DISCRETE_MODEL_body, 
-    EXECUTE_SSA_REACTION_body,
-    GET_POPULATION_body, 
-    GIVE_POPULATION_body )
+from Sequential_WC_Simulator.multialgorithm.MessageTypes import *
     
 class simple_SSA_submodel( Submodel ):
     """
@@ -81,17 +76,16 @@ class simple_SSA_submodel( Submodel ):
         GIVE_POPULATION
     """
 
-    SENT_MESSAGE_TYPES = [ MessageTypes.ADJUST_POPULATION_BY_DISCRETE_MODEL, 
-        MessageTypes.EXECUTE_SSA_REACTION, MessageTypes.GET_POPULATION,
-        MessageTypes.SSA_WAIT ]
+    SENT_MESSAGE_TYPES = [ ADJUST_POPULATION_BY_DISCRETE_MODEL, 
+        EXECUTE_SSA_REACTION, GET_POPULATION, SSA_WAIT ]
 
     MessageTypesRegistry.set_sent_message_types( 'simple_SSA_submodel', SENT_MESSAGE_TYPES )
 
     # at any time instant, process messages in this order
     MESSAGE_TYPES_BY_PRIORITY = [ 
-        MessageTypes.SSA_WAIT,
-        MessageTypes.GIVE_POPULATION, 
-        MessageTypes.EXECUTE_SSA_REACTION ]
+        SSA_WAIT,
+        GIVE_POPULATION, 
+        EXECUTE_SSA_REACTION ]
 
     MessageTypesRegistry.set_receiver_priorities( 'simple_SSA_submodel', MESSAGE_TYPES_BY_PRIORITY )
 
@@ -166,14 +160,14 @@ class simple_SSA_submodel( Submodel ):
     def schedule_SSA_WAIT(self):
         """Schedule an SSA_WAIT. 
         """
-        self.send_event( self.ema_of_inter_event_time.get_value(), self, MessageTypes.SSA_WAIT )
+        self.send_event( self.ema_of_inter_event_time.get_value(), self, SSA_WAIT )
         self.num_SSA_WAITs += 1
 
     def schedule_EXECUTE_SSA_REACTION(self, dt, reaction_index):
         """Schedule an EXECUTE_SSA_REACTION. 
         """
         self.send_event( dt, self,
-            MessageTypes.EXECUTE_SSA_REACTION, EXECUTE_SSA_REACTION_body(reaction_index) )
+            EXECUTE_SSA_REACTION, EXECUTE_SSA_REACTION.body(reaction_index) )
         
         # maintain EMA of the time between EXECUTE_SSA_REACTION events
         self.ema_of_inter_event_time.add_value( dt )
@@ -228,7 +222,7 @@ class simple_SSA_submodel( Submodel ):
             print "{:7.1f}: submodel {}, event {}".format( self.time, self.name, self.num_events )
 
         for event_message in event_list:
-            if event_message.event_type == MessageTypes.GIVE_POPULATION:
+            if event_message.event_type == GIVE_POPULATION.__name__:
                 
                 continue
                 # TODO(Arthur): add this functionality; currently, handling accessing memory directly
@@ -239,7 +233,7 @@ class simple_SSA_submodel( Submodel ):
                 logging.getLogger( self.logger_name ).debug( "GIVE_POPULATION: {}".format( str(population_values) ) ) 
                 # store population_values in some cache ...
                     
-            elif event_message.event_type == MessageTypes.EXECUTE_SSA_REACTION:
+            elif event_message.event_type == EXECUTE_SSA_REACTION.__name__:
             
                 reaction_index = event_message.event_body.reaction_index
 
@@ -263,14 +257,14 @@ class simple_SSA_submodel( Submodel ):
 
                 self.schedule_next_event()
 
-            elif event_message.event_type == MessageTypes.SSA_WAIT:
+            elif event_message.event_type == SSA_WAIT.__name__:
     
                 # TODO(Arthur): generate error for many, or a high fraction of, SSA_WAITs
                 # no reaction to execute
                 self.schedule_next_event()
 
             else:
-                assert False, "Error: the 'if' statement should handle "
+                assert False, "Error: the 'if' statement should handle " \
                 "event_message.event_type '{}'".format(event_message.event_type)
 
         logging.getLogger( self.logger_name ).debug( "{:8.2f}: "

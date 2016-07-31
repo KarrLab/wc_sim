@@ -9,8 +9,7 @@ import logging
 
 from Sequential_WC_Simulator.core.LoggingConfig import setup_logger
 from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, SimulationObject)
-from MessageTypes import (MessageTypes, ADJUST_POPULATION_BY_DISCRETE_MODEL_body, 
-    ADJUST_POPULATION_BY_CONTINUOUS_MODEL_body, GET_POPULATION_body, GIVE_POPULATION_body)
+from Sequential_WC_Simulator.multialgorithm.MessageTypes import *
 from Sequential_WC_Simulator.core.SimulationEngine import MessageTypesRegistry
 from specie import Specie
 
@@ -43,15 +42,15 @@ class CellState( SimulationObject ):
     # TODO(Arthur): report error if a Specie instance is updated by multiple continuous sub-models
     """
     
-    SENT_MESSAGE_TYPES = [ MessageTypes.GIVE_POPULATION ]
+    SENT_MESSAGE_TYPES = [ GIVE_POPULATION ]
     # TODO(Arthur): can Python automatically get the object name (e.g. 'CellState') here?
     MessageTypesRegistry.set_sent_message_types( 'CellState', SENT_MESSAGE_TYPES )
 
     # at any time instant, process messages in this order
     MESSAGE_TYPES_BY_PRIORITY = [ 
-        MessageTypes.ADJUST_POPULATION_BY_DISCRETE_MODEL, 
-        MessageTypes.ADJUST_POPULATION_BY_CONTINUOUS_MODEL, 
-        MessageTypes.GET_POPULATION ]
+        ADJUST_POPULATION_BY_DISCRETE_MODEL, 
+        ADJUST_POPULATION_BY_CONTINUOUS_MODEL, 
+        GET_POPULATION ]
 
     MessageTypesRegistry.set_receiver_priorities( 'CellState', MESSAGE_TYPES_BY_PRIORITY )
 
@@ -142,7 +141,7 @@ class CellState( SimulationObject ):
 
         for event_message in event_list:
             # switch/case on event message type
-            if event_message.event_type == MessageTypes.ADJUST_POPULATION_BY_DISCRETE_MODEL:
+            if event_message.event_type == ADJUST_POPULATION_BY_DISCRETE_MODEL.__name__:
 
                 # population_changes is an ADJUST_POPULATION_BY_DISCRETE_MODEL_body object
                 population_changes = event_message.event_body
@@ -157,7 +156,7 @@ class CellState( SimulationObject ):
                         population_changes.population_change[specie_name] )
                     self.log_event( 'discrete_adjustment', self.population[specie_name] )
                     
-            elif event_message.event_type == MessageTypes.ADJUST_POPULATION_BY_CONTINUOUS_MODEL:
+            elif event_message.event_type == ADJUST_POPULATION_BY_CONTINUOUS_MODEL.__name__:
             
                 # population_changes is an ADJUST_POPULATION_BY_CONTINUOUS_MODEL_body object
                 population_changes = event_message.event_body
@@ -169,7 +168,7 @@ class CellState( SimulationObject ):
                     # non-existent species because the species has no flux, and we don't want a default flux
                     if not specie_name in self.population:
                         raise ValueError( "Error: {} message requests population of unknown species '{}' in {}".format(
-                            MessageTypes.ADJUST_POPULATION_BY_CONTINUOUS_MODEL, specie_name, event_message ) )
+                            ADJUST_POPULATION_BY_CONTINUOUS_MODEL.__name__, specie_name, event_message ) )
                     
                     #(population_change, flux) = population_changes[specie_name]
                     self.population[specie_name].continuous_adjustment( 
@@ -178,7 +177,7 @@ class CellState( SimulationObject ):
                         population_changes.population_change[specie_name].flux )
                     self.log_event( 'continuous_adjustment', self.population[specie_name] )
 
-            elif event_message.event_type == MessageTypes.GET_POPULATION:
+            elif event_message.event_type == GET_POPULATION.__name__:
 
                 # species is a GET_POPULATION_body object
                 species = event_message.event_body
@@ -187,7 +186,7 @@ class CellState( SimulationObject ):
                 # TODO(Arthur): test this case:                
                 if len( invalid_species ):
                     raise ValueError( "Error: {} message requests population of unknown species {} in {}".format(
-                        MessageTypes.GET_POPULATION,
+                        GET_POPULATION.__name__,
                         str( list( invalid_species ) ),
                         str( event_message ) ) )
 
@@ -199,10 +198,10 @@ class CellState( SimulationObject ):
                     population = self.population[specie].get_population( time=self.time ) 
                     reported_population[ specie ] = population
                 self.send_event( 0, event_message.sending_object, 
-                    MessageTypes.GIVE_POPULATION, event_body=GIVE_POPULATION_body(reported_population) )
+                    GIVE_POPULATION, event_body=GIVE_POPULATION.body(reported_population) )
 
             else:
-                assert False, "Shouldn't get here - event_message.event_type should be covered in the "
+                assert False, "Shouldn't get here - event_message.event_type should be covered in the "\
                 "if statement above"
 
     def log_event( self, event_type, specie ):

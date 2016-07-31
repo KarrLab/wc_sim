@@ -8,8 +8,7 @@ import os.path as path
 from Sequential_WC_Simulator.core.SimulationObject import EventQueue, SimulationObject
 from Sequential_WC_Simulator.core.SimulationEngine import SimulationEngine, MessageTypesRegistry
 from Sequential_WC_Simulator.multialgorithm.CellState import CellState
-from Sequential_WC_Simulator.multialgorithm.MessageTypes import (MessageTypes, ADJUST_POPULATION_BY_DISCRETE_MODEL_body, 
-    Continuous_change, ADJUST_POPULATION_BY_CONTINUOUS_MODEL_body, GET_POPULATION_body, GIVE_POPULATION_body)
+from Sequential_WC_Simulator.multialgorithm.MessageTypes import *
 from UniversalSenderReceiverSimulationObject import UniversalSenderReceiverSimulationObject
 from Sequential_WC_Simulator.core.LoggingConfig import LOGGING_ROOT_DIR
 
@@ -49,7 +48,7 @@ class TestCellState(unittest.TestCase):
     def test_CellState_debugging(self):
         cs1 = TestCellState.make_CellState( TestCellState.pop, None, debug=False )
         usr = UniversalSenderReceiverSimulationObject( 'usr1' )
-        usr.send_event( 1.0, cs1, MessageTypes.GET_POPULATION )
+        usr.send_event( 1.0, cs1, GET_POPULATION )
         eq = cs1.event_queue_to_str()
         self.assertIn( 'CellState_1 at 0.000', eq )
         self.assertIn( 'creation_time\tevent_time\tsending_object\treceiving_object\tevent_type', eq )
@@ -60,8 +59,8 @@ class TestCellState(unittest.TestCase):
         cs1 = TestCellState.make_CellState( TestCellState.pop, TestCellState.fluxes, log=True )
         # initial events
         usr = UniversalSenderReceiverSimulationObject( 'usr1' )
-        usr.send_event( 1.0, cs1, MessageTypes.ADJUST_POPULATION_BY_DISCRETE_MODEL, 
-            event_body=ADJUST_POPULATION_BY_DISCRETE_MODEL_body(
+        usr.send_event( 1.0, cs1, ADJUST_POPULATION_BY_DISCRETE_MODEL, 
+            event_body=ADJUST_POPULATION_BY_DISCRETE_MODEL.body(
                 dict( zip( TestCellState.species, [1]*len( TestCellState.species ) ) )
             )
         )
@@ -69,8 +68,8 @@ class TestCellState(unittest.TestCase):
         d = dict( zip( TestCellState.species,
                 map( lambda x: Continuous_change(2.0, 1.0), [1]*len( TestCellState.species ) ) ) )
 
-        usr.send_event( t, cs1, MessageTypes.ADJUST_POPULATION_BY_CONTINUOUS_MODEL, 
-            event_body=ADJUST_POPULATION_BY_CONTINUOUS_MODEL_body( d ) )
+        usr.send_event( t, cs1, ADJUST_POPULATION_BY_CONTINUOUS_MODEL, 
+            event_body=ADJUST_POPULATION_BY_CONTINUOUS_MODEL.body( d ) )
         SimulationEngine.simulate( 5.0 )
         
         text_in_log_s1_by_line = '''.*; s1; .* #Sim_time\tAdjustment_type\tNew_population\tNew_flux
@@ -90,8 +89,8 @@ class TestCellState(unittest.TestCase):
         # TODO(Arthur): avoid copying this code
         # initial events
         usr = UniversalSenderReceiverSimulationObject( 'usr1' )
-        usr.send_event( 1.0, cs1, MessageTypes.ADJUST_POPULATION_BY_DISCRETE_MODEL, 
-            event_body=ADJUST_POPULATION_BY_DISCRETE_MODEL_body(
+        usr.send_event( 1.0, cs1, ADJUST_POPULATION_BY_DISCRETE_MODEL, 
+            event_body=ADJUST_POPULATION_BY_DISCRETE_MODEL.body(
                 dict( zip( TestCellState.species, [1]*len( TestCellState.species ) ) )
             )
         )
@@ -99,8 +98,8 @@ class TestCellState(unittest.TestCase):
         d = dict( zip( TestCellState.species,
                 map( lambda x: Continuous_change(2.0, 1.0), [1]*len( TestCellState.species ) ) ) )
 
-        usr.send_event( t, cs1, MessageTypes.ADJUST_POPULATION_BY_CONTINUOUS_MODEL, 
-            event_body=ADJUST_POPULATION_BY_CONTINUOUS_MODEL_body( d ) )
+        usr.send_event( t, cs1, ADJUST_POPULATION_BY_CONTINUOUS_MODEL, 
+            event_body=ADJUST_POPULATION_BY_CONTINUOUS_MODEL.body( d ) )
         SimulationEngine.simulate( 5.0 )
         
         text_in_log_CellState_CellState_2_by_line = '''.*initial_population: {'s3': 35, 's2': 28, 's1': 21}

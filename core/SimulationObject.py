@@ -8,7 +8,6 @@ Created 2016/06/01
 """
 
 from Event import Event
-from Sequential_WC_Simulator.multialgorithm.MessageTypes import MessageTypes 
 from Sequential_WC_Simulator.core.SimulationEngine import (SimulationEngine, MessageTypesRegistry)
 
 from copy import deepcopy
@@ -48,7 +47,8 @@ class EventQueue(object):
             receive_time: number; the simulation time at which the receiving_object will execute the event
             sending_object: object; the object sending the event
             receiving_object: object; the object that will receive the event
-            event_type: string; a string type for the event, used by objects and in debugging output
+            event_type: class; the type of the message; the class' name is sent with the message,
+                as messages should not contain references
             event_body: object; an object containing the body of the event
             
         Raises:
@@ -175,22 +175,28 @@ class SimulationObject(object):
         if delay < 0:
             raise ValueError( "delay < 0 in send_event(): {}".format( str( delay ) ) )
             
+        # TODO(Arthur): replace this with event_type_name = event_type_name.__name__; the isinstance()
+        # just accommodates some old tests
+        event_type_name = event_type
+        if not isinstance( event_type_name, str ):
+            event_type_name = event_type_name.__name__
+        
         # check that the sending object type is registered to send the message type
-        if not event_type in MessageTypesRegistry.senders[ self.__class__.__name__ ]:
+        if not event_type_name in MessageTypesRegistry.senders[ self.__class__.__name__ ]:
             raise ValueError( "'{}' simulation objects not registered to send '{}' messages".format( 
-                self.__class__.__name__, event_type ) )
+                self.__class__.__name__, event_type_name ) )
 
         # check that the receiving simulation object type is registered to receive the message type
-        if not event_type in MessageTypesRegistry.receiver_priorities[ receiving_object.__class__.__name__ ]:
+        if not event_type_name in MessageTypesRegistry.receiver_priorities[ receiving_object.__class__.__name__ ]:
             raise ValueError( "'{}' simulation objects not registered to receive '{}' messages".format( 
-                receiving_object.__class__.__name__, event_type ) )
+                receiving_object.__class__.__name__, event_type_name ) )
             
         event_body_copy = None
         if event_body and copy:
             event_body_copy = deepcopy( event_body )
         
         receiving_object.event_queue.schedule_event( self.time, self.time + delay, self,
-            receiving_object, event_type, event_body )
+            receiving_object, event_type_name, event_body )
         logger.debug( ": (%s, %f) -> (%s, %f): %s" , self.name, self.time, receiving_object.name, self.time + delay, 
             event_type )
         

@@ -72,10 +72,10 @@ class SharedMemoryCellState( object ):
         try:
             if initial_fluxes is not None:
                 for specie_id in initial_population.keys():
-                    self.init( specie_id, initial_population[specie_id], initial_fluxes[specie_id] )
+                    self.init_cell_state_specie( specie_id, initial_population[specie_id], initial_fluxes[specie_id] )
             else:
                 for specie_id in initial_population.keys():
-                    self.init( specie_id, initial_population[specie_id] )
+                    self.init_cell_state_specie( specie_id, initial_population[specie_id] )
         except AssertionError as e:
             sys.stderr.write( "Cannot initialize SharedMemoryCellState: {}.\n".format( e.message ) )
         
@@ -188,7 +188,7 @@ class SharedMemoryCellState( object ):
         else:
             raise ValueError( "history not recorded" )
         
-    def __check_species( self, time, species ):
+    def _check_species( self, time, species ):
         """Check whether the species are a list, and not known by this SharedMemoryCellState.
         
         Raises:
@@ -233,7 +233,7 @@ class SharedMemoryCellState( object ):
         Raises:
             ValueError: the population of unknown specie(s) were requested
         """
-        self.__check_species( time, species )
+        self._check_species( time, species )
         self.time = time
         self.__update_access_times( time, species )
         return { specie:self.population[specie].get_population(time) for specie in species }
@@ -250,7 +250,7 @@ class SharedMemoryCellState( object ):
             ValueError: adjustment attempts to change the population of an unknown species
             ValueError: if population goes negative
         """
-        self.__check_species( time, adjustments.keys() )
+        self._check_species( time, adjustments.keys() )
         self.time = time
         for specie in adjustments.keys():
             try:
@@ -272,7 +272,7 @@ class SharedMemoryCellState( object ):
             ValueError: adjustment attempts to change the population of a non-existent species
             ValueError: if population goes negative
         """
-        self.__check_species( time, adjustments.keys() )
+        self._check_species( time, adjustments.keys() )
         self.time = time
 
         # record simulation state history
