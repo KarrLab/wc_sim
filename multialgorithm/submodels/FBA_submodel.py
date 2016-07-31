@@ -34,6 +34,7 @@ class FbaSubmodel(Submodel):
     biomass increase. 
     
     # TODO(Arthur): expand description
+    # TODO(Arthur): change variable names to lower_with_under style
 
     Attributes:
         random: random object; private PRNG
@@ -212,11 +213,6 @@ class FbaSubmodel(Submodel):
     def calcReactionFluxes(self):
         """calculate growth rate.
         
-        Args:
-            ?
-        
-        Returns:
-            ?
         """
         self.cobraModel.optimize()
         self.reactionFluxes = self.cobraModel.solution.x
@@ -232,23 +228,52 @@ class FbaSubmodel(Submodel):
         """Update species (metabolite) counts and fluxes.
         """
         # biomass production
-        # TODO(Arthur): IMPORTANT; incorporate fluxes!
+        # TODO(Arthur): clean up print and other debugging
         adjustments={}
+        local_fluxes={}
         for participant in self.metabolismProductionReaction['reaction'].participants:
             # directly reference global state
-            adjustments[participant.id] = (-self.model.growth * participant.coefficient * self.time_step, 0)
+            adjustments[participant.id] = (-self.model.growth * participant.coefficient * self.time_step,
+                -self.model.growth * participant.coefficient )
             # was: self.speciesCounts[part.id] -= self.model.growth * part.coefficient * timeStep
+            local_fluxes[participant.id] = -self.model.growth * participant.coefficient
         
         # external nutrients
         for exSpecies in self.exchangedSpecies:
             # was: self.speciesCounts[exSpecies.id] += self.reactionFluxes[exSpecies.reactionIndex] * timeStep
-            adjustments[exSpecies.id] = (self.reactionFluxes[exSpecies.reactionIndex] * self.time_step, 0)
+            adjustments[exSpecies.id] = (self.reactionFluxes[exSpecies.reactionIndex] * self.time_step,
+                self.reactionFluxes[exSpecies.reactionIndex])
+            local_fluxes[exSpecies.id] = self.reactionFluxes[exSpecies.reactionIndex]
+        
+        '''
+        examine the data:
+        by_compartement={ } 
+        for k,v in local_fluxes.items():
+            if '[c]' in k:
+                compartment = 'c'
+            elif '[e]' in k:
+                compartment = 'e'
+            else:
+                sys.stderr.write( "strange: {}: {} {}\n".format( self.time, k, v ) )
+            s = k.split('[')[0]
+            if not s in by_compartement:
+                by_compartement[s] = { 'c':float('NaN'), 'e':float('NaN')}
+            by_compartement[s][compartment] = v
+        input_metabolites = 'AD ADP ALA AlaAla AMP ARG ArgArg ASN AsnAsn ASP AspAsp ATP CDP CMP CO2 CTP CYS CysCys CYTD DPG E4P F6P FDP G2P G3P G6P GDP GLC GLN GlnGln GLU GluGlu GLY GlyGly GMP GN GTP H H2O HIS HisHis ILE IleIle LAC LEU LeuLeu LYS LysLys MET MetMet NAD NADH O2 PEP PHE PhePhe Pi PI PPi PPI PRO ProPro PRPP PYR R5P RL5P S7P SER SerSer T3P1 T3P2 THR ThrThr TRP TrpTrp TYR TyrTyr UDP UMP URA URI UTP VAL ValVal X5P'.split()
+        print 'set(by_compartement.keys()) - set(input_metabolites)', list(set(by_compartement.keys()) - set(input_metabolites))
 
-        cts = self.get_specie_counts()
-        for s in self.metabolismProductionReaction['reaction'].participants:    # self.species:
-            if cts[s.id]+adjustments[s.id][0] < 0:
-                pass
+        if not int(self.time) % 5000:
+            print self.time
+            print "specie\tc\te"
+            # for k in sorted(by_compartement.keys()):
+            for k in input_metabolites:
+                if k in by_compartement:
+                    print "{}\t{}\t{}".format( k, by_compartement[k]['c'], by_compartement[k]['e'], ) 
+                else:
+                    print "{}".format( k ) 
+        '''
         self.model.the_SharedMemoryCellState.adjust_continuously( self.time, adjustments )
+        
         
     def calcReactionBounds(self):
         """Compute FBA reaction bounds.

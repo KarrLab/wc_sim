@@ -219,6 +219,7 @@ class SharedMemoryCellState( object ):
         for specie_name in species:
             self.last_access_time[specie_name] = time
 
+    # TODO(Arthur): IMPORTANT; add optional use_interpolation, so we can compare with and wo
     def read( self, time, species ):
         """Read the predicted population of a list of species at a particular time.
         
@@ -284,6 +285,8 @@ class SharedMemoryCellState( object ):
                 self.population[specie].continuous_adjustment( adjustment, time, flux )
                 self.__update_access_times( time, [specie] )
             except ValueError as e:
+                # TODO(Arthur): IMPORTANT; return to raising exceptions with negative population
+                # when initial values get debugged
                 # raise ValueError( "Error: on specie {}: {}".format( specie, e ) )
                 e = str(e).strip()
                 logging.getLogger(self.logger_name).debug( "Error: on specie {}: {}".format( specie, e ) )
