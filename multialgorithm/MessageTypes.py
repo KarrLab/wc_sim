@@ -171,7 +171,6 @@ class GIVE_POPULATION_body( object ):
             population: dict: species_name -> population; the copy numbers of some species 
     """
 
-    # use __slots__ to save space
     __slots__ = ["population"]
     def __init__( self, population ):
         self.population = population
@@ -182,4 +181,15 @@ class GIVE_POPULATION_body( object ):
         '''
         l = map( lambda x: "{}:{:.1f}".format( x, self.population[x] ), self.population.keys() )
         return "specie:population: {}".format( ', '.join( l ) )
+
+class EXECUTE_SSA_REACTION_body( object ):
+    """Body of a EXECUTE_SSA_REACTION message.
+
+        Attributes:
+            reaction_index: integer; the index of the selected reaction in simple_SSA_submodel.reactions
+    """
+
+    __slots__ = ["reaction_index"]
+    def __init__( self, reaction_index ):
+        self.reaction_index = reaction_index
 

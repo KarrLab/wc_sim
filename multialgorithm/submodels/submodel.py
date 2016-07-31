@@ -101,34 +101,7 @@ class Submodel(SimulationObject):
         ids = map( lambda s: s.id, self.species )
         return { specie_id:(counts[specie_id] / self.model.volume)/N_AVOGADRO for specie_id in ids }
 
-    '''
     # TODO(Arthur): IMPORTANT: discard code I'm not using
-    #get species concentrations
-    def getSpeciesConcentrations(self, now):
-        # DES PLANNING COMMENT(Arthur): DES can use this; just access SpeciesCounts objects
-        # DES PLAN: eliminate; just use global concentrations
-        return self.model.getSpeciesConcentrationsDict( now )
-        volumes = self.getSpeciesVolumes()
-        concs = {}
-        for species in self.species:
-            concs[species.id] = (self.speciesCounts[species.id] / volumes[species.id]) / N_AVOGADRO
-        return concs
-    '''
-        
-    #get container volume. for each species
-    # TODO(Arthur): IMPORTANT: this doesn't work; is it used?
-    def getSpeciesVolumes(self, now):
-        # DES PLANNING COMMENT(Arthur): redundant
-        return getSpeciesConcentrationsDict( now )
-        '''
-        volumes = {}
-        for species in self.species:
-            if species.compartment.id == 'c':
-                volumes[species.id] = self.volume
-            else:
-                volumes[species.id] = self.extracellularVolume
-        return volumes
-        '''
         
     # TODO(Arthur): make this an instance method, and drop the arguments
     @staticmethod
@@ -160,8 +133,25 @@ class Submodel(SimulationObject):
 
         return rates
                
+    def enabled_reaction(self, reaction):
+        """Determine whether the cell state has adequate specie counts to run a reaction.
+        
+        Args:
+            reaction: a reaction object; the reaction to evaluate
+            
+        Returns:
+            True if reaction is stoichiometrically enabled
+        """
+        for participant in reaction.participants:
+            species_id = Model.species_compartment_name( participant.species, participant.compartment )
+            count = self.model.the_SharedMemoryCellState.read( self.time, [species_id] )
+            # 'participant.coefficient < 0' constrains the test to reactants
+            if participant.coefficient < 0 and count < -participant.coefficient:
+                return False
+        return True
+        
     def identify_enabled_reactions(self, propensities):
-        """Determine reactions with adequate specie counts to run.
+        """Determine reactions in a propensity array which have adequate specie counts to run.
         
         A reaction's mass action kinetics, as computed by calcReactionRates()
         may be positive when insufficient species are available to execute the reaction. 
@@ -184,15 +174,11 @@ class Submodel(SimulationObject):
                 enabled[iRxn] = 0
                 continue
 
-            for participant in rxn.participants:
-                species_id = Model.species_compartment_name( participant.species, participant.compartment )
-                # 'participant.coefficient < 0' constrains the test to reactants
-                if participant.coefficient < 0 and counts[ species_id ] < -participant.coefficient:
-                    logging.getLogger( self.Submodel_logger_name ).debug( 
-                        "reaction: {} of {}: insufficient counts for {}; available: {}".format( 
-                        iRxn, len(self.reactions), participant, counts[ species_id ] ) )
-                    enabled[iRxn] = 0
-                    continue
+            if not self.enabled_reaction(rxn):
+                enabled[iRxn] = 0
+                logging.getLogger( self.Submodel_logger_name ).debug( 
+                    "reaction: {} of {}: insufficient counts".format( iRxn, len(self.reactions) ) )
+
         return enabled
                
     def executeReaction(self, the_SharedMemoryCellState, reaction):

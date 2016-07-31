@@ -91,7 +91,7 @@ class CellState( SimulationObject ):
                     initial_flux=initial_flux_given, random_seed=shared_random_seed )
         except AssertionError as e:
             sys.stderr.write( "Cannot initialize CellState: {}.\n".format( e.message ) )
-            
+
         self.logger_name = "CellState_{}".format( name )
         if debug:
             # make a logger for this CellState

@@ -120,8 +120,8 @@ class MultiAlgorithm( object ):
         SimulationEngine.simulate( args.end_time )
         
         if args.debug:
-            print the_model.the_SharedMemoryCellState._recording_history()
-            the_model.the_SharedMemoryCellState.history_debug()
+            the_model.the_SharedMemoryCellState._recording_history()
+            # print the_model.the_SharedMemoryCellState.history_debug()
     
 if __name__ == '__main__':
     try:
