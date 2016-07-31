@@ -15,7 +15,8 @@ import numpy as np
 from Sequential_WC_Simulator.core.LoggingConfig import setup_logger
 from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, SimulationObject)
 from Sequential_WC_Simulator.core.SimulationEngine import MessageTypesRegistry
-from Sequential_WC_Simulator.core.utilities import N_AVOGADRO, ExponentialMovingAverage
+from Sequential_WC_Simulator.core.utilities import (N_AVOGADRO, ExponentialMovingAverage, 
+    compare_name_with_class)
 from Sequential_WC_Simulator.multialgorithm.submodels.submodel import Submodel
 from Sequential_WC_Simulator.multialgorithm.MessageTypes import *
     
@@ -222,7 +223,7 @@ class simple_SSA_submodel( Submodel ):
             print "{:7.1f}: submodel {}, event {}".format( self.time, self.name, self.num_events )
 
         for event_message in event_list:
-            if event_message.event_type == GIVE_POPULATION.__name__:
+            if compare_name_with_class( event_message.event_type, GIVE_POPULATION ):
                 
                 continue
                 # TODO(Arthur): add this functionality; currently, handling accessing memory directly
@@ -233,7 +234,7 @@ class simple_SSA_submodel( Submodel ):
                 logging.getLogger( self.logger_name ).debug( "GIVE_POPULATION: {}".format( str(population_values) ) ) 
                 # store population_values in some cache ...
                     
-            elif event_message.event_type == EXECUTE_SSA_REACTION.__name__:
+            elif compare_name_with_class( event_message.event_type, EXECUTE_SSA_REACTION ):
             
                 reaction_index = event_message.event_body.reaction_index
 
@@ -257,7 +258,7 @@ class simple_SSA_submodel( Submodel ):
 
                 self.schedule_next_event()
 
-            elif event_message.event_type == SSA_WAIT.__name__:
+            elif compare_name_with_class( event_message.event_type, SSA_WAIT ):
     
                 # TODO(Arthur): generate error for many, or a high fraction of, SSA_WAITs
                 # no reaction to execute

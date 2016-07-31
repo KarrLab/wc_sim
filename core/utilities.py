@@ -216,3 +216,13 @@ def nanminimum(x, y):
 def nanmaximum(x, y):
     return np.where(np.logical_or(np.isnan(y), np.logical_and(x >= y, np.logical_not(np.isnan(x)))), x, y)
 
+def compare_name_with_class( a_name, a_class ):
+    """Compares class name with the type of a_class.
+    
+    Used by SimulationObject instances in handle_event() to compare the event message type 
+    field against event message types.
+    
+    Returns:
+        True if the the name of class a_class is a_name.
+    """
+    return a_name == a_class.__name__

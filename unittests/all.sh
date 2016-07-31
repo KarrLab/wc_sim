@@ -3,6 +3,9 @@
 # @author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
 # run all unittests
 
+# TODO(Arthur): make a fast option, which must skip test_StochasticRound.py (or run a 
+# fast version)
+
 function usage {
     if [ -n "$1" ]; then echo $1 >&2; fi
 cat <<EOF >&2

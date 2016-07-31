@@ -16,6 +16,7 @@ import math
 # TODO(Arthur): test the exceptions in these modules
 from Sequential_WC_Simulator.core.SimulationObject import EventQueue, SimulationObject
 from Sequential_WC_Simulator.core.SimulationEngine import SimulationEngine, MessageTypesRegistry
+from Sequential_WC_Simulator.core.utilities import compare_name_with_class
 from Sequential_WC_Simulator.multialgorithm.MessageTypes import *
 from Sequential_WC_Simulator.multialgorithm.CellState import CellState
 from UniversalSenderReceiverSimulationObject import UniversalSenderReceiverSimulationObject
@@ -68,7 +69,7 @@ class TestSimulationObject(SimulationObject):
         
         for event_message in event_list:
             # switch/case on event message type
-            if event_message.event_type == GIVE_POPULATION.__name__:
+            if compare_name_with_class( event_message.event_type, GIVE_POPULATION ):
             
                 # populations is a GIVE_POPULATION_body instance
                 populations = event_message.event_body

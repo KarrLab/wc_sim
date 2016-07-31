@@ -3,6 +3,7 @@
 import unittest
 
 from Sequential_WC_Simulator.multialgorithm.MessageTypes import *
+from Sequential_WC_Simulator.core.utilities import compare_name_with_class
 
 class TestMessageTypes(unittest.TestCase):
     
@@ -21,8 +22,8 @@ class TestMessageTypes(unittest.TestCase):
 
     def test_one_message_type(self):
     
-        self.assertEqual( ADJUST_POPULATION_BY_CONTINUOUS_MODEL.__name__,
-            'ADJUST_POPULATION_BY_CONTINUOUS_MODEL' )
+        self.assertTrue( compare_name_with_class( 'ADJUST_POPULATION_BY_CONTINUOUS_MODEL',
+            ADJUST_POPULATION_BY_CONTINUOUS_MODEL ) )
         specie_id = 'x'
         adjustment = 7
         body = ADJUST_POPULATION_BY_CONTINUOUS_MODEL.body( { specie_id:adjustment } )

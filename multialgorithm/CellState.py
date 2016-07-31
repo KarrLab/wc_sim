@@ -9,8 +9,10 @@ import logging
 
 from Sequential_WC_Simulator.core.LoggingConfig import setup_logger
 from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, SimulationObject)
-from Sequential_WC_Simulator.multialgorithm.MessageTypes import *
+from Sequential_WC_Simulator.core.utilities import compare_name_with_class
 from Sequential_WC_Simulator.core.SimulationEngine import MessageTypesRegistry
+
+from Sequential_WC_Simulator.multialgorithm.MessageTypes import *
 from specie import Specie
 
     
@@ -141,7 +143,7 @@ class CellState( SimulationObject ):
 
         for event_message in event_list:
             # switch/case on event message type
-            if event_message.event_type == ADJUST_POPULATION_BY_DISCRETE_MODEL.__name__:
+            if compare_name_with_class( event_message.event_type, ADJUST_POPULATION_BY_DISCRETE_MODEL ):
 
                 # population_changes is an ADJUST_POPULATION_BY_DISCRETE_MODEL_body object
                 population_changes = event_message.event_body
@@ -156,7 +158,7 @@ class CellState( SimulationObject ):
                         population_changes.population_change[specie_name] )
                     self.log_event( 'discrete_adjustment', self.population[specie_name] )
                     
-            elif event_message.event_type == ADJUST_POPULATION_BY_CONTINUOUS_MODEL.__name__:
+            elif compare_name_with_class( event_message.event_type, ADJUST_POPULATION_BY_CONTINUOUS_MODEL ):
             
                 # population_changes is an ADJUST_POPULATION_BY_CONTINUOUS_MODEL_body object
                 population_changes = event_message.event_body
@@ -177,7 +179,7 @@ class CellState( SimulationObject ):
                         population_changes.population_change[specie_name].flux )
                     self.log_event( 'continuous_adjustment', self.population[specie_name] )
 
-            elif event_message.event_type == GET_POPULATION.__name__:
+            elif compare_name_with_class( event_message.event_type, GET_POPULATION ):
 
                 # species is a GET_POPULATION_body object
                 species = event_message.event_body

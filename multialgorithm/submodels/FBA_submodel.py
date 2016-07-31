@@ -17,14 +17,15 @@ with warnings.catch_warnings():
     from cobra import Model as CobraModel
     from cobra import Reaction as CobraReaction
 
-from Sequential_WC_Simulator.multialgorithm.model_representation import *
 from Sequential_WC_Simulator.core.LoggingConfig import setup_logger
 from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, SimulationObject)
 from Sequential_WC_Simulator.core.SimulationEngine import MessageTypesRegistry
+from Sequential_WC_Simulator.core.utilities import N_AVOGADRO, compare_name_with_class
+import Sequential_WC_Simulator.core.utilities as utilities
+
 from Sequential_WC_Simulator.multialgorithm.submodels.submodel import Submodel
 from Sequential_WC_Simulator.multialgorithm.MessageTypes import *
-import Sequential_WC_Simulator.core.utilities as utilities
-from Sequential_WC_Simulator.core.utilities import N_AVOGADRO
+from Sequential_WC_Simulator.multialgorithm.model_representation import *
 
 class FbaSubmodel(Submodel):
     """
@@ -295,7 +296,7 @@ class FbaSubmodel(Submodel):
             print "{:7.1f}: submodel {}, event {}".format( self.time, self.name, self.num_events )
 
         for event_message in event_list:
-            if event_message.event_type == GIVE_POPULATION.__name__:
+            if compare_name_with_class( event_message.event_type, GIVE_POPULATION ):
                 
                 pass
                 # TODO(Arthur): add this functionality; currently, handling RUN_FBA accesses memory directly
@@ -306,7 +307,7 @@ class FbaSubmodel(Submodel):
                 logging.getLogger( self.logger_name ).debug( "GIVE_POPULATION: {}".format( str(population_values) ) ) 
                 # store population_values in some local cache ...
                     
-            elif event_message.event_type == RUN_FBA.__name__:
+            elif compare_name_with_class( event_message.event_type, RUN_FBA ):
             
                 logging.getLogger( self.logger_name ).debug( "{:8.3f}: {} submodel: "
                 "executing".format( self.time, self.name ) ) 
