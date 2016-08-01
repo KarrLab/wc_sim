@@ -53,3 +53,8 @@ htmlcov
 # pytest files
 .cache*
 
+# documentation files
+docs/_build
+
+# files for PyPI
+README.rst
