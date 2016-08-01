@@ -12,6 +12,7 @@ import sys
 import logging
 
 from Sequential_WC_Simulator.core.LoggingConfig import setup_logger
+from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
 from specie import Specie
 
     

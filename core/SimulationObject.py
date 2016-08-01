@@ -7,19 +7,18 @@ Created 2016/06/01
 @author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
 """
 
-from Event import Event
-from Sequential_WC_Simulator.core.SimulationEngine import (SimulationEngine, MessageTypesRegistry)
-
 from copy import deepcopy
 import heapq
 import warnings
-
 # TODO(Arthur): remove old logging commands & comments; use new loggers
 import logging
 logger = logging.getLogger(__name__)
-
 # control logging level with: logger.setLevel()
 # this enables debug output: logging.basicConfig( level=logging.DEBUG )
+
+from Event import Event
+from Sequential_WC_Simulator.core.SimulationEngine import (SimulationEngine, MessageTypesRegistry)
+from Sequential_WC_Simulator.core.config import SimulatorConfig
 
 class EventQueue(object):
     """A simulation object's event queue.

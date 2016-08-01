@@ -7,6 +7,7 @@ logger = logging.getLogger(__name__)
 # this enables debug output: logging.basicConfig( level=logging.DEBUG )
 
 from Event import Event
+from Sequential_WC_Simulator.core.config import SimulatorConfig
 
 """
 General-purpose simulation mechanisms, including the event queue for each simulation object and

@@ -3,6 +3,7 @@
 @date 7/19/2016
 '''
 
+from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
 from Sequential_WC_Simulator.core.utilities import StochasticRound
 
 class Specie(object):
@@ -147,9 +148,11 @@ class Specie(object):
             if time < self.continuous_time:
                 raise ValueError( "get_population(): time < self.continuous_time: {:.2f} < {:.2f}\n".format( 
                     time, self.continuous_time ) )
-            interpolation = (time - self.continuous_time) * self.continuous_flux
-            real_copy_number = self.last_population + interpolation
-            return self.stochasticRounder( real_copy_number )
+            interpolation=0
+            if WC_SimulatorConfig.INTERPOLATE:
+                interpolation = (time - self.continuous_time) * self.continuous_flux
+            float_copy_number = self.last_population + interpolation
+            return self.stochasticRounder( float_copy_number )
             
     def __str__( self ):
         return "specie_name:{}; last_population:{}; continuous_time:{}; continuous_flux:{}".format( 

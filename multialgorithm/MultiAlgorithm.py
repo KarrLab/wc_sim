@@ -26,16 +26,17 @@ import warnings
 import errno
 
 # Use refactored WcModelingTutorial modules
-from Sequential_WC_Simulator.multialgorithm.model_representation import Model
-from Sequential_WC_Simulator.multialgorithm.model_loader import getModelFromExcel
+from Sequential_WC_Simulator.core.LoggingConfig import setup_logger
 from Sequential_WC_Simulator.core.utilities import ReproducibleRandom
 from Sequential_WC_Simulator.core.SimulationObject import EventQueue, SimulationObject
 from Sequential_WC_Simulator.core.SimulationEngine import SimulationEngine, MessageTypesRegistry
+from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
+from Sequential_WC_Simulator.multialgorithm.model_representation import Model
+from Sequential_WC_Simulator.multialgorithm.model_loader import getModelFromExcel
 from Sequential_WC_Simulator.multialgorithm.CellState import CellState
 from Sequential_WC_Simulator.multialgorithm.submodels.simple_SSA_submodel import simple_SSA_submodel
 from Sequential_WC_Simulator.multialgorithm.submodels.FBA_submodel import FbaSubmodel
 from Sequential_WC_Simulator.multialgorithm.MessageTypes import *
-from Sequential_WC_Simulator.core.LoggingConfig import setup_logger
 
 class MultiAlgorithm( object ):
     """A modular, mult-algorithmic, discrete event WC simulator.
@@ -48,16 +49,13 @@ class MultiAlgorithm( object ):
         # TODO(Arthur): attempt to simulate to 'cell division'
         parser.add_argument( 'end_time', type=float, help="End time for the simulation (s)" )
 
-        # TODO(Arthur): move some of these options to a configuration file
-        DEFAULT_OUTPUT_DIRECTORY = '.'
         parser.add_argument( '--output_directory', '-o', type=str, 
-            help="Output directory; default '{}'".format(DEFAULT_OUTPUT_DIRECTORY), 
-            default=DEFAULT_OUTPUT_DIRECTORY )
+            help="Output directory; default '{}'".format(WC_SimulatorConfig.DEFAULT_OUTPUT_DIRECTORY), 
+            default=WC_SimulatorConfig.DEFAULT_OUTPUT_DIRECTORY )
 
-        DEFAULT_FBA_TIME_STEP = 1.0
         parser.add_argument( '--FBA_time_step', '-F', type=float, 
-            help="FBA time step in sec; default: '{:3.1f}'".format(DEFAULT_FBA_TIME_STEP), 
-            default=DEFAULT_FBA_TIME_STEP )
+            help="FBA time step in sec; default: '{:3.1f}'".format(WC_SimulatorConfig.DEFAULT_FBA_TIME_STEP), 
+            default=WC_SimulatorConfig.DEFAULT_FBA_TIME_STEP )
 
         output_options = parser.add_mutually_exclusive_group()
         output_options.add_argument( '--debug', '-d', action='store_true', help='Print debug output' )

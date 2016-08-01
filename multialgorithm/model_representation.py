@@ -21,6 +21,7 @@ with warnings.catch_warnings():
 
 from Sequential_WC_Simulator.core.LoggingConfig import setup_logger
 from Sequential_WC_Simulator.core.utilities import N_AVOGADRO
+from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
 from Sequential_WC_Simulator.multialgorithm.shared_cell_state import SharedMemoryCellState
 
 class Model(object):

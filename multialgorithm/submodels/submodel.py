@@ -20,6 +20,7 @@ import Sequential_WC_Simulator.core.utilities
 from Sequential_WC_Simulator.core.SimulationObject import SimulationObject
 from Sequential_WC_Simulator.core.LoggingConfig import setup_logger
 from Sequential_WC_Simulator.core.utilities import N_AVOGADRO
+from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
 from Sequential_WC_Simulator.multialgorithm.model_representation import Model, ExchangedSpecies
 from Sequential_WC_Simulator.multialgorithm.shared_cell_state import SharedMemoryCellState
 

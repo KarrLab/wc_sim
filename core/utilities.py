@@ -1,5 +1,12 @@
 from __future__ import print_function
 
+"""
+Simulation utilities. 
+
+Created 2016/07/11
+@author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+"""
+
 from random import Random
 from numpy import random as numpy_random
 import random as python_random
@@ -7,12 +14,7 @@ import sys
 import math
 import logging
 
-"""
-Simulation utilities. 
-
-Created 2016/07/11
-@author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
-"""
+from Sequential_WC_Simulator.core.config import SimulatorConfig
 
 class ExponentialMovingAverage(object):
     """An exponential moving average.

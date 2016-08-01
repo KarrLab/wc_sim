@@ -2,6 +2,8 @@ import logging
 import os.path as path
 import os
 
+from Sequential_WC_Simulator.core.config import SimulatorConfig
+
 # TODO(Arthur): make configurable
 LOGGING_ROOT_DIR=path.expanduser( "~/tmp/Sequential_WC_Simulator_logging")
 # make the dir if it doesn't exist

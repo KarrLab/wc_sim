@@ -12,6 +12,7 @@ from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, Simulatio
 from Sequential_WC_Simulator.core.utilities import compare_name_with_class
 from Sequential_WC_Simulator.core.SimulationEngine import MessageTypesRegistry
 
+from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
 from Sequential_WC_Simulator.multialgorithm.MessageTypes import *
 from specie import Specie
 

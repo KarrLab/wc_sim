@@ -16,6 +16,7 @@ from openpyxl import load_workbook
 import math
 import re
 
+from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
 from Sequential_WC_Simulator.multialgorithm.model_representation import *
 from Sequential_WC_Simulator.multialgorithm.submodels import submodel
 
