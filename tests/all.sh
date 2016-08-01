@@ -37,10 +37,12 @@ done
 
 shift $(($OPTIND - 1))
 
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
 if [[ -n "$OPT_COVERAGE" ]]
 then
-    nosetests . --with-coverage --cover-package=Sequential_WC_Simulator
+    nosetests $SCRIPT_DIR --with-coverage --cover-package=Sequential_WC_Simulator
     coverage html
 else
-    nosetests .
+    nosetests $SCRIPT_DIR
 fi
