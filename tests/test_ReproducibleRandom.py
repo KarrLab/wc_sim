@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import unittest
 import re
 
@@ -36,10 +34,3 @@ class TestRepRand(unittest.TestCase):
 
     def test_ReproducibleRandom2(self):
         self.assertEqual( TestRepRand.use_seed(17,3), TestRepRand.use_seed(17,3) ) 
-        
-if __name__ == '__main__':
-    try:
-        unittest.main()
-    except KeyboardInterrupt:
-        pass
-

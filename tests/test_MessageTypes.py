@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import unittest
 
 from Sequential_WC_Simulator.multialgorithm.MessageTypes import *
@@ -28,9 +26,3 @@ class TestMessageTypes(unittest.TestCase):
         adjustment = 7
         body = ADJUST_POPULATION_BY_CONTINUOUS_MODEL.body( { specie_id:adjustment } )
         self.assertEqual( body.population_change[specie_id], adjustment )
-
-if __name__ == '__main__':
-    try:
-        unittest.main()
-    except KeyboardInterrupt:
-        pass

@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import unittest
 import sys
 import re
@@ -58,10 +56,3 @@ class TestSharedMemoryCellState(unittest.TestCase):
         with self.assertRaises(ValueError) as context:
             a_SM_CellState.init_cell_state_specie( 's1', 2 )
         self.assertIn( "Error: specie_name 's1' already stored by this SharedMemoryCellState", context.exception.message )
-
-if __name__ == '__main__':
-    try:
-        unittest.main()
-    except KeyboardInterrupt:
-        pass
-

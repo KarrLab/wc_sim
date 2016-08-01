@@ -37,18 +37,10 @@ done
 
 shift $(($OPTIND - 1))
 
-python -m unittest discover .
-
 if [[ -n "$OPT_COVERAGE" ]]
 then
-    # run coverage tests on all unittests
-    coverage erase
-    # TODO: have coverage test print a summary
-    for test_file in test_*py; do
-        coverage run --branch --append --omit="*__init__.py" $test_file 
-    done
-    # don't test third party libraries 
-    # TODO: make this portable
-    coverage html --omit "$HOME/Library/Python/2.7/lib/python/site-packages/cobra/*"
+    nosetests . --with-coverage --cover-package=Sequential_WC_Simulator
+    coverage html
+else
+    nosetests .
 fi
-

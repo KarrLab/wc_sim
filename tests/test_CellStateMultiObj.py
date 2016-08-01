@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 '''
 Use multiple simulation objects (curently 3) to test the simulator. One object (a 
 UniversalSenderReceiverSimulationObject) sends initialization events. Another object, a CellState, manages the
@@ -217,10 +215,3 @@ Time                 Event                Pop_adjust           Flux             
             SimulationEngine.simulate( 5.0 )
         self.assertIn( "Error: ADJUST_POPULATION_BY_CONTINUOUS_MODEL message requests population of unknown species 'y'", 
             context.exception.message )
-        
-
-if __name__ == '__main__':
-    try:
-        unittest.main()
-    except KeyboardInterrupt:
-        pass

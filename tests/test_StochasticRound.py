@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import unittest
 from random import Random
 
@@ -41,13 +39,7 @@ class TestStochasticRound(unittest.TestCase):
             samples, mean_values, mean_stochastic_rounds_values )
         '''
         # TODO(Arthur): determine an analytic relationship between samples and places
-        self.assertAlmostEqual( mean_values, mean_stochastic_rounds_values, places=3 )
-        
-if __name__ == '__main__':
-    try:
-        unittest.main()
-    except KeyboardInterrupt:
-        pass
+        self.assertAlmostEqual( mean_values, mean_stochastic_rounds_values, places=3 )        
 
         
 

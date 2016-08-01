@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import unittest
 import sys
 import re
@@ -89,11 +87,3 @@ class TestSpecie(unittest.TestCase):
             pops.append( s2.get_population( ) )
         expected_pops = [11.0, 11.0, 11.0, 11.0, 10.0, 11.0, 10.0, 11.0, 10.0, 11.0]
         self.assertEqual( pops, expected_pops )
-
-        
-if __name__ == '__main__':
-    try:
-        unittest.main()
-    except KeyboardInterrupt:
-        pass
-

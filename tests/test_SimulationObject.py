@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from __future__ import print_function
 import unittest
 
@@ -55,9 +53,3 @@ class TestSimulationObject(unittest.TestCase):
             eq.schedule_event( 2, 1, None, None, '' )
         self.assertEqual( context.exception.message,
             "receive_time < send_time in schedule_event(): {} < {}".format( 1, 2 ) )
-    
-if __name__ == '__main__':
-    try:
-        unittest.main()
-    except KeyboardInterrupt:
-        pass

@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from __future__ import print_function
 import unittest
 
@@ -88,10 +86,3 @@ class TestSimulationEngine(unittest.TestCase):
             obj.send_event( 1.0, obj, 'init_msg' )
             obj.send_event( 2.0, obj, 'init_msg' )
         self.assertEqual( SimulationEngine.simulate( 5.0 ), 15 )
-
-
-if __name__ == '__main__':
-    try:
-        unittest.main()
-    except KeyboardInterrupt:
-        pass

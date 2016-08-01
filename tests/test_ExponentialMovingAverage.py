@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import unittest
 
 from Sequential_WC_Simulator.core.utilities import ExponentialMovingAverage
@@ -22,10 +20,3 @@ class TestExponentialMovingAverage(unittest.TestCase):
         with self.assertRaises(ValueError) as context:
             ExponentialMovingAverage( x, alpha=2 )
         self.assertIn( 'alpha should satisfy 0<alpha<1: but alpha=2', context.exception.message )
-        
-if __name__ == '__main__':
-    try:
-        unittest.main()
-    except KeyboardInterrupt:
-        pass
-

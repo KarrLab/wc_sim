@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from codeToTest import BaseClass
 from codeToTest import Engine
 
@@ -44,6 +42,3 @@ def test( ):
     s = MockClassToTest()
     s.semiAbstractMethod( 1 )
     Engine.schedule(1)
-    
-
-test()

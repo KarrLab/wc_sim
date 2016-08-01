@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import unittest
 import re
 
@@ -17,11 +15,3 @@ class TestReproducibleRandomErrors(unittest.TestCase):
             RepRand.get_numpy_random_state()
         self.assertIn( "Error: ReproducibleRandom: ReproducibleRandom.init() must", 
             context.exception.message )
-        
-
-if __name__ == '__main__':
-    try:
-        unittest.main()
-    except KeyboardInterrupt:
-        pass
-

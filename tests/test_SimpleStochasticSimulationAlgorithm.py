@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import unittest
 
 from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, SimulationObject)
@@ -25,9 +23,3 @@ class Testsimple_SSA_submodel(unittest.TestCase):
             event_body=GIVE_POPULATION.body( { 'x':1, 'y':2,  } ) )
         usr1.send_event( 2, ssa2, EXECUTE_SSA_REACTION )
         SimulationEngine.simulate( 5.0 )
-
-if __name__ == '__main__':
-    try:
-        unittest.main()
-    except KeyboardInterrupt:
-        pass
