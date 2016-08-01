@@ -1,0 +1,4 @@
+cobra
+matplotlib
+numpy
+openpyxl
