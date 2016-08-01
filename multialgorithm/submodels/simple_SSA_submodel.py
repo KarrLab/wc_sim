@@ -25,7 +25,6 @@ class simple_SSA_submodel( Submodel ):
     simple_SSA_submodel employs Gillespie's Stochastic Simulation Algorithm 
     to predict the dynamics of a set of chemical species in a 'well-mixed' container. 
     
-    # TODO(Arthur): IMPORTANT: make this as close to the 'direct' method as possible
     algorithm:
         implement the 'direct' method, except under unusual circumstances.
         

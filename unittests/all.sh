@@ -49,6 +49,6 @@ then
     done
     # don't test third party libraries 
     # TODO: make this portable
-    coverage html --omit "/Users/goldbera/Library/Python/2.7/lib/python/site-packages/rounding-0.03-py2.7.egg/rounding/*"
+    coverage html --omit "$HOME/Library/Python/2.7/lib/python/site-packages/cobra/*"
 fi
 

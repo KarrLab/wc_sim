@@ -68,16 +68,6 @@ class Submodel(SimulationObject):
             # write initialization data
             mylog.debug( "name: {}".format( name ) )
 
-    #sets local species counts from global species counts
-    def updateLocalCellState(self):
-        # DES PLAN: eliminate
-        '''
-        for species in self.species:
-            self.speciesCounts[species.id] = model.speciesCounts[species.species.index, species.compartment.index]
-        '''
-        self.volume = self.model.volume
-        self.extracellularVolume = self.model.extracellularVolume
-    
     def get_specie_counts(self, rounded=True):
         """Get a dictionary of current species counts for this submodel.
         
@@ -101,8 +91,6 @@ class Submodel(SimulationObject):
         ids = map( lambda s: s.id, self.species )
         return { specie_id:(counts[specie_id] / self.model.volume)/N_AVOGADRO for specie_id in ids }
 
-    # TODO(Arthur): IMPORTANT: discard code I'm not using
-        
     # TODO(Arthur): make this an instance method, and drop the arguments
     @staticmethod
     def calcReactionRates(reactions, speciesConcentrations):
@@ -202,7 +190,6 @@ class Submodel(SimulationObject):
             raise ValueError( "{:7.1f}: submodel {}: reaction: {}: {}".format(self.time, self.name, reaction.id, e) )
 
     def getComponentById(self, id, components = None):
-        # DES PLANNING COMMENT(Arthur): DES can use this
         if not components:
             components = chain(self.species, self.reactions, self.parameters)
         

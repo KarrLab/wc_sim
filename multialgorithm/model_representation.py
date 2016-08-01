@@ -539,9 +539,10 @@ class ReactionParticipant(object):
         self.coefficient = coefficient
         
     def calcIdName(self):
-        # TODO(Arthur): IMPORTANT: dangerous: need to call calcIdName whenever self.species or 
-        # self.compartment changes; much safer better to not precompute these, and just create them dynamically
-        # applies to other calcIdName() methods too
+        # TODO(Arthur): IMPORTANT: dangerous: need to call calcIdName whenever self.species.id or 
+        # self.compartment.id changes; much safer to not precompute these, and just create them dynamically
+        # applies to other calcIdName() methods too; alternatively, make self.species.id and self.compartment.id
+        # private (__id), enable updates through a method, and have that trigger this method
         self.id = '%s[%s]' % (self.species.id, self.compartment.id)
         self.name = '%s (%s)' % (self.species.name, self.compartment.name)
         
