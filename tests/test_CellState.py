@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import unittest
 import sys
 import re
@@ -28,25 +26,8 @@ class TestCellState(unittest.TestCase):
         self.assertIn( "'CellState' simulation objects not registered to send 'init_msg1' messages", 
             context.exception.message )
 
-    id = 0
-    @staticmethod
-    def get_name():
-        TestCellState.id += 1
-        return "CellState_{:d}".format( TestCellState.id )
- 
-    species = 's1 s2 s3'.split()
-    pop = dict( zip( species, map( lambda x: x*7, range(3,6) ) ) )
-    fluxes = dict( zip( species, [0] * len(species) ) )
-
-    @staticmethod
-    def make_CellState( my_pop, my_fluxes, debug=False, write_plot_output=False, name=None, log=False ):
-        if not name:
-            name = TestCellState.get_name()
-        return CellState( name, my_pop, initial_fluxes=my_fluxes, debug=debug, 
-            write_plot_output=write_plot_output, log=log ) 
-
     def test_CellState_debugging(self):
-        cs1 = TestCellState.make_CellState( TestCellState.pop, None, debug=False )
+        cs1 = _CellStateMaker.make_CellState( _CellStateMaker.pop, None, debug=False )
         usr = UniversalSenderReceiverSimulationObject( 'usr1' )
         usr.send_event( 1.0, cs1, GET_POPULATION )
         eq = cs1.event_queue_to_str()
@@ -56,17 +37,17 @@ class TestCellState(unittest.TestCase):
         
     def test_CellState_species_logging(self):
         SimulationEngine.reset()
-        cs1 = TestCellState.make_CellState( TestCellState.pop, TestCellState.fluxes, log=True )
+        cs1 = _CellStateMaker.make_CellState( _CellStateMaker.pop, _CellStateMaker.fluxes, log=True )
         # initial events
         usr = UniversalSenderReceiverSimulationObject( 'usr1' )
         usr.send_event( 1.0, cs1, ADJUST_POPULATION_BY_DISCRETE_MODEL, 
             event_body=ADJUST_POPULATION_BY_DISCRETE_MODEL.body(
-                dict( zip( TestCellState.species, [1]*len( TestCellState.species ) ) )
+                dict( zip( _CellStateMaker.species, [1]*len( _CellStateMaker.species ) ) )
             )
         )
         t = 2.0
-        d = dict( zip( TestCellState.species,
-                map( lambda x: Continuous_change(2.0, 1.0), [1]*len( TestCellState.species ) ) ) )
+        d = dict( zip( _CellStateMaker.species,
+                map( lambda x: Continuous_change(2.0, 1.0), [1]*len( _CellStateMaker.species ) ) ) )
 
         usr.send_event( t, cs1, ADJUST_POPULATION_BY_CONTINUOUS_MODEL, 
             event_body=ADJUST_POPULATION_BY_CONTINUOUS_MODEL.body( d ) )
@@ -85,18 +66,18 @@ class TestCellState(unittest.TestCase):
         
     def test_CellState_logging(self):
         SimulationEngine.reset()
-        cs1 = TestCellState.make_CellState( TestCellState.pop, TestCellState.fluxes, debug=True )
+        cs1 = _CellStateMaker.make_CellState( _CellStateMaker.pop, _CellStateMaker.fluxes, debug=True )
         # TODO(Arthur): avoid copying this code
         # initial events
         usr = UniversalSenderReceiverSimulationObject( 'usr1' )
         usr.send_event( 1.0, cs1, ADJUST_POPULATION_BY_DISCRETE_MODEL, 
             event_body=ADJUST_POPULATION_BY_DISCRETE_MODEL.body(
-                dict( zip( TestCellState.species, [1]*len( TestCellState.species ) ) )
+                dict( zip( _CellStateMaker.species, [1]*len( _CellStateMaker.species ) ) )
             )
         )
         t = 2.0
-        d = dict( zip( TestCellState.species,
-                map( lambda x: Continuous_change(2.0, 1.0), [1]*len( TestCellState.species ) ) ) )
+        d = dict( zip( _CellStateMaker.species,
+                map( lambda x: Continuous_change(2.0, 1.0), [1]*len( _CellStateMaker.species ) ) ) )
 
         usr.send_event( t, cs1, ADJUST_POPULATION_BY_CONTINUOUS_MODEL, 
             event_body=ADJUST_POPULATION_BY_CONTINUOUS_MODEL.body( d ) )
@@ -125,9 +106,21 @@ class TestCellState(unittest.TestCase):
         
     # TODO(Arthur): important: test simultaneous recept of ADJUST_POPULATION_BY_DISCRETE_MODEL and ADJUST_POPULATION_BY_CONTINUOUS_MODEL
 
-if __name__ == '__main__':
-    try:
-        unittest.main()
-    except KeyboardInterrupt:
-        pass
 
+class _CellStateMaker(object):
+    id = 0
+    @staticmethod
+    def get_name():
+        _CellStateMaker.id += 1
+        return "CellState_{:d}".format( _CellStateMaker.id )
+ 
+    species = 's1 s2 s3'.split()
+    pop = dict( zip( species, map( lambda x: x*7, range(3,6) ) ) )
+    fluxes = dict( zip( species, [0] * len(species) ) )
+
+    @staticmethod
+    def make_CellState( my_pop, my_fluxes, debug=False, write_plot_output=False, name=None, log=False ):
+        if not name:
+            name = _CellStateMaker.get_name()
+        return CellState( name, my_pop, initial_fluxes=my_fluxes, debug=debug, 
+            write_plot_output=write_plot_output, log=log ) 

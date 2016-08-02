@@ -2,7 +2,7 @@
 
 class BaseClass(object):
     # an abstract class
-    def semiAbstractMethod( args ):
+    def semiAbstractMethod(self, args ):
         # do some stuff here
         pass
     

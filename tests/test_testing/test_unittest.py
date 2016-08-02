@@ -1,3 +1,5 @@
+import unittest
+
 from codeToTest import BaseClass
 from codeToTest import Engine
 
@@ -38,7 +40,9 @@ class MockClassToTest(BaseClass):
         # someTestingCommand( y == 3 )
         assert y == 3
 
-def test( ):
-    s = MockClassToTest()
-    s.semiAbstractMethod( 1 )
-    Engine.schedule(1)
+class TestUnittest(unittest.TestCase):
+    
+    def test(self):
+        s = MockClassToTest()
+        s.semiAbstractMethod( 1 )
+        Engine.schedule(1)

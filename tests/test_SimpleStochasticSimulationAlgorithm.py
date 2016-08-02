@@ -4,7 +4,7 @@ from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, Simulatio
 from Sequential_WC_Simulator.core.SimulationEngine import (SimulationEngine, MessageTypesRegistry)
 from Sequential_WC_Simulator.multialgorithm.submodels.simple_SSA_submodel import simple_SSA_submodel
 from Sequential_WC_Simulator.multialgorithm.MessageTypes import *
-from tests.UniversalSenderReceiverSimulationObject import UniversalSenderReceiverSimulationObject
+from UniversalSenderReceiverSimulationObject import UniversalSenderReceiverSimulationObject
 
 class Testsimple_SSA_submodel(unittest.TestCase):
 

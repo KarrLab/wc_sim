@@ -95,22 +95,7 @@ class TestSimulationObject(SimulationObject):
 class TestSimulation(unittest.TestCase):
 
     def setUp(self):
-        SimulationEngine.reset()
-
-    id = 0
-    @staticmethod
-    def get_name():
-        TestSimulation.id += 1
-        return "CellState_{:d}".format( TestSimulation.id )
-     
-    @staticmethod
-    def make_CellState( pop, init_flux, debug=False, write_plot_output=False, name=None ):
-        if name is None:
-            name = TestSimulation.get_name()
-        if debug:
-            print "Creating CellState( {}, --population--, debug={}, write_plot_output={} ) ".format(
-                name, debug, write_plot_output )
-        return CellState( name, pop, initial_fluxes=init_flux, debug=debug, write_plot_output=write_plot_output )
+        SimulationEngine.reset()    
         
     def testSimulation( self ):
 
@@ -132,7 +117,7 @@ Time                 Event                Pop_adjust           Flux             
 5                    get_pop              NA                   NA                   6.5'''
         pop_history_dict = parse_population_history( pop_history_of_x )
         (unused_Pop_adjust, init_flux, init_pop) = pop_history_dict['init'][0]
-        cs1 = TestSimulation.make_CellState( { specie: init_pop }, {specie: init_flux} )
+        cs1 = _CellStateMaker.make_CellState( { specie: init_pop }, {specie: init_flux} )
 
 
         TestSimObj = TestSimulationObject( 'TestSimObj', pop_history_of_x, specie )
@@ -165,7 +150,7 @@ Time                 Event                Pop_adjust           Flux             
     def testSimulationDefaultPopulation( self ):
         # test code that assumes an unknown specie is initialized with a population of 0
 
-        cs = CellState( TestSimulation.get_name(), {} )
+        cs = CellState( _CellStateMaker.get_name(), {} )
         pop_history_of_y = '''
 Time                 Event                Pop_adjust           Flux                 Population
 1                    discrete_adjust      1                    NA                   1
@@ -195,7 +180,7 @@ Time                 Event                Pop_adjust           Flux             
         # test code that raises exception when ADJUST_POPULATION_BY_CONTINUOUS_MODEL message requests population of unknown species
 
         SimulationEngine.reset()
-        cs = CellState( TestSimulation.get_name(), {}, debug=True )
+        cs = CellState( _CellStateMaker.get_name(), {}, debug=True )
         pop_history = '''
 Time                 Event                Pop_adjust           Flux                 Population
 1                    continuous_adjust      1                    0                   1'''
@@ -215,3 +200,20 @@ Time                 Event                Pop_adjust           Flux             
             SimulationEngine.simulate( 5.0 )
         self.assertIn( "Error: ADJUST_POPULATION_BY_CONTINUOUS_MODEL message requests population of unknown species 'y'", 
             context.exception.message )
+
+
+class _CellStateMaker(object):
+    id = 0
+    @staticmethod
+    def get_name():
+        _CellStateMaker.id += 1
+        return "CellState_{:d}".format( _CellStateMaker.id )
+     
+    @staticmethod
+    def make_CellState( pop, init_flux, debug=False, write_plot_output=False, name=None ):
+        if name is None:
+            name = _CellStateMaker.get_name()
+        if debug:
+            print "Creating CellState( {}, --population--, debug={}, write_plot_output={} ) ".format(
+                name, debug, write_plot_output )
+        return CellState( name, pop, initial_fluxes=init_flux, debug=debug, write_plot_output=write_plot_output )

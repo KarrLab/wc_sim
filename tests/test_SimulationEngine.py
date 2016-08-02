@@ -4,7 +4,7 @@ import unittest
 from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, SimulationObject)
 from Sequential_WC_Simulator.core.Event import Event
 from Sequential_WC_Simulator.core.SimulationEngine import (SimulationEngine, MessageTypesRegistry)
-from tests.SomeMessageTypes import *
+from SomeMessageTypes import *
 
 class ExampleSimulationObject(SimulationObject):
 

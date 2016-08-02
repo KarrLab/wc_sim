@@ -21,7 +21,7 @@ class TestSharedMemoryCellState(unittest.TestCase):
         self.a_SM_CellState_no_init_flux = SharedMemoryCellState( 'test', init_populations, 
             debug=False, log=False)
 
-    def reusable_test(self, the_SM_CellState, flux ):
+    def reusable_assertions(self, the_SM_CellState, flux ):
         # test both discrete and hybrid species
         
         with self.assertRaises(ValueError) as context:
@@ -47,7 +47,7 @@ class TestSharedMemoryCellState(unittest.TestCase):
     def test_discrete_and_hyrid(self):
     
         for (SM_CellState, flux) in [(self.a_SM_CellState,self.flux), (self.a_SM_CellState_no_init_flux,None)]:
-            self.reusable_test( SM_CellState, flux )
+            self.reusable_assertions( SM_CellState, flux )
             
     def test_init(self):
         a_SM_CellState = SharedMemoryCellState( 'test', {} )
