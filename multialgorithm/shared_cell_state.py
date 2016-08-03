@@ -10,9 +10,11 @@ Created 2016/06/17
 
 import sys
 import logging
+import numpy as np
 
 from Sequential_WC_Simulator.core.LoggingConfig import setup_logger
 from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
+import Sequential_WC_Simulator.multialgorithm.model_representation
 from specie import Specie
 
     
@@ -42,13 +44,14 @@ class SharedMemoryCellState( object ):
     # TODO(Arthur): report error if a Specie instance is updated by multiple continuous sub-models
     """
     
-    def __init__( self, name, initial_population, initial_fluxes=None, retain_history=False, 
+    def __init__( self, model, name, initial_population, initial_fluxes=None, retain_history=False, 
         shared_random_seed=None, debug=False, log=False):
         """Initialize a SharedMemoryCellState object.
         
         Initialize a SharedMemoryCellState object. Establish its initial population, and set debugging booleans.
         
         Args:
+            model: object ref; the model containing this SharedMemoryCellState
             initial_population: initial population for some species;
                 dict: specie_name -> initial_population
             initial_fluxes: optional; dict: specie_name -> initial_flux; 
@@ -65,6 +68,7 @@ class SharedMemoryCellState( object ):
             AssertionError: if the population cannot be initialized.
         """
 
+        self.model = model
         self.name = name
         self.time = 0
         self.population = {}
@@ -111,6 +115,8 @@ class SharedMemoryCellState( object ):
     def init_cell_state_specie( self, specie_name, population, initial_flux_given=None ):
         """Initialize a specie with the given population at the start of the simulation.
         
+        Must be called at time = 0.
+        
         Args:
             specie: string; a unique specie name
             population: float; initial population of the specie
@@ -118,12 +124,16 @@ class SharedMemoryCellState( object ):
 
         Raises:
             ValueError: if the specie is already stored by this SharedMemoryCellState
+            ValueError: if 0<time 
         """
+        if 0 < self.time:
+            raise ValueError( "Error: SharedMemoryCellState.init_cell_state_specie() must be "
+                "called at time = 0; time is {}".format( self.time ) )
         if specie_name in self.population:
             raise ValueError( "Error: specie_name '{}' already stored by this SharedMemoryCellState".format( specie_name ) )
         self.population[specie_name] = Specie( specie_name, population, initial_flux=initial_flux_given )
         self.last_access_time[specie_name] = 0
-        if self._recording_history(): self._add_specie_to_history( specie_name )
+        if self._recording_history(): self._add_specie_to_history( specie_name, population )
 
     def _initialize_history(self):
         """Initialize the population history."""
@@ -139,9 +149,9 @@ class SharedMemoryCellState( object ):
         """
         return hasattr(self, 'history')
 
-    def _add_specie_to_history(self, specie):
+    def _add_specie_to_history(self, specie, population):
         """Add a specie to the history."""
-        self.history['population'][specie] = [0]
+        self.history['population'][specie] = [population]
         
     def _record_history(self):
         """Record the current population in the history.
@@ -159,14 +169,35 @@ class SharedMemoryCellState( object ):
         for specie_id, population in self.read( self.time,  self.population.keys() ).items():
             self.history['population'][specie_id].append( population )
         
-    def report_history(self):
-        """Provide species count history.
+    def report_history(self, numpy_format=False ):
+        """Provide the time and species count history.
+        
+        Args:
+            numpy_format: boolean; if set return history in numpy data structures
+        
+        Returns:
+            The time and species count history. By default, the return value rv is a dict, with
+            rv['time'] = list of time samples
+            rv['population'][specie_id] = list of counts for specie_id at the time samples
+            If numpy_format set, return the same data structure as was used in WcTutorial.
         
         Raises:
             ValueError if the history was not recorded
         """
-        # TODO(Arthur): also provide history in np array for plot engine
         if self._recording_history():
+            if numpy_format:
+                timeHist = np.asarray( self.history['time'] )
+                speciesCountsHist = np.zeros((len(self.model.species), len(self.model.compartments), 
+                    len(self.history['time'])))
+                for specie_index,specie in list(enumerate(self.model.species)):
+                    for comp_index,compartment in list(enumerate(self.model.compartments)):
+                        for time_index in range(len(self.history['time'])):
+                            # TODO(Arthur): avoid recursive imports between this module and model_representation
+                            specie_comp_id = Sequential_WC_Simulator.multialgorithm.model_representation.Model.species_compartment_name(specie, compartment)
+                            speciesCountsHist[specie_index,comp_index,time_index] = \
+                                self.history['population'][specie_comp_id][time_index]
+                
+                return (timeHist, speciesCountsHist)
             return self.history
         else:
             raise ValueError( "history not recorded" )

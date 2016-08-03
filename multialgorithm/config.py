@@ -18,7 +18,7 @@ class WC_SimulatorConfig(object):
                                     # CellState for more details
                                     # TODO(Arthur): unitests only work with INTERPOLATE=True; have them work either
     DEFAULT_OUTPUT_DIRECTORY='.'    # the default output directory
-    DEFAULT_FBA_TIME_STEP = 3.0     # the default time step for FBA submodels
+    DEFAULT_FBA_TIME_STEP = 1.0     # the default time step for FBA submodels
 
 
 '''

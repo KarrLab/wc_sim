@@ -18,9 +18,9 @@ class TestSharedMemoryCellState(unittest.TestCase):
         self.init_populations = init_populations
         self.flux = 1
         init_fluxes = dict( zip( species, [self.flux]*len(species) ) )
-        self.a_SM_CellState = SharedMemoryCellState( 'test', init_populations, initial_fluxes=init_fluxes,
+        self.a_SM_CellState = SharedMemoryCellState( None, 'test', init_populations, initial_fluxes=init_fluxes,
             debug=False, log=False)
-        self.a_SM_CellState_no_init_flux = SharedMemoryCellState( 'test', init_populations, 
+        self.a_SM_CellState_no_init_flux = SharedMemoryCellState( None, 'test', init_populations, 
             debug=False, log=False)
 
     def reusable_test(self, the_SM_CellState, flux ):
@@ -52,7 +52,7 @@ class TestSharedMemoryCellState(unittest.TestCase):
             self.reusable_test( SM_CellState, flux )
             
     def test_init(self):
-        a_SM_CellState = SharedMemoryCellState( 'test', {} )
+        a_SM_CellState = SharedMemoryCellState( None, 'test', {} )
         a_SM_CellState.init_cell_state_specie( 's1', 2 )
         self.assertEqual( a_SM_CellState.read( 0, ['s1'] ),  {'s1': 2} )
         with self.assertRaises(ValueError) as context:

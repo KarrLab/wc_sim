@@ -165,5 +165,4 @@ class SimulationEngine(object):
             next_sim_obj.time = next_time
             next_sim_obj.handle_event( next_sim_obj.event_queue.next_events() )
             
-        # TODO(Arthur): IMPORTANT: need to record simulation state at the end
         return handle_event_invocations

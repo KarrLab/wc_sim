@@ -25,7 +25,6 @@ import argparse
 import warnings
 import errno
 
-# Use refactored WcModelingTutorial modules
 from Sequential_WC_Simulator.core.LoggingConfig import setup_logger
 from Sequential_WC_Simulator.core.utilities import ReproducibleRandom
 from Sequential_WC_Simulator.core.SimulationObject import EventQueue, SimulationObject
@@ -38,6 +37,8 @@ from Sequential_WC_Simulator.multialgorithm.submodels.simple_SSA_submodel import
 from Sequential_WC_Simulator.multialgorithm.submodels.FBA_submodel import FbaSubmodel
 from Sequential_WC_Simulator.multialgorithm.MessageTypes import *
 
+import temp.Exercise
+
 class MultiAlgorithm( object ):
     """A modular, mult-algorithmic, discrete event WC simulator.
     """
@@ -46,8 +47,8 @@ class MultiAlgorithm( object ):
     def parseArgs():
         parser = argparse.ArgumentParser( description="Run a modular, mult-algorithmic, discrete event WC simulation. " )
         parser.add_argument( 'model_filename', type=str, help="Excel file containing the model" )
-        # TODO(Arthur): attempt to simulate to 'cell division'
-        parser.add_argument( 'end_time', type=float, help="End time for the simulation (s)" )
+
+        parser.add_argument( '--end_time', '-e', type=float, help="End time for the simulation (s)" )
 
         parser.add_argument( '--output_directory', '-o', type=str, 
             help="Output directory; default '{}'".format(WC_SimulatorConfig.DEFAULT_OUTPUT_DIRECTORY), 
@@ -112,11 +113,18 @@ class MultiAlgorithm( object ):
                     submodel_spec.algorithm, submodel_spec.name ) )
 
         # 2. run simulation
-        SimulationEngine.simulate( args.end_time )
+        if args.end_time:
+            print "Simulating to: {}".format( args.end_time )
+            SimulationEngine.simulate( args.end_time )
+        else:
+            print "Simulating to cellCycleLength: {}".format( the_model.getComponentById('cellCycleLength').value )
+            SimulationEngine.simulate( the_model.getComponentById('cellCycleLength').value )
         
-        if args.debug:
-            the_model.the_SharedMemoryCellState._recording_history()
-            # print the_model.the_SharedMemoryCellState.history_debug()
+        timeHist, speciesCountsHist = the_model.the_SharedMemoryCellState.report_history(
+            numpy_format=True )
+        volume = None
+        growth = None
+        Exercise.analyzeResults(the_model, timeHist, volume, growth, speciesCountsHist)
     
 if __name__ == '__main__':
     try:

@@ -83,10 +83,33 @@ class Model(object):
         self.calcInitialConditions()
             
     @staticmethod
-    def species_compartment_name( species, compartment ):
-        """Provide a unique identifier for a species in a compartment, of the form species_id[compartment_it].
+    def species_compartment_name( specie, compartment ):
+        """Provide an identifier for a species in a compartment, formatted  species_id[compartment_it].
+        
+        Args:
+            specie: Species object
+            compartment: Compartment object
+            
+        Returns:
+            A unique identifier for a species in a compartment.            
         """
-        return "{}[{}]".format( species.id, compartment.id )
+        return "{}[{}]".format( specie.id, compartment.id )
+        
+    @staticmethod
+    def get_species_and_compartment_from_name( species_compartment_name ):
+        """
+        
+        The inverse of species_compartment_name().
+        
+        Args:
+            species_compartment_name: string; an identifier for a species in a compartment,
+                as produced by species_compartment_name()
+            
+        Returns:
+        """
+        pass
+        # TODO(Arthur): implement
+    
         
     def calcInitialConditions(self):
         """Set up the initial conditions for a simulation. 
@@ -102,7 +125,7 @@ class Model(object):
         self.extracellularVolume = extrComp.initialVolume
         
         #species counts
-        self.the_SharedMemoryCellState = SharedMemoryCellState( "CellState", {}, 
+        self.the_SharedMemoryCellState = SharedMemoryCellState( self, "CellState", {}, 
             retain_history=self.debug, debug=self.debug )
         for species in self.species:
             for conc in species.concentrations:
