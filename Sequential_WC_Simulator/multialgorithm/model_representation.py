@@ -185,7 +185,7 @@ class Model(object):
         speciesCountsDict = {}
         for species in self.species:
             for compartment in self.compartments:
-                speciesCountsDict['%s[%s]' % (species.id, compartment.id)] = self.speciesCounts[species.index, compartment.index]                
+                speciesCountsDict['{0}[{1}]'.format(species.id, compartment.id)] = self.speciesCounts[species.index, compartment.index]                
         return speciesCountsDict
     """
     
@@ -195,7 +195,7 @@ class Model(object):
     def setSpeciesCountsDict(self, speciesCountsDict):
         for species in self.species:
             for compartment in self.compartments:
-                self.speciesCounts[species.index, compartment.index] = speciesCountsDict['%s[%s]' % (species.id, compartment.id)]
+                self.speciesCounts[species.index, compartment.index] = speciesCountsDict['{0}[{1}]'.format(species.id, compartment.id)]
     """
     
     #get species concentrations
@@ -212,7 +212,7 @@ class Model(object):
                 # COMMENT(Arthur): as it's not mutable, one can use a tuple 
                 # (in general, any 'hashable') as a dict key
                 # e.g., speciesConcsDict[ (species.id, compartment.id) ]
-                speciesConcsDict['%s[%s]' % (species.id, compartment.id)] = concs[species.index, compartment.index]                
+                speciesConcsDict['{1}[{0}]'.format(species.id, compartment.id)] = concs[species.index, compartment.index]                
         return speciesConcsDict
     
     #get container volumes for each species
@@ -231,7 +231,7 @@ class Model(object):
         volumesDict = {}
         for species in self.species:
             for compartment in self.compartments:
-                volumesDict['%s[%s]' % (species.id, compartment.id)] = volumes[species.index, compartment.index]                
+                volumesDict['{0}[{1}]'.format(species.id, compartment.id)] = volumes[species.index, compartment.index]                
         return volumesDict
     
     #get total RNA number        
@@ -406,29 +406,29 @@ class Reaction(object):
                 partStr = ''
                 if part.coefficient != -1:
                     if math.ceil(part.coefficient) == part.coefficient: 
-                        partStr += '(%d) ' % -part.coefficient
+                        partStr += '({:d}) '.format(-part.coefficient)
                     else:
-                        partStr += '(%e) ' % -part.coefficient
+                        partStr += '({:e}) '.format(-part.coefficient)
                 partStr += part.species.id
                 if globalComp is None:
-                    partStr += '[%s]' % part.compartment.id
+                    partStr += '[{}]'.format(part.compartment.id)
                 lhs.append(partStr)
             else:
                 partStr = ''
                 if part.coefficient != 1:
                     if math.ceil(part.coefficient) == part.coefficient: 
-                        partStr += '(%d) ' % part.coefficient
+                        partStr += '({:d}) '.format(part.coefficient)
                     else:
-                        partStr += '(%e) ' % part.coefficient
+                        partStr += '({:e}) '.format(part.coefficient)
                 partStr += part.species.id
                 if globalComp is None:
-                    partStr += '[%s]' % part.compartment.id
+                    partStr += '[{}]'.format(part.compartment.id)
                 rhs.append(partStr)
             
         stoichStr = ''
         if globalComp is not None:
-            stoichStr += '[%s]: ' % globalComp.id
-        stoichStr += '%s %s==> %s' % (' + '.join(lhs), '<' if self.reversible else '', ' + '.join(rhs))
+            stoichStr += '{}: '.format(globalComp.id)
+        stoichStr += '{0} {1}==> {2}'.format(' + '.join(lhs), '<' if self.reversible else '', ' + '.join(rhs))
         
         return stoichStr
         
@@ -505,8 +505,8 @@ class SpeciesCompartment(object):
         self.compartment = compartment    
         
     def calcIdName(self):
-        self.id = '%s[%s]' % (self.species.id, self.compartment.id)
-        self.name = '%s (%s)' % (self.species.name, self.compartment.name)
+        self.id = '{0}[{1}]'.format(self.species.id, self.compartment.id)
+        self.name = '{0} ({1})'.format(self.species.name, self.compartment.name)
       
 #Represents an external 
 class ExchangedSpecies(object):
@@ -544,8 +544,8 @@ class ReactionParticipant(object):
         # self.compartment.id changes; much safer to not precompute these, and just create them dynamically
         # applies to other calcIdName() methods too; alternatively, make self.species.id and self.compartment.id
         # private (__id), enable updates through a method, and have that trigger this method
-        self.id = '%s[%s]' % (self.species.id, self.compartment.id)
-        self.name = '%s (%s)' % (self.species.name, self.compartment.name)
+        self.id = '{0}[{1}]'.format(self.species.id, self.compartment.id)
+        self.name = '{0} ({1})'.format(self.species.name, self.compartment.name)
         
     def __str__(self):
         return "specie: {}; compartment: {}; coefficient: {}".format( 
@@ -569,7 +569,7 @@ class RateLaw(object):
         modifiers = []        
         for spec in species:
             for comp in compartments:
-                id = '%s[%s]' % (spec.id, comp.id)
+                id = '{0}[{1}]'.format(spec.id, comp.id)
                 if self.native.find(id) != -1:
                     modifiers.append(id)
         return modifiers
@@ -580,8 +580,8 @@ class RateLaw(object):
         
         for spec in species:
             for comp in compartments:
-                id = '%s[%s]' % (spec.id, comp.id)
-                self.transcoded = self.transcoded.replace(id, "speciesConcentrations['%s']" % id)
+                id = '{0}[{1}]'.format(spec.id, comp.id)
+                self.transcoded = self.transcoded.replace(id, "speciesConcentrations['{}']".format(id))
                 
     def __str__(self):
         return "native: {}\ntranscoded for python: {}".format(self.native, self.transcoded) 

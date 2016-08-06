@@ -151,8 +151,8 @@ class FbaSubmodel(Submodel):
         for species in self.species:
             if species.compartment.id == 'e':                
                 cbRxn = CobraReaction(
-                    id = '%sEx' % species.species.id,
-                    name = '%s exchange' % species.species.name,
+                    id = '{}Ex'.format(species.species.id),
+                    name = '{} exchange'.format(species.species.name),
                     lower_bound = -self.defaultFbaBound,
                     upper_bound =  self.defaultFbaBound,
                     objective_coefficient = 0,

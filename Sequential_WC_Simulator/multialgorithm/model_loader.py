@@ -53,7 +53,7 @@ def getModelFromExcel(filename, debug_option=False ):
             subModel = SsaSubmodel( model, id = id, name = name)
         else:
             # COMMENT(Arthur): can use "".format()
-            raise Exception('Undefined algorithm "%s" for submodel "%s"' % (algorithm, id))
+            raise Exception('Undefined algorithm "{0}" for submodel "{1}"'.format(algorithm, id))
         '''
         the_submodel = SubmodelSpecification( id, name, algorithm )
         model.submodels.append(the_submodel)
@@ -218,7 +218,7 @@ def getModelFromExcel(filename, debug_option=False ):
     if len(undefinedComponents) > 0:
         undefinedComponents = list(set(undefinedComponents))
         undefinedComponents.sort()
-        raise Exception('Undefined components:\n- %s' % ('\n- '.join(undefinedComponents)))
+        raise Exception('Undefined components:\n- {}'.format('\n- '.join(undefinedComponents)))
         
     ''' Assemble back references'''
     for submodel_spec in model.submodels:
@@ -228,9 +228,9 @@ def getModelFromExcel(filename, debug_option=False ):
     for rxn in model.reactions:
         rxn.submodel_spec.reactions.append(rxn)
         for part in rxn.participants:
-            rxn.submodel_spec.species.append('%s[%s]' % (part.species.id, part.compartment.id))
+            rxn.submodel_spec.species.append('{0}[{1}]'.format(part.species.id, part.compartment.id))
         if rxn.enzyme:
-            rxn.submodel_spec.species.append('%s[%s]' % (rxn.enzyme.id, 'c'))
+            rxn.submodel_spec.species.append('{0}[{1}]'.format(rxn.enzyme.id, 'c'))
         if rxn.rateLaw:
             rxn.submodel_spec.species += rxn.rateLaw.getModifiers(model.species, model.compartments)
     
@@ -276,7 +276,7 @@ def parseStoichiometry(rxnStr):
     '''
     rxnMatch = re.match('(?P<compartment>\[([a-z])\]: )?(?P<lhs>((\(\d*\.?\d*([e][-+]?[0-9]+)?\) )?[a-z0-9\-_]+(\[[a-z]\])? \+ )*(\(\d*\.?\d*([e][-+]?[0-9]+)?\) )?[a-z0-9\-_]+(\[[a-z]\])?) (?P<direction>[<]?)==> (?P<rhs>((\(\d*\.?\d*([e][-+]?[0-9]+)?\) )?[a-z0-9\-_]+(\[[a-z]\])? \+ )*(\(\d*\.?\d*([e][-+]?[0-9]+)?\) )?[a-z0-9\-_]+(\[[a-z]\])?)', rxnStr, flags=re.I)
     if rxnMatch is None:
-        raise Exception('Invalid stoichiometry: %s' % rxnStr)
+        raise Exception('Invalid stoichiometry: {}'.format(rxnStr))
         
     #Determine reversiblity
     rxnDict = rxnMatch.groupdict()
