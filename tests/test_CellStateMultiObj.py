@@ -214,6 +214,6 @@ class _CellStateMaker(object):
         if name is None:
             name = _CellStateMaker.get_name()
         if debug:
-            print "Creating CellState( {}, --population--, debug={}, write_plot_output={} ) ".format(
-                name, debug, write_plot_output )
+            print("Creating CellState( {}, --population--, debug={}, write_plot_output={} ) ".format(
+                name, debug, write_plot_output ))
         return CellState( name, pop, initial_fluxes=init_flux, debug=debug, write_plot_output=write_plot_output )

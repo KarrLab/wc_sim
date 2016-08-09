@@ -78,9 +78,9 @@ class MultiAlgorithm( object ):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             # 0. read model description
-            print "Reading model from '{}'".format( args.model_filename, debug=args.debug )
+            print("Reading model from '{}'".format( args.model_filename, debug=args.debug ))
             the_model = getModelFromExcel( args.model_filename, debug_option=args.debug )
-            print the_model.summary()
+            print(the_model.summary())
             
             '''Prepare submodels for computation'''
             the_model.setupSimulation()
@@ -97,13 +97,13 @@ class MultiAlgorithm( object ):
         for submodel_spec in the_model.submodels:
             if submodel_spec.algorithm == 'SSA':
                 if submodel_spec.algorithm in algs_to_run:
-                    print 'create SSA submodel:', submodel_spec.name, submodel_spec.algorithm
+                    print('create SSA submodel:', submodel_spec.name, submodel_spec.algorithm)
                     submodel_spec.the_submodel = simple_SSA_submodel( the_model, submodel_spec.name,
                         submodel_spec.id, None, shared_cell_states, submodel_spec.reactions, 
                         submodel_spec.species, ReproducibleRandom.get_numpy_random_state(), debug=args.debug )
             elif submodel_spec.algorithm == 'FBA':
                 if submodel_spec.algorithm in algs_to_run:
-                    print 'create FBA submodel:', submodel_spec.name, submodel_spec.algorithm
+                    print('create FBA submodel:', submodel_spec.name, submodel_spec.algorithm)
                     submodel_spec.the_submodel = FbaSubmodel( the_model, submodel_spec.name, 
                         submodel_spec.id, None, shared_cell_states, submodel_spec.reactions,
                         submodel_spec.species, args.FBA_time_step, debug=args.debug )
@@ -116,7 +116,7 @@ class MultiAlgorithm( object ):
         
         if args.debug:
             the_model.the_SharedMemoryCellState._recording_history()
-            # print the_model.the_SharedMemoryCellState.history_debug()
+            # print(the_model.the_SharedMemoryCellState.history_debug())
     
 if __name__ == '__main__':
     try:

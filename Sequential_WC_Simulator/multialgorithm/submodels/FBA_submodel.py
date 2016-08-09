@@ -218,10 +218,10 @@ class FbaSubmodel(Submodel):
         self.cobraModel.optimize()
         self.reactionFluxes = self.cobraModel.solution.x
         '''
-        print 'self.reactionFluxes', self.reactionFluxes
-        print 'lengths'
-        print 'reactionFluxes', len(self.reactionFluxes)
-        print 'species', len(self.species)
+        print('self.reactionFluxes', self.reactionFluxes)
+        print('lengths')
+        print('reactionFluxes', len(self.reactionFluxes))
+        print('species', len(self.species))
         '''
         self.model.growth = self.reactionFluxes[self.metabolismProductionReaction['index']] #fraction cell/s
         
@@ -261,17 +261,17 @@ class FbaSubmodel(Submodel):
                 by_compartement[s] = { 'c':float('NaN'), 'e':float('NaN')}
             by_compartement[s][compartment] = v
         input_metabolites = 'AD ADP ALA AlaAla AMP ARG ArgArg ASN AsnAsn ASP AspAsp ATP CDP CMP CO2 CTP CYS CysCys CYTD DPG E4P F6P FDP G2P G3P G6P GDP GLC GLN GlnGln GLU GluGlu GLY GlyGly GMP GN GTP H H2O HIS HisHis ILE IleIle LAC LEU LeuLeu LYS LysLys MET MetMet NAD NADH O2 PEP PHE PhePhe Pi PI PPi PPI PRO ProPro PRPP PYR R5P RL5P S7P SER SerSer T3P1 T3P2 THR ThrThr TRP TrpTrp TYR TyrTyr UDP UMP URA URI UTP VAL ValVal X5P'.split()
-        print 'set(by_compartement.keys()) - set(input_metabolites)', list(set(by_compartement.keys()) - set(input_metabolites))
+        print('set(by_compartement.keys()) - set(input_metabolites)', list(set(by_compartement.keys()) - set(input_metabolites)))
 
         if not int(self.time) % 5000:
-            print self.time
-            print "specie\tc\te"
+            print(self.time)
+            print("specie\tc\te")
             # for k in sorted(by_compartement.keys()):
             for k in input_metabolites:
                 if k in by_compartement:
-                    print "{}\t{}\t{}".format( k, by_compartement[k]['c'], by_compartement[k]['e'], ) 
+                    print("{}\t{}\t{}".format( k, by_compartement[k]['c'], by_compartement[k]['e'], ))
                 else:
-                    print "{}".format( k ) 
+                    print("{}".format( k ))
         '''
         self.model.the_SharedMemoryCellState.adjust_continuously( self.time, adjustments )
         
@@ -319,7 +319,7 @@ class FbaSubmodel(Submodel):
         # call handle_event() in class SimulationObject which performs generic tasks on the event list
         SimulationObject.handle_event( self, event_list )
         if not self.num_events % 100:
-            print "{:7.1f}: submodel {}, event {}".format( self.time, self.name, self.num_events )
+            print("{:7.1f}: submodel {}, event {}".format( self.time, self.name, self.num_events ))
 
         for event_message in event_list:
             if compare_name_with_class( event_message.event_type, GIVE_POPULATION ):

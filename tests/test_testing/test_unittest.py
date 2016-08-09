@@ -16,7 +16,7 @@ class MockClassToTest(BaseClass,unittest.TestCase):
     def semiAbstractMethod( self, var ):
         super( ClassToTest, self ).semiAbstractMethod( var )
         # Do a test here: e.g., test that y = 3
-        print 'test'
+        print('test')
         y = 3
         self.assertEqual( y, 3 )
 
@@ -35,7 +35,7 @@ class MockClassToTest(BaseClass):
     def semiAbstractMethod( self, var ):
         super( MockClassToTest, self ).semiAbstractMethod( var )
         # Do a test here: e.g., test that y = 3
-        print 'test'
+        print('test')
         y = 3
         # someTestingCommand( y == 3 )
         assert y == 3

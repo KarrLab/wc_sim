@@ -35,8 +35,8 @@ class TestStochasticRound(unittest.TestCase):
         mean_stochastic_rounds_values = \
             sum( map( lambda x: aStochasticRound.Round( x ), values) )/float(samples)
         '''
-        print "samples: {:7d} mean_values: {:8.5f} mean_stochastic_rounds: {:8.5f}".format( 
-            samples, mean_values, mean_stochastic_rounds_values )
+        print("samples: {:7d} mean_values: {:8.5f} mean_stochastic_rounds: {:8.5f}".format( 
+            samples, mean_values, mean_stochastic_rounds_values ))
         '''
         # TODO(Arthur): determine an analytic relationship between samples and places
         self.assertAlmostEqual( mean_values, mean_stochastic_rounds_values, places=3 )        

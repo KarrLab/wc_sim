@@ -40,9 +40,9 @@ def convert_floats( l ):
             pass
 
 def print_event_list(el):
-    print '\t'.join( event_fields.split() )
+    print('\t'.join( event_fields.split() ))
     for e in el:
-        print '\t'.join( [ str(e._asdict()[f]) for f in event_fields.split() ] )
+        print('\t'.join( [ str(e._asdict()[f]) for f in event_fields.split() ] ))
         
 class PlotPopulationDynamics(object):
     
@@ -135,7 +135,7 @@ class PlotPopulationDynamics(object):
         data = []
         for index in range( len( events ) - 1 ):
             (x_vals, y_vals) = PlotPopulationDynamics.get_line_segment_endpoints( events[index], events[index+1] )
-            # print x_vals, y_vals
+            # print(x_vals, y_vals)
             data.append(x_vals)
             data.append(y_vals)
             data.append('blue')
@@ -153,7 +153,7 @@ class PlotPopulationDynamics(object):
     def output_plot( args ):
         if args.pdf_file:
             import matplotlib
-            print "Writing '{}'.".format( args.pdf_file )
+            print("Writing '{}'.".format( args.pdf_file ))
             pp = PdfPages( args.pdf_file )
             pp.savefig( plt.gcf() )
             # Once you are done, remember to close the pdf object

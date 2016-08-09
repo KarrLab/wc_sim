@@ -220,7 +220,7 @@ class simple_SSA_submodel( Submodel ):
         # call handle_event() in class SimulationObject which performs generic tasks on the event list
         SimulationObject.handle_event( self, event_list )
         if not self.num_events % 100:
-            print "{:7.1f}: submodel {}, event {}".format( self.time, self.name, self.num_events )
+            print("{:7.1f}: submodel {}, event {}".format( self.time, self.name, self.num_events ))
 
         for event_message in event_list:
             if compare_name_with_class( event_message.event_type, GIVE_POPULATION ):

@@ -179,13 +179,13 @@ class SharedMemoryCellState( object ):
         """
         if self._recording_history():
             # print subset of history for debugging
-            print "#times\tfirst\tlast"
-            print "{}\t{}\t{}".format( len(self.history['time']), self.history['time'][0], 
-                self.history['time'][-1] )
-            print "Specie\t#values\tfirst\tlast"
+            print("#times\tfirst\tlast")
+            print("{}\t{}\t{}".format( len(self.history['time']), self.history['time'][0], 
+                self.history['time'][-1] ))
+            print("Specie\t#values\tfirst\tlast")
             for s in self.history['population'].keys():
-                print "{}\t{}\t{}\t{}".format( s, len(self.history['population'][s]), 
-                    self.history['population'][s][0], self.history['population'][s][-1] )
+                print("{}\t{}\t{}\t{}".format( s, len(self.history['population'][s]), 
+                    self.history['population'][s][0], self.history['population'][s][-1] ))
         else:
             raise ValueError( "history not recorded" )
         
