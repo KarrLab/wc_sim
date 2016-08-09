@@ -1,116 +1,19 @@
 machine:
   python:
     version: 2.7.11
-dependencies:
-  cache_directories:
-    - ~/lib
-  pre:
-    # requirements for package
-    - sudo apt-get install libglpk-dev
-    - pip install -r requirements.txt
-
-    # requirements for testing and documentation
-    - sudo apt-get install lftp
-    - |
-        mkdir -p ~/lib
-        if [ ! -f ~/lib/unitth/unitth.jar ]
-        then
-          mkdir -p ~/lib
-          wget http://downloads.sourceforge.net/project/junitth/unitth/unitth-1.3.1/unitth_1_3_1.zip \
-            -O ~/lib/unitth_1_3_1.zip
-          unzip ~/lib/unitth_1_3_1.zip -d ~/lib
-        fi
-    - pip install -r tests/requirements.txt
-    - pip install -r docs/requirements.txt
-test:
-  pre:
-    # create folders for artifacts
-    - mkdir -p $CIRCLE_TEST_REPORTS/nose
-    - mkdir -p $CIRCLE_ARTIFACTS
-  override:
-    # run tests
-    - |
-        nosetests tests \
-          --with-xunit --xunit-file=$CIRCLE_TEST_REPORTS/nose.xml \
-          --with-coverage --cover-package=Sequential_WC_Simulator
-
   post:
-    ##### test reports
-    - mkdir -p tests/reports/nose
-    - mkdir -p tests/reports/unitth
-    - mkdir -p tests/reports/html
-    - cp $CIRCLE_TEST_REPORTS/nose.xml tests/reports/nose/$CIRCLE_BUILD_NUM.xml
-
-    #copy test history from lab server
-    - |
-        lftp sftp://$CODE_SERVER_USERNAME:$CODE_SERVER_PASSWORD@$CODE_SERVER_HOSTNAME \
-          -e "
-            mkdir -p $CODE_SERVER_BASE_DIR/$CIRCLE_PROJECT_REPONAME/tests/nose;
-            mirror $CODE_SERVER_BASE_DIR/$CIRCLE_PROJECT_REPONAME/tests/nose tests/reports/nose;
-            bye;
-          "
-
-    # generate test reports that are readable UnitTH
-    - |
-        for report_path in tests/reports/nose/*.xml
-        do
-          report_base_name=${report_path##*/}
-          report_file_name=${report_base_name%.xml}
-          nose2unitth tests/reports/nose/$report_base_name tests/reports/unitth/$report_file_name/
-          junit2html tests/reports/nose/$report_base_name tests/reports/unitth/$report_file_name/index.html
-        done
-
-    # generate report of test history
-    - |
-        java \
-          -Dunitth.generate.exectimegraphs=true \
-          -Dunitth.xml.report.filter= \
-          -Dunitth.html.report.path=. \
-          -Dunitth.report.dir=tests/reports/html \
-          -jar ~/lib/unitth/unitth.jar tests/reports/unitth/*
-
-    #copy test history to lab server
-    - |
-        lftp sftp://$CODE_SERVER_USERNAME:$CODE_SERVER_PASSWORD@$CODE_SERVER_HOSTNAME \
-          -e "
-            mkdir -p $CODE_SERVER_BASE_DIR/$CIRCLE_PROJECT_REPONAME/tests/nose;
-            mkdir -p $CODE_SERVER_BASE_DIR/$CIRCLE_PROJECT_REPONAME/tests/unitth;
-            mkdir -p $CODE_SERVER_BASE_DIR/$CIRCLE_PROJECT_REPONAME/tests/html;
-            put -O $CODE_SERVER_BASE_DIR/$CIRCLE_PROJECT_REPONAME/tests/nose tests/reports/nose/$CIRCLE_BUILD_NUM.xml;
-            mirror -e -R tests/reports/unitth/$CIRCLE_BUILD_NUM $CODE_SERVER_BASE_DIR/$CIRCLE_PROJECT_REPONAME/tests/unitth/$CIRCLE_BUILD_NUM; 
-            mirror -e -R tests/reports/html $CODE_SERVER_BASE_DIR/$CIRCLE_PROJECT_REPONAME/tests/html;
-            bye;
-          "
-
-    ##### coverage
-    # copy coverage report to artifacts directory
-    - cp .coverage $CIRCLE_ARTIFACTS
-
-    # post coverage report to coveralls
-    - coveralls
-
-    # post covergage report to lab server
-    - coverage html -d tests/reports/coverage
-    - |
-        lftp sftp://$CODE_SERVER_USERNAME:$CODE_SERVER_PASSWORD@$CODE_SERVER_HOSTNAME \
-          -e "
-            mkdir -p $CODE_SERVER_BASE_DIR/$CIRCLE_PROJECT_REPONAME/tests/coverage;
-            mirror -R tests/reports/coverage $CODE_SERVER_BASE_DIR/$CIRCLE_PROJECT_REPONAME/tests/coverage;
-            bye;
-          "
-
-    ##### documentation
-    # generate documentation
-    - mkdir -p docs/_static
-    - mkdir -p docs/_templates
-    - sphinx-apidoc -f -o docs/source/ Sequential_WC_Simulator
-    - make -C docs/ html
-
-    # copy documentation to lab server
-    - |
-        lftp sftp://$CODE_SERVER_USERNAME:$CODE_SERVER_PASSWORD@$CODE_SERVER_HOSTNAME \
-          -e "
-            mkdir -p $CODE_SERVER_BASE_DIR/$CIRCLE_PROJECT_REPONAME/docs;
-            mirror -R docs/_build/html $CODE_SERVER_BASE_DIR/$CIRCLE_PROJECT_REPONAME/docs;
-            bye;
-          "
+    - pyenv global 2.7.11 3.5.1
+dependencies:
+  pre:
+    - pip2 install git+git://github.com/jonrkarr/junit2html.git
+    - pip3 install git+git://github.com/jonrkarr/junit2html.git
+    - pip2 install Karr-Lab-build-utils
+    - pip3 install Karr-Lab-build-utils
+    - karr-lab-build-utils-2 install-requirements
+    - karr-lab-build-utils-3 install-requirements
+test:
+  override:
+    - karr-lab-build-utils-2 run-tests tests --with-xunit --with-coverage
+    - karr-lab-build-utils-3 run-tests tests --with-xunit --with-coverage
+  post:
+    - karr-lab-build-utils make-and-archive-reports

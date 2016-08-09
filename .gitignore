@@ -46,6 +46,9 @@ Thumbs.db
 #######################
 .*.swp
 
+# distributions
+*.egg-info
+
 # coverage files
 .coverage
 htmlcov
