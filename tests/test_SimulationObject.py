@@ -45,11 +45,11 @@ class TestSimulationObject(unittest.TestCase):
         delay = -1.0
         with self.assertRaises(ValueError) as context:
             self.o1.send_event( delay, self.o2, 'test1' )
-        self.assertEqual( context.exception.message,
+        self.assertEqual( str(context.exception),
             "delay < 0 in send_event(): {}".format( str( delay ) ) )
         
         eq = EventQueue()
         with self.assertRaises(ValueError) as context:
             eq.schedule_event( 2, 1, None, None, '' )
-        self.assertEqual( context.exception.message,
+        self.assertEqual( str(context.exception),
             "receive_time < send_time in schedule_event(): {} < {}".format( 1, 2 ) )

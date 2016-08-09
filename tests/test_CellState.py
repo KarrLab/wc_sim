@@ -24,7 +24,7 @@ class TestCellState(unittest.TestCase):
         with self.assertRaises(ValueError) as context:
             cs1.send_event( 1.0, cs1, 'init_msg1' )
         self.assertIn( "'CellState' simulation objects not registered to send 'init_msg1' messages", 
-            context.exception.message )
+            str(context.exception) )
 
     def test_CellState_debugging(self):
         cs1 = _CellStateMaker.make_CellState( _CellStateMaker.pop, None, debug=False )

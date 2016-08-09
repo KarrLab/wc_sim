@@ -26,11 +26,11 @@ class TestSharedMemoryCellState(unittest.TestCase):
         
         with self.assertRaises(ValueError) as context:
             the_SM_CellState._check_species( 0, 2 )
-        self.assertIn( "must be a list", context.exception.message )
+        self.assertIn( "must be a list", str(context.exception) )
         
         with self.assertRaises(ValueError) as context:
             the_SM_CellState._check_species( 0, ['x'] )
-        self.assertIn( "Error: request for population of unknown specie(s):", context.exception.message )
+        self.assertIn( "Error: request for population of unknown specie(s):", str(context.exception) )
         
         self.assertEqual( the_SM_CellState.read( 0, self.species ), self.init_populations )
         first_specie = self.species[0]
@@ -55,4 +55,4 @@ class TestSharedMemoryCellState(unittest.TestCase):
         self.assertEqual( a_SM_CellState.read( 0, ['s1'] ),  {'s1': 2} )
         with self.assertRaises(ValueError) as context:
             a_SM_CellState.init_cell_state_specie( 's1', 2 )
-        self.assertIn( "Error: specie_name 's1' already stored by this SharedMemoryCellState", context.exception.message )
+        self.assertIn( "Error: specie_name 's1' already stored by this SharedMemoryCellState", str(context.exception) )

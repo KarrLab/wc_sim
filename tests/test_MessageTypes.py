@@ -15,7 +15,7 @@ class TestMessageTypes(unittest.TestCase):
         for (change, flux) in ( (None, 3), ('x', 7), ):
             with self.assertRaises(ValueError) as context:
                 Continuous_change( change, flux )
-            self.assertRegexpMatches( context.exception.message, 
+            self.assertRegexpMatches( str(context.exception), 
                 "Continuous_change.type_check\(\): .* is '.*' which is not an int or float" )
 
     def test_one_message_type(self):

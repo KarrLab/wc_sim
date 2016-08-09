@@ -199,7 +199,7 @@ Time                 Event                Pop_adjust           Flux             
         with self.assertRaises(ValueError) as context:
             SimulationEngine.simulate( 5.0 )
         self.assertIn( "Error: ADJUST_POPULATION_BY_CONTINUOUS_MODEL message requests population of unknown species 'y'", 
-            context.exception.message )
+            str(context.exception) )
 
 
 class _CellStateMaker(object):

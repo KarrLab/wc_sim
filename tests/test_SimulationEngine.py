@@ -66,8 +66,8 @@ class TestSimulationEngine(unittest.TestCase):
         event_queue.schedule_event( -1, -1, obj, obj, 'init_msg' )
         with self.assertRaises(AssertionError) as context:
             SimulationEngine.simulate( 5.0 )
-        self.assertIn( 'find object time', context.exception.message )
-        self.assertIn( '> event time', context.exception.message )
+        self.assertIn( 'find object time', str(context.exception) )
+        self.assertIn( '> event time', str(context.exception) )
 
     def test_multi_object_simulation(self):
     

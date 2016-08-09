@@ -9,9 +9,9 @@ class TestReproducibleRandomErrors(unittest.TestCase):
         with self.assertRaises(ValueError) as context:
             RepRand.check_that_init_was_called()
         self.assertIn( "Error: ReproducibleRandom: ReproducibleRandom.init() must", 
-            context.exception.message )
+            str(context.exception) )
         
         with self.assertRaises(ValueError) as context:
             RepRand.get_numpy_random_state()
         self.assertIn( "Error: ReproducibleRandom: ReproducibleRandom.init() must", 
-            context.exception.message )
+            str(context.exception) )

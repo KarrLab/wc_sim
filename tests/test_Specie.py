@@ -25,7 +25,7 @@ class TestSpecie(unittest.TestCase):
         
         with self.assertRaises(AssertionError) as context:
             s1.continuous_adjustment( 2, -23, 1 )
-        self.assertIn( 'negative time:', context.exception.message )
+        self.assertIn( 'negative time:', str(context.exception) )
 
         s1.continuous_adjustment( 2, 4, 1 )
         self.assertEqual( s1.get_population( 4.0 ), 12 )
@@ -33,36 +33,36 @@ class TestSpecie(unittest.TestCase):
 
         with self.assertRaises(ValueError) as context:
             s1.continuous_adjustment( 2, 3, 1 )
-        self.assertIn( 'continuous_adjustment(): time <= self.continuous_time', context.exception.message )
+        self.assertIn( 'continuous_adjustment(): time <= self.continuous_time', str(context.exception) )
         
         with self.assertRaises(ValueError) as context:
             s1.get_population( )
         self.assertIn( 'get_population(): time needed because continuous adjustment received at time',
-            context.exception.message )
+            str(context.exception) )
         
         with self.assertRaises(ValueError) as context:
             s1.get_population( 3 )
-        self.assertIn( 'get_population(): time < self.continuous_time', context.exception.message )
+        self.assertIn( 'get_population(): time < self.continuous_time', str(context.exception) )
         
         with self.assertRaises(ValueError) as context:
             s1.discrete_adjustment( -20 )
         self.assertIn( 'discrete_adjustment(): negative population: last_population + population_change = ',
-            context.exception.message )
+            str(context.exception) )
 
         with self.assertRaises(ValueError) as context:
             s1.continuous_adjustment( -22, 5, 2 )
         self.assertIn( 'continuous_adjustment(): negative population: last_population + population_change = ',
-            context.exception.message )
+            str(context.exception) )
 
         s1 = Specie( 'specie', 10 )
         with self.assertRaises(ValueError) as context:
             s1.continuous_adjustment( 2, 2, 1 )
-        self.assertIn( 'initial flux was not provided', context.exception.message )
+        self.assertIn( 'initial flux was not provided', str(context.exception) )
 
         # raise asserts
         with self.assertRaises(AssertionError) as context:
             s1 = Specie( 'specie', -10 )
-        self.assertIn( '__init__(): population should be >= 0', context.exception.message )
+        self.assertIn( '__init__(): population should be >= 0', str(context.exception) )
     
     def test_Specie_stochastic_rounding(self):
         s1 = Specie( 'specie', 10.5 )
