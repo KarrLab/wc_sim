@@ -10,12 +10,12 @@ from Sequential_WC_Simulator.multialgorithm.shared_cell_state import SharedMemor
 class TestSharedMemoryCellState(unittest.TestCase):
 
     def setUp(self):
-        species = map( lambda x: "specie_{}".format( x ), range( 1, 5 ) )
+        species = list( map( lambda x: "specie_{}".format( x ), range( 1, 5 ) ) )
         self.species = species
         init_populations = dict( zip( species, range( 1, 5 ) ) )
         self.init_populations = init_populations
         self.flux = 1
-        init_fluxes = dict( zip( species, [self.flux]*len(list(species)) ) )
+        init_fluxes = dict( zip( species, [self.flux] * len(species) ) )
         self.a_SM_CellState = SharedMemoryCellState( 'test', init_populations, initial_fluxes=init_fluxes,
             debug=False, log=False)
         self.a_SM_CellState_no_init_flux = SharedMemoryCellState( 'test', init_populations, 

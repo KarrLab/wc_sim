@@ -35,12 +35,12 @@ class MessageTypesRegistry( object ):
         Store the types as strings, because they are also used in event messages, which 
             should not contain references.
         """
-        MessageTypesRegistry.senders[ sim_obj_name ] = map( lambda x: x.__name__, message_types )
+        MessageTypesRegistry.senders[ sim_obj_name ] = tuple( map( lambda x: x.__name__, message_types ) )
     
     @staticmethod
     def set_receiver_priorities( sim_obj_name, message_priorities ):
         MessageTypesRegistry.receiver_priorities[ sim_obj_name ] = \
-            map( lambda x: x.__name__, message_priorities )
+            tuple( map( lambda x: x.__name__, message_priorities ) )
 
 class SimulationEngine(object):
     """A simulation's static engine.
