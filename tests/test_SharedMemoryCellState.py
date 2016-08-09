@@ -15,7 +15,7 @@ class TestSharedMemoryCellState(unittest.TestCase):
         init_populations = dict( zip( species, range( 1, 5 ) ) )
         self.init_populations = init_populations
         self.flux = 1
-        init_fluxes = dict( zip( species, [self.flux]*len(species) ) )
+        init_fluxes = dict( zip( species, [self.flux]*len(list(species)) ) )
         self.a_SM_CellState = SharedMemoryCellState( 'test', init_populations, initial_fluxes=init_fluxes,
             debug=False, log=False)
         self.a_SM_CellState_no_init_flux = SharedMemoryCellState( 'test', init_populations, 
