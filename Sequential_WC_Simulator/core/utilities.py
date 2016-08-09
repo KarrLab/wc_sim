@@ -106,7 +106,7 @@ class ReproducibleRandom(object):
         else:
             ReproducibleRandom._private_PRNG = numpy_random.RandomState( )
         ReproducibleRandom._RNG_generator = numpy_random.RandomState( 
-            ReproducibleRandom._private_PRNG.randint(sys.maxint) )
+            ReproducibleRandom._private_PRNG.randint(sys.maxsize) )
         
 
     @staticmethod
@@ -136,7 +136,7 @@ class ReproducibleRandom(object):
             ValueError: if init() was not called
         """
         ReproducibleRandom._check_that_init_was_called()
-        return numpy_random.RandomState( ReproducibleRandom._RNG_generator.randint(sys.maxint) )
+        return numpy_random.RandomState( ReproducibleRandom._RNG_generator.randint(sys.maxsize) )
         
     @staticmethod
     def get_numpy_random( ):
