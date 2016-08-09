@@ -60,8 +60,8 @@ class ADJUST_POPULATION_BY_DISCRETE_MODEL( object ):
                 self.population_change.keys() )
             return "specie:change: {}".format( ', '.join( l ) )
 
-Continuous_change = namedtuple( 'Continuous_change', 'change, flux' )
-class Continuous_change(Continuous_change):
+Continuous_change_namedtuple = namedtuple( 'Continuous_change_namedtuple', 'change, flux' )
+class Continuous_change(Continuous_change_namedtuple):
     def type_check(self):
         """Check that the fields in Continuous_change are numbers.
         
@@ -76,14 +76,15 @@ class Continuous_change(Continuous_change):
                 raise ValueError( "Continuous_change.type_check(): {} is '{}' "
                     "which is not an int or float".format( f, v ) )        
                     
-    def __init__( self, change, flux ):
+    def __new__( cls, change, flux ):
         """Initialize a Continuous_change.
         
         Raises:
             ValueError: if some fields are not numbers.
         """
-        super( Continuous_change, self ).__init__( change, flux )
+        self = super( Continuous_change, cls ).__new__( cls, change, flux )
         self.type_check()
+        return self
 
 
 class ADJUST_POPULATION_BY_CONTINUOUS_MODEL( object ):

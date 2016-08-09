@@ -9,7 +9,6 @@
 '''
 
 from itertools import chain
-from collections import namedtuple
 import logging
 
 import math
