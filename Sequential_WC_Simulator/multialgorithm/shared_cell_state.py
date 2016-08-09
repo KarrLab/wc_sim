@@ -13,7 +13,7 @@ import logging
 
 from Sequential_WC_Simulator.core.LoggingConfig import setup_logger
 from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
-from specie import Specie
+from Sequential_WC_Simulator.multialgorithm.specie import Specie
 
     
 class SharedMemoryCellState( object ): 

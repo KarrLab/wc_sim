@@ -14,7 +14,7 @@ from Sequential_WC_Simulator.core.SimulationEngine import MessageTypesRegistry
 
 from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
 from Sequential_WC_Simulator.multialgorithm.MessageTypes import *
-from specie import Specie
+from Sequential_WC_Simulator.multialgorithm.specie import Specie
 
     
 class CellState( SimulationObject ): 
