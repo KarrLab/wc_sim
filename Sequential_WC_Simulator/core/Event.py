@@ -37,6 +37,19 @@ class Event( object ):
         self.event_type = event_type
         self.event_body = event_body
 
+    def __lt__(self, other):
+        self.event_time < other.event_time
+
+    def __le__(self, other):
+        self.event_time <= other.event_time
+
+    def __gt__(self, other):
+        self.event_time > other.event_time
+        
+    def __ge__(self, other):
+        self.event_time >= other.event_time
+
+
     def __str__( self ):
         """Return an Event as a string.
         
