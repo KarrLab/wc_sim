@@ -13,6 +13,7 @@ import random as python_random
 import sys
 import math
 import logging
+import numpy as np
 
 from Sequential_WC_Simulator.core.config import SimulatorConfig
 
@@ -106,7 +107,7 @@ class ReproducibleRandom(object):
         else:
             ReproducibleRandom._private_PRNG = numpy_random.RandomState( )
         ReproducibleRandom._RNG_generator = numpy_random.RandomState( 
-            ReproducibleRandom._private_PRNG.randint(sys.maxsize) )
+            ReproducibleRandom._private_PRNG.randint( np.iinfo(np.uint32).max ) )
         
 
     @staticmethod
@@ -136,7 +137,7 @@ class ReproducibleRandom(object):
             ValueError: if init() was not called
         """
         ReproducibleRandom._check_that_init_was_called()
-        return numpy_random.RandomState( ReproducibleRandom._RNG_generator.randint(sys.maxsize) )
+        return numpy_random.RandomState( ReproducibleRandom._RNG_generator.randint( np.iinfo(np.uint32).max ) )
         
     @staticmethod
     def get_numpy_random( ):
@@ -207,8 +208,6 @@ Utility functions
 @author Jonathan Karr, karr@mssm.edu
 @date 3/22/2016
 '''
-
-import numpy as np
 
 N_AVOGADRO = 6.022e23 #Avogadro constant
 
