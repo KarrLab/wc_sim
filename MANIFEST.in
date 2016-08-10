@@ -1,0 +1,8 @@
+# license
+include LICENSE
+
+# requirements
+include requirements.txt
+
+# examples
+recursive-include examples *
