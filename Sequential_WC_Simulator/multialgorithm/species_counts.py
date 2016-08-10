@@ -1,9 +1,10 @@
 '''
 DRAFT code for cached species counts. NOT FUNCTIONAL OR COMPLETE.
 '''
+from collections import namedtuple
 ValueAtTime = namedtuple( 'ValueAtTime', 'value, time' )
 class SpeciesCounts(object):
-    """A local species count store used by a submodel.
+    """ A local species count store used by a submodel.
     
     A SpeciesCounts is a write-through cache of the count of a set of species. All of a submodel's 
     reads & writes of species counts go through a SpeciesCounts, which will synchronize the R/W operations
@@ -12,11 +13,12 @@ class SpeciesCounts(object):
     All operations occur at the current simulation time.
     
     Roadmap for SpeciesCounts:
-    0) prototype: all species counts are stored in a local SpeciesCounts object
-        that wrap simulation scheduled accesses to CellState
-    1) locality optimization: local species counts distinguish between shared and private species
-        shared species accesses all mapped into scheduled accesses to CellState
-        private species accesses simply access local species counts
+
+    0. prototype: all species counts are stored in a local SpeciesCounts object
+       that wrap simulation scheduled accesses to CellState
+    1. locality optimization: local species counts distinguish between shared and private species
+       shared species accesses all mapped into scheduled accesses to CellState
+       private species accesses simply access local species counts
 
     Attributes:
         submodel: a reference to the submodel using this SpeciesCount

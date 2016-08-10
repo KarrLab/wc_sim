@@ -2,3 +2,4 @@ cobra
 matplotlib
 numpy
 openpyxl
+recordtype

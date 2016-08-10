@@ -47,7 +47,7 @@ class SimulationEngine(object):
     
     A static, singleton class that contains and manipulates global simulation data.
     SimulationEngine registers all simulation objects; runs the simulation, scheduling objects to execute events
-        in non-decreasing time order; and generates debugging output.
+    in non-decreasing time order; and generates debugging output.
     
     Attributes:
         These are global attributes, since the SimulationEngine is static.

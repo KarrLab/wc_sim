@@ -7,26 +7,29 @@ from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
 from Sequential_WC_Simulator.core.utilities import StochasticRound
 
 class Specie(object):
-    """
-    Specie tracks the population of a single specie.
+    """ Specie tracks the population of a single specie.
     
     We have these cases. Suppose that the specie's population is adjusted by:
-        DISCRETE model only: estimating the population obtains the last value written
-        CONTINUOUS model only: estimating the population obtains the last value written plus a linear interpolated change
-            since the last continuous adjustment
-        Both model types: reading the populations obtains the last value written plus a linear interpolated change 
-            based on the last continuous adjustment
+
+    * DISCRETE model only: estimating the population obtains the last value written
+    * CONTINUOUS model only: estimating the population obtains the last value written plus a linear interpolated change 
+      since the last continuous adjustment
+    * Both model types: reading the populations obtains the last value written plus a linear interpolated change 
+      based on the last continuous adjustment
+
     Without loss of generality, we assume that all species can be adjusted by both model types and that at most
     one continuous model adjusts a specie's population. (Multiple continuous models of a specie - or any 
     model attribute - would be non-sensical, as it implies multiple conflicting, simultaneous rates of change.) 
     We also assume that if a population is adjusted by a continuous model then the adjustments occur sufficiently 
     frequently that the last adjustment alway provides a useful estimate of flux. Adjustments take the following form:
-        DISCRETE adjustment: (time, population_change)
-        CONTINUOUS adjustment: (time, population_change, flux_estimate_at_time)
+    
+    * DISCRETE adjustment: (time, population_change)
+    * CONTINUOUS adjustment: (time, population_change, flux_estimate_at_time)
     
     A Specie stores the (time, population) of the most recent adjustment and (time, flux) of the most
     recent continuous adjustment. Naming these R_time, R_pop, C_time, and C_flux, the population p at time t is 
-    estimated by:
+    estimated by:::
+
         interpolation = 0
         if C_time:
             interpolation = (t - C_time)*C_flux

@@ -26,7 +26,8 @@ class simple_SSA_submodel( Submodel ):
     simple_SSA_submodel employs Gillespie's Stochastic Simulation Algorithm 
     to predict the dynamics of a set of chemical species in a 'well-mixed' container. 
     
-    algorithm:
+    algorithm:::
+
         implement the 'direct' method, except under unusual circumstances.
         
         determine_reaction_propensities():
@@ -180,10 +181,13 @@ class simple_SSA_submodel( Submodel ):
         a wait. The delay until the next reaction is an exponential sample with mean 1/sum(propensities).
         
         Method:
+
         1. calculate propensities
         2. if total propensity == 0:
-            schedule a wait equal to the weighted mean inter reaction time
-            return
+
+               | schedule a wait equal to the weighted mean inter reaction time
+               | return
+
         3. select time of next reaction
         4. select next reaction
         5. schedule the next reaction
