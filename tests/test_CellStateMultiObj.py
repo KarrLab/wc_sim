@@ -141,7 +141,7 @@ Time                 Event                Pop_adjust           Flux             
             )
 
         # GET_POPULATION
-        for time in pop_history_dict['get_pop'].keys():
+        for time in pop_history_dict['get_pop']:
             TestSimObj.send_event( time, cs1, GET_POPULATION, 
                 event_body=GET_POPULATION.body( set(['x']) )
             )
@@ -170,7 +170,7 @@ Time                 Event                Pop_adjust           Flux             
                 event_body=ADJUST_POPULATION_BY_DISCRETE_MODEL.body( { specie:Pop_adjust } ) )
 
         # GET_POPULATION
-        for time in pop_history_dict['get_pop'].keys():
+        for time in pop_history_dict['get_pop']:
             TestSimObj.send_event( time, cs, GET_POPULATION, 
                 event_body=GET_POPULATION.body( set([ specie ]) )
             )

@@ -72,10 +72,10 @@ class SharedMemoryCellState( object ):
         
         try:
             if initial_fluxes is not None:
-                for specie_id in initial_population.keys():
+                for specie_id in initial_population:
                     self.init_cell_state_specie( specie_id, initial_population[specie_id], initial_fluxes[specie_id] )
             else:
-                for specie_id in initial_population.keys():
+                for specie_id in initial_population:
                     self.init_cell_state_specie( specie_id, initial_population[specie_id] )
         except AssertionError as e:
             sys.stderr.write( "Cannot initialize SharedMemoryCellState: {}.\n".format( e.message ) )
@@ -100,7 +100,7 @@ class SharedMemoryCellState( object ):
         my_level = logging.NOTSET
         if log:
             my_level = logging.DEBUG
-            for specie_name in initial_population.keys():
+            for specie_name in initial_population:
                 setup_logger(specie_name, level=my_level )
                 log = logging.getLogger(specie_name)
                 # write log header
@@ -183,7 +183,7 @@ class SharedMemoryCellState( object ):
             print("{}\t{}\t{}".format( len(self.history['time']), self.history['time'][0], 
                 self.history['time'][-1] ))
             print("Specie\t#values\tfirst\tlast")
-            for s in self.history['population'].keys():
+            for s in self.history['population']:
                 print("{}\t{}\t{}\t{}".format( s, len(self.history['population'][s]), 
                     self.history['population'][s][0], self.history['population'][s][-1] ))
         else:
@@ -213,7 +213,7 @@ class SharedMemoryCellState( object ):
             ValueError: if specie in species is being accessed at a time earlier than a prior access
         """
         early_accesses = filter( lambda s: time < self.last_access_time[s], species)
-        if early_accesses:
+        if any(early_accesses):
             raise ValueError( "Error: earlier access of specie(s): {}".format( early_accesses ))
 
     def __update_access_times( self, time, species ):
@@ -252,9 +252,9 @@ class SharedMemoryCellState( object ):
             ValueError: adjustment attempts to change the population of an unknown species
             ValueError: if population goes negative
         """
-        self._check_species( time, adjustments.keys() )
+        self._check_species( time, list( adjustments.keys() ) )
         self.time = time
-        for specie in adjustments.keys():
+        for specie in adjustments:
             try:
                 self.population[specie].discrete_adjustment( adjustments[specie] )
                 self.__update_access_times( time, [specie] )
@@ -274,7 +274,7 @@ class SharedMemoryCellState( object ):
             ValueError: adjustment attempts to change the population of a non-existent species
             ValueError: if population goes negative
         """
-        self._check_species( time, adjustments.keys() )
+        self._check_species( time, list( adjustments.keys() ) )
         self.time = time
 
         # record simulation state history

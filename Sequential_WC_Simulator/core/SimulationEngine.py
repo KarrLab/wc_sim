@@ -107,11 +107,11 @@ class SimulationEngine(object):
     def print_simulation_state( ):
 
         logger.debug( ' ' + '\t'.join( ['Sender', 'Message types sent'] ) )
-        for sender in MessageTypesRegistry.senders.keys():
+        for sender in MessageTypesRegistry.senders:
             logger.debug( ' ' + sender + '\t' + ', '.join( MessageTypesRegistry.senders[sender] ) )
 
         logger.debug( ' ' + '\t'.join( ['Receiver', 'Message types by priority'] ) )
-        for receiver in MessageTypesRegistry.receiver_priorities.keys():
+        for receiver in MessageTypesRegistry.receiver_priorities:
             logger.debug( ' ' + sender + '\t' + ', '.join( MessageTypesRegistry.receiver_priorities[receiver] ) )
 
     @staticmethod

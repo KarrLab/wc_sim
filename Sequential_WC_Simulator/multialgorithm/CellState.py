@@ -85,7 +85,7 @@ class CellState( SimulationObject ):
 
         self.population = {}
         try:
-            for specie_name in initial_population.keys():
+            for specie_name in initial_population:
                 initial_flux_given = None
                 if initial_fluxes is not None and specie_name in initial_fluxes:
                     initial_flux_given = initial_fluxes[specie_name]
@@ -112,7 +112,7 @@ class CellState( SimulationObject ):
         my_level = logging.NOTSET
         if log:
             my_level = logging.DEBUG
-        for specie_name in initial_population.keys():
+        for specie_name in initial_population:
             setup_logger(specie_name, level=my_level )
             log = logging.getLogger(specie_name)
             # write log header
@@ -151,7 +151,7 @@ class CellState( SimulationObject ):
 
                 logging.getLogger( self.logger_name ).debug( 
                     "ADJUST_POPULATION_BY_DISCRETE_MODEL: {}".format( str(population_changes) ) ) 
-                for specie_name in population_changes.population_change.keys():
+                for specie_name in population_changes.population_change:
                     if not specie_name in self.population:
                         self.population[specie_name] = Specie( specie_name, 0 )
                     
@@ -166,7 +166,7 @@ class CellState( SimulationObject ):
                 logging.getLogger( self.logger_name ).debug( 
                     "ADJUST_POPULATION_BY_CONTINUOUS_MODEL: {}".format( str(population_changes) ) ) 
 
-                for specie_name in population_changes.population_change.keys():
+                for specie_name in population_changes.population_change:
                     # raise exeception if an ADJUST_POPULATION_BY_CONTINUOUS_MODEL event acts on a 
                     # non-existent species because the species has no flux, and we don't want a default flux
                     if not specie_name in self.population:
