@@ -2,6 +2,7 @@ import unittest
 import sys
 import re
 import os.path as path
+import json
 
 from Sequential_WC_Simulator.core.SimulationObject import EventQueue, SimulationObject
 from Sequential_WC_Simulator.core.SimulationEngine import SimulationEngine, MessageTypesRegistry
@@ -83,8 +84,13 @@ class TestCellState(unittest.TestCase):
             event_body=ADJUST_POPULATION_BY_CONTINUOUS_MODEL.body( d ) )
         SimulationEngine.simulate( 5.0 )
         
-        text_in_log_CellState_CellState_2_by_line = '''.*initial_population: {'s3': 35, 's2': 28, 's1': 21}
-.*initial_fluxes: {'s3': 0, 's2': 0, 's1': 0}
+        expected_initial_population = {'s3': 35, 's2': 28, 's1': 21}
+        expected_initial_fluxes = {'s3': 0, 's2': 0, 's1': 0}
+        expected_discrete_species_change = {'s3':1.0, 's2':1.0, 's1':1.0}
+        expected_continuous_species_change = {'s3':[2.0, 1.0], 's2':[2.0, 1.0], 's1':[2.0, 1.0]}
+
+        text_in_log_CellState_CellState_2_by_line = '''.*initial_population: {'s\d': \d\d, 's\d': \d\d, 's\d': \d\d}
+.*initial_fluxes: {'s\d': 0, 's\d': 0, 's\d': 0}
 .*shared_random_seed: None
 .*write_plot_output: False
 .*#debug: True
@@ -93,16 +99,42 @@ class TestCellState(unittest.TestCase):
 .*creation_time\tevent_time\tsending_object\treceiving_object\tevent_type
 .*0.000\t   2.000\tusr1\tCellState_2\tADJUST_POPULATION_BY_CONTINUOUS_MODEL
 .*
-.*ADJUST_POPULATION_BY_DISCRETE_MODEL: specie:change: s3:1.0, s2:1.0, s1:1.0
+.*ADJUST_POPULATION_BY_DISCRETE_MODEL: specie:change: s\d:1.0, s\d:1.0, s\d:1.0
 .*CellState_2 at 2.000
 .*Empty event queue
-.*ADJUST_POPULATION_BY_CONTINUOUS_MODEL: specie:\(change,flux\): s3:\(2.0,1.0\), s2:\(2.0,1.0\), s1:\(2.0,1.0\)'''
+.*ADJUST_POPULATION_BY_CONTINUOUS_MODEL: specie:\(change,flux\): s\d:\(\d.0,\d.0\), s\d:\(\d.0,\d.0\), s\d:\(\d.0,\d.0\)'''
         expected_patterns = text_in_log_CellState_CellState_2_by_line.split('\n')
         log_file = path.join( LOGGING_ROOT_DIR, cs1.logger_name + '.log' )
         fh = open( log_file, 'r' )
         for pattern in expected_patterns:
             self.assertRegexpMatches( fh.readline().strip(), pattern )
+
+        
+        fh.seek(0)
+        log_text = fh.read()
+
+        result = re.search("initial_population: ({'s\d': \d\d, 's\d': \d\d, 's\d': \d\d})", log_text, re.MULTILINE)
+        self.assertEqual(expected_initial_population, json.loads(result.group(1).replace("'", '"')))
+
+        result = re.search("initial_fluxes: ({'s\d': 0, 's\d': 0, 's\d': 0})", log_text, re.MULTILINE)
+        self.assertEqual(expected_initial_fluxes, json.loads(result.group(1).replace("'", '"')))
+
+        result = re.search("ADJUST_POPULATION_BY_DISCRETE_MODEL: specie:change: (s\d:1.0, s\d:1.0, s\d:1.0)", log_text, re.MULTILINE)
+        self.assertEqual(expected_discrete_species_change, json.loads(
+            '{"' + result.group(1).replace(":", '":').replace(', ', ', "') + '}'
+            ))
+
+        result = re.search("ADJUST_POPULATION_BY_CONTINUOUS_MODEL: specie:\(change,flux\): (s\d:\(\d.0,\d.0\), s\d:\(\d.0,\d.0\), s\d:\(\d.0,\d.0\))", log_text, re.MULTILINE)
+        self.assertEqual(expected_continuous_species_change,    json.loads(
+            '{"' 
+            + result.group(1).replace(':', '":').replace(', ', ', "').replace('(', '[').replace(')', ']')
+            + '}'
+            ))
+
+
         fh.close()
+
+
         
     # TODO(Arthur): important: test simultaneous recept of ADJUST_POPULATION_BY_DISCRETE_MODEL and ADJUST_POPULATION_BY_CONTINUOUS_MODEL
 
