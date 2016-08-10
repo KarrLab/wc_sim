@@ -1,8 +1,9 @@
-[comment]: <>([![PyPI package](https://img.shields.io/pypi/v/Sequential_WC_Simulator.svg)](https://pypi.python.org/pypi/Karr-Lab-build-utils))
+<!-- [![PyPI package](https://img.shields.io/pypi/v/Sequential_WC_Simulator.svg)](https://pypi.python.org/pypi/Karr-Lab-build-utils) -->
 [![Documentation](https://img.shields.io/badge/docs-latest-brightgreen.svg)](http://code.karrlab.org/Sequential_WC_Simulator/docs)
 [![Test results](https://circleci.com/gh/KarrLab/Sequential_WC_Simulator.svg?style=shield&circle-token=5f0ee7e437b91cbcac19a9b8526a7ea320ee61c7)](https://circleci.com/gh/KarrLab/Sequential_WC_Simulator)
 [![Test coverage](https://coveralls.io/repos/github/KarrLab/Sequential_WC_Simulator/badge.svg?t=EUFJ40)](https://coveralls.io/github/KarrLab/Sequential_WC_Simulator)
-[![License](https://img.shields.io/github/license/KarrLab/Sequential_WC_Simulator.svg)](LICENSE)
+[![Code analysis](https://codeclimate.com/repos/57ab5e097ba8854f41000799/badges/54b4deadccf7944d38f6/gpa.svg)](https://codeclimate.com/repos/57ab5e097ba8854f41000799)
+<!-- [![License](https://img.shields.io/github/license/KarrLab/Sequential_WC_Simulator.svg)](LICENSE) -->
 
 # Sequential_WC_Simulator
 
