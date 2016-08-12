@@ -14,6 +14,8 @@ import argparse
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
+from past import autotranslate
+autotranslate(['recordtype'])
 from recordtype import recordtype
 
 '''
