@@ -2,5 +2,5 @@ cobra
 matplotlib
 numpy
 openpyxl
-past
+future
 recordtype
