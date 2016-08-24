@@ -14,7 +14,8 @@ Simulates metabolism submodel
 from numpy import random
 from util import N_AVOGADRO
 # from WcModelingTutorial.TutorialConstruction import analysis    #code to analyze simulation results in exercises
-import analysis
+from Sequential_WC_Simulator.multialgorithm.temp import analysis
+from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
 import numpy as np
 import os
 
@@ -62,11 +63,11 @@ def simulate(model):
     speciesCountsHist[:, :, 0] = model.speciesCounts
             
     #Simulate dynamics
-    print 'Simulating for %d time steps from 0-%d s' % (nTimeSteps, timeMax)
+    print( 'Simulating for %d time steps from 0-%d s' % (nTimeSteps, timeMax) )
     for iTime in range(1, nTimeSteps):
         time = iTime * TIME_STEP
         if iTime % 100 == 1:
-            print '\tStep = %d, t = %.1f s' % (iTime, time)
+            print( '\tStep = %d, t = %.1f s' % (iTime, time) )
         
         #simulate submodels
         metabolismSubmodel.updateLocalCellState(model)
@@ -219,7 +220,7 @@ def analyzeResults(model, time, volume, growth, speciesCounts):
 if __name__ == "__main__":
     model = getModelFromExcel(MODEL_FILENAME)
     time, volume, growth, speciesCounts = simulate(model)
-    print time, volume, growth, speciesCounts
+    print( time, volume, growth, speciesCounts )
     analyzeResults(model, time, volume, growth, speciesCounts)
     
     #Check if simulation implemented correctly

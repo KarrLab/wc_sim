@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 # control logging level with: logger.setLevel()
 # this enables debug output: logging.basicConfig( level=logging.DEBUG )
 
-from Event import Event
+from Sequential_WC_Simulator.core.Event import Event
 from Sequential_WC_Simulator.core.SimulationEngine import (SimulationEngine, MessageTypesRegistry)
 from Sequential_WC_Simulator.core.config import SimulatorConfig
 

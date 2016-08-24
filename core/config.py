@@ -19,7 +19,9 @@ class SimulatorConfig(object):
                                     # scheduling an event that stores the event_body in an Event(). deepcopy avoids possible
                                     # data sharing conflicts, but costs time & memory
     DEFAULT_CENTER_OF_MASS=10       # the default center of mass for exponential moving average calculations
-    DEFAULT_SEED=19                 # the default random seed for ReproducibleRandom
-    REPRODUCIBLE=False              # whether a simulation should be reproducible
+    REPRODUCIBLE_SEED=None          # a random seed that makes a simulation reproducible
+                                    # set to None for non-reproducible simulations
     
     # the following variables are in use:
+    REPRODUCIBLE_SEED
+

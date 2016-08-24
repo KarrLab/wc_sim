@@ -5,6 +5,7 @@
 
 # TODO(Arthur): make a fast option, which must skip test_StochasticRound.py (or run a 
 # fast version)
+# TODO(Arthur): IMPORTANT test: almost all unittests should be in multialgorithm, which they test
 
 function usage {
     if [ -n "$1" ]; then echo $1 >&2; fi

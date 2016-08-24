@@ -38,7 +38,6 @@ class FbaSubmodel(Submodel):
     # TODO(Arthur): change variable names to lower_with_under style
 
     Attributes:
-        random: random object; private PRNG
         time_step: float; time between FBA executions
         metabolismProductionReaction
         exchangedSpecies
@@ -73,7 +72,7 @@ class FbaSubmodel(Submodel):
     # COMMENT(Arthur): I want to understand this better.
     
     def __init__(self, model, name, id, private_cell_state, shared_cell_states, 
-        reactions, species, time_step, random_seed=None, debug=False, write_plot_output=False ):        
+        reactions, species, time_step, debug=False, write_plot_output=False ):        
         """Initialize a simple_SSA_submodel object.
         
         # TODO(Arthur): expand description
@@ -282,7 +281,7 @@ class FbaSubmodel(Submodel):
         # call handle_event() in class SimulationObject which performs generic tasks on the event list
         SimulationObject.handle_event( self, event_list )
         if not self.num_events % 100:
-            print "{:7.1f}: submodel {}, event {}".format( self.time, self.name, self.num_events )
+            print( "{:7.1f}: submodel {}, event {}".format( self.time, self.name, self.num_events ) )
 
         for event_message in event_list:
             if compare_name_with_class( event_message.event_type, GIVE_POPULATION ):

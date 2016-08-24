@@ -21,6 +21,7 @@ with warnings.catch_warnings():
 
 from Sequential_WC_Simulator.core.LoggingConfig import setup_logger
 from Sequential_WC_Simulator.core.utilities import N_AVOGADRO
+from Sequential_WC_Simulator.multialgorithm.utilities import species_compartment_name
 from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
 from Sequential_WC_Simulator.multialgorithm.shared_cell_state import SharedMemoryCellState
 
@@ -82,35 +83,6 @@ class Model(object):
         '''
         self.calcInitialConditions()
             
-    @staticmethod
-    def species_compartment_name( specie, compartment ):
-        """Provide an identifier for a species in a compartment, formatted  species_id[compartment_it].
-        
-        Args:
-            specie: Species object
-            compartment: Compartment object
-            
-        Returns:
-            A unique identifier for a species in a compartment.            
-        """
-        return "{}[{}]".format( specie.id, compartment.id )
-        
-    @staticmethod
-    def get_species_and_compartment_from_name( species_compartment_name ):
-        """
-        
-        The inverse of species_compartment_name().
-        
-        Args:
-            species_compartment_name: string; an identifier for a species in a compartment,
-                as produced by species_compartment_name()
-            
-        Returns:
-        """
-        pass
-        # TODO(Arthur): implement
-    
-        
     def calcInitialConditions(self):
         """Set up the initial conditions for a simulation. 
         
@@ -132,7 +104,7 @@ class Model(object):
                 # initializing all fluxes to 0 so that continuous adjustments can be made
                 # TODO(Arthur): just initialize species that participate in continuous models
                 self.the_SharedMemoryCellState.init_cell_state_specie( 
-                    Model.species_compartment_name( species, conc.compartment ), 
+                    species_compartment_name( species, conc.compartment ), 
                     conc.value * conc.compartment.initialVolume * N_AVOGADRO,
                     initial_flux_given = 0 )
         
@@ -158,7 +130,7 @@ class Model(object):
         speciesCounts = np.zeros((len(self.species), len(self.compartments)))
         for species in self.species:
             for compartment in self.compartments:
-                specie_name = Model.species_compartment_name(species, compartment)
+                specie_name = species_compartment_name(species, compartment)
                 speciesCounts[ species.index, compartment.index ] = \
                     self.the_SharedMemoryCellState.read( now, [specie_name] )[specie_name]
         return speciesCounts

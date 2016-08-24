@@ -4,7 +4,7 @@
 '''
 
 from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
-from Sequential_WC_Simulator.core.utilities import StochasticRound
+from Sequential_WC_Simulator.core.utilities import StochasticRound, ReproducibleRandom
 
 class Specie(object):
     """
@@ -58,7 +58,7 @@ class Specie(object):
     # use __slots__ to save space
     __slots__ = "specie_name last_population continuous_time continuous_flux stochasticRounder".split()
 
-    def __init__( self, specie_name, initial_population, initial_flux=None, random_seed=None ):
+    def __init__( self, specie_name, initial_population, initial_flux=None ):
         """Initialize a Specie object.
         
         Args:
@@ -66,8 +66,6 @@ class Specie(object):
             initial_population: non-negative number; initial population of the specie
             initial_flux: number; required for Specie whose population is partially estimated by a 
                 continuous mode; initial flux for the specie
-            random_seed: hashable object; optional; seed for the random number generator;
-                the generator is initialized as described in Python's random module documentation
         """
         
         # TODO(Arthur): perhaps: add optional arg to not round copy number values reported
@@ -79,10 +77,8 @@ class Specie(object):
         else:
             self.continuous_time = 0
             self.continuous_flux = initial_flux
-        if random_seed is not None:
-            self.stochasticRounder = StochasticRound( seed=random_seed ).Round
-        else:
-            self.stochasticRounder = StochasticRound( ).Round
+
+        self.stochasticRounder = StochasticRound( ReproducibleRandom.get_numpy_random() ).Round
 
     def discrete_adjustment( self, population_change ):
         """A discrete model adjusts the specie's population.

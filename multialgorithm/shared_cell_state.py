@@ -13,10 +13,9 @@ import logging
 import numpy as np
 
 from Sequential_WC_Simulator.core.LoggingConfig import setup_logger
+from Sequential_WC_Simulator.multialgorithm.utilities import species_compartment_name
 from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
-import Sequential_WC_Simulator.multialgorithm.model_representation
-from specie import Specie
-
+from Sequential_WC_Simulator.multialgorithm.specie import Specie
     
 class SharedMemoryCellState( object ): 
     """The cell's state, which represents the state of its species.
@@ -192,8 +191,7 @@ class SharedMemoryCellState( object ):
                 for specie_index,specie in list(enumerate(self.model.species)):
                     for comp_index,compartment in list(enumerate(self.model.compartments)):
                         for time_index in range(len(self.history['time'])):
-                            # TODO(Arthur): avoid recursive imports between this module and model_representation
-                            specie_comp_id = Sequential_WC_Simulator.multialgorithm.model_representation.Model.species_compartment_name(specie, compartment)
+                            specie_comp_id = species_compartment_name(specie, compartment)
                             speciesCountsHist[specie_index,comp_index,time_index] = \
                                 self.history['population'][specie_comp_id][time_index]
                 
@@ -210,13 +208,13 @@ class SharedMemoryCellState( object ):
         """
         if self._recording_history():
             # print subset of history for debugging
-            print "#times\tfirst\tlast"
-            print "{}\t{}\t{}".format( len(self.history['time']), self.history['time'][0], 
-                self.history['time'][-1] )
-            print "Specie\t#values\tfirst\tlast"
+            print(  "#times\tfirst\tlast" )
+            print(  "{}\t{}\t{}".format( len(self.history['time']), self.history['time'][0], 
+                self.history['time'][-1] ) )
+            print(  "Specie\t#values\tfirst\tlast" )
             for s in self.history['population'].keys():
-                print "{}\t{}\t{}\t{}".format( s, len(self.history['population'][s]), 
-                    self.history['population'][s][0], self.history['population'][s][-1] )
+                print(  "{}\t{}\t{}\t{}".format( s, len(self.history['population'][s]), 
+                    self.history['population'][s][0], self.history['population'][s][-1] ) )
         else:
             raise ValueError( "history not recorded" )
         
@@ -309,8 +307,7 @@ class SharedMemoryCellState( object ):
         self.time = time
 
         # record simulation state history
-        # TODO(Arthur): may want to also do it in adjust_discretely(), or before executeReaction() 
-        # in simple_SSA_submodel(), as JK recommended
+        # TODO(Arthur): may want to also do it in adjust_discretely()
         if self._recording_history(): self._record_history() 
         for specie,(adjustment,flux) in adjustments.items():
             try:

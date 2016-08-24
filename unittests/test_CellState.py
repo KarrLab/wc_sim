@@ -7,6 +7,7 @@ import os.path as path
 
 from Sequential_WC_Simulator.core.SimulationObject import EventQueue, SimulationObject
 from Sequential_WC_Simulator.core.SimulationEngine import SimulationEngine, MessageTypesRegistry
+from Sequential_WC_Simulator.core.utilities import ReproducibleRandom
 from Sequential_WC_Simulator.multialgorithm.CellState import CellState
 from Sequential_WC_Simulator.multialgorithm.MessageTypes import *
 from UniversalSenderReceiverSimulationObject import UniversalSenderReceiverSimulationObject
@@ -16,6 +17,7 @@ class TestCellState(unittest.TestCase):
 
     def setUp(self):
         SimulationEngine.reset()
+        ReproducibleRandom.init()
 
     def test_invalid_event_types(self):
     
@@ -104,7 +106,6 @@ class TestCellState(unittest.TestCase):
         
         text_in_log_CellState_CellState_2_by_line = '''.*initial_population: {'s3': 35, 's2': 28, 's1': 21}
 .*initial_fluxes: {'s3': 0, 's2': 0, 's1': 0}
-.*shared_random_seed: None
 .*write_plot_output: False
 .*#debug: True
 .*log: False

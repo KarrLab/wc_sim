@@ -110,8 +110,8 @@ class TestSimulation(unittest.TestCase):
         if name is None:
             name = TestSimulation.get_name()
         if debug:
-            print "Creating CellState( {}, --population--, debug={}, write_plot_output={} ) ".format(
-                name, debug, write_plot_output )
+            print( "Creating CellState( {}, --population--, debug={}, write_plot_output={} ) ".format(
+                name, debug, write_plot_output ) )
         return CellState( name, pop, initial_fluxes=init_flux, debug=debug, write_plot_output=write_plot_output )
         
     def testSimulation( self ):

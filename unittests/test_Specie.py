@@ -4,12 +4,16 @@ import unittest
 import sys
 import re
 
-from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, SimulationObject)
-from Sequential_WC_Simulator.core.SimulationEngine import (SimulationEngine, MessageTypesRegistry)
+from Sequential_WC_Simulator.core.SimulationObject import EventQueue, SimulationObject
+from Sequential_WC_Simulator.core.SimulationEngine import SimulationEngine, MessageTypesRegistry
+from Sequential_WC_Simulator.core.utilities import ReproducibleRandom
 from Sequential_WC_Simulator.multialgorithm.specie import Specie
 
 
 class TestSpecie(unittest.TestCase):
+
+    def setUp(self):
+        ReproducibleRandom.init( )
 
     # these tests cover all executable statements in Specie(), including exceptions, and 
     # all branches
@@ -83,7 +87,8 @@ class TestSpecie(unittest.TestCase):
         for i in range(samples):
             self.assertEqual( s1.get_population( 3 ), 11.0 )
             
-        s2 = Specie( 'specie', 10.5, random_seed=123 )
+        ReproducibleRandom.init( seed=123 )
+        s2 = Specie( 'specie', 10.5 )
         pops=[]
         for i in range(10):
             pops.append( s2.get_population( ) )

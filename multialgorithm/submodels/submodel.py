@@ -19,7 +19,7 @@ import re
 import Sequential_WC_Simulator.core.utilities
 from Sequential_WC_Simulator.core.SimulationObject import SimulationObject
 from Sequential_WC_Simulator.core.LoggingConfig import setup_logger
-from Sequential_WC_Simulator.core.utilities import N_AVOGADRO
+from Sequential_WC_Simulator.multialgorithm.utilities import species_compartment_name
 from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
 from Sequential_WC_Simulator.multialgorithm.model_representation import Model, ExchangedSpecies
 from Sequential_WC_Simulator.multialgorithm.shared_cell_state import SharedMemoryCellState
@@ -132,7 +132,7 @@ class Submodel(SimulationObject):
             True if reaction is stoichiometrically enabled
         """
         for participant in reaction.participants:
-            species_id = Model.species_compartment_name( participant.species, participant.compartment )
+            species_id = species_compartment_name( participant.species, participant.compartment )
             count = self.model.the_SharedMemoryCellState.read( self.time, [species_id] )
             # 'participant.coefficient < 0' constrains the test to reactants
             if participant.coefficient < 0 and count < -participant.coefficient:

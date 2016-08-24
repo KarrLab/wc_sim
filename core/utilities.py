@@ -9,12 +9,9 @@ Created 2016/07/11
 
 from random import Random
 from numpy import random as numpy_random
-import random as python_random
 import sys
 import math
 import logging
-
-from Sequential_WC_Simulator.core.config import SimulatorConfig
 
 class ExponentialMovingAverage(object):
     """An exponential moving average.
@@ -71,15 +68,25 @@ class ExponentialMovingAverage(object):
 class ReproducibleRandom(object):
     """A source of reproducible random numbers.
     
-    A static, singleton class that can provide reproducible random numbers, and 
-    independent, reproducible random number streams. These can be seeded by a 
-    built-in seed or a single random seed provided at the command line.
+    A static, singleton class that can provide random numbers that are reproducible 
+    or non-reproducible. 'Reproducible' will produce identical sequences of random
+    values for independent executions of a deterministic application that uses this class, 
+    thereby making the application reproducible. This enables comparison of multiple independent
+    simulator executions that use different algorithms and/or inputs.
+    
+    Naturally, non-reproducible random numbers are randomly independent. 
+    
+    ReproducibleRandom provides both reproducible sequences of random numbers and independent, 
+    reproducible random number streams. These can be seeded by a built-in seed 
+    (used by the 'reproducible' argument to init()) or a single random seed provided 
+    to the 'seed' argument to init().
     If ReproducibleRandom is initialized without either of these seeds, then it
-    will random numbers and streams seeded by  
+    will generate random numbers and streams seeded by randomness source used by numpy's 
+    RandomState().
     
     Attributes:
         built_in_seed: a built-in RNG seed, to provide reproducibility when no 
-            command line seed is provided
+            external seed is provided
         _private_PRNG: a private PRNG, for generating random values
         RNG_generator: numpy RandomState(); a PRNG for generating additional, independent
             random number streams
@@ -106,7 +113,7 @@ class ReproducibleRandom(object):
         else:
             ReproducibleRandom._private_PRNG = numpy_random.RandomState( )
         ReproducibleRandom._RNG_generator = numpy_random.RandomState( 
-            ReproducibleRandom._private_PRNG.randint(sys.maxint) )
+             ReproducibleRandom._private_PRNG.randint(sys.maxint) )
         
 
     @staticmethod
@@ -117,7 +124,7 @@ class ReproducibleRandom(object):
             ValueError: if init() was not called
         """
         if ReproducibleRandom._private_PRNG==None:
-            raise ValueError( "Error: ReproducibleRandom: ReproducibleRandom.init() must"
+            raise ValueError( "Error: ReproducibleRandom: ReproducibleRandom.init() must "
             "be called before calling other ReproducibleRandom methods." )
     
     @staticmethod
@@ -140,11 +147,11 @@ class ReproducibleRandom(object):
         
     @staticmethod
     def get_numpy_random( ):
-        """Provide a numpy RandomState() instance.
+        """Provide a reference to a singleton numpy RandomState() instance.
         
         The output of this RandomState() instance is not reproducible across threads or
         other non-deterministically asynchronous components, but it can shared by components 
-        of a deterministic sequentia program.
+        of a deterministic sequential program.
         
         Returns:
             A numpy RandomState() instance. If ReproducibleRandom.init() was called to 
@@ -169,18 +176,24 @@ class StochasticRound( object ):
         RNG: A Random instance, initialized on creation of a StochasticRound.
     """
 
-    def __init__( self, seed=None ):
+    def __init__( self, rng=None ):
         """Initialize a StochasticRound.
         
         Args:
-            seed: a hashable object; optional; to deterministically initialize the basic random number generator 
-            provide seed. Otherwise some system-dependent randomness source will be used to initialize 
-            the generator. See Python documentation for random.seed().
+            rng: a numpy random number generator; optional; to use a deterministic sequence of 
+            random numbers in Round() provide an RNG initialized with a deterministically selected seed.
+            Otherwise some system-dependent randomness source will be used to initialize a numpy random 
+            number generator. See the documentation of numpy.random.
+            
+        Raises:
+            ValueError if rng is not a numpy_random.RandomState
         """
-        if seed:
-            self.RNG = Random( seed )
+        if rng is not None:
+            if not isinstance( rng, numpy_random.RandomState ):
+                raise ValueError( "rng must be a numpy RandomState." )
+            self.RNG = rng
         else:
-            self.RNG = Random( )
+            self.RNG = numpy_random.RandomState( )
         
     def Round( self, x ):
         """Stochastically round a floating point value.
@@ -196,7 +209,7 @@ class StochasticRound( object ):
         if 0==fraction:
             return x
         else:
-            if self.RNG.random( ) < fraction:
+            if self.RNG.random_sample() < fraction:
                 return floor_x + 1
             else:
                 return floor_x
@@ -228,3 +241,4 @@ def compare_name_with_class( a_name, a_class ):
         True if the the name of class a_class is a_name.
     """
     return a_name == a_class.__name__
+

@@ -41,20 +41,6 @@ def getModelFromExcel(filename, debug_option=False ):
         id = ws.cell(row = iRow, column = 1).value
         name = ws.cell(row = iRow, column = 2).value
         algorithm = ws.cell(row = iRow, column = 3).value
-        '''
-        COMMENT(Arthur): 
-        Must not instantiate submodels yet, as they may be objects running on other nodes, either for
-        parallel execution of sequential simulations or parallel simulations.
-        Rather, save them in submodel structures.
-
-        if algorithm == 'FBA':
-            subModel = FbaSubmodel( model, id = id, name = name)
-        elif algorithm == 'SSA':
-            subModel = SsaSubmodel( model, id = id, name = name)
-        else:
-            # COMMENT(Arthur): can use "".format()
-            raise Exception('Undefined algorithm "%s" for submodel "%s"' % (algorithm, id))
-        '''
         the_submodel = SubmodelSpecification( id, name, algorithm )
         model.submodels.append(the_submodel)
             

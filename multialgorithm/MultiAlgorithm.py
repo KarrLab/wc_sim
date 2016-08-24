@@ -18,6 +18,8 @@ Created 2016/07/14
 """
 
 # TODO(Arthur): provide 'returns' documentation for all return operations
+# TODO(Arthur): rename Seq_DES_WC_simulator
+
 
 import sys
 import logging
@@ -25,6 +27,7 @@ import argparse
 import warnings
 import errno
 
+from Sequential_WC_Simulator.core.config import SimulatorConfig
 from Sequential_WC_Simulator.core.LoggingConfig import setup_logger
 from Sequential_WC_Simulator.core.utilities import ReproducibleRandom
 from Sequential_WC_Simulator.core.SimulationObject import EventQueue, SimulationObject
@@ -37,7 +40,7 @@ from Sequential_WC_Simulator.multialgorithm.submodels.simple_SSA_submodel import
 from Sequential_WC_Simulator.multialgorithm.submodels.FBA_submodel import FbaSubmodel
 from Sequential_WC_Simulator.multialgorithm.MessageTypes import *
 
-import temp.Exercise
+import temp.Exercise as Exercise
 
 class MultiAlgorithm( object ):
     """A modular, mult-algorithmic, discrete event WC simulator.
@@ -62,13 +65,21 @@ class MultiAlgorithm( object ):
         output_options.add_argument( '--debug', '-d', action='store_true', help='Print debug output' )
         output_options.add_argument( '--plot', '-p', action='store_true', 
             help='Write plot input for plotSpaceTimeDiagram.py to stdout.' )
-        parser.add_argument( '--seed', '-s', type=int, help='Random number seed' )
+        parser.add_argument( '--seed', '-s', type=int, help='Random number seed; if not provided '
+            'then reproducibility determined by SimulatorConfig.REPRODUCIBLE_SEED' )
         args = parser.parse_args()
         return args
     
     @staticmethod
     def main():
         args = MultiAlgorithm.parseArgs()
+
+        # setup PRNG
+        if args.seed:
+            ReproducibleRandom.init( seed=args.seed )
+        else:
+            ReproducibleRandom.init( seed=SimulatorConfig.REPRODUCIBLE_SEED )
+        
         '''
         Steps:
         0. read model description
@@ -79,18 +90,12 @@ class MultiAlgorithm( object ):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             # 0. read model description
-            print "Reading model from '{}'".format( args.model_filename, debug=args.debug )
+            print( "Reading model from '{}'".format( args.model_filename, debug=args.debug ) )
             the_model = getModelFromExcel( args.model_filename, debug_option=args.debug )
-            print the_model.summary()
+            print( the_model.summary())
             
             '''Prepare submodels for computation'''
             the_model.setupSimulation()
-        
-        # setup PRNG
-        if args.seed:
-            ReproducibleRandom.init( seed=args.seed )
-        else:
-            ReproducibleRandom.init()
         
         # 1. create and configure simulation submodels, including initial events
         algs_to_run = 'FBA SSA'.split()
@@ -98,13 +103,13 @@ class MultiAlgorithm( object ):
         for submodel_spec in the_model.submodels:
             if submodel_spec.algorithm == 'SSA':
                 if submodel_spec.algorithm in algs_to_run:
-                    print 'create SSA submodel:', submodel_spec.name, submodel_spec.algorithm
+                    print( 'create SSA submodel:', submodel_spec.name, submodel_spec.algorithm )
                     submodel_spec.the_submodel = simple_SSA_submodel( the_model, submodel_spec.name,
                         submodel_spec.id, None, shared_cell_states, submodel_spec.reactions, 
-                        submodel_spec.species, ReproducibleRandom.get_numpy_random_state(), debug=args.debug )
+                        submodel_spec.species, debug=args.debug )
             elif submodel_spec.algorithm == 'FBA':
                 if submodel_spec.algorithm in algs_to_run:
-                    print 'create FBA submodel:', submodel_spec.name, submodel_spec.algorithm
+                    print( 'create FBA submodel:', submodel_spec.name, submodel_spec.algorithm )
                     submodel_spec.the_submodel = FbaSubmodel( the_model, submodel_spec.name, 
                         submodel_spec.id, None, shared_cell_states, submodel_spec.reactions,
                         submodel_spec.species, args.FBA_time_step, debug=args.debug )
@@ -114,10 +119,11 @@ class MultiAlgorithm( object ):
 
         # 2. run simulation
         if args.end_time:
-            print "Simulating to: {}".format( args.end_time )
+            print( "Simulating to: {}".format( args.end_time ) )
             SimulationEngine.simulate( args.end_time )
         else:
-            print "Simulating to cellCycleLength: {}".format( the_model.getComponentById('cellCycleLength').value )
+            print( "Simulating to cellCycleLength: {}".format( 
+                the_model.getComponentById('cellCycleLength').value ))
             SimulationEngine.simulate( the_model.getComponentById('cellCycleLength').value )
         
         timeHist, speciesCountsHist = the_model.the_SharedMemoryCellState.report_history(

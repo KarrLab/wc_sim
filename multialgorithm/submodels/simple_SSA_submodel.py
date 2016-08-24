@@ -16,7 +16,7 @@ from Sequential_WC_Simulator.core.LoggingConfig import setup_logger
 from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, SimulationObject)
 from Sequential_WC_Simulator.core.SimulationEngine import MessageTypesRegistry
 from Sequential_WC_Simulator.core.utilities import (N_AVOGADRO, ExponentialMovingAverage, 
-    compare_name_with_class)
+    compare_name_with_class, ReproducibleRandom)
 from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
 from Sequential_WC_Simulator.multialgorithm.submodels.submodel import Submodel
 from Sequential_WC_Simulator.multialgorithm.MessageTypes import *
@@ -61,7 +61,7 @@ class simple_SSA_submodel( Submodel ):
 
     Attributes:
         random: a numpy RandomState() instance object; private PRNG; may be reproducible, as
-            determined by the main program, MultiAlgorithm
+            determined by ReproducibleRandomthe main program, MultiAlgorithm
         num_SSA_WAITs: integer; count of SSA_WAITs
         ema_of_inter_event_time: an ExponentialMovingAverage; an EMA of the time between
             EXECUTE_SSA_REACTION events; when total propensities == 0, ema_of_inter_event_time
@@ -91,7 +91,7 @@ class simple_SSA_submodel( Submodel ):
     MessageTypesRegistry.set_receiver_priorities( 'simple_SSA_submodel', MESSAGE_TYPES_BY_PRIORITY )
 
     def __init__( self, model, name, id, private_cell_state, shared_cell_states, 
-        reactions, species, numpy_random, debug=False, write_plot_output=False, default_center_of_mass=10 ):
+        reactions, species, debug=False, write_plot_output=False, default_center_of_mass=10 ):
         """Initialize a simple_SSA_submodel object.
         
         # TODO(Arthur): expand description
@@ -110,7 +110,7 @@ class simple_SSA_submodel( Submodel ):
         self.num_SSA_WAITs=0
         self.ema_of_inter_event_time=ExponentialMovingAverage( 0, center_of_mass=default_center_of_mass )
         # TODO(Arthur): IMPORTANT: deploy use of ReproducibleRandom everywhere, as has been done here
-        self.numpy_random = numpy_random
+        self.numpy_random = ReproducibleRandom.get_numpy_random()
         self.logger_name = "simple_SSA_submodel_{}".format( name )
         if debug:
             # make a logger for this simple_SSA_submodel
@@ -220,7 +220,7 @@ class simple_SSA_submodel( Submodel ):
         # call handle_event() in class SimulationObject which performs generic tasks on the event list
         SimulationObject.handle_event( self, event_list )
         if not self.num_events % 100:
-            print "{:7.1f}: submodel {}, event {}".format( self.time, self.name, self.num_events )
+            print( "{:7.1f}: submodel {}, event {}".format( self.time, self.name, self.num_events ) )
 
         for event_message in event_list:
             if compare_name_with_class( event_message.event_type, GIVE_POPULATION ):

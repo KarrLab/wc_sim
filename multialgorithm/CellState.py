@@ -14,7 +14,7 @@ from Sequential_WC_Simulator.core.SimulationEngine import MessageTypesRegistry
 
 from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
 from Sequential_WC_Simulator.multialgorithm.MessageTypes import *
-from specie import Specie
+from Sequential_WC_Simulator.multialgorithm.specie import Specie
 
     
 class CellState( SimulationObject ): 
@@ -58,7 +58,7 @@ class CellState( SimulationObject ):
     MessageTypesRegistry.set_receiver_priorities( 'CellState', MESSAGE_TYPES_BY_PRIORITY )
 
     def __init__( self, name, initial_population, initial_fluxes=None, 
-        shared_random_seed=None, debug=False, write_plot_output=False, log=False):
+        debug=False, write_plot_output=False, log=False):
         """Initialize a CellState object.
         
         Initialize a CellState object. Establish its initial population, and set debugging booleans.
@@ -72,8 +72,6 @@ class CellState( SimulationObject ):
             initial_fluxes: optional; dict: specie_name -> initial_flux; 
                 initial fluxes for all species whose populations are estimated by a continuous model
                 fluxes are ignored for species not specified in initial_population
-            shared_random_seed: hashable object; optional; set to deterministically initialize all random number
-                generators used by the Specie objects
             debug: boolean; log debugging output
             write_plot_output: boolean; log output for plotting simulation 
             log: boolean; log population dynamics of species
@@ -90,7 +88,7 @@ class CellState( SimulationObject ):
                 if initial_fluxes is not None and specie_name in initial_fluxes:
                     initial_flux_given = initial_fluxes[specie_name]
                 self.population[specie_name] = Specie( specie_name, initial_population[specie_name], 
-                    initial_flux=initial_flux_given, random_seed=shared_random_seed )
+                    initial_flux=initial_flux_given )
         except AssertionError as e:
             sys.stderr.write( "Cannot initialize CellState: {}.\n".format( e.message ) )
 
@@ -103,7 +101,6 @@ class CellState( SimulationObject ):
             # write initialization data
             mylog.debug( "initial_population: {}".format( str(initial_population) ) )
             mylog.debug( "initial_fluxes: {}".format( str(initial_fluxes) ) )
-            mylog.debug( "shared_random_seed: {}".format( str(shared_random_seed) ) )
             mylog.debug( "write_plot_output: {}".format( str(write_plot_output) ) )
             mylog.debug( "debug: {}".format( str(debug) ) )
             mylog.debug( "log: {}".format( str(log) ) )
