@@ -1,0 +1,6 @@
+cobra
+matplotlib
+numpy
+openpyxl
+future
+recordtype

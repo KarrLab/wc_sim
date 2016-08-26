@@ -46,6 +46,9 @@ Thumbs.db
 #######################
 .*.swp
 
+# distributions
+*.egg-info
+
 # coverage files
 .coverage
 htmlcov
@@ -53,3 +56,9 @@ htmlcov
 # pytest files
 .cache*
 
+# documentation files
+docs/source
+docs/_build
+
+# files for PyPI
+README.rst
