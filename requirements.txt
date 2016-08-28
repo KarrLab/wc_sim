@@ -1,6 +1,7 @@
 cobra
 matplotlib
 numpy
+scipy
 openpyxl
 future
 recordtype
