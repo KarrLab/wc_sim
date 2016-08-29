@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import logging
 from Sequential_WC_Simulator.core.LoggingConfig import setup_logger
