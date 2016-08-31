@@ -86,7 +86,7 @@ class ReproducibleRandom(object):
     (used by the 'reproducible' argument to init()) or a single random seed provided 
     to the 'seed' argument to init().
     If ReproducibleRandom is initialized without either of these seeds, then it
-    will generate random numbers and streams seeded by randomness source used by numpy's 
+    will generate random numbers and streams seeded by the randomness source used by numpy's 
     RandomState().
     
     Attributes:

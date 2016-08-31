@@ -62,7 +62,8 @@ class simple_SSA_submodel( Submodel ):
 
     Attributes:
         random: a numpy RandomState() instance object; private PRNG; may be reproducible, as
-            determined by ReproducibleRandomthe main program, MultiAlgorithm
+            determined by the value of SimulatorConfig.REPRODUCIBLE_SEED and how the main program, MultiAlgorithm,
+            calls ReproducibleRandom.init()
         num_SSA_WAITs: integer; count of SSA_WAITs
         ema_of_inter_event_time: an ExponentialMovingAverage; an EMA of the time between
             EXECUTE_SSA_REACTION events; when total propensities == 0, ema_of_inter_event_time
@@ -110,7 +111,6 @@ class simple_SSA_submodel( Submodel ):
 
         self.num_SSA_WAITs=0
         self.ema_of_inter_event_time=ExponentialMovingAverage( 0, center_of_mass=default_center_of_mass )
-        # TODO(Arthur): IMPORTANT: deploy use of ReproducibleRandom everywhere, as has been done here
         self.numpy_random = ReproducibleRandom.get_numpy_random()
         self.logger_name = "simple_SSA_submodel_{}".format( name )
         if debug:

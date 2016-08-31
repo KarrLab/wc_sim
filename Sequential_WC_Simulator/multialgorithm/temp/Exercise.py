@@ -11,8 +11,7 @@ Simulates metabolism submodel
 #required libraries
 # from WcModelingTutorial.TutorialConstruction.model import getModelFromExcel, Submodel, SsaSubmodel
 # from model import getModelFromExcel, Submodel, SsaSubmodel #code for model in exercises
-from numpy import random
-from Sequential_WC_Simulator.core.utilities import N_AVOGADRO 
+from Sequential_WC_Simulator.core.utilities import N_AVOGADRO, ReproducibleRandom
 
 # from WcModelingTutorial.TutorialConstruction import analysis    #code to analyze simulation results in exercises
 from Sequential_WC_Simulator.multialgorithm.temp import analysis
@@ -25,7 +24,6 @@ MODEL_FILENAME = 'Model.xlsx'
 TIME_STEP = 10 #time step on simulation (s)
 TIME_STEP_RECORD = TIME_STEP #Frequency at which to observe predicted cell state (s)
 OUTPUT_DIRECTORY = './plots/'
-RANDOM_SEED = 10000000
 
 #simulates model
 def simulate(model):
@@ -41,7 +39,7 @@ def simulate(model):
     cellCycleLength = model.getComponentById('cellCycleLength').value
 
     #seed random number generator to generate reproducible results
-    random.seed(RANDOM_SEED)
+    numpy_random = ReproducibleRandom.get_numpy_random()
 
     #Initialize state
     model.calcInitialConditions()
@@ -97,16 +95,16 @@ def simulate(model):
                 reactionPropensities.append(p)
             
             #Select time to next reaction from exponential distribution
-            dt = random.exponential(1/np.sum(totalPropensities))
+            dt = numpy_random.exponential(1/np.sum(totalPropensities))
             if time2 + dt > TIME_STEP:
-                if random.rand() > (TIME_STEP - time2) / dt:                
+                if numpy_random.rand() > (TIME_STEP - time2) / dt:                
                     break
                 else:
                     dt = TIME_STEP - time2
             
             #Select next reaction
-            iSubmodel = random.choice(len(ssaSubmodels), p = totalPropensities / np.sum(totalPropensities))                    
-            iRxn = random.choice(len(reactionPropensities[iSubmodel]), p = reactionPropensities[iSubmodel] / totalPropensities[iSubmodel])
+            iSubmodel = numpy_random.choice(len(ssaSubmodels), p = totalPropensities / np.sum(totalPropensities))                    
+            iRxn = numpy_random.choice(len(reactionPropensities[iSubmodel]), p = reactionPropensities[iSubmodel] / totalPropensities[iSubmodel])
 
             #update time
             time2 += dt

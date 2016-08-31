@@ -9,6 +9,7 @@ import logging
 import os.path as path
 
 # TODO(Arthur): IMPORTANT: put these into use
+# TODO(Arthur): optionally: move these to a config data file
 
 class SimulatorConfig(object):
     LOGGING_LEVEL=logging.DEBUG     # see levels at https://docs.python.org/2/library/logging.html#levels

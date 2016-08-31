@@ -45,7 +45,7 @@ class SharedMemoryCellState( object ):
     """
     
     def __init__( self, model, name, initial_population, initial_fluxes=None, retain_history=False, 
-        shared_random_seed=None, debug=False, log=False):
+        debug=False, log=False):
         """Initialize a SharedMemoryCellState object.
         
         Initialize a SharedMemoryCellState object. Establish its initial population, and set debugging booleans.
@@ -58,8 +58,6 @@ class SharedMemoryCellState( object ):
                 initial fluxes for all species whose populations are estimated by a continuous model
                 fluxes are ignored for species not specified in initial_population
             retain_history: boolean; whether to retain species population history
-            shared_random_seed: hashable object; optional; set to deterministically initialize all random number
-                generators used by the Specie objects
             debug: boolean; log debugging output
             log: boolean; log population dynamics of species
         # TODO(Arthur): add: write_plot_output: boolean; log output for plotting simulation 
@@ -96,7 +94,6 @@ class SharedMemoryCellState( object ):
             # write initialization data
             mylog.debug( "initial_population: {}".format( dict_2_key_sorted_str(initial_population) ) )
             mylog.debug( "initial_fluxes: {}".format( dict_2_key_sorted_str(initial_fluxes) ) )
-            mylog.debug( "shared_random_seed: {}".format( str(shared_random_seed) ) )
             mylog.debug( "debug: {}".format( str(debug) ) )
             mylog.debug( "log: {}".format( str(log) ) )
 
