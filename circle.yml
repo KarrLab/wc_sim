@@ -12,7 +12,6 @@ dependencies:
     - pip2 install git+git://github.com/jonrkarr/junit2html.git
     - pip3 install git+git://github.com/jonrkarr/junit2html.git
     - sudo apt-get install libglpk-dev
-    - sudo apt-get install glpk-utils
     - pip2 install Karr-Lab-build-utils
     - pip3 install Karr-Lab-build-utils
     - karr-lab-build-utils-2 install-requirements
