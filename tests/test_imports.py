@@ -7,10 +7,9 @@ import traceback
 class TestImports(unittest.TestCase):
 
     def test_imports(self):
-        imports = ["from matplotlib import pyplot, ticker", 
-            "import no_such_package",  
-            "from cobra.test import test_all",
-            ]
+        imports = ["from matplotlib import pyplot",
+            # "import no_such_package",
+            "from cobra.test import test_all", ]
         failures = []
         tracebacks = []
         for cmd in imports:
