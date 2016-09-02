@@ -10,13 +10,13 @@ class TestImports(unittest.TestCase):
             # "import no_such_package",  
             "from cobra.test import test_all",
             ]
-        failed = False
+        failed = []
         for cmd in imports:
             try:
                 exec( cmd )
             except ImportError as e:
-                failed = True
+                failed.append(cmd)
                 sys.stderr.write( "ImportError while executing '{}': {}\n\n".format( cmd, e ) )
                 
         if failed:
-            self.fail( msg="at least one import failed" )
+            self.fail( msg="Failing imports: {}".format( ', '.join( [ "'" + f + "'" for f in failed] ) )  )
