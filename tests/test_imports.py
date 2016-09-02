@@ -28,5 +28,3 @@ class TestImports(unittest.TestCase):
                 failures_and_tracebacks.append( 
                     "Traceback from '{}':\n{}".format(f, ''.join( traceback.format_tb( tb ) ) ) )
             self.fail( msg="Failing imports: {}".format( '\n'.join( failures_and_tracebacks ) )  )
-
-unittest.main()
