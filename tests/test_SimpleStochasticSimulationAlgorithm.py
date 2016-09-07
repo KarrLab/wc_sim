@@ -19,7 +19,7 @@ class Testsimple_SSA_submodel(unittest.TestCase):
         ssa2 = simple_SSA_submodel( 'name2', debug=True, write_plot_output=True )
         
         usr1 = UniversalSenderReceiverSimulationObject( 'usr1' )
-        usr1.send_event( 1, ssa2, GIVE_POPULATION, 
-            event_body=GIVE_POPULATION.body( { 'x':1, 'y':2,  } ) )
-        usr1.send_event( 2, ssa2, EXECUTE_SSA_REACTION )
+        usr1.send_event( 1, ssa2, GivePopulation, 
+            event_body=GivePopulation.body( { 'x':1, 'y':2,  } ) )
+        usr1.send_event( 2, ssa2, ExecuteSSAReaction )
         SimulationEngine.simulate( 5.0 )

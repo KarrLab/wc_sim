@@ -41,11 +41,11 @@ def parse_population_history( pop_history ):
     
 class TestSimulationObject(SimulationObject):
 
-    SENT_MESSAGE_TYPES = [ GET_POPULATION ]
+    SENT_MESSAGE_TYPES = [ GetPopulation ]
     MessageTypesRegistry.set_sent_message_types( 'TestSimulationObject', SENT_MESSAGE_TYPES )
 
     # at any time instant, process messages in this order
-    MESSAGE_TYPES_BY_PRIORITY = [ GIVE_POPULATION ]
+    MESSAGE_TYPES_BY_PRIORITY = [ GivePopulation ]
     MessageTypesRegistry.set_receiver_priorities( 'TestSimulationObject', MESSAGE_TYPES_BY_PRIORITY )
     
     def __init__( self, name, pop_history, specie, debug=False, write_plot_output=False):
@@ -61,15 +61,15 @@ class TestSimulationObject(SimulationObject):
         Test for the population of x, at various times in a sequence of ADJUST_POPULATION_BY_* events. These 
         events are described in pop_history and pop_history_dict and scheduled for the CellState object by
         test_CellState_with_other_SimObj() below. 
-        test_CellState_with_other_SimObj() also schedules GET_POPULATION events sent by TestSimObj, 
+        test_CellState_with_other_SimObj() also schedules GetPopulation events sent by TestSimObj, 
         an instance of this TestSimulationObject, at the times in the sequence.
         '''
         
         for event_message in event_list:
             # switch/case on event message type
-            if compare_name_with_class( event_message.event_type, GIVE_POPULATION ):
+            if compare_name_with_class( event_message.event_type, GivePopulation ):
             
-                # populations is a GIVE_POPULATION_body instance
+                # populations is a GivePopulation_body instance
                 populations = event_message.event_body
                 
                 if self.specie in populations.population:
@@ -127,23 +127,23 @@ Time                 Event                Pop_adjust           Flux             
         usr = UniversalSenderReceiverSimulationObject( 'usr1' )
     
         # create initial events
-        # ADJUST_POPULATION_BY_DISCRETE_MODEL
+        # AdjustPopulationByDiscreteModel
         for time, (Pop_adjust, unused_Flux, unused_Population) in pop_history_dict['discrete_adjust'].items():
-            usr.send_event( time, cs1, ADJUST_POPULATION_BY_DISCRETE_MODEL, 
-                event_body=ADJUST_POPULATION_BY_DISCRETE_MODEL.body( { specie:Pop_adjust } ) )
+            usr.send_event( time, cs1, AdjustPopulationByDiscreteModel, 
+                event_body=AdjustPopulationByDiscreteModel.body( { specie:Pop_adjust } ) )
         
-        # ADJUST_POPULATION_BY_CONTINUOUS_MODEL
+        # AdjustPopulationByContinuousModel
         for time, (Pop_adjust, Flux, unused_Population) in pop_history_dict['continuous_adjust'].items():
-            usr.send_event( time, cs1, ADJUST_POPULATION_BY_CONTINUOUS_MODEL, 
-                event_body=ADJUST_POPULATION_BY_CONTINUOUS_MODEL.body( 
+            usr.send_event( time, cs1, AdjustPopulationByContinuousModel, 
+                event_body=AdjustPopulationByContinuousModel.body( 
                     { specie: Continuous_change( Pop_adjust, Flux ) }
                 )
             )
 
-        # GET_POPULATION
+        # GetPopulation
         for time in pop_history_dict['get_pop']:
-            TestSimObj.send_event( time, cs1, GET_POPULATION, 
-                event_body=GET_POPULATION.body( set(['x']) )
+            TestSimObj.send_event( time, cs1, GetPopulation, 
+                event_body=GetPopulation.body( set(['x']) )
             )
         SimulationEngine.simulate( 5.0 )
     
@@ -164,20 +164,20 @@ Time                 Event                Pop_adjust           Flux             
         usr = UniversalSenderReceiverSimulationObject( 'usr1' )
 
         # create initial events
-        # ADJUST_POPULATION_BY_DISCRETE_MODEL
+        # AdjustPopulationByDiscreteModel
         for time, (Pop_adjust, unused_Flux, unused_Population) in pop_history_dict['discrete_adjust'].items():
-            usr.send_event( time, cs, ADJUST_POPULATION_BY_DISCRETE_MODEL, 
-                event_body=ADJUST_POPULATION_BY_DISCRETE_MODEL.body( { specie:Pop_adjust } ) )
+            usr.send_event( time, cs, AdjustPopulationByDiscreteModel, 
+                event_body=AdjustPopulationByDiscreteModel.body( { specie:Pop_adjust } ) )
 
-        # GET_POPULATION
+        # GetPopulation
         for time in pop_history_dict['get_pop']:
-            TestSimObj.send_event( time, cs, GET_POPULATION, 
-                event_body=GET_POPULATION.body( set([ specie ]) )
+            TestSimObj.send_event( time, cs, GetPopulation, 
+                event_body=GetPopulation.body( set([ specie ]) )
             )
         SimulationEngine.simulate( 5.0 )
         
     def testSimulation_exception( self ):
-        # test code that raises exception when ADJUST_POPULATION_BY_CONTINUOUS_MODEL message requests population of unknown species
+        # test code that raises exception when AdjustPopulationByContinuousModel message requests population of unknown species
 
         SimulationEngine.reset()
         cs = CellState( _CellStateMaker.get_name(), {}, debug=True )
@@ -187,18 +187,18 @@ Time                 Event                Pop_adjust           Flux             
         specie = 'y'
         pop_history_dict = parse_population_history( pop_history )
 
-        # create ADJUST_POPULATION_BY_CONTINUOUS_MODEL event
+        # create AdjustPopulationByContinuousModel event
         usr = UniversalSenderReceiverSimulationObject( 'usr1' )
         for time, (Pop_adjust, Flux, unused_Population) in pop_history_dict['continuous_adjust'].items():
-            usr.send_event( time, cs, ADJUST_POPULATION_BY_CONTINUOUS_MODEL, 
-                event_body=ADJUST_POPULATION_BY_CONTINUOUS_MODEL.body( 
+            usr.send_event( time, cs, AdjustPopulationByContinuousModel, 
+                event_body=AdjustPopulationByContinuousModel.body( 
                     { specie: Continuous_change( Pop_adjust, Flux ) }
                 )
             )
 
         with self.assertRaises(ValueError) as context:
             SimulationEngine.simulate( 5.0 )
-        self.assertIn( "Error: ADJUST_POPULATION_BY_CONTINUOUS_MODEL message requests population of unknown species 'y'", 
+        self.assertIn( "Error: AdjustPopulationByContinuousModel message requests population of unknown species 'y'", 
             str(context.exception) )
 
 

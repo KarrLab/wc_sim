@@ -39,7 +39,7 @@ class simple_SSA_submodel( Submodel ):
         schedule_next_event():
             determine_reaction_propensities()
             if total_propensities == 0: **
-                schedule_SSA_WAIT() **
+                schedule_SSAWait() **
             else:
                 reaction delay = random sample of exp( 1/sum(propensities) )
                 select and schedule the next reaction
@@ -50,7 +50,7 @@ class simple_SSA_submodel( Submodel ):
             else: *
                 determine_reaction_propensities()
                 if total_propensities == 0: **
-                    schedule_SSA_WAIT() **
+                    schedule_SSAWait() **
                     return
                 else:
                     select and schedule a reaction
@@ -64,31 +64,31 @@ class simple_SSA_submodel( Submodel ):
         random: a numpy RandomState() instance object; private PRNG; may be reproducible, as
             determined by the value of SimulatorConfig.REPRODUCIBLE_SEED and how the main program, MultiAlgorithm,
             calls ReproducibleRandom.init()
-        num_SSA_WAITs: integer; count of SSA_WAITs
+        num_SSAWaits: integer; count of SSAWaits
         ema_of_inter_event_time: an ExponentialMovingAverage; an EMA of the time between
-            EXECUTE_SSA_REACTION events; when total propensities == 0, ema_of_inter_event_time
-            is used as the time between SSA_WAIT events
+            ExecuteSSAReaction events; when total propensities == 0, ema_of_inter_event_time
+            is used as the time between SSAWait events
         Plus see superclasses.
 
     Event messages:
-        EXECUTE_SSA_REACTION
-        SSA_WAIT
+        ExecuteSSAReaction
+        SSAWait
         # messages after future enhancement
-        ADJUST_POPULATION_BY_DISCRETE_MODEL
-        GET_POPULATION
-        GIVE_POPULATION
+        AdjustPopulationByDiscreteModel
+        GetPopulation
+        GivePopulation
     """
 
-    SENT_MESSAGE_TYPES = [ ADJUST_POPULATION_BY_DISCRETE_MODEL, 
-        EXECUTE_SSA_REACTION, GET_POPULATION, SSA_WAIT ]
+    SENT_MESSAGE_TYPES = [ AdjustPopulationByDiscreteModel, 
+        ExecuteSSAReaction, GetPopulation, SSAWait ]
 
     MessageTypesRegistry.set_sent_message_types( 'simple_SSA_submodel', SENT_MESSAGE_TYPES )
 
     # at any time instant, process messages in this order
     MESSAGE_TYPES_BY_PRIORITY = [ 
-        SSA_WAIT,
-        GIVE_POPULATION, 
-        EXECUTE_SSA_REACTION ]
+        SSAWait,
+        GivePopulation, 
+        ExecuteSSAReaction ]
 
     MessageTypesRegistry.set_receiver_priorities( 'simple_SSA_submodel', MESSAGE_TYPES_BY_PRIORITY )
 
@@ -109,7 +109,7 @@ class simple_SSA_submodel( Submodel ):
             reactions, species, debug=debug, write_plot_output=write_plot_output )
         # TODO(Arthur): use private_cell_state & shared_cell_states, or get rid of them
 
-        self.num_SSA_WAITs=0
+        self.num_SSAWaits=0
         self.ema_of_inter_event_time=ExponentialMovingAverage( 0, center_of_mass=default_center_of_mass )
         self.numpy_random = ReproducibleRandom.get_numpy_random()
         self.logger_name = "simple_SSA_submodel_{}".format( name )
@@ -159,19 +159,19 @@ class simple_SSA_submodel( Submodel ):
         total_propensities = np.sum(propensities)
         return (propensities, total_propensities)
 
-    def schedule_SSA_WAIT(self):
-        """Schedule an SSA_WAIT. 
+    def schedule_SSAWait(self):
+        """Schedule an SSAWait. 
         """
-        self.send_event( self.ema_of_inter_event_time.get_value(), self, SSA_WAIT )
-        self.num_SSA_WAITs += 1
+        self.send_event( self.ema_of_inter_event_time.get_value(), self, SSAWait )
+        self.num_SSAWaits += 1
 
-    def schedule_EXECUTE_SSA_REACTION(self, dt, reaction_index):
-        """Schedule an EXECUTE_SSA_REACTION. 
+    def schedule_ExecuteSSAReaction(self, dt, reaction_index):
+        """Schedule an ExecuteSSAReaction. 
         """
         self.send_event( dt, self,
-            EXECUTE_SSA_REACTION, EXECUTE_SSA_REACTION.body(reaction_index) )
+            ExecuteSSAReaction, ExecuteSSAReaction.body(reaction_index) )
         
-        # maintain EMA of the time between EXECUTE_SSA_REACTION events
+        # maintain EMA of the time between ExecuteSSAReaction events
         self.ema_of_inter_event_time.add_value( dt )
 
     def schedule_next_event(self):
@@ -195,7 +195,7 @@ class simple_SSA_submodel( Submodel ):
 
         (propensities, total_propensities) = self.determine_reaction_propensities()
         if total_propensities <= 0:
-            self.schedule_SSA_WAIT()
+            self.schedule_SSAWait()
             return
 
         # Select time to next reaction from exponential distribution
@@ -203,7 +203,7 @@ class simple_SSA_submodel( Submodel ):
         
         # schedule next reaction
         reaction_index = self.numpy_random.choice( len(propensities), p = propensities/total_propensities)
-        self.schedule_EXECUTE_SSA_REACTION( dt, reaction_index )
+        self.schedule_ExecuteSSAReaction( dt, reaction_index )
         
     def execute_SSA_reaction(self, reaction_index):
         """Execute a reaction now. 
@@ -215,7 +215,7 @@ class simple_SSA_submodel( Submodel ):
     def handle_event( self, event_list ):
         """Handle a simple_SSA_submodel simulation event.
         
-        In this shared-memory SSA, the only event is EXECUTE_SSA_REACTION, and event_list should
+        In this shared-memory SSA, the only event is ExecuteSSAReaction, and event_list should
         always contain one event.
         
         Args:
@@ -227,19 +227,19 @@ class simple_SSA_submodel( Submodel ):
             print( "{:7.1f}: submodel {}, event {}".format( self.time, self.name, self.num_events ) )
 
         for event_message in event_list:
-            if compare_name_with_class( event_message.event_type, GIVE_POPULATION ):
+            if compare_name_with_class( event_message.event_type, GivePopulation ):
                 
                 continue
                 # TODO(Arthur): add this functionality; currently, handling accessing memory directly
 
-                # population_values is a GIVE_POPULATION body attribute
+                # population_values is a GivePopulation body attribute
                 population_values = event_message.event_body.population
 
-                logging.getLogger( self.logger_name ).debug( "GIVE_POPULATION: {}".format( 
+                logging.getLogger( self.logger_name ).debug( "GivePopulation: {}".format( 
                     str(event_message.event_body) ) ) 
                 # store population_values in some cache ...
                     
-            elif compare_name_with_class( event_message.event_type, EXECUTE_SSA_REACTION ):
+            elif compare_name_with_class( event_message.event_type, ExecuteSSAReaction ):
             
                 reaction_index = event_message.event_body.reaction_index
 
@@ -252,7 +252,7 @@ class simple_SSA_submodel( Submodel ):
                     if total_propensities == 0:
                         logging.getLogger( self.logger_name ).debug( "{:8.3f}: {} submodel: "
                         "no reaction to execute".format( self.time, self.name ) ) 
-                        self.schedule_SSA_WAIT()
+                        self.schedule_SSAWait()
                         continue
                         
                     else:
@@ -263,9 +263,9 @@ class simple_SSA_submodel( Submodel ):
 
                 self.schedule_next_event()
 
-            elif compare_name_with_class( event_message.event_type, SSA_WAIT ):
+            elif compare_name_with_class( event_message.event_type, SSAWait ):
     
-                # TODO(Arthur): generate error for many, or a high fraction of, SSA_WAITs
+                # TODO(Arthur): generate error for many, or a high fraction of, SSAWaits
                 # no reaction to execute
                 self.schedule_next_event()
 
@@ -274,5 +274,5 @@ class simple_SSA_submodel( Submodel ):
                 "event_message.event_type '{}'".format(event_message.event_type)
 
         logging.getLogger( self.logger_name ).debug( "{:8.2f}: "
-        "ema_of_inter_event_time: {:3.2f}; num_events: {}; num_SSA_WAITs: {}".format( self.time, 
-        self.ema_of_inter_event_time.get_value(), self.num_events, self.num_SSA_WAITs ) ) 
+        "ema_of_inter_event_time: {:3.2f}; num_events: {}; num_SSAWaits: {}".format( self.time, 
+        self.ema_of_inter_event_time.get_value(), self.num_events, self.num_SSAWaits ) ) 

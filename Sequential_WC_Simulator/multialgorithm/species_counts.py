@@ -49,7 +49,7 @@ class SpeciesCounts(object):
     def write_val( self, val, now=None ):
         '''Update the value.
         
-        Called by the submodel when it a) updates the count or b) receives GIVE_POPULATION from CellState.
+        Called by the submodel when it a) updates the count or b) receives GivePopulation from CellState.
         '''
         if self.time == now and self.val = val:
             # nothing to update

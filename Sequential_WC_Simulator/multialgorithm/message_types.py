@@ -12,13 +12,13 @@ Attributes:
     receiver_priorities: dict: SimulationObject type -> list of messages it receives, in priority order
 
 Event message types, bodies and reply message:
-    ADJUST_POPULATION_BY_DISCRETE_MODEL: a discrete (stochastic) model increases or decreases some species copy
+    AdjustPopulationByDiscreteModel: a discrete (stochastic) model increases or decreases some species copy
         numbers: data: dict: species_name -> population_change; no reply message
-    ADJUST_POPULATION_BY_CONTINUOUS_MODEL: a continuous model integrated by a time-step simulation increases or
+    AdjustPopulationByContinuousModel: a continuous model integrated by a time-step simulation increases or
         decreases some species copy numbers: 
         data: dict: species_name -> (population_change, population_flux); no reply message
-    GET_POPULATION: list of species whose population is needed; data: set: species_name(s)
-    GIVE_POPULATION: response to GET_POPULATION; dict: species_name -> population
+    GetPopulation: list of species whose population is needed; data: set: species_name(s)
+    GivePopulation: response to GetPopulation; dict: species_name -> population
     
     For sequential simulator, store message bodies as a copy of or reference to sender's data structure
     # TODO(Arthur): for parallel simulation, use Pickle to serialize and deserialize message bodies
@@ -35,8 +35,8 @@ It is enforced by checking class names against message body types.
 
 # TODO(Arthur): these class names should be changed to standard class name CamelCase format
 '''
-class ADJUST_POPULATION_BY_DISCRETE_MODEL( object ):
-    """An ADJUST_POPULATION_BY_DISCRETE_MODEL message.
+class AdjustPopulationByDiscreteModel( object ):
+    """An AdjustPopulationByDiscreteModel message.
     
         Attributes:
             population_change: dict: species_name -> population_change; the increase or decrease 
@@ -53,7 +53,7 @@ class ADJUST_POPULATION_BY_DISCRETE_MODEL( object ):
             self.population_change[ specie ] = adjustment
     
         def __str__( self  ):
-            '''Return string representation of an ADJUST_POPULATION_BY_DISCRETE_MODEL message body.
+            '''Return string representation of an AdjustPopulationByDiscreteModel message body.
                 specie:change: name1:change1, name2:change2, ...
             '''
             l = [ "{}:{:.1f}".format( x, self.population_change[x] ) for x in \
@@ -87,8 +87,8 @@ class Continuous_change(Continuous_change_namedtuple):
         return self
 
 
-class ADJUST_POPULATION_BY_CONTINUOUS_MODEL( object ):
-    """An ADJUST_POPULATION_BY_CONTINUOUS_MODEL message.
+class AdjustPopulationByContinuousModel( object ):
+    """An AdjustPopulationByContinuousModel message.
     
         Attributes:
             population_change: dict: species_name -> Continuous_change namedtuple; 
@@ -111,7 +111,7 @@ class ADJUST_POPULATION_BY_CONTINUOUS_MODEL( object ):
             self.population_change[ specie ] = cont_change
     
         def __str__( self  ):
-            '''Return string representation of an ADJUST_POPULATION_BY_CONTINUOUS_MODEL message body.
+            '''Return string representation of an AdjustPopulationByContinuousModel message body.
                 specie:(change,flux): name1:(change1,flux1), name2:(change2,flux2), ...
             '''
             l = [ "{}:({:.1f},{:.1f})".format( 
@@ -119,8 +119,8 @@ class ADJUST_POPULATION_BY_CONTINUOUS_MODEL( object ):
                 for x in sorted( self.population_change.keys() ) ]
             return "specie:(change,flux): {}".format( ', '.join( l ) )
 
-class GET_POPULATION( object ):
-    """A GET_POPULATION message.
+class GetPopulation( object ):
+    """A GetPopulation message.
 
         Attributes:
             species: set of species_names; the species whose populations are requested
@@ -132,13 +132,13 @@ class GET_POPULATION( object ):
             self.species = species
     
         def __str__( self  ):
-            '''Return string representation of a GET_POPULATION message body.
+            '''Return string representation of a GetPopulation message body.
                 species: name1, name2, ...
             '''
             return "species: {}".format( ', '.join( list( self.species ) ) )
 
-class GIVE_POPULATION( object ):
-    """A GIVE_POPULATION message.
+class GivePopulation( object ):
+    """A GivePopulation message.
 
         Attributes:
             population: dict: species_name -> population; the copy numbers of some species 
@@ -150,15 +150,15 @@ class GIVE_POPULATION( object ):
             self.population = population
     
         def __str__( self  ):
-            '''Return string representation of a GIVE_POPULATION message body.
+            '''Return string representation of a GivePopulation message body.
                 specie:population: name1:pop1, name2:pop2, ...
             '''
             l = [ "{}:{:.1f}".format( x, self.population[x] ) \
                 for x in sorted( self.population.keys() ) ]
             return "specie:population: {}".format( ', '.join( l ) )
 
-class EXECUTE_SSA_REACTION( object ):
-    """A EXECUTE_SSA_REACTION message.
+class ExecuteSSAReaction( object ):
+    """A ExecuteSSAReaction message.
 
         Attributes:
             reaction_index: integer; the index of the selected reaction in simple_SSA_submodel.reactions
@@ -169,13 +169,13 @@ class EXECUTE_SSA_REACTION( object ):
         def __init__( self, reaction_index ):
             self.reaction_index = reaction_index
 
-class SSA_WAIT( object ):
-    """A SSA_WAIT message.
+class SSAWait( object ):
+    """A SSAWait message.
     """
     pass
 
-class RUN_FBA( object ):
-    """A RUN_FBA message.
+class RunFBA( object ):
+    """A RunFBA message.
     """
     pass
 

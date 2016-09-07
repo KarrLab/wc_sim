@@ -32,7 +32,7 @@ class TestCellState(unittest.TestCase):
     def test_CellState_debugging(self):
         cs1 = _CellStateMaker.make_CellState( _CellStateMaker.pop, None, debug=False )
         usr = UniversalSenderReceiverSimulationObject( 'usr1' )
-        usr.send_event( 1.0, cs1, GET_POPULATION )
+        usr.send_event( 1.0, cs1, GetPopulation )
         eq = cs1.event_queue_to_str()
         self.assertIn( 'CellState_1 at 0.000', eq )
         self.assertIn( 'creation_time\tevent_time\tsending_object\treceiving_object\tevent_type', eq )
@@ -43,8 +43,8 @@ class TestCellState(unittest.TestCase):
         cs1 = _CellStateMaker.make_CellState( _CellStateMaker.pop, _CellStateMaker.fluxes, log=True )
         # initial events
         usr = UniversalSenderReceiverSimulationObject( 'usr1' )
-        usr.send_event( 1.0, cs1, ADJUST_POPULATION_BY_DISCRETE_MODEL, 
-            event_body=ADJUST_POPULATION_BY_DISCRETE_MODEL.body(
+        usr.send_event( 1.0, cs1, AdjustPopulationByDiscreteModel, 
+            event_body=AdjustPopulationByDiscreteModel.body(
                 dict( zip( _CellStateMaker.species, [1]*len( _CellStateMaker.species ) ) )
             )
         )
@@ -52,8 +52,8 @@ class TestCellState(unittest.TestCase):
         d = dict( zip( _CellStateMaker.species,
                 map( lambda x: Continuous_change(2.0, 1.0), [1]*len( _CellStateMaker.species ) ) ) )
 
-        usr.send_event( t, cs1, ADJUST_POPULATION_BY_CONTINUOUS_MODEL, 
-            event_body=ADJUST_POPULATION_BY_CONTINUOUS_MODEL.body( d ) )
+        usr.send_event( t, cs1, AdjustPopulationByContinuousModel, 
+            event_body=AdjustPopulationByContinuousModel.body( d ) )
         SimulationEngine.simulate( 5.0 )
         
         text_in_log_s1_by_line = '''.*; s1; .* #Sim_time\tAdjustment_type\tNew_population\tNew_flux
@@ -73,8 +73,8 @@ class TestCellState(unittest.TestCase):
         # TODO(Arthur): avoid copying this code
         # initial events
         usr = UniversalSenderReceiverSimulationObject( 'usr1' )
-        usr.send_event( 1.0, cs1, ADJUST_POPULATION_BY_DISCRETE_MODEL, 
-            event_body=ADJUST_POPULATION_BY_DISCRETE_MODEL.body(
+        usr.send_event( 1.0, cs1, AdjustPopulationByDiscreteModel, 
+            event_body=AdjustPopulationByDiscreteModel.body(
                 dict( zip( _CellStateMaker.species, [1]*len( _CellStateMaker.species ) ) )
             )
         )
@@ -82,8 +82,8 @@ class TestCellState(unittest.TestCase):
         d = dict( zip( _CellStateMaker.species,
                 map( lambda x: Continuous_change(2.0, 1.0), [1]*len( _CellStateMaker.species ) ) ) )
 
-        usr.send_event( t, cs1, ADJUST_POPULATION_BY_CONTINUOUS_MODEL, 
-            event_body=ADJUST_POPULATION_BY_CONTINUOUS_MODEL.body( d ) )
+        usr.send_event( t, cs1, AdjustPopulationByContinuousModel, 
+            event_body=AdjustPopulationByContinuousModel.body( d ) )
         SimulationEngine.simulate( 5.0 )
         
         expected_initial_population = {'s3': 35, 's2': 28, 's1': 21}
@@ -98,12 +98,12 @@ class TestCellState(unittest.TestCase):
 .*log: False
 .*CellState_2 at 1.000
 .*creation_time\tevent_time\tsending_object\treceiving_object\tevent_type
-.*0.000\t   2.000\tusr1\tCellState_2\tADJUST_POPULATION_BY_CONTINUOUS_MODEL
+.*0.000\t   2.000\tusr1\tCellState_2\tAdjustPopulationByContinuousModel
 .*
-.*ADJUST_POPULATION_BY_DISCRETE_MODEL: specie:change: s\d:1.0, s\d:1.0, s\d:1.0
+.*AdjustPopulationByDiscreteModel: specie:change: s\d:1.0, s\d:1.0, s\d:1.0
 .*CellState_2 at 2.000
 .*Empty event queue
-.*ADJUST_POPULATION_BY_CONTINUOUS_MODEL: specie:\(change,flux\): s\d:\(\d.0,\d.0\), s\d:\(\d.0,\d.0\), s\d:\(\d.0,\d.0\)'''
+.*AdjustPopulationByContinuousModel: specie:\(change,flux\): s\d:\(\d.0,\d.0\), s\d:\(\d.0,\d.0\), s\d:\(\d.0,\d.0\)'''
         expected_patterns = text_in_log_CellState_CellState_2_by_line.split('\n')
         log_file = path.join( LOGGING_ROOT_DIR, cs1.logger_name + '.log' )
         fh = open( log_file, 'r' )
@@ -120,12 +120,12 @@ class TestCellState(unittest.TestCase):
         result = re.search("initial_fluxes: ({'s\d': 0, 's\d': 0, 's\d': 0})", log_text, re.MULTILINE)
         self.assertEqual(expected_initial_fluxes, json.loads(result.group(1).replace("'", '"')))
 
-        result = re.search("ADJUST_POPULATION_BY_DISCRETE_MODEL: specie:change: (s\d:1.0, s\d:1.0, s\d:1.0)", log_text, re.MULTILINE)
+        result = re.search("AdjustPopulationByDiscreteModel: specie:change: (s\d:1.0, s\d:1.0, s\d:1.0)", log_text, re.MULTILINE)
         self.assertEqual(expected_discrete_species_change, json.loads(
             '{"' + result.group(1).replace(":", '":').replace(', ', ', "') + '}'
             ))
 
-        result = re.search("ADJUST_POPULATION_BY_CONTINUOUS_MODEL: specie:\(change,flux\): (s\d:\(\d.0,\d.0\), s\d:\(\d.0,\d.0\), s\d:\(\d.0,\d.0\))", log_text, re.MULTILINE)
+        result = re.search("AdjustPopulationByContinuousModel: specie:\(change,flux\): (s\d:\(\d.0,\d.0\), s\d:\(\d.0,\d.0\), s\d:\(\d.0,\d.0\))", log_text, re.MULTILINE)
         self.assertEqual(expected_continuous_species_change,    json.loads(
             '{"' 
             + result.group(1).replace(':', '":').replace(', ', ', "').replace('(', '[').replace(')', ']')
@@ -135,7 +135,7 @@ class TestCellState(unittest.TestCase):
         fh.close()
 
         
-    # TODO(Arthur): important: test simultaneous recept of ADJUST_POPULATION_BY_DISCRETE_MODEL and ADJUST_POPULATION_BY_CONTINUOUS_MODEL
+    # TODO(Arthur): important: test simultaneous recept of AdjustPopulationByDiscreteModel and AdjustPopulationByContinuousModel
 
 
 class _CellStateMaker(object):

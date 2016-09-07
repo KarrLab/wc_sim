@@ -20,9 +20,9 @@ class TestMessageTypes(unittest.TestCase):
 
     def test_one_message_type(self):
     
-        self.assertTrue( compare_name_with_class( 'ADJUST_POPULATION_BY_CONTINUOUS_MODEL',
-            ADJUST_POPULATION_BY_CONTINUOUS_MODEL ) )
+        self.assertTrue( compare_name_with_class( 'AdjustPopulationByContinuousModel',
+            AdjustPopulationByContinuousModel ) )
         specie_id = 'x'
         adjustment = 7
-        body = ADJUST_POPULATION_BY_CONTINUOUS_MODEL.body( { specie_id:adjustment } )
+        body = AdjustPopulationByContinuousModel.body( { specie_id:adjustment } )
         self.assertEqual( body.population_change[specie_id], adjustment )

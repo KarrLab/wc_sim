@@ -49,23 +49,23 @@ class FbaSubmodel(Submodel):
         Plus see superclasses.
 
     Event messages:
-        RUN_FBA
+        RunFBA
         # messages after future enhancement
-        ADJUST_POPULATION_BY_CONTINUOUS_MODEL
-        GET_POPULATION
-        GIVE_POPULATION
+        AdjustPopulationByContinuousModel
+        GetPopulation
+        GivePopulation
     """
 
-    SENT_MESSAGE_TYPES = [ RUN_FBA, 
-        ADJUST_POPULATION_BY_CONTINUOUS_MODEL, 
-        GET_POPULATION ]
+    SENT_MESSAGE_TYPES = [ RunFBA, 
+        AdjustPopulationByContinuousModel, 
+        GetPopulation ]
 
     MessageTypesRegistry.set_sent_message_types( 'FbaSubmodel', SENT_MESSAGE_TYPES )
 
     # at any time instant, process messages in this order
     MESSAGE_TYPES_BY_PRIORITY = [ 
-        GIVE_POPULATION, 
-        RUN_FBA ]
+        GivePopulation, 
+        RunFBA ]
 
     MessageTypesRegistry.set_receiver_priorities( 'FbaSubmodel', MESSAGE_TYPES_BY_PRIORITY )
     
@@ -208,7 +208,7 @@ class FbaSubmodel(Submodel):
     def schedule_next_FBA_analysis(self):
         """Schedule the next analysis by this FBA submodel.
         """
-        self.send_event( self.time_step, self, RUN_FBA )
+        self.send_event( self.time_step, self, RunFBA )
 
     def calcReactionFluxes(self):
         """calculate growth rate.
@@ -272,7 +272,7 @@ class FbaSubmodel(Submodel):
     def handle_event( self, event_list ):
         """Handle a FbaSubmodel simulation event.
         
-        In this shared-memory FBA, the only event is RUN_FBA, and event_list should
+        In this shared-memory FBA, the only event is RunFBA, and event_list should
         always contain one event.
         
         Args:
@@ -284,19 +284,19 @@ class FbaSubmodel(Submodel):
             print( "{:7.1f}: submodel {}, event {}".format( self.time, self.name, self.num_events ) )
 
         for event_message in event_list:
-            if compare_name_with_class( event_message.event_type, GIVE_POPULATION ):
+            if compare_name_with_class( event_message.event_type, GivePopulation ):
                 
                 pass
-                # TODO(Arthur): add this functionality; currently, handling RUN_FBA accesses memory directly
+                # TODO(Arthur): add this functionality; currently, handling RunFBA accesses memory directly
 
-                # population_values is a GIVE_POPULATION body attribute
+                # population_values is a GivePopulation body attribute
                 population_values = event_message.event_body.population
 
-                logging.getLogger( self.logger_name ).debug( "GIVE_POPULATION: {}".format( 
+                logging.getLogger( self.logger_name ).debug( "GivePopulation: {}".format( 
                     str(event_message.event_body) ) )
                 # store population_values in some local cache ...
                     
-            elif compare_name_with_class( event_message.event_type, RUN_FBA ):
+            elif compare_name_with_class( event_message.event_type, RunFBA ):
             
                 logging.getLogger( self.logger_name ).debug( "{:8.3f}: {} submodel: "
                 "executing".format( self.time, self.name ) ) 
