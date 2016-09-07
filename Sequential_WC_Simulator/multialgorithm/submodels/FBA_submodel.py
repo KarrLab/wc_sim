@@ -18,14 +18,14 @@ with warnings.catch_warnings():
     from cobra import Reaction as CobraReaction
 
 from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
-from Sequential_WC_Simulator.core.LoggingConfig import setup_logger
-from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, SimulationObject)
-from Sequential_WC_Simulator.core.SimulationEngine import MessageTypesRegistry
+from Sequential_WC_Simulator.core.logging_config import setup_logger
+from Sequential_WC_Simulator.core.simulation_object import (EventQueue, SimulationObject)
+from Sequential_WC_Simulator.core.simulation_engine import MessageTypesRegistry
 from Sequential_WC_Simulator.core.utilities import N_AVOGADRO, compare_name_with_class, dict_2_key_sorted_str
 import Sequential_WC_Simulator.core.utilities as utilities
 
 from Sequential_WC_Simulator.multialgorithm.submodels.submodel import Submodel
-from Sequential_WC_Simulator.multialgorithm.MessageTypes import *
+from Sequential_WC_Simulator.multialgorithm.message_types import *
 from Sequential_WC_Simulator.multialgorithm.model_representation import *
 
 class FbaSubmodel(Submodel):

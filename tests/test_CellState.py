@@ -4,13 +4,13 @@ import re
 import os.path as path
 import json
 
-from Sequential_WC_Simulator.core.SimulationObject import EventQueue, SimulationObject
-from Sequential_WC_Simulator.core.SimulationEngine import SimulationEngine, MessageTypesRegistry
+from Sequential_WC_Simulator.core.simulation_object import EventQueue, SimulationObject
+from Sequential_WC_Simulator.core.simulation_engine import SimulationEngine, MessageTypesRegistry
 from Sequential_WC_Simulator.core.utilities import ReproducibleRandom
-from Sequential_WC_Simulator.multialgorithm.CellState import CellState
-from Sequential_WC_Simulator.multialgorithm.MessageTypes import *
-from UniversalSenderReceiverSimulationObject import UniversalSenderReceiverSimulationObject
-from Sequential_WC_Simulator.core.LoggingConfig import LOGGING_ROOT_DIR
+from Sequential_WC_Simulator.multialgorithm.cell_state import CellState
+from Sequential_WC_Simulator.multialgorithm.message_types import *
+from universal_sender_receiver_simulation_object import UniversalSenderReceiverSimulationObject
+from Sequential_WC_Simulator.core.logging_config import LOGGING_ROOT_DIR
 
 class TestCellState(unittest.TestCase):
 

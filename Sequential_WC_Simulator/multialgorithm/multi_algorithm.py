@@ -28,19 +28,19 @@ import warnings
 import errno
 
 from Sequential_WC_Simulator.core.config import SimulatorConfig
-from Sequential_WC_Simulator.core.LoggingConfig import setup_logger
+from Sequential_WC_Simulator.core.logging_config import setup_logger
 from Sequential_WC_Simulator.core.utilities import ReproducibleRandom
-from Sequential_WC_Simulator.core.SimulationObject import EventQueue, SimulationObject
-from Sequential_WC_Simulator.core.SimulationEngine import SimulationEngine, MessageTypesRegistry
+from Sequential_WC_Simulator.core.simulation_object import EventQueue, SimulationObject
+from Sequential_WC_Simulator.core.simulation_engine import SimulationEngine, MessageTypesRegistry
 from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
 from Sequential_WC_Simulator.multialgorithm.model_representation import Model
 from Sequential_WC_Simulator.multialgorithm.model_loader import getModelFromExcel
-from Sequential_WC_Simulator.multialgorithm.CellState import CellState
+from Sequential_WC_Simulator.multialgorithm.cell_state import CellState
 from Sequential_WC_Simulator.multialgorithm.submodels.simple_SSA_submodel import simple_SSA_submodel
 from Sequential_WC_Simulator.multialgorithm.submodels.FBA_submodel import FbaSubmodel
-from Sequential_WC_Simulator.multialgorithm.MessageTypes import *
+from Sequential_WC_Simulator.multialgorithm.message_types import *
 
-import temp.Exercise as Exercise
+import temp.exercise as Exercise
 
 class MultiAlgorithm( object ):
     """A modular, mult-algorithmic, discrete event WC simulator.

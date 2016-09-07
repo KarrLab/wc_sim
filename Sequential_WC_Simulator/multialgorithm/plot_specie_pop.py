@@ -63,7 +63,7 @@ class PlotPopulationDynamics(object):
         """Parse a specie logging log.
         
         The log is written by CellState.log_event() and its format is determined by 
-        Sequential_WC_Simulator.core.LoggingConfig
+        Sequential_WC_Simulator.core.logging_config
         
         Arguments:
             file: string; the log file

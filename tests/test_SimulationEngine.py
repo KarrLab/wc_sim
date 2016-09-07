@@ -1,10 +1,10 @@
 from __future__ import print_function
 import unittest
 
-from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, SimulationObject)
-from Sequential_WC_Simulator.core.Event import Event
-from Sequential_WC_Simulator.core.SimulationEngine import (SimulationEngine, MessageTypesRegistry)
-from SomeMessageTypes import *
+from Sequential_WC_Simulator.core.simulation_object import (EventQueue, SimulationObject)
+from Sequential_WC_Simulator.core.event import Event
+from Sequential_WC_Simulator.core.simulation_engine import (SimulationEngine, MessageTypesRegistry)
+from some_message_types import *
 
 class ExampleSimulationObject(SimulationObject):
 

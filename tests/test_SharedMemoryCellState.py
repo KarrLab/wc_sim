@@ -2,7 +2,6 @@ import unittest
 import sys
 import re
 
-from Sequential_WC_Simulator.core.LoggingConfig import setup_logger
 from Sequential_WC_Simulator.multialgorithm.specie import Specie
 from Sequential_WC_Simulator.multialgorithm.shared_cell_state import SharedMemoryCellState
 

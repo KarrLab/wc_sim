@@ -1,6 +1,6 @@
 import unittest
 
-from Sequential_WC_Simulator.multialgorithm.MessageTypes import *
+from Sequential_WC_Simulator.multialgorithm.message_types import *
 from Sequential_WC_Simulator.core.utilities import compare_name_with_class
 
 class TestMessageTypes(unittest.TestCase):

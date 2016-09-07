@@ -11,8 +11,8 @@ import argparse
 import sys
 import datetime
 
-from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, SimulationObject)
-from Sequential_WC_Simulator.core.SimulationEngine import (SimulationEngine, MessageTypesRegistry)
+from Sequential_WC_Simulator.core.simulation_object import EventQueue, SimulationObject
+from Sequential_WC_Simulator.core.simulation_engine import SimulationEngine, MessageTypesRegistry
 
 def obj_name( obj_num ):
     # create object name from index

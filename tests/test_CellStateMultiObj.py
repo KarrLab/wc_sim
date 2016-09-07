@@ -12,12 +12,12 @@ import re
 import math
 
 # TODO(Arthur): test the exceptions in these modules
-from Sequential_WC_Simulator.core.SimulationObject import EventQueue, SimulationObject
-from Sequential_WC_Simulator.core.SimulationEngine import SimulationEngine, MessageTypesRegistry
+from Sequential_WC_Simulator.core.simulation_object import EventQueue, SimulationObject
+from Sequential_WC_Simulator.core.simulation_engine import SimulationEngine, MessageTypesRegistry
 from Sequential_WC_Simulator.core.utilities import ReproducibleRandom, compare_name_with_class
-from Sequential_WC_Simulator.multialgorithm.MessageTypes import *
-from Sequential_WC_Simulator.multialgorithm.CellState import CellState
-from UniversalSenderReceiverSimulationObject import UniversalSenderReceiverSimulationObject
+from Sequential_WC_Simulator.multialgorithm.message_types import *
+from Sequential_WC_Simulator.multialgorithm.cell_state import CellState
+from universal_sender_receiver_simulation_object import UniversalSenderReceiverSimulationObject
 
 def parse_population_history( pop_history ):
     # build pop_history_dict from pop_history

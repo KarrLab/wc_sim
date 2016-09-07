@@ -12,7 +12,7 @@ import sys
 import logging
 import numpy as np
 
-from Sequential_WC_Simulator.core.LoggingConfig import setup_logger
+from Sequential_WC_Simulator.core.logging_config import setup_logger
 from Sequential_WC_Simulator.multialgorithm.utilities import species_compartment_name
 from Sequential_WC_Simulator.core.utilities import dict_2_key_sorted_str
 from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig

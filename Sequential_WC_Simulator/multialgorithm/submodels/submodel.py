@@ -16,8 +16,8 @@ import numpy as np
 import re
 
 import Sequential_WC_Simulator.core.utilities
-from Sequential_WC_Simulator.core.SimulationObject import SimulationObject
-from Sequential_WC_Simulator.core.LoggingConfig import setup_logger
+from Sequential_WC_Simulator.core.simulation_object import SimulationObject
+from Sequential_WC_Simulator.core.logging_config import setup_logger
 from Sequential_WC_Simulator.core.utilities import N_AVOGADRO
 from Sequential_WC_Simulator.multialgorithm.utilities import species_compartment_name
 from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig

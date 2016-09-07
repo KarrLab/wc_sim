@@ -12,14 +12,14 @@ import sys
 import logging
 import numpy as np
 
-from Sequential_WC_Simulator.core.LoggingConfig import setup_logger
-from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, SimulationObject)
-from Sequential_WC_Simulator.core.SimulationEngine import MessageTypesRegistry
+from Sequential_WC_Simulator.core.logging_config import setup_logger
+from Sequential_WC_Simulator.core.simulation_object import (EventQueue, SimulationObject)
+from Sequential_WC_Simulator.core.simulation_engine import MessageTypesRegistry
 from Sequential_WC_Simulator.core.utilities import (N_AVOGADRO, ExponentialMovingAverage, 
     compare_name_with_class, ReproducibleRandom, dict_2_key_sorted_str)
 from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
 from Sequential_WC_Simulator.multialgorithm.submodels.submodel import Submodel
-from Sequential_WC_Simulator.multialgorithm.MessageTypes import *
+from Sequential_WC_Simulator.multialgorithm.message_types import *
     
 class simple_SSA_submodel( Submodel ):
     """

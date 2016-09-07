@@ -7,13 +7,13 @@ Created 2016/07/19
 import sys
 import logging
 
-from Sequential_WC_Simulator.core.LoggingConfig import setup_logger
-from Sequential_WC_Simulator.core.SimulationObject import (EventQueue, SimulationObject)
+from Sequential_WC_Simulator.core.logging_config import setup_logger
+from Sequential_WC_Simulator.core.simulation_object import (EventQueue, SimulationObject)
 from Sequential_WC_Simulator.core.utilities import compare_name_with_class, dict_2_key_sorted_str
-from Sequential_WC_Simulator.core.SimulationEngine import MessageTypesRegistry
+from Sequential_WC_Simulator.core.simulation_engine import MessageTypesRegistry
 
 from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
-from Sequential_WC_Simulator.multialgorithm.MessageTypes import *
+from Sequential_WC_Simulator.multialgorithm.message_types import *
 from Sequential_WC_Simulator.multialgorithm.specie import Specie
     
 class CellState( SimulationObject ): 

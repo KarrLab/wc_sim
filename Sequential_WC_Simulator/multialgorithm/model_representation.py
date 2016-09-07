@@ -19,7 +19,7 @@ with warnings.catch_warnings():
     from cobra import Model as CobraModel
     from cobra import Reaction as CobraReaction
 
-from Sequential_WC_Simulator.core.LoggingConfig import setup_logger
+from Sequential_WC_Simulator.core.logging_config import setup_logger
 from Sequential_WC_Simulator.core.utilities import N_AVOGADRO
 from Sequential_WC_Simulator.multialgorithm.utilities import species_compartment_name
 from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig

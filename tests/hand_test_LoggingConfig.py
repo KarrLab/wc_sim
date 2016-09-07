@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import logging
-from Sequential_WC_Simulator.core.LoggingConfig import setup_logger
+from Sequential_WC_Simulator.core.logging_config import setup_logger
 
 # TODO(Arthur): automate this test
 for stdout in [True, False]:
