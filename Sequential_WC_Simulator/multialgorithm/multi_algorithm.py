@@ -71,8 +71,7 @@ class MultiAlgorithm( object ):
         return args
     
     @staticmethod
-    def main():
-        args = MultiAlgorithm.parseArgs()
+    def main( args ):
 
         # setup PRNG
         if args.seed:
@@ -134,7 +133,8 @@ class MultiAlgorithm( object ):
     
 if __name__ == '__main__':
     try:
-        MultiAlgorithm.main()
+        args = MultiAlgorithm.parseArgs()
+        MultiAlgorithm.main( args )
     except KeyboardInterrupt:
         pass
     # do not report IOError: [Errno 32] Broken pipe
