@@ -40,7 +40,7 @@ from Sequential_WC_Simulator.multialgorithm.submodels.simple_SSA_submodel import
 from Sequential_WC_Simulator.multialgorithm.submodels.FBA_submodel import FbaSubmodel
 from Sequential_WC_Simulator.multialgorithm.message_types import *
 
-import temp.exercise as Exercise
+import Sequential_WC_Simulator.multialgorithm.temp.exercise as Exercise
 
 class MultiAlgorithm( object ):
     """A modular, mult-algorithmic, discrete event WC simulator.
