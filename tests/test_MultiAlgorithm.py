@@ -22,7 +22,7 @@ class TestMultiAlgorithm(unittest.TestCase):
             end_time=3*WC_SimulatorConfig.DEFAULT_FBA_TIME_STEP, 
             model_filename='./test_data/Model.xlsx',
             output_directory=WC_SimulatorConfig.DEFAULT_OUTPUT_DIRECTORY,
-            plot=False, seed=None)
+            plot=False, seed=123)
         MultiAlgorithm.main( args ) 
 
 

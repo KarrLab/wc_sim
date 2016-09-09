@@ -17,7 +17,7 @@ from Sequential_WC_Simulator.core.simulation_engine import SimulationEngine, Mes
 from Sequential_WC_Simulator.core.utilities import ReproducibleRandom, compare_name_with_class
 from Sequential_WC_Simulator.multialgorithm.message_types import *
 from Sequential_WC_Simulator.multialgorithm.cell_state import CellState
-from universal_sender_receiver_simulation_object import UniversalSenderReceiverSimulationObject
+from tests.universal_sender_receiver_simulation_object import UniversalSenderReceiverSimulationObject
 
 def parse_population_history( pop_history ):
     # build pop_history_dict from pop_history
