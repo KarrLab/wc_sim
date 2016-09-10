@@ -5,3 +5,5 @@ scipy
 openpyxl
 future
 recordtype
+lxml
+python-libsbml
