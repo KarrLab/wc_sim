@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 """
 Plot a specie population's dynamics. Inputs logging log.
 

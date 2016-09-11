@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 A draft modular, mult-algorithmic, discrete event WC simulator.
 
