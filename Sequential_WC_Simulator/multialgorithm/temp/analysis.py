@@ -7,6 +7,9 @@ Analysis utility functions
 
 # TODO(Arthur): IMPORTANT: refactor and replace
 
+import matplotlib
+matplotlib.use('pdf')   # generate pdf output by default; 
+						# avoids "import _tkinter" failure of "from matplotlib import pyplot" 
 from matplotlib import pyplot, ticker
 #%matplotlib inline
 import numpy as np
