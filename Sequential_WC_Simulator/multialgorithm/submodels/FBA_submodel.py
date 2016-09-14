@@ -73,7 +73,7 @@ class FbaSubmodel(Submodel):
     
     def __init__(self, model, name, id, private_cell_state, shared_cell_states, 
         reactions, species, time_step, debug=False, write_plot_output=False ):        
-        """Initialize a simple_SSA_submodel object.
+        """Initialize a FbaSubmodel object.
         
         # TODO(Arthur): expand description
         
@@ -212,8 +212,18 @@ class FbaSubmodel(Submodel):
 
     def calcReactionFluxes(self):
         """calculate growth rate.
-        
         """
+
+        '''
+        assertion because 
+            arrCbModel = self.cobraModel.to_array_based_model()
+            arrCbModel.lower_bounds = lowerBounds
+            arrCbModel.upper_bounds = upperBounds
+        was assigning a list to the bound for each reaction
+        '''
+        for r in self.cobraModel.reactions:
+            assert ( type(r.lower_bound) is np.float64 and type(r.upper_bound) is np.float64)
+
         self.cobraModel.optimize()
         self.reactionFluxes = self.cobraModel.solution.x
         self.model.growth = self.reactionFluxes[self.metabolismProductionReaction['index']] #fraction cell/s
@@ -264,10 +274,10 @@ class FbaSubmodel(Submodel):
         upperBounds = utilities.nanminimum(upperBounds, self.model.dryWeight / 3600 * N_AVOGADRO 
             * 1e-3 * self.exchangeRateBounds['upper'])
         
-        # return
-        arrCbModel = self.cobraModel.to_array_based_model()
-        arrCbModel.lower_bounds = lowerBounds
-        arrCbModel.upper_bounds = upperBounds
+        for i_rxn, rxn in enumerate(self.cobraModel.reactions):
+            rxn.lower_bound = lowerBounds[i_rxn]
+            rxn.upper_bound = upperBounds[i_rxn]
+
 
     def handle_event( self, event_list ):
         """Handle a FbaSubmodel simulation event.

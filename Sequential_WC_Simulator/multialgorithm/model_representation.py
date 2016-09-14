@@ -98,7 +98,7 @@ class Model(object):
         
         #species counts
         self.the_SharedMemoryCellState = SharedMemoryCellState( self, "CellState", {}, 
-            retain_history=self.debug, debug=self.debug )
+            retain_history=True, debug=self.debug )
         for species in self.species:
             for conc in species.concentrations:
                 # initializing all fluxes to 0 so that continuous adjustments can be made

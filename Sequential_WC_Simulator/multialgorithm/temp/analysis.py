@@ -74,7 +74,7 @@ def plot(model, time = np.zeros(0),
     #plot results    
     yMin = 1e12
     yMax = -1e12
-    for label, yData in yDatas.iteritems():
+    for label, yData in yDatas.items():
         #update range
         yMin = min(yMin, np.min(yData))
         yMax = max(yMax, np.max(yData))
