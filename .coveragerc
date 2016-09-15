@@ -1,4 +1,9 @@
 [run]
+include =
+	# include these files
+	Sequential_WC_Simulator/*
+	tests/*
+	examples/*	
 omit =
     # omit these files
 	Sequential_WC_Simulator/multialgorithm/plot_specie_pop.py
