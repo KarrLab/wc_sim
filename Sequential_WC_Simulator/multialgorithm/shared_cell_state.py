@@ -163,7 +163,7 @@ class SharedMemoryCellState( object ):
             raise ValueError( "time of previous _record_history() ({}) not less than current time ({})".format(
                 self.history['time'][-1], self.time ) )
         self.history['time'].append( self.time )
-        # TODO: copy() is slow, but thread-safe; make fast & thread-safe
+        # TODO(Arthur): IMPORTANT: copy() is slow, but thread-safe; make fast & thread-safe
         for specie_id, population in self.read( self.time, list(self.population.copy().keys()) ).items():
             self.history['population'][specie_id].append( population )
         
@@ -227,7 +227,7 @@ class SharedMemoryCellState( object ):
         """
         if not isinstance( species, list ):
             raise ValueError( "Error: species '{}' must be a list".format( species ) )
-        # TODO: copy() is slow, but thread-safe; make fast & thread-safe
+        # TODO(Arthur): IMPORTANT: copy() is slow, but thread-safe; make fast & thread-safe
         unknown_species = set( species ) - set( list(self.population.copy().keys()) ) 
         if unknown_species:
             # raise exeception if some species are non-existent

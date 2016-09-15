@@ -1,0 +1,5 @@
+[run]
+omit =
+    # omit these files
+	Sequential_WC_Simulator/multialgorithm/plot_specie_pop.py
+	Sequential_WC_Simulator/multialgorithm/species_counts.py
