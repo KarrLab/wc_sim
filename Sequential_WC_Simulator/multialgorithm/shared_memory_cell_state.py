@@ -6,7 +6,6 @@ Created 2016/06/17
 """
 
 # TODO(Arthur): globally, properly name elements that are protected or private within a class
-# TODO(Arthur): IMPORTANT: unittest new code
 
 import sys
 import logging
@@ -25,6 +24,9 @@ class SharedMemoryCellState( object ):
     can be read or written. To enable multi-algorithmic modeling, it supports writes to a specie's
     population by both discrete and continuous models. 
     
+    All accesses to this state must provide a simulation time, which supports simple synchronization
+    of interactions between sub-models: reads access the previous writes (called adjustments).
+
     For any given specie, all operations must occur in non-decreasing simulation time order.
     Record history operations must also occur in non-decreasing time order. 
     
@@ -38,6 +40,8 @@ class SharedMemoryCellState( object ):
         history: nested dict; an optional history of the cell's state, created if retain_history is set.
             the population history is recorded at each continuous adjustment.
     
+    # TODO(Arthur): IMPORTANT: support tracking the population history of species added at any time
+        in the simulation
     # TODO(Arthur): standardize on specie_name or specie_id
     # TODO(Arthur): extend beyond population, e.g., to represent binding sites for individual macromolecules
     # TODO(Arthur): optimize to represent just the state of shared species
@@ -75,7 +79,8 @@ class SharedMemoryCellState( object ):
         try:
             if initial_fluxes is not None:
                 for specie_id in initial_population:
-                    self.init_cell_state_specie( specie_id, initial_population[specie_id], initial_fluxes[specie_id] )
+                    self.init_cell_state_specie( specie_id, initial_population[specie_id], 
+                        initial_fluxes[specie_id] )
             else:
                 for specie_id in initial_population:
                     self.init_cell_state_specie( specie_id, initial_population[specie_id] )
@@ -110,9 +115,9 @@ class SharedMemoryCellState( object ):
                 self.log_event( 'initial_state', self.population[specie_name] )
 
     def init_cell_state_specie( self, specie_name, population, initial_flux_given=None ):
-        """Initialize a specie with the given population at the start of the simulation.
+        """Initialize a specie with the given population and flux.
         
-        Must be called at time = 0.
+        The specie's population is set at the current time.
         
         Args:
             specie: string; a unique specie name
@@ -121,22 +126,23 @@ class SharedMemoryCellState( object ):
 
         Raises:
             ValueError: if the specie is already stored by this SharedMemoryCellState
-            ValueError: if 0<time 
         """
-        if 0 < self.time:
-            raise ValueError( "Error: SharedMemoryCellState.init_cell_state_specie() must be "
-                "called at time = 0; time is {}".format( self.time ) )
         if specie_name in self.population:
-            raise ValueError( "Error: specie_name '{}' already stored by this SharedMemoryCellState".format( specie_name ) )
+            raise ValueError( "Error: specie_name '{}' already stored by this "
+                "SharedMemoryCellState".format( specie_name ) )
         self.population[specie_name] = Specie( specie_name, population, initial_flux=initial_flux_given )
-        self.last_access_time[specie_name] = 0
-        if self._recording_history(): self._add_specie_to_history( specie_name, population )
+        self.last_access_time[specie_name] = self.time
 
     def _initialize_history(self):
-        """Initialize the population history."""
-        self.history = {}
-        self.history['time'] = [0]
-        self.history['population'] = { }    # dict: specie_name -> copy number
+        """Initialize the population history with current population."""
+        self._history = {}
+        self._history['time'] = [self.time]  # a list of times at which population is recorded
+        # the value of self._history['population'][specie_id] is a list of 
+        # the population of specie_id at the times history is recorded
+        self._history['population'] = { }    
+        # TODO(Arthur): IMPORTANT: copy() is slow, but thread-safe; make fast & thread-safe
+        for specie_id, population in self.read( self.time, list(self.population.copy().keys()) ).items():
+            self._history['population'][specie_id] = [population]
         
     def _recording_history(self):
         """Is history being recorded?
@@ -144,29 +150,27 @@ class SharedMemoryCellState( object ):
         Return:
             True if history is being recorded.
         """
-        return hasattr(self, 'history')
+        return hasattr(self, '_history')
 
-    def _add_specie_to_history(self, specie, population):
-        """Add a specie to the history."""
-        self.history['population'][specie] = [population]
-        
     def _record_history(self):
         """Record the current population in the history.
         
-        The current time is obtained from self.time.
+        Snapshot the current population of all species in the history. The current time 
+        is obtained from self.time.
         
         Raises:
             ValueError if the current time is not greater than the previous time at which the 
             history was recorded.
         """
-        if not self.history['time'][-1] < self.time:
+        if not self._history['time'][-1] < self.time:
             raise ValueError( "time of previous _record_history() ({}) not less than current time ({})".format(
-                self.history['time'][-1], self.time ) )
-        self.history['time'].append( self.time )
+                self._history['time'][-1], self.time ) )
+        self._history['time'].append( self.time )
         # TODO(Arthur): IMPORTANT: copy() is slow, but thread-safe; make fast & thread-safe
         for specie_id, population in self.read( self.time, list(self.population.copy().keys()) ).items():
-            self.history['population'][specie_id].append( population )
+            self._history['population'][specie_id].append( population )
         
+    # TODO(Arthur): unit test this with numpy_format=True
     def report_history(self, numpy_format=False ):
         """Provide the time and species count history.
         
@@ -184,38 +188,44 @@ class SharedMemoryCellState( object ):
         """
         if self._recording_history():
             if numpy_format:
-                timeHist = np.asarray( self.history['time'] )
+                timeHist = np.asarray( self._history['time'] )
                 speciesCountsHist = np.zeros((len(self.model.species), len(self.model.compartments), 
-                    len(self.history['time'])))
+                    len(self._history['time'])))
                 for specie_index,specie in list(enumerate(self.model.species)):
                     for comp_index,compartment in list(enumerate(self.model.compartments)):
-                        for time_index in range(len(self.history['time'])):
+                        for time_index in range(len(self._history['time'])):
                             specie_comp_id = species_compartment_name(specie, compartment)
                             speciesCountsHist[specie_index,comp_index,time_index] = \
-                                self.history['population'][specie_comp_id][time_index]
+                                self._history['population'][specie_comp_id][time_index]
                 
                 return (timeHist, speciesCountsHist)
-            return self.history
+            else:
+                return self._history
         else:
-            raise ValueError( "history not recorded" )
+            raise ValueError( "Error: history not recorded" )
 
     def history_debug(self):
-        """Print a bit of species count history.
+        """Provide a bit of the history, specifically the first and last population value for each specie.
+        
+        Return:
+            string with first and last times and a 
+            tab-separated matrix of rows with species name, first, last population values
         
         Raises:
             ValueError if the history was not recorded
         """
         if self._recording_history():
-            # print subset of history for debugging
-            print(  "#times\tfirst\tlast" )
-            print(  "{}\t{}\t{}".format( len(self.history['time']), self.history['time'][0], 
-                self.history['time'][-1] ) )
-            print(  "Specie\t#values\tfirst\tlast" )
-            for s in self.history['population'].keys():
-                print(  "{}\t{}\t{}\t{}".format( s, len(self.history['population'][s]), 
-                    self.history['population'][s][0], self.history['population'][s][-1] ) )
+            lines = []
+            lines.append( "#times\tfirst\tlast" )
+            lines.append( "{}\t{}\t{}".format( len(self._history['time']), self._history['time'][0], 
+                self._history['time'][-1] ) )
+            lines.append(  "Specie\t#values\tfirst\tlast" )
+            for s in self._history['population'].keys():
+                lines.append( "{}\t{}\t{}\t{}".format( s, len(self._history['population'][s]), 
+                    self._history['population'][s][0], self._history['population'][s][-1] ) )
+            return '\n'.join( lines )
         else:
-            raise ValueError( "history not recorded" )
+            raise ValueError( "Error: history not recorded" )
         
     def _check_species( self, time, species ):
         """Check whether the species are a list, and not known by this SharedMemoryCellState.
@@ -250,6 +260,7 @@ class SharedMemoryCellState( object ):
             self.last_access_time[specie_name] = time
 
     # TODO(Arthur): IMPORTANT; add optional use_interpolation, so we can compare with and wo
+    # interpolation
     def read( self, time, species ):
         """Read the predicted population of a list of species at a particular time.
         

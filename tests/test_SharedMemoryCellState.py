@@ -4,17 +4,20 @@ import re
 
 from Sequential_WC_Simulator.multialgorithm.specie import Specie
 from Sequential_WC_Simulator.multialgorithm.shared_memory_cell_state import SharedMemoryCellState
-
+from Sequential_WC_Simulator.core.utilities import ReproducibleRandom
 
 class TestSharedMemoryCellState(unittest.TestCase):
 
     def setUp(self):
+        ReproducibleRandom.init( seed=123 )
+        
         species = list( map( lambda x: "specie_{}".format( x ), range( 1, 5 ) ) )
         self.species = species
         init_populations = dict( zip( species, range( 1, 5 ) ) )
         self.init_populations = init_populations
         self.flux = 1
         init_fluxes = dict( zip( species, [self.flux]*len(species) ) )
+        self.init_fluxes = init_fluxes
         self.a_SM_CellState = SharedMemoryCellState( None, 'test', init_populations, initial_fluxes=init_fluxes,
             debug=False, log=False)
         self.a_SM_CellState_no_init_flux = SharedMemoryCellState( None, 'test', init_populations, 
@@ -55,3 +58,35 @@ class TestSharedMemoryCellState(unittest.TestCase):
         with self.assertRaises(ValueError) as context:
             a_SM_CellState.init_cell_state_specie( 's1', 2 )
         self.assertIn( "Error: specie_name 's1' already stored by this SharedMemoryCellState", str(context.exception) )
+        with self.assertRaises(ValueError) as context:
+            a_SM_CellState.report_history()
+        self.assertIn( "Error: history not recorded", str(context.exception) )
+        with self.assertRaises(ValueError) as context:
+            a_SM_CellState.history_debug()
+        self.assertIn( "Error: history not recorded", str(context.exception) )
+
+    def test_history(self):
+        """Test population history."""
+        a_SM_CellState_recording_history = SharedMemoryCellState( None, 'test', 
+            self.init_populations,
+            None,
+            retain_history=True,
+            debug=False, log=False)
+        self.assertTrue( a_SM_CellState_recording_history._recording_history() )
+        next_time = 1
+        first_specie = self.species[0]
+        a_SM_CellState_recording_history.read( next_time, [first_specie])
+        a_SM_CellState_recording_history._record_history()
+        with self.assertRaises(ValueError) as context:
+            a_SM_CellState_recording_history._record_history()
+        self.assertIn( "time of previous _record_history() (1) not less than current time",
+            str(context.exception) )
+        
+        history = a_SM_CellState_recording_history.report_history()
+        self.assertEqual( history['time'],  [0,next_time] )
+        first_specie_history = [1,1]
+        self.assertEqual( history['population'][first_specie], first_specie_history )
+        
+        self.assertIn( 
+            '\t'.join( map( lambda x:str(x), [ first_specie, 2, ] + first_specie_history ) ),
+            a_SM_CellState_recording_history.history_debug() )
