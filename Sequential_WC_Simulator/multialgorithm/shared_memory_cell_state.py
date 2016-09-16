@@ -10,6 +10,7 @@ Created 2016/06/17
 import sys
 import logging
 import numpy as np
+from threading import RLock
 
 from Sequential_WC_Simulator.core.logging_config import setup_logger
 from Sequential_WC_Simulator.multialgorithm.utilities import species_compartment_name
@@ -73,7 +74,8 @@ class SharedMemoryCellState( object ):
         self.model = model
         self.name = name
         self.time = 0
-        self.population = {}
+        self._population = {}
+        self._population_lock = RLock()   # make accesses to self._population thread-safe
         self.last_access_time = {}
         
         try:
@@ -112,7 +114,7 @@ class SharedMemoryCellState( object ):
                 # write log header
                 log.debug( '\t'.join( 'Sim_time Adjustment_type New_population New_flux'.split() ) )
                 # log initial state
-                self.log_event( 'initial_state', self.population[specie_name] )
+                self.log_event( 'initial_state', self._population[specie_name] )
 
     def init_cell_state_specie( self, specie_name, population, initial_flux_given=None ):
         """Initialize a specie with the given population and flux.
@@ -127,10 +129,11 @@ class SharedMemoryCellState( object ):
         Raises:
             ValueError: if the specie is already stored by this SharedMemoryCellState
         """
-        if specie_name in self.population:
+        if specie_name in self._population:
             raise ValueError( "Error: specie_name '{}' already stored by this "
                 "SharedMemoryCellState".format( specie_name ) )
-        self.population[specie_name] = Specie( specie_name, population, initial_flux=initial_flux_given )
+        with self._population_lock:
+            self._population[specie_name] = Specie( specie_name, population, initial_flux=initial_flux_given )
         self.last_access_time[specie_name] = self.time
 
     def _initialize_history(self):
@@ -140,9 +143,10 @@ class SharedMemoryCellState( object ):
         # the value of self._history['population'][specie_id] is a list of 
         # the population of specie_id at the times history is recorded
         self._history['population'] = { }    
-        # TODO(Arthur): IMPORTANT: copy() is slow, but thread-safe; make fast & thread-safe
-        for specie_id, population in self.read( self.time, list(self.population.copy().keys()) ).items():
-            self._history['population'][specie_id] = [population]
+        # lock because iterator dict.keys() isn't atomic in python 3+
+        with self._population_lock:
+            for specie_id, population in self.read( self.time, list(self._population.keys()) ).items():
+                self._history['population'][specie_id] = [population]
         
     def _recording_history(self):
         """Is history being recorded?
@@ -166,9 +170,9 @@ class SharedMemoryCellState( object ):
             raise ValueError( "time of previous _record_history() ({}) not less than current time ({})".format(
                 self._history['time'][-1], self.time ) )
         self._history['time'].append( self.time )
-        # TODO(Arthur): IMPORTANT: copy() is slow, but thread-safe; make fast & thread-safe
-        for specie_id, population in self.read( self.time, list(self.population.copy().keys()) ).items():
-            self._history['population'][specie_id].append( population )
+        with self._population_lock:
+            for specie_id, population in self.read( self.time, list(self._population.keys()) ).items():
+                self._history['population'][specie_id].append( population )
         
     # TODO(Arthur): unit test this with numpy_format=True
     def report_history(self, numpy_format=False ):
@@ -237,8 +241,8 @@ class SharedMemoryCellState( object ):
         """
         if not isinstance( species, list ):
             raise ValueError( "Error: species '{}' must be a list".format( species ) )
-        # TODO(Arthur): IMPORTANT: copy() is slow, but thread-safe; make fast & thread-safe
-        unknown_species = set( species ) - set( list(self.population.copy().keys()) ) 
+        with self._population_lock:
+            unknown_species = set( species ) - set( list(self._population.keys()) ) 
         if unknown_species:
             # raise exeception if some species are non-existent
             raise ValueError( "Error: request for population of unknown specie(s): {}".format( 
@@ -278,7 +282,7 @@ class SharedMemoryCellState( object ):
         self._check_species( time, species )
         self.time = time
         self.__update_access_times( time, species )
-        return { specie:self.population[specie].get_population(time) for specie in species }
+        return { specie:self._population[specie].get_population(time) for specie in species }
             
     def adjust_discretely( self, time, adjustments ):
         """A discrete model adjusts the population of a set of species at a particular time.
@@ -296,11 +300,11 @@ class SharedMemoryCellState( object ):
         self.time = time
         for specie in adjustments:
             try:
-                self.population[specie].discrete_adjustment( adjustments[specie] )
+                self._population[specie].discrete_adjustment( adjustments[specie] )
                 self.__update_access_times( time, [specie] )
             except ValueError as e:
                 raise ValueError( "Error: on specie {}: {}".format( specie, e ) )
-            self.log_event( 'discrete_adjustment', self.population[specie] )
+            self.log_event( 'discrete_adjustment', self._population[specie] )
     
     def adjust_continuously( self, time, adjustments ):
         """A continuous model adjusts the population of a set of species at a particular time.
@@ -322,7 +326,7 @@ class SharedMemoryCellState( object ):
         if self._recording_history(): self._record_history() 
         for specie,(adjustment,flux) in adjustments.items():
             try:
-                self.population[specie].continuous_adjustment( adjustment, time, flux )
+                self._population[specie].continuous_adjustment( adjustment, time, flux )
                 self.__update_access_times( time, [specie] )
             except ValueError as e:
                 # TODO(Arthur): IMPORTANT; return to raising exceptions with negative population
@@ -331,7 +335,7 @@ class SharedMemoryCellState( object ):
                 e = str(e).strip()
                 logging.getLogger(self.logger_name).debug( "Error: on specie {}: {}".format( specie, e ) )
 
-            self.log_event( 'continuous_adjustment', self.population[specie] )
+            self.log_event( 'continuous_adjustment', self._population[specie] )
 
     def log_event( self, event_type, specie ):
         """Log simulation events that modify a specie's population.
