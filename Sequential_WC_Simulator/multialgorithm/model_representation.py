@@ -23,7 +23,7 @@ from Sequential_WC_Simulator.core.logging_config import setup_logger
 from Sequential_WC_Simulator.core.utilities import N_AVOGADRO
 from Sequential_WC_Simulator.multialgorithm.utilities import species_compartment_name
 from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
-from Sequential_WC_Simulator.multialgorithm.shared_cell_state import SharedMemoryCellState
+from Sequential_WC_Simulator.multialgorithm.shared_memory_cell_state import SharedMemoryCellState
 
 class Model(object):
     """Model represents all the data in a whole-cell model.
