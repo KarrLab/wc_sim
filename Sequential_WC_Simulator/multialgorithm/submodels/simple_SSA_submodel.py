@@ -12,7 +12,7 @@ import sys
 import logging
 import numpy as np
 
-from Sequential_WC_Simulator.core.logging_config import setup_logger
+from Sequential_WC_Simulator.core.logging_config import setup_logger_old
 from Sequential_WC_Simulator.core.simulation_object import (EventQueue, SimulationObject)
 from Sequential_WC_Simulator.core.simulation_engine import MessageTypesRegistry
 from Sequential_WC_Simulator.core.utilities import (N_AVOGADRO, ExponentialMovingAverage, 
@@ -93,7 +93,7 @@ class simple_SSA_submodel( Submodel ):
     MessageTypesRegistry.set_receiver_priorities( 'simple_SSA_submodel', MESSAGE_TYPES_BY_PRIORITY )
 
     def __init__( self, model, name, id, private_cell_state, shared_cell_states, 
-        reactions, species, debug=False, write_plot_output=False, default_center_of_mass=10 ):
+        reactions, species, debug=False, default_center_of_mass=10 ):
         """Initialize a simple_SSA_submodel object.
         
         # TODO(Arthur): expand description
@@ -101,12 +101,11 @@ class simple_SSA_submodel( Submodel ):
         Args:
             See pydocs of super classes.
             debug: boolean; log debugging output
-            write_plot_output: boolean; log output for plotting simulation; simply passed to SimulationObject
             default_center_of_mass: number; the center_of_mass for the ExponentialMovingAverage
                 
         """
         Submodel.__init__( self, model, name, id, private_cell_state, shared_cell_states,
-            reactions, species, debug=debug, write_plot_output=write_plot_output )
+            reactions, species, debug=debug )
         # TODO(Arthur): use private_cell_state & shared_cell_states, or get rid of them
 
         self.num_SSAWaits=0
@@ -116,13 +115,12 @@ class simple_SSA_submodel( Submodel ):
         if debug:
             # make a logger for this simple_SSA_submodel
             # TODO(Arthur): eventually control logging when creating SimulationObjects, and pass in the logger
-            setup_logger( self.logger_name, level=logging.DEBUG )
+            setup_logger_old( self.logger_name, level=logging.DEBUG )
             mylog = logging.getLogger(self.logger_name)
             # write initialization data
             mylog.debug( "init: name: {}".format( name ) )
             mylog.debug( "init: id: {}".format( id ) )
             mylog.debug( "init: species: {}".format( str([s.name for s in species]) ) )
-            mylog.debug( "init: write_plot_output: {}".format( str(write_plot_output) ) )
             mylog.debug( "init: debug: {}".format( str(debug) ) )
         self.set_up_ssa_submodel()
         

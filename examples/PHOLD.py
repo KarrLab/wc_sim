@@ -1,7 +1,10 @@
-#!/usr/bin/env python
-
 """
 A simple example simulation. Implements PHOLD.
+
+:Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
+:Date: 2016-06-10
+:Copyright: 2016, Karr Lab
+:License: MIT
 """
 
 from __future__ import print_function
@@ -13,6 +16,11 @@ import datetime
 
 from Sequential_WC_Simulator.core.simulation_object import EventQueue, SimulationObject
 from Sequential_WC_Simulator.core.simulation_engine import SimulationEngine, MessageTypesRegistry
+
+# logging
+from examples.config import config_constants
+from log.config.config import ConfigAll
+debug_log = ConfigAll.setup_logger( config_constants )
 
 def obj_name( obj_num ):
     # create object name from index
@@ -42,18 +50,15 @@ class PHOLDsimulationObject(SimulationObject):
     MessageTypesRegistry.set_sent_message_types( 'PHOLDsimulationObject', MESSAGE_TYPES )
     MessageTypesRegistry.set_receiver_priorities( 'PHOLDsimulationObject', MESSAGE_TYPES )
 
-    def __init__( self, name, args, debug=False, write_plot_output=False):
+    def __init__( self, name, args, debug=False ):
         self.debug = debug
         self.args = args
-        super(PHOLDsimulationObject, self).__init__( name, plot_output=write_plot_output )
+        super(PHOLDsimulationObject, self).__init__( name )
 
     def handle_event( self, event_list ):
         """Handle a simulation event."""
         # call handle_event() in class SimulationObject which might produce plotting output or do other things
         super(PHOLDsimulationObject, self).handle_event( event_list )
-        
-        if self.debug:
-            self.print_event_queue( )
         
         # Although P[receiving multiple messages simultaneously] = 0 because wait times are 
         # exponentially distributed, we handle each event in event_list separately
@@ -61,16 +66,16 @@ class PHOLDsimulationObject(SimulationObject):
             # schedule event
             if random.random() < self.args.frac_self_events or self.args.num_PHOLD_procs == 1:
                 receiver = self
-                if self.debug:
-                    print( "{:8.3f}: {} sending to self".format( self.time, self.name ))
+                self.log_debug_msg( "{:8.3f}: {} sending to self".format( self.time, self.name ) )
+
             else:
                 # send to another process; pick process index in [0,num_PHOLD-2], and increment if self
                 index = random.randrange(self.args.num_PHOLD_procs-1)
                 if index == obj_index( self.name ):
                     index += 1
                 receiver = SimulationEngine.simulation_objects[ obj_name( index ) ]
-                if self.debug:
-                    print( "{:8.3f}: {} sending to {}".format( self.time, self.name, obj_name( index ) ))
+                self.log_debug_msg( "{:8.3f}: {} sending to {}".format( self.time, self.name, 
+                    obj_name( index ) ))
 
             if receiver == self:
                 recipient = 'self'
@@ -80,6 +85,9 @@ class PHOLDsimulationObject(SimulationObject):
                 event_type = 'message_sent_to_other_object'
             self.send_event( exp_delay(), receiver, event_type )
 
+    def log_debug_msg(self, msg):
+        logger = debug_log.get_logger( 'wc.debug.console' )
+        logger.debug( msg, sim_time=self.time, local_call_depth=1 )
 
 class runPHOLD(object):
 
@@ -96,8 +104,6 @@ class runPHOLD(object):
         parser.add_argument( 'end_time', type=float, help="End time for the simulation" )
         output_options = parser.add_mutually_exclusive_group()
         output_options.add_argument( '--debug', '-d', action='store_true', help='Print debug output' )
-        output_options.add_argument( '--plot', '-p', action='store_true', 
-            help='Write plot input for plotSpaceTimeDiagram.py to stdout.' )
         parser.add_argument( '--seed', '-s', type=int, help='Random number seed' )
         args = parser.parse_args()
         if args.num_PHOLD_procs < 1:
@@ -114,13 +120,10 @@ class runPHOLD(object):
     def main():
     
         args = runPHOLD.parseArgs()
-        if args.plot:
-            print( '# {:%Y-%m-%d %H:%M:%S}'.format(datetime.datetime.now()) )
-            print( "# command line: {}".format( " ".join( sys.argv ) ) )
 
         # create simulation objects
         for obj_id in range( args.num_PHOLD_procs ):
-            PHOLDsimulationObject( obj_name( obj_id ), args, debug=args.debug, write_plot_output=args.plot ) 
+            PHOLDsimulationObject( obj_name( obj_id ), args, debug=args.debug ) 
         
         # send initial event messages, to self
         for obj_id in range( args.num_PHOLD_procs ):

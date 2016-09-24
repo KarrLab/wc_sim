@@ -2,7 +2,7 @@ import logging
 import os.path as path
 import os
 
-from Sequential_WC_Simulator.core.config import SimulatorConfig
+from Sequential_WC_Simulator.core.config.config import SimulatorConfig
 
 # TODO(Arthur): make configurable
 LOGGING_ROOT_DIR=path.expanduser( "~/tmp/Sequential_WC_Simulator_logging")
@@ -15,7 +15,7 @@ except OSError:
         raise
 
 # from http://stackoverflow.com/a/17037016/509882
-def setup_logger(logger_name, log_file=None, level=logging.INFO, to_stdout=False):
+def setup_logger_old(logger_name, log_file=None, level=logging.INFO, to_stdout=False):
     """create and config a logger"""
     l = logging.getLogger(logger_name)
     formatter = logging.Formatter('%(asctime)s; %(name)s; %(filename)s:%(lineno)d #%(message)s', 

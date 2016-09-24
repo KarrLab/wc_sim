@@ -48,11 +48,11 @@ class TestSimulationObject(SimulationObject):
     MESSAGE_TYPES_BY_PRIORITY = [ GivePopulation ]
     MessageTypesRegistry.set_receiver_priorities( 'TestSimulationObject', MESSAGE_TYPES_BY_PRIORITY )
     
-    def __init__( self, name, pop_history, specie, debug=False, write_plot_output=False):
+    def __init__( self, name, pop_history, specie, debug=False):
         self.debug = debug
         self.pop_history_dict = parse_population_history( pop_history )
         self.specie = specie
-        super(TestSimulationObject, self).__init__( name, plot_output=write_plot_output )
+        super(TestSimulationObject, self).__init__( name )
 
     def handle_event( self, event_list ):
         super( TestSimulationObject, self).handle_event( event_list )
@@ -210,11 +210,10 @@ class _CellStateMaker(object):
         return "CellState_{:d}".format( _CellStateMaker.id )
      
     @staticmethod
-    def make_CellState( pop, init_flux, debug=False, write_plot_output=False, name=None ):
+    def make_CellState( pop, init_flux, debug=False, name=None ):
         if name is None:
             name = _CellStateMaker.get_name()
         if debug:
-            print("Creating CellState( {}, --population--, debug={}, write_plot_output={} ) ".format(
-                name, debug, write_plot_output ))
+            print("Creating CellState( {}, --population--, debug={} ) ".format( name, debug ))
         ReproducibleRandom.init( seed=123 )
-        return CellState( name, pop, initial_fluxes=init_flux, debug=debug, write_plot_output=write_plot_output )
+        return CellState( name, pop, initial_fluxes=init_flux, debug=debug )

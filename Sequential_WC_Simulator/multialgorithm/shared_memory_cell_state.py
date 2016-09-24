@@ -6,13 +6,16 @@ Created 2016/06/17
 """
 
 # TODO(Arthur): globally, properly name elements that are protected or private within a class
-
+from __future__ import print_function
 import sys
-import logging
 import numpy as np
 from threading import RLock
 
-from Sequential_WC_Simulator.core.logging_config import setup_logger
+# logging
+from Sequential_WC_Simulator.core.config import config_constants
+from log.config.config import ConfigAll
+debugging_logger = ConfigAll.setup_logger( config_constants ).get_logger( 'wc.debug.console' )
+
 from Sequential_WC_Simulator.multialgorithm.utilities import species_compartment_name
 from Sequential_WC_Simulator.core.utilities import dict_2_key_sorted_str
 from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
@@ -37,7 +40,6 @@ class SharedMemoryCellState( object ):
         population: dict: specie_name -> Specie(); the species whose counts are stored,
             represented by Specie objects
         last_access_time: dict: species_name -> last_time; the last time at which the specie was accessed
-        logger_name: string; name of logger for the SharedMemoryCellState
         history: nested dict; an optional history of the cell's state, created if retain_history is set.
             the population history is recorded at each continuous adjustment.
     
@@ -49,8 +51,7 @@ class SharedMemoryCellState( object ):
     # TODO(Arthur): report error if a Specie instance is updated by multiple continuous sub-models
     """
     
-    def __init__( self, model, name, initial_population, initial_fluxes=None, retain_history=False, 
-        debug=False, log=False):
+    def __init__( self, model, name, initial_population, initial_fluxes=None, retain_history=True ):
         """Initialize a SharedMemoryCellState object.
         
         Initialize a SharedMemoryCellState object. Establish its initial population, and set debugging booleans.
@@ -63,9 +64,6 @@ class SharedMemoryCellState( object ):
                 initial fluxes for all species whose populations are estimated by a continuous model
                 fluxes are ignored for species not specified in initial_population
             retain_history: boolean; whether to retain species population history
-            debug: boolean; log debugging output
-            log: boolean; log population dynamics of species
-        # TODO(Arthur): add: write_plot_output: boolean; log output for plotting simulation 
 
         Raises:
             AssertionError: if the population cannot be initialized.
@@ -78,6 +76,9 @@ class SharedMemoryCellState( object ):
         self._population_lock = RLock()   # make accesses to self._population thread-safe
         self.last_access_time = {}
         
+        if retain_history:
+            self._initialize_history()
+        
         try:
             if initial_fluxes is not None:
                 for specie_id in initial_population:
@@ -89,37 +90,14 @@ class SharedMemoryCellState( object ):
         except AssertionError as e:
             sys.stderr.write( "Cannot initialize SharedMemoryCellState: {}.\n".format( e.message ) )
         
-        if retain_history:
-            self._initialize_history()
-        
-        self.logger_name = "SharedMemoryCellState_{}".format( name )
-        if debug:
-            # make a logger for this SharedMemoryCellState
-            # TODO(Arthur): eventually control logging when creating SimulationObjects, and pass in the logger
-            setup_logger( self.logger_name, level=logging.DEBUG )
-            mylog = logging.getLogger(self.logger_name)
-            # write initialization data
-            mylog.debug( "initial_population: {}".format( dict_2_key_sorted_str(initial_population) ) )
-            mylog.debug( "initial_fluxes: {}".format( dict_2_key_sorted_str(initial_fluxes) ) )
-            mylog.debug( "debug: {}".format( str(debug) ) )
-            mylog.debug( "log: {}".format( str(log) ) )
-
-        # if log, make a logger for each specie
-        my_level = logging.NOTSET
-        if log:
-            my_level = logging.DEBUG
-            for specie_name in initial_population:
-                setup_logger(specie_name, level=my_level )
-                log = logging.getLogger(specie_name)
-                # write log header
-                log.debug( '\t'.join( 'Sim_time Adjustment_type New_population New_flux'.split() ) )
-                # log initial state
-                self.log_event( 'initial_state', self._population[specie_name] )
+        # write initialization data
+        debugging_logger.debug( "initial_population: {}".format( dict_2_key_sorted_str(initial_population) ) )
+        debugging_logger.debug( "initial_fluxes: {}".format( dict_2_key_sorted_str(initial_fluxes) ) )
 
     def init_cell_state_specie( self, specie_name, population, initial_flux_given=None ):
         """Initialize a specie with the given population and flux.
         
-        The specie's population is set at the current time.
+        Add a specie to the cell state. The specie's population is set at the current time.
         
         Args:
             specie: string; a unique specie name
@@ -135,6 +113,7 @@ class SharedMemoryCellState( object ):
         with self._population_lock:
             self._population[specie_name] = Specie( specie_name, population, initial_flux=initial_flux_given )
         self.last_access_time[specie_name] = self.time
+        self._add_to_history(specie_name)
 
     def _initialize_history(self):
         """Initialize the population history with current population."""
@@ -143,9 +122,12 @@ class SharedMemoryCellState( object ):
         # the value of self._history['population'][specie_id] is a list of 
         # the population of specie_id at the times history is recorded
         self._history['population'] = { }    
-        # lock because iterator dict.keys() isn't atomic in python 3+
-        with self._population_lock:
-            for specie_id, population in self.read( self.time, list(self._population.keys()) ).items():
+        
+    def _add_to_history(self, specie_id):
+        """Add a specie to the history."""
+        if self._recording_history():
+            with self._population_lock:
+                population = self.read( self.time, [specie_id] )[specie_id]
                 self._history['population'][specie_id] = [population]
         
     def _recording_history(self):
@@ -263,6 +245,8 @@ class SharedMemoryCellState( object ):
         for specie_name in species:
             self.last_access_time[specie_name] = time
 
+    # TODO(Arthur): IMPORTANT; create read_one (or read_list) to avoid cumbersome reading 
+    # of one specie
     # TODO(Arthur): IMPORTANT; add optional use_interpolation, so we can compare with and wo
     # interpolation
     def read( self, time, species ):
@@ -333,7 +317,7 @@ class SharedMemoryCellState( object ):
                 # when initial values get debugged
                 # raise ValueError( "Error: on specie {}: {}".format( specie, e ) )
                 e = str(e).strip()
-                logging.getLogger(self.logger_name).debug( "Error: on specie {}: {}".format( specie, e ) )
+                debugging_logger.error( "Error: on specie {}: {}".format( specie, e ) )
 
             self.log_event( 'continuous_adjustment', self._population[specie] )
 
@@ -347,7 +331,6 @@ class SharedMemoryCellState( object ):
             event_type: string; description of the event's type
             specie: Specie object; the object whose adjustment is being logged
         """
-        log = logging.getLogger( specie.specie_name )
         try:
             flux = specie.continuous_flux
         except AttributeError:
@@ -355,4 +338,4 @@ class SharedMemoryCellState( object ):
         values = [ self.time, event_type, specie.last_population, flux ]
         values = map( lambda x: str(x), values )
         # log Sim_time Adjustment_type New_population New_flux
-        log.debug( '\t'.join( values ) )
+        debugging_logger.debug( '\t'.join( values ), local_call_depth=1 )

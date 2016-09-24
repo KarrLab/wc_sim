@@ -16,7 +16,7 @@ class Testsimple_SSA_submodel(unittest.TestCase):
 
         # TODO(Arthur): use assert for testing; stop printing
         ssa1 = simple_SSA_submodel( 'name1' )
-        ssa2 = simple_SSA_submodel( 'name2', debug=True, write_plot_output=True )
+        ssa2 = simple_SSA_submodel( 'name2', debug=True )
         
         usr1 = UniversalSenderReceiverSimulationObject( 'usr1' )
         usr1.send_event( 1, ssa2, GivePopulation, 

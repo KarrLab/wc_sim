@@ -7,7 +7,7 @@ Created 2016/07/19
 import sys
 import logging
 
-from Sequential_WC_Simulator.core.logging_config import setup_logger
+from Sequential_WC_Simulator.core.logging_config import setup_logger_old
 from Sequential_WC_Simulator.core.simulation_object import (EventQueue, SimulationObject)
 from Sequential_WC_Simulator.core.utilities import compare_name_with_class, dict_2_key_sorted_str
 from Sequential_WC_Simulator.core.simulation_engine import MessageTypesRegistry
@@ -56,8 +56,7 @@ class CellState( SimulationObject ):
 
     MessageTypesRegistry.set_receiver_priorities( 'CellState', MESSAGE_TYPES_BY_PRIORITY )
 
-    def __init__( self, name, initial_population, initial_fluxes=None, 
-        debug=False, write_plot_output=False, log=False):
+    def __init__( self, name, initial_population, initial_fluxes=None, debug=False, log=False):
         """Initialize a CellState object.
         
         Initialize a CellState object. Establish its initial population, and set debugging booleans.
@@ -72,13 +71,12 @@ class CellState( SimulationObject ):
                 initial fluxes for all species whose populations are estimated by a continuous model
                 fluxes are ignored for species not specified in initial_population
             debug: boolean; log debugging output
-            write_plot_output: boolean; log output for plotting simulation 
             log: boolean; log population dynamics of species
 
         Raises:
             AssertionError: if the population cannot be initialized.
         """
-        super( CellState, self ).__init__( name, plot_output=write_plot_output )
+        super( CellState, self ).__init__( name )
 
         self.population = {}
         try:
@@ -95,13 +93,12 @@ class CellState( SimulationObject ):
         if debug:
             # make a logger for this CellState
             # TODO(Arthur): eventually control logging when creating SimulationObjects, and pass in the logger
-            setup_logger( self.logger_name, level=logging.DEBUG )
+            setup_logger_old( self.logger_name, level=logging.DEBUG )
             mylog = logging.getLogger(self.logger_name)
 
             # write initialization data
             mylog.debug( "initial_population: {}".format( dict_2_key_sorted_str( initial_population ) ) )
             mylog.debug( "initial_fluxes: {}".format( dict_2_key_sorted_str( initial_fluxes )  ) )
-            mylog.debug( "write_plot_output: {}".format( str(write_plot_output) ) )
             mylog.debug( "debug: {}".format( str(debug) ) )
             mylog.debug( "log: {}".format( str(log) ) )
 
@@ -110,7 +107,7 @@ class CellState( SimulationObject ):
         if log:
             my_level = logging.DEBUG
         for specie_name in initial_population:
-            setup_logger(specie_name, level=my_level )
+            setup_logger_old(specie_name, level=my_level )
             log = logging.getLogger(specie_name)
             # write log header
             log.debug( '\t'.join( 'Sim_time Adjustment_type New_population New_flux'.split() ) )

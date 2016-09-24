@@ -4,7 +4,7 @@
 '''
 
 from Sequential_WC_Simulator.core.utilities import StochasticRound, ReproducibleRandom
-from Sequential_WC_Simulator.core.config import SimulatorConfig
+from Sequential_WC_Simulator.core.config.config import SimulatorConfig
 from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
 
 class Specie(object):

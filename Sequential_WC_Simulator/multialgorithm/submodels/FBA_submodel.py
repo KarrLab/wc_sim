@@ -18,7 +18,7 @@ with warnings.catch_warnings():
     from cobra import Reaction as CobraReaction
 
 from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
-from Sequential_WC_Simulator.core.logging_config import setup_logger
+from Sequential_WC_Simulator.core.logging_config import setup_logger_old
 from Sequential_WC_Simulator.core.simulation_object import (EventQueue, SimulationObject)
 from Sequential_WC_Simulator.core.simulation_engine import MessageTypesRegistry
 from Sequential_WC_Simulator.core.utilities import N_AVOGADRO, compare_name_with_class, dict_2_key_sorted_str
@@ -72,7 +72,7 @@ class FbaSubmodel(Submodel):
     # COMMENT(Arthur): I want to understand this better.
     
     def __init__(self, model, name, id, private_cell_state, shared_cell_states, 
-        reactions, species, time_step, debug=False, write_plot_output=False ):        
+        reactions, species, time_step, debug=False ):        
         """Initialize a FbaSubmodel object.
         
         # TODO(Arthur): expand description
@@ -81,10 +81,9 @@ class FbaSubmodel(Submodel):
             See pydocs of super classes.
             time_step: float; time between FBA executions
             debug: boolean; log debugging output
-            write_plot_output: boolean; log output for plotting simulation; simply passed to SimulationObject
         """
         Submodel.__init__( self, model, name, id, private_cell_state, shared_cell_states,
-            reactions, species, debug=debug, write_plot_output=write_plot_output )
+            reactions, species, debug=debug )
 
         self.algorithm = 'FBA'
         self.time_step = time_step
@@ -93,7 +92,7 @@ class FbaSubmodel(Submodel):
         if debug:
             # make a logger
             # TODO(Arthur): eventually control logging when creating SimulationObjects, and pass in the logger
-            setup_logger( self.logger_name, level=logging.DEBUG )
+            setup_logger_old( self.logger_name, level=logging.DEBUG )
             mylog = logging.getLogger(self.logger_name)
             # log initialization data
             mylog.debug( "init: name: {}".format( name ) )

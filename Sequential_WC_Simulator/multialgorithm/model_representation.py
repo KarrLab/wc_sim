@@ -19,7 +19,7 @@ with warnings.catch_warnings():
     from cobra import Model as CobraModel
     from cobra import Reaction as CobraReaction
 
-from Sequential_WC_Simulator.core.logging_config import setup_logger
+from Sequential_WC_Simulator.core.logging_config import setup_logger_old
 from Sequential_WC_Simulator.core.utilities import N_AVOGADRO
 from Sequential_WC_Simulator.multialgorithm.utilities import species_compartment_name
 from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
@@ -52,21 +52,22 @@ class Model(object):
     # TODO(Arthur): expand this attribute documentation
     """
     
-    def __init__(self, submodels = [], compartments = [], species = [], reactions = [], parameters = [], 
-        references = [], debug=False ):
+    def __init__(self, submodels = None, compartments = None, species = None, reactions = None, 
+        parameters = None, references = None, debug=False ):
         self.name = 'temp_name'         # TODO(Arthur): get real name
-        self.submodels = submodels
-        self.compartments = compartments
-        self.species = species
-        self.reactions = reactions
-        self.parameters = parameters
-        self.references = references       
+        # this approach to handling mutable types as default parameter values is presented
+        # in https://docs.python.org/3.5/reference/compound_stmts.html#function-definitions
+        for param in 'submodels compartments species reactions parameters references'.split():
+            if eval( param + " is None"):
+                setattr(self, param, [])
+            else:
+                setattr(self, param, eval(param))
         self.logger_name = "Model"
         self.debug = debug
         if debug:
             # make a logger for this Model
             # TODO(Arthur): eventually control logging more comprehensively in LoggingConfig
-            setup_logger( self.logger_name, level=logging.DEBUG )
+            setup_logger_old( self.logger_name, level=logging.DEBUG )
             mylog = logging.getLogger(self.logger_name)
             # write initialization data
             mylog.debug( "init: species: {}".format( str([str(s.name) for s in species]) ) )
@@ -98,7 +99,7 @@ class Model(object):
         
         #species counts
         self.the_SharedMemoryCellState = SharedMemoryCellState( self, "CellState", {}, 
-            retain_history=True, debug=self.debug )
+            retain_history=True )
         for species in self.species:
             for conc in species.concentrations:
                 # initializing all fluxes to 0 so that continuous adjustments can be made
@@ -328,7 +329,7 @@ class Species(object):
     """
     
     def __init__(self, id = '', name = '', structure = '', empiricalFormula = '', molecularWeight = None, 
-        charge = None, type = '', concentrations = [], crossRefs = [], comments = ''):
+        charge = None, type = '', concentrations = None, crossRefs = None, comments = ''):
         
         self.id = id    
         self.name = name
@@ -337,7 +338,11 @@ class Species(object):
         self.molecularWeight = molecularWeight
         self.charge = charge
         self.type = type
+        if concentrations is None:
+            concentrations = []
         self.concentrations = concentrations
+        if crossRefs is None:
+            crossRefs = []
         self.crossRefs = crossRefs
         
     def containsCarbon(self):
@@ -366,8 +371,8 @@ class Reaction(object):
     """
 
     # COMMENT(Arthur): for debugging would be nice to retain the initial reaction text
-    def __init__(self, id = '', name = '', submodel_spec = None, reversible = None, participants = [], 
-        enzyme = '', rateLaw = '', vmax = None, km = None, crossRefs = [], comments = ''):
+    def __init__(self, id = '', name = '', submodel_spec = None, reversible = None, participants = None, 
+        enzyme = '', rateLaw = '', vmax = None, km = None, crossRefs = None, comments = ''):
         
         if vmax:
             vmax = float(vmax)
@@ -378,11 +383,15 @@ class Reaction(object):
         self.name = name
         self.submodel_spec = submodel_spec
         self.reversible = reversible
+        if participants is None:
+            participants = []
         self.participants = participants
         self.enzyme = enzyme
         self.rateLaw = rateLaw
         self.vmax = vmax
         self.km = km
+        if crossRefs is None:
+            crossRefs = []
         self.crossRefs = crossRefs
         self.comments = comments
         
@@ -458,14 +467,16 @@ class Reference(object):
         index = None
         id = ''
         name = ''
-        crossRefs = []
+        crossRefs = None
         comments = ''
     # TODO(Arthur): expand this attribute documentation
     """
     
-    def __init__(self, id = '', name = '', crossRefs = [], comments = ''):
+    def __init__(self, id = '', name = '', crossRefs = None, comments = ''):
         self.id = id
         self.name = name
+        if crossRefs is None:
+            crossRefs = []
         self.crossRefs = crossRefs
         self.comments = comments
 
@@ -543,9 +554,22 @@ class ReactionParticipant(object):
         self.name = '{0} ({1})'.format(self.species.name, self.compartment.name)
         
     def __str__(self):
-        return "specie: {}; compartment: {}; coefficient: {}".format( 
-            self.species.id, self.compartment.id, self.coefficient )
+        """Provide a string representation of this ReactionParticipant.
+        
+        ReactionParticipant is a strange class, as attributes species and compartment have
+        different types ast different times. Hence, the unusual type checking in this method.
+        """
 
+        if (isinstance(self.species, str) and isinstance(self.compartment, str) and 
+            isinstance(self.coefficient, float) ):
+            return "ReactionParticipant of strings: specie: {}; compartment: {}; coefficient: {:6.3f}".format( 
+                self.species, self.compartment, self.coefficient )
+        if (isinstance(self.species, Species) and isinstance(self.compartment, Compartment) and 
+            isinstance(self.coefficient, float) ):
+            return "ReactionParticipant of objects: specie: {}; compartment: {}; coefficient: {:6.3f}".format( 
+                self.species.id, self.compartment.id, self.coefficient )
+        raise ValueError("ReactionParticipant not properly instantiated.".format())
+                
 #Represents a rate law
 class RateLaw(object):
     """Specification for a RateLaw, obtained from the model spec.

@@ -1,13 +1,14 @@
 from __future__ import print_function
 
-import warnings
-import logging
-logger = logging.getLogger(__name__)
-# control logging level with: logger.setLevel()
-# this enables debug output: logging.basicConfig( level=logging.DEBUG )
+import datetime
+
+# configure logging
+from .config import config_constants
+from log.config.config import ConfigAll
+debug_log = ConfigAll.setup_logger( config_constants )
 
 from Sequential_WC_Simulator.core.event import Event
-from Sequential_WC_Simulator.core.config import SimulatorConfig
+from Sequential_WC_Simulator.core.config.config import SimulatorConfig
 
 """
 General-purpose simulation mechanisms, including the event queue for each simulation object and
@@ -61,7 +62,8 @@ class SimulationEngine(object):
 
     time=0.0
     simulation_objects={}
-
+    
+    debugging_logger = debug_log.get_logger( 'wc.debug.file' )
 
     @staticmethod
     def add_object( name, simulation_object ):
@@ -91,28 +93,31 @@ class SimulationEngine(object):
 
     @staticmethod
     def message_queues( ):
-        """Print all message queues in the simulation.
+        """Return a string listing all message queues in the simulation.
         """
-        print( 'Event queues at {:6.3f}'.format( SimulationEngine.time ) )
+        data = ['Event queues at {:6.3f}'.format( SimulationEngine.time )]
         for sim_obj in SimulationEngine.simulation_objects.values():
-            print( sim_obj.name + ':' )
+            data.append( sim_obj.name + ':' )
             if sim_obj.event_queue.event_heap:
-                print( Event.header() )
-                print( sim_obj.event_queue )
+                data.append( Event.header() )
+                data.append( str( sim_obj.event_queue ) )
             else:
-                print( 'Empty event queue' )
-            print(  )
+                data.append( 'Empty event queue' )
+            data.append( '' )
+        return '\n'.join(data)
 
     @staticmethod
     def print_simulation_state( ):
 
-        logger.debug( ' ' + '\t'.join( ['Sender', 'Message types sent'] ) )
+        SimulationEngine.debugging_logger.debug( ' ' + '\t'.join( ['Sender', 'Message types sent'] ) )
         for sender in MessageTypesRegistry.senders:
-            logger.debug( ' ' + sender + '\t' + ', '.join( MessageTypesRegistry.senders[sender] ) )
+            SimulationEngine.debugging_logger.debug( ' ' + sender + '\t' + 
+                ', '.join( MessageTypesRegistry.senders[sender] ) )
 
-        logger.debug( ' ' + '\t'.join( ['Receiver', 'Message types by priority'] ) )
+        SimulationEngine.debugging_logger.debug( ' ' + '\t'.join( ['Receiver', 'Message types by priority'] ) )
         for receiver in MessageTypesRegistry.receiver_priorities:
-            logger.debug( ' ' + sender + '\t' + ', '.join( MessageTypesRegistry.receiver_priorities[receiver] ) )
+            SimulationEngine.debugging_logger.debug( ' ' + sender + '\t' + 
+                ', '.join( MessageTypesRegistry.receiver_priorities[receiver] ) )
 
     @staticmethod
     def simulate( end_time, debug=False ):
@@ -130,12 +135,15 @@ class SimulationEngine(object):
         if debug:
             SimulationEngine.print_simulation_state()
         
+        # write header to a plot log
+        # plot logging is controlled by configuration files pointed to by config_constants and by env vars
+        plotting_logger = debug_log.get_logger( 'wc.plot.file' )
+        plotting_logger.debug( '# {:%Y-%m-%d %H:%M:%S}'.format(datetime.datetime.now()) )
+
         handle_event_invocations = 0
-        logger.debug( ' ' + "\t".join( 'Time Object_type Object_name'.split() ) )
+        SimulationEngine.debugging_logger.debug( ' ' + "\t".join( 'Time Object_type Object_name'.split() ) )
         while SimulationEngine.time <= end_time:
         
-            # SimulationEngine.message_queues()
-            
             # get the earliest next event in the simulation
             next_time = float('inf')
             for sim_obj in SimulationEngine.simulation_objects.values():
@@ -145,15 +153,16 @@ class SimulationEngine(object):
                     next_sim_obj = sim_obj
                     
             if float('inf') == next_time:
-                logger.debug( " No events remain" )
+                SimulationEngine.debugging_logger.debug( " No events remain" )
                 break
                 
             if end_time < next_time:
-                logger.debug( " End time exceeded" )
+                SimulationEngine.debugging_logger.debug( " End time exceeded" )
                 break
                 
             handle_event_invocations += 1
-            logger.debug( " %f\t%s\t%s" , next_time, next_sim_obj.__class__.__name__, next_sim_obj.name )
+            SimulationEngine.debugging_logger.debug( " {:6.2f}\t{}\t{}".format( next_time, 
+                next_sim_obj.__class__.__name__, next_sim_obj.name ) )
             
             # TODO(Arthur): IMPORTANT: test situation when multiple objects have events at minimum simulation time
             # dispatch object that's ready to execute next event

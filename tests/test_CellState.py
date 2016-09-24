@@ -93,7 +93,6 @@ class TestCellState(unittest.TestCase):
 
         text_in_log_CellState_CellState_2_by_line = '''.*initial_population: {'s\d': \d\d, 's\d': \d\d, 's\d': \d\d}
 .*initial_fluxes: {'s\d': 0, 's\d': 0, 's\d': 0}
-.*write_plot_output: False
 .*#debug: True
 .*log: False
 .*CellState_2 at 1.000
@@ -150,8 +149,7 @@ class _CellStateMaker(object):
     fluxes = dict( zip( species, [0] * len(species) ) )
 
     @staticmethod
-    def make_CellState( my_pop, my_fluxes, debug=False, write_plot_output=False, name=None, log=False ):
+    def make_CellState( my_pop, my_fluxes, debug=False, name=None, log=False ):
         if not name:
             name = _CellStateMaker.get_name()
-        return CellState( name, my_pop, initial_fluxes=my_fluxes, debug=debug, 
-            write_plot_output=write_plot_output, log=log ) 
+        return CellState( name, my_pop, initial_fluxes=my_fluxes, debug=debug, log=log ) 

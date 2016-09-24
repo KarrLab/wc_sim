@@ -17,7 +17,7 @@ import re
 
 import Sequential_WC_Simulator.core.utilities
 from Sequential_WC_Simulator.core.simulation_object import SimulationObject
-from Sequential_WC_Simulator.core.logging_config import setup_logger
+from Sequential_WC_Simulator.core.logging_config import setup_logger_old
 from Sequential_WC_Simulator.core.utilities import N_AVOGADRO
 from Sequential_WC_Simulator.multialgorithm.utilities import species_compartment_name
 from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
@@ -36,7 +36,7 @@ class Submodel(SimulationObject):
     """
     
     def __init__(self, model, name, id, private_cell_state, shared_cell_states,
-        reactions, species, debug=False, write_plot_output=False):
+        reactions, species, debug=False ):
         """Initialize a submodel.
 
         Args:
@@ -49,7 +49,6 @@ class Submodel(SimulationObject):
                 the species that are collectively modeled by this Submodel and other Submodel instances.
             reactions: list; reactions modeled by this submodel
             species: list; species that participate in the reactions modeled by this submodel
-            plot_output: boolean; produce output for plotting
         """
         self.model = model  # the model which this Submodel belongs to
         self.name = name
@@ -58,13 +57,13 @@ class Submodel(SimulationObject):
         self.shared_cell_states = shared_cell_states
         self.reactions = reactions
         self.species = species
-        SimulationObject.__init__( self, name, plot_output=write_plot_output )
+        SimulationObject.__init__( self, name )
 
         self.Submodel_logger_name = "Submodel {}".format( name )
         if debug:
             # make a logger for this Submodel
             # TODO(Arthur): eventually control logging centrally
-            setup_logger( self.Submodel_logger_name, level=logging.DEBUG )
+            setup_logger_old( self.Submodel_logger_name, level=logging.DEBUG )
             mylog = logging.getLogger(self.Submodel_logger_name)
             # write initialization data
             mylog.debug( "name: {}".format( name ) )

@@ -10,15 +10,15 @@ Created 2016/06/01
 from copy import deepcopy
 import heapq
 import warnings
-# TODO(Arthur): remove old logging commands & comments; use new loggers
-import logging
-logger = logging.getLogger(__name__)
-# control logging level with: logger.setLevel()
-# this enables debug output: logging.basicConfig( level=logging.DEBUG )
+
+# logging
+from .config import config_constants
+from log.config.config import ConfigAll
+debug_log = ConfigAll.setup_logger( config_constants )
 
 from Sequential_WC_Simulator.core.event import Event
 from Sequential_WC_Simulator.core.simulation_engine import (SimulationEngine, MessageTypesRegistry)
-from Sequential_WC_Simulator.core.config import SimulatorConfig
+from Sequential_WC_Simulator.core.config.config import SimulatorConfig
 
 class EventQueue(object):
     """A simulation object's event queue.
@@ -61,9 +61,6 @@ class EventQueue(object):
                 str( receive_time ), str( send_time ) ) )
             
         event = Event( send_time, receive_time, sending_object, receiving_object, event_type, event_body )
-        """
-        # TODO(Arthur): optionally log the scheduling of an event
-        """
         heapq.heappush( self.event_heap, ( receive_time, event ) )
     
     def next_event_time( self ):
@@ -125,24 +122,19 @@ class SimulationObject(object):
         name: A string with the simulation object's name.
         time: A float containing the simulation object's current simulation time.
         event_queue: The object's EventQueue.
-        plot_output: A boolean, indicating whether to print events, formatted for later plotting
         num_events: int; number of events processed
-        # TODO(Arthur): use Python logging for printing the event_queue
-        # TODO(Arthur): important: in general, replace print statements with logging
     """
 
-    def __init__( self, name, plot_output=False):
+    def __init__( self, name ):
         """Initialize a SimulationObject. 
         
         Create its event queue, initialize its name, and set its start time to 0.
         
         Args:
             name: string; the object's unique name, used as a key in the dict of objects
-            plot_output: boolean; if true, print a line for each executed event, suitable for plotting
         """
         self.event_queue = EventQueue()
         self.name = name
-        self.plot_output = plot_output
         self.time = 0.0
         self.num_events = 0
         self.register()
@@ -196,8 +188,9 @@ class SimulationObject(object):
         
         receiving_object.event_queue.schedule_event( self.time, self.time + delay, self,
             receiving_object, event_type_name, event_body )
-        logger.debug( ": (%s, %f) -> (%s, %f): %s" , self.name, self.time, receiving_object.name, self.time + delay, 
-            event_type )
+        debug_log.get_logger( 'wc.debug.file' ).debug(
+            ": ({}, {:6.2f}) -> ({}, {:6.2f}): {}".format( self.name, self.time, receiving_object.name, 
+            self.time + delay, event_type ) )
         
 
     def handle_event( self, event_list ):
@@ -230,11 +223,11 @@ class SimulationObject(object):
             key=lambda event:
             MessageTypesRegistry.receiver_priorities[ self.__class__.__name__ ].index( event.event_type ) )
 
-        # TODO(Arthur): write this to a plot input log
-        # print events for plotting by plotSpaceTimeDiagram.py
-        if self.plot_output:
-            for event in event_list:
-                print( event )
+        # write events to a plot log, for plotting by plotSpaceTimeDiagram.py
+        # plot logging is controlled by configuration files pointed to by config_constants and by env vars
+        logger = debug_log.get_logger( 'wc.plot.file' )
+        for event in event_list:
+            logger.debug( str( event ) )
 
     def print_event_queue( self ):
         print(  )

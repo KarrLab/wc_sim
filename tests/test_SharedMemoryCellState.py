@@ -18,10 +18,9 @@ class TestSharedMemoryCellState(unittest.TestCase):
         self.flux = 1
         init_fluxes = dict( zip( species, [self.flux]*len(species) ) )
         self.init_fluxes = init_fluxes
-        self.a_SM_CellState = SharedMemoryCellState( None, 'test', init_populations, initial_fluxes=init_fluxes,
-            debug=False, log=False)
-        self.a_SM_CellState_no_init_flux = SharedMemoryCellState( None, 'test', init_populations, 
-            debug=False, log=False)
+        self.a_SM_CellState = SharedMemoryCellState( None, 'test', init_populations, 
+            initial_fluxes=init_fluxes )
+        self.a_SM_CellState_no_init_flux = SharedMemoryCellState( None, 'test', init_populations )
 
     def reusable_assertions(self, the_SM_CellState, flux ):
         # test both discrete and hybrid species
@@ -52,7 +51,7 @@ class TestSharedMemoryCellState(unittest.TestCase):
             self.reusable_assertions( SM_CellState, flux )
             
     def test_init(self):
-        a_SM_CellState = SharedMemoryCellState( None, 'test', {} )
+        a_SM_CellState = SharedMemoryCellState( None, 'test', {}, retain_history=False )
         a_SM_CellState.init_cell_state_specie( 's1', 2 )
         self.assertEqual( a_SM_CellState.read( 0, ['s1'] ),  {'s1': 2} )
         with self.assertRaises(ValueError) as context:
@@ -68,10 +67,7 @@ class TestSharedMemoryCellState(unittest.TestCase):
     def test_history(self):
         """Test population history."""
         a_SM_CellState_recording_history = SharedMemoryCellState( None, 'test', 
-            self.init_populations,
-            None,
-            retain_history=True,
-            debug=False, log=False)
+            self.init_populations, None, retain_history=True )
         self.assertTrue( a_SM_CellState_recording_history._recording_history() )
         next_time = 1
         first_specie = self.species[0]

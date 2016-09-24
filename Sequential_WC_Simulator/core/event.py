@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-from Sequential_WC_Simulator.core.config import SimulatorConfig
+from Sequential_WC_Simulator.core.config.config import SimulatorConfig
 
 """
 Simulation event structure

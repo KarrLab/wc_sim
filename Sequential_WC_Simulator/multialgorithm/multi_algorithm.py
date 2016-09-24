@@ -18,6 +18,7 @@ Created 2016/07/14
 
 # TODO(Arthur): provide 'returns' documentation for all return operations
 # TODO(Arthur): rename Seq_DES_WC_simulator
+# TODO(Arthur): convert 'printing =' to logging statements
 
 
 import sys
@@ -26,8 +27,8 @@ import argparse
 import warnings
 import errno
 
-from Sequential_WC_Simulator.core.config import SimulatorConfig
-from Sequential_WC_Simulator.core.logging_config import setup_logger
+from Sequential_WC_Simulator.core.config.config import SimulatorConfig
+from Sequential_WC_Simulator.core.logging_config import setup_logger_old
 from Sequential_WC_Simulator.core.utilities import ReproducibleRandom
 from Sequential_WC_Simulator.core.simulation_object import EventQueue, SimulationObject
 from Sequential_WC_Simulator.core.simulation_engine import SimulationEngine, MessageTypesRegistry
@@ -62,8 +63,6 @@ class MultiAlgorithm( object ):
 
         output_options = parser.add_mutually_exclusive_group()
         output_options.add_argument( '--debug', '-d', action='store_true', help='Print debug output' )
-        output_options.add_argument( '--plot', '-p', action='store_true', 
-            help='Write plot input for plotSpaceTimeDiagram.py to stdout.' )
         parser.add_argument( '--seed', '-s', type=int, help='Random number seed; if not provided '
             'then reproducibility determined by SimulatorConfig.REPRODUCIBLE_SEED' )
         args = parser.parse_args()
@@ -72,6 +71,7 @@ class MultiAlgorithm( object ):
     @staticmethod
     def main( args ):
 
+        SimulationEngine.reset()
         # setup PRNG
         if args.seed:
             ReproducibleRandom.init( seed=args.seed )
@@ -88,9 +88,10 @@ class MultiAlgorithm( object ):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             # 0. read model description
-            print( "Reading model from '{}'".format( args.model_filename, debug=args.debug ) )
+            printing =  "Reading model from '{}'".format( args.model_filename, debug=args.debug ) 
             the_model = getModelFromExcel( args.model_filename, debug_option=args.debug )
-            print( the_model.summary())
+            printing =  the_model.summary()
+            print(printing)
             
             '''Prepare submodels for computation'''
             the_model.setupSimulation()
@@ -101,13 +102,15 @@ class MultiAlgorithm( object ):
         for submodel_spec in the_model.submodels:
             if submodel_spec.algorithm == 'SSA':
                 if submodel_spec.algorithm in algs_to_run:
-                    print( 'create SSA submodel:', submodel_spec.name, submodel_spec.algorithm )
+                    printing = "create SSA submodel: {} {}".format( submodel_spec.name, 
+                        submodel_spec.algorithm )
                     submodel_spec.the_submodel = simple_SSA_submodel( the_model, submodel_spec.name,
                         submodel_spec.id, None, shared_cell_states, submodel_spec.reactions, 
                         submodel_spec.species, debug=args.debug )
             elif submodel_spec.algorithm == 'FBA':
                 if submodel_spec.algorithm in algs_to_run:
-                    print( 'create FBA submodel:', submodel_spec.name, submodel_spec.algorithm )
+                    printing = "create FBA submodel: {} {}".format( submodel_spec.name, 
+                        submodel_spec.algorithm )
                     submodel_spec.the_submodel = FbaSubmodel( the_model, submodel_spec.name, 
                         submodel_spec.id, None, shared_cell_states, submodel_spec.reactions,
                         submodel_spec.species, args.FBA_time_step, debug=args.debug )
@@ -117,23 +120,24 @@ class MultiAlgorithm( object ):
 
         # 2. run simulation
         if args.end_time:
-            print( "Simulating to: {}".format( args.end_time ) )
+            printing =  "Simulating to: {}".format( args.end_time ) 
             SimulationEngine.simulate( args.end_time )
         else:
-            print( "Simulating to cellCycleLength: {}".format( 
-                the_model.getComponentById('cellCycleLength').value ))
+            printing =  "Simulating to cellCycleLength: {}".format( 
+                the_model.getComponentById('cellCycleLength').value )
             SimulationEngine.simulate( the_model.getComponentById('cellCycleLength').value )
         
+        return the_model
+    
+if __name__ == '__main__':
+    try:
+        args = MultiAlgorithm.parseArgs()
+        theModel = MultiAlgorithm.main( args )
         timeHist, speciesCountsHist = the_model.the_SharedMemoryCellState.report_history(
             numpy_format=True )
         volume = None
         growth = None
         Exercise.analyzeResults(the_model, timeHist, volume, growth, speciesCountsHist)
-    
-if __name__ == '__main__':
-    try:
-        args = MultiAlgorithm.parseArgs()
-        MultiAlgorithm.main( args )
     except KeyboardInterrupt:
         pass
     # do not report IOError: [Errno 32] Broken pipe
