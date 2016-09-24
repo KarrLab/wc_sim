@@ -2,7 +2,7 @@
 A draft modular, mult-algorithmic, discrete event WC simulator.
 
 Model descriptions are read from Excel spreadsheets and instantiated using the model module from
-WcModelingTutorial. 
+WcModelingTutorial.
 
 CellState, SSA and FBA are simulation objects. 
 
@@ -27,7 +27,7 @@ import errno
 # logging
 from Sequential_WC_Simulator.core.config import config_constants
 from log.config.config import ConfigAll
-debugging_logger = ConfigAll.setup_logger( config_constants ).get_logger( 'wc.debug.console' )
+debugging_logger = ConfigAll.setup_logger(config_constants).get_logger('wc.debug.console')
 
 from Sequential_WC_Simulator.core.config.config import SimulatorConfig
 from Sequential_WC_Simulator.core.utilities import ReproducibleRandom
@@ -40,44 +40,47 @@ from Sequential_WC_Simulator.multialgorithm.cell_state import CellState
 from Sequential_WC_Simulator.multialgorithm.submodels.simple_SSA_submodel import simple_SSA_submodel
 from Sequential_WC_Simulator.multialgorithm.submodels.FBA_submodel import FbaSubmodel
 from Sequential_WC_Simulator.multialgorithm.message_types import *
-
 import Sequential_WC_Simulator.multialgorithm.temp.exercise as Exercise
 
-class MultiAlgorithm( object ):
+
+class MultiAlgorithm(object):
     """A modular, mult-algorithmic, discrete event WC simulator.
     """
-    
+
     @staticmethod
-    def parseArgs():
-        parser = argparse.ArgumentParser( description="Run a modular, mult-algorithmic, discrete event WC simulation. " )
-        parser.add_argument( 'model_filename', type=str, help="Excel file containing the model" )
+    def parse_args():
+        parser = argparse.ArgumentParser(
+            description="Run a modular, mult-algorithmic, discrete event WC simulation. ")
+        parser.add_argument('model_filename', type=str, help="Excel file containing the model")
 
-        parser.add_argument( '--end_time', '-e', type=float, help="End time for the simulation (s)" )
+        parser.add_argument('--end_time', '-e', type=float, help="End time for the simulation (s)")
 
-        parser.add_argument( '--output_directory', '-o', type=str, 
-            help="Output directory; default '{}'".format(WC_SimulatorConfig.DEFAULT_OUTPUT_DIRECTORY), 
-            default=WC_SimulatorConfig.DEFAULT_OUTPUT_DIRECTORY )
+        parser.add_argument('--output_directory', '-o', type=str,
+                            help="Output directory; default '{}'".format(
+                                WC_SimulatorConfig.DEFAULT_OUTPUT_DIRECTORY),
+                            default=WC_SimulatorConfig.DEFAULT_OUTPUT_DIRECTORY)
 
-        parser.add_argument( '--FBA_time_step', '-F', type=float, 
-            help="FBA time step in sec; default: '{:3.1f}'".format(WC_SimulatorConfig.DEFAULT_FBA_TIME_STEP), 
-            default=WC_SimulatorConfig.DEFAULT_FBA_TIME_STEP )
+        parser.add_argument('--FBA_time_step', '-F', type=float,
+                            help="FBA time step in sec; default: '{:3.1f}'".format(
+                                WC_SimulatorConfig.DEFAULT_FBA_TIME_STEP),
+                            default=WC_SimulatorConfig.DEFAULT_FBA_TIME_STEP)
 
         output_options = parser.add_mutually_exclusive_group()
-        parser.add_argument( '--seed', '-s', type=int, help='Random number seed; if not provided '
-            'then reproducibility determined by SimulatorConfig.REPRODUCIBLE_SEED' )
+        parser.add_argument('--seed', '-s', type=int, help='Random number seed; if not provided '
+                            'then reproducibility determined by SimulatorConfig.REPRODUCIBLE_SEED')
         args = parser.parse_args()
         return args
-    
+
     @staticmethod
-    def main( args ):
+    def main(args):
 
         SimulationEngine.reset()
         # setup PRNG
         if args.seed:
-            ReproducibleRandom.init( seed=args.seed )
+            ReproducibleRandom.init(seed=args.seed)
         else:
-            ReproducibleRandom.init( seed=SimulatorConfig.REPRODUCIBLE_SEED )
-        
+            ReproducibleRandom.init(seed=SimulatorConfig.REPRODUCIBLE_SEED)
+
         '''
         Steps:
         0. read model description
@@ -88,60 +91,65 @@ class MultiAlgorithm( object ):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             # 0. read model description
-            debugging_logger.info( "Reading model from '{}'".format( args.model_filename ) )
-            the_model = getModelFromExcel( args.model_filename )
-            debugging_logger.debug( the_model.summary() )
-            
+            debugging_logger.info("Reading model from '{}'".format(args.model_filename))
+            the_model = getModelFromExcel(args.model_filename)
+            debugging_logger.debug(the_model.summary())
+
             '''Prepare submodels for computation'''
             the_model.setupSimulation()
-        
+
         # 1. create and configure simulation submodels, including initial events
         algs_to_run = 'FBA SSA'.split()
-        shared_cell_states=[ the_model.the_SharedMemoryCellState ]
+        shared_cell_states = [the_model.the_SharedMemoryCellState]
         for submodel_spec in the_model.submodels:
             if submodel_spec.algorithm == 'SSA':
                 if submodel_spec.algorithm in algs_to_run:
-                    debugging_logger.info( "create SSA submodel: {} {}".format( submodel_spec.name, 
-                        submodel_spec.algorithm ) )
-                    submodel_spec.the_submodel = simple_SSA_submodel( the_model, submodel_spec.name,
-                        submodel_spec.id, None, shared_cell_states, submodel_spec.reactions, 
-                        submodel_spec.species )
+                    debugging_logger.info("create SSA submodel: {} {}".format(submodel_spec.name,
+                                                                              submodel_spec.algorithm))
+                    submodel_spec.the_submodel = simple_SSA_submodel(the_model, submodel_spec.name,
+                                                                     submodel_spec.id, None, 
+                                                                     shared_cell_states, 
+                                                                     submodel_spec.reactions,
+                                                                     submodel_spec.species)
             elif submodel_spec.algorithm == 'FBA':
                 if submodel_spec.algorithm in algs_to_run:
-                    debugging_logger.info( "create FBA submodel: {} {}".format( submodel_spec.name, 
-                        submodel_spec.algorithm ) )
-                    submodel_spec.the_submodel = FbaSubmodel( the_model, submodel_spec.name, 
-                        submodel_spec.id, None, shared_cell_states, submodel_spec.reactions,
-                        submodel_spec.species, args.FBA_time_step )
+                    debugging_logger.info("create FBA submodel: {} {}".format(submodel_spec.name,
+                                                                              submodel_spec.algorithm))
+                    submodel_spec.the_submodel = FbaSubmodel(the_model, submodel_spec.name,
+                                                             submodel_spec.id, None, 
+                                                             shared_cell_states, 
+                                                             submodel_spec.reactions,
+                                                             submodel_spec.species, 
+                                                             args.FBA_time_step)
             else:
                 raise Exception("Undefined algorithm '{}' for submodel '{}'".format(
-                    submodel_spec.algorithm, submodel_spec.name ) )
+                    submodel_spec.algorithm, submodel_spec.name))
 
         # 2. run simulation
         if args.end_time:
-            debugging_logger.info( "Simulating to: {}".format( args.end_time ) )
-            SimulationEngine.simulate( args.end_time )
+            debugging_logger.info("Simulating to: {}".format(args.end_time))
+            SimulationEngine.simulate(args.end_time)
         else:
-            debugging_logger.info( "Simulating to cellCycleLength: {}".format( 
-                the_model.getComponentById('cellCycleLength').value ) )
-            SimulationEngine.simulate( the_model.getComponentById('cellCycleLength').value )
-        
+            debugging_logger.info("Simulating to cellCycleLength: {}".format(
+                the_model.getComponentById('cellCycleLength').value))
+            SimulationEngine.simulate(the_model.getComponentById('cellCycleLength').value)
+
         return the_model
-    
+
 if __name__ == '__main__':
     try:
-        args = MultiAlgorithm.parseArgs()
-        the_model = MultiAlgorithm.main( args )
-        timeHist, speciesCountsHist = the_model.the_SharedMemoryCellState.report_history(
-            numpy_format=True )
+        args = MultiAlgorithm.parse_args()
+        the_model = MultiAlgorithm.main(args)
+        time_hist, species_counts_hist = the_model.the_SharedMemoryCellState.report_history(
+            numpy_format=True)
         volume = None
         growth = None
-        Exercise.analyzeResults(the_model, timeHist, volume, growth, speciesCountsHist)
+        Exercise.analyzeResults(the_model, time_hist, volume, growth, species_counts_hist)
     except KeyboardInterrupt:
         pass
     # do not report IOError: [Errno 32] Broken pipe
     except IOError as e:
         if isinstance(e.args, tuple):
             if e[0] != errno.EPIPE:
-               # determine and handle different error
-               raise Exception( e )
+                # determine and handle different error
+                raise Exception(e)
