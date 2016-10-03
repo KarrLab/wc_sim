@@ -24,6 +24,7 @@ from Sequential_WC_Simulator.core.utilities import N_AVOGADRO
 from Sequential_WC_Simulator.multialgorithm.utilities import species_compartment_name
 from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
 from Sequential_WC_Simulator.multialgorithm.shared_memory_cell_state import SharedMemoryCellState
+from wc_utilities.util.decorate_default_data_struct import default_mutable_params
 
 class Model(object):
     """Model represents all the data in a whole-cell model.
@@ -328,8 +329,9 @@ class Species(object):
     # TODO(Arthur): expand this attribute documentation
     """
     
+    @default_mutable_params( ['concentrations_list', 'crossRefs_list'] )
     def __init__(self, id = '', name = '', structure = '', empiricalFormula = '', molecularWeight = None, 
-        charge = None, type = '', concentrations = None, crossRefs = None, comments = ''):
+        charge = None, type = '', concentrations_list = None, crossRefs_list = None, comments = ''):
         
         self.id = id    
         self.name = name
@@ -338,12 +340,8 @@ class Species(object):
         self.molecularWeight = molecularWeight
         self.charge = charge
         self.type = type
-        if concentrations is None:
-            concentrations = []
-        self.concentrations = concentrations
-        if crossRefs is None:
-            crossRefs = []
-        self.crossRefs = crossRefs
+        self.concentrations = concentrations_list
+        self.crossRefs = crossRefs_list
         
     def containsCarbon(self):
         if self.empiricalFormula:
@@ -371,8 +369,9 @@ class Reaction(object):
     """
 
     # COMMENT(Arthur): for debugging would be nice to retain the initial reaction text
-    def __init__(self, id = '', name = '', submodel_spec = None, reversible = None, participants = None, 
-        enzyme = '', rateLaw = '', vmax = None, km = None, crossRefs = None, comments = ''):
+    @default_mutable_params( ['participants_list', 'crossRefs_list'] )
+    def __init__(self, id = '', name = '', submodel_spec = None, reversible = None, participants_list = None, 
+        enzyme = '', rateLaw = '', vmax = None, km = None, crossRefs_list = None, comments = ''):
         
         if vmax:
             vmax = float(vmax)
@@ -383,16 +382,12 @@ class Reaction(object):
         self.name = name
         self.submodel_spec = submodel_spec
         self.reversible = reversible
-        if participants is None:
-            participants = []
-        self.participants = participants
+        self.participants = participants_list
         self.enzyme = enzyme
         self.rateLaw = rateLaw
         self.vmax = vmax
         self.km = km
-        if crossRefs is None:
-            crossRefs = []
-        self.crossRefs = crossRefs
+        self.crossRefs = crossRefs_list
         self.comments = comments
         
     #convert rate law to python        
@@ -472,12 +467,11 @@ class Reference(object):
     # TODO(Arthur): expand this attribute documentation
     """
     
-    def __init__(self, id = '', name = '', crossRefs = None, comments = ''):
+    @default_mutable_params( ['crossRefs_list'] )
+    def __init__(self, id = '', name = '', crossRefs_list = None, comments = ''):
         self.id = id
         self.name = name
-        if crossRefs is None:
-            crossRefs = []
-        self.crossRefs = crossRefs
+        self.crossRefs = crossRefs_list
         self.comments = comments
 
 #Represents a concentration in a compartment

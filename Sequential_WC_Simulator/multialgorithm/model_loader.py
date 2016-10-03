@@ -77,11 +77,11 @@ def getModelFromExcel(filename, debug_option=False ):
             molecularWeight = mw,
             charge = charge,
             type = ws.cell(row = iRow, column = 7).value,
-            concentrations = [
+            concentrations_list = [
                 Concentration(compartment = 'c', value = float(ws.cell(row = iRow, column = 8).value or 0)),
                 Concentration(compartment = 'e', value = float(ws.cell(row = iRow, column = 9).value or 0)),
                 ],
-            crossRefs = [
+            crossRefs_list = [
                 CrossReference(
                     source = ws.cell(row = iRow, column = 10).value, 
                     id = ws.cell(row = iRow, column = 11).value,
@@ -106,12 +106,12 @@ def getModelFromExcel(filename, debug_option=False ):
             name = ws.cell(row = iRow, column = 2).value,
             submodel_spec = ws.cell(row = iRow, column = 3).value,
             reversible = stoichiometry['reversible'],
-            participants = stoichiometry['participants'],
+            participants_list = stoichiometry['participants'],
             enzyme = ws.cell(row = iRow, column = 5).value,
             rateLaw = rateLaw,
             vmax = ws.cell(row = iRow, column = 7).value,
             km = ws.cell(row = iRow, column = 8).value,
-            crossRefs = [
+            crossRefs_list = [
                 CrossReference(
                     source = ws.cell(row = iRow, column = 9).value, 
                     id = ws.cell(row = iRow, column = 10).value,
@@ -138,7 +138,7 @@ def getModelFromExcel(filename, debug_option=False ):
         model.references.append(Reference(
             id = ws.cell(row = iRow, column = 1).value,
             name = ws.cell(row = iRow, column = 2).value,
-            crossRefs = [
+            crossRefs_list = [
                 CrossReference(
                     source = ws.cell(row = iRow, column = 3).value, 
                     id = ws.cell(row = iRow, column = 4).value,
