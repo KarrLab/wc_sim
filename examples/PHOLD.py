@@ -9,17 +9,17 @@ A simple example simulation. Implements PHOLD.
 
 from __future__ import print_function
 
+import sys
 import random
 import argparse
-import sys
 import datetime
 
 from Sequential_WC_Simulator.core.simulation_object import EventQueue, SimulationObject
 from Sequential_WC_Simulator.core.simulation_engine import SimulationEngine, MessageTypesRegistry
 
-# logging
+# setup logging
 from examples.config import config_constants
-from log.config.config import ConfigAll
+from wc_utilities.config.config import ConfigAll
 debug_log = ConfigAll.setup_logger( config_constants )
 
 def obj_name( obj_num ):
@@ -50,8 +50,7 @@ class PHOLDsimulationObject(SimulationObject):
     MessageTypesRegistry.set_sent_message_types( 'PHOLDsimulationObject', MESSAGE_TYPES )
     MessageTypesRegistry.set_receiver_priorities( 'PHOLDsimulationObject', MESSAGE_TYPES )
 
-    def __init__( self, name, args, debug=False ):
-        self.debug = debug
+    def __init__( self, name, args ):
         self.args = args
         super(PHOLDsimulationObject, self).__init__( name )
 
@@ -92,7 +91,7 @@ class PHOLDsimulationObject(SimulationObject):
 class runPHOLD(object):
 
     @staticmethod
-    def parseArgs():
+    def parse_args():
         parser = argparse.ArgumentParser( description="Run PHOLD simulation. "
             "Each PHOLD event either schedules an event for 'self' or for some other randomly selected LP, "
             "in either case with an exponentially-distributed time-stamp increment having mean of 1.0. "
@@ -103,7 +102,6 @@ class runPHOLD(object):
         parser.add_argument( 'frac_self_events', type=float, help="Fraction of events sent to self" )
         parser.add_argument( 'end_time', type=float, help="End time for the simulation" )
         output_options = parser.add_mutually_exclusive_group()
-        output_options.add_argument( '--debug', '-d', action='store_true', help='Print debug output' )
         parser.add_argument( '--seed', '-s', type=int, help='Random number seed' )
         args = parser.parse_args()
         if args.num_PHOLD_procs < 1:
@@ -119,11 +117,11 @@ class runPHOLD(object):
     @staticmethod
     def main():
     
-        args = runPHOLD.parseArgs()
+        args = runPHOLD.parse_args()
 
         # create simulation objects
         for obj_id in range( args.num_PHOLD_procs ):
-            PHOLDsimulationObject( obj_name( obj_id ), args, debug=args.debug ) 
+            PHOLDsimulationObject( obj_name( obj_id ), args ) 
         
         # send initial event messages, to self
         for obj_id in range( args.num_PHOLD_procs ):

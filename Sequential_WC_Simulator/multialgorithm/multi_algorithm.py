@@ -26,7 +26,7 @@ import errno
 
 # logging
 from Sequential_WC_Simulator.core.config import config_constants
-from log.config.config import ConfigAll
+from wc_utilities.config.config import ConfigAll
 debugging_logger = ConfigAll.setup_logger(config_constants).get_logger('wc.debug.console')
 
 from Sequential_WC_Simulator.core.config.config import SimulatorConfig

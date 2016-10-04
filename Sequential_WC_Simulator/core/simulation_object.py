@@ -13,7 +13,7 @@ import warnings
 
 # logging
 from .config import config_constants
-from log.config.config import ConfigAll
+from wc_utilities.config.config import ConfigAll
 debug_log = ConfigAll.setup_logger( config_constants )
 
 from Sequential_WC_Simulator.core.event import Event
@@ -227,7 +227,7 @@ class SimulationObject(object):
         # plot logging is controlled by configuration files pointed to by config_constants and by env vars
         logger = debug_log.get_logger( 'wc.plot.file' )
         for event in event_list:
-            logger.debug( str( event ) )
+            logger.debug( str( event ), sim_time=self.time )
 
     def print_event_queue( self ):
         print(  )
