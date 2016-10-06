@@ -15,7 +15,7 @@ from Sequential_WC_Simulator.core.utilities import N_AVOGADRO, ReproducibleRando
 
 # from WcModelingTutorial.TutorialConstruction import analysis    #code to analyze simulation results in exercises
 from Sequential_WC_Simulator.multialgorithm.temp import analysis
-from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
+from Sequential_WC_Simulator.multialgorithm.config_constants_old import WC_SimulatorConfig
 import numpy as np
 import os
 

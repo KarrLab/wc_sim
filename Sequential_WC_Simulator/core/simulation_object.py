@@ -1,20 +1,17 @@
-from __future__ import print_function
+""" Base class for simulation objects.
 
-"""
-Base class for simulation objects. 
-
-Created 2016/06/01
-@author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
+:Date: 2016-06-01
+:Copyright: 2016, Karr Lab
+:License: MIT
 """
 
 from copy import deepcopy
 import heapq
 import warnings
 
-# logging
-from .config import config_constants
-from wc_utilities.config.config import ConfigAll
-debug_log = ConfigAll.setup_logger( config_constants )
+# configure logging
+from .config.setup_local_debug_log import debug_log
 
 from Sequential_WC_Simulator.core.event import Event
 from Sequential_WC_Simulator.core.simulation_engine import (SimulationEngine, MessageTypesRegistry)
@@ -32,7 +29,6 @@ class EventQueue(object):
 
     def __init__( self ):
         self.event_heap=[]
-
 
     def schedule_event( self, send_time, receive_time, sending_object, receiving_object, event_type,
         event_body=None ):
@@ -188,9 +184,8 @@ class SimulationObject(object):
         
         receiving_object.event_queue.schedule_event( self.time, self.time + delay, self,
             receiving_object, event_type_name, event_body )
-        debug_log.get_logger( 'wc.debug.file' ).debug(
-            ": ({}, {:6.2f}) -> ({}, {:6.2f}): {}".format( self.name, self.time, receiving_object.name, 
-            self.time + delay, event_type ) )
+        self.log_with_time( "({}, {:6.2f}) -> ({}, {:6.2f}): {}".format( self.name, self.time, 
+            receiving_object.name, self.time + delay, event_type ) )
         
 
     def handle_event( self, event_list ):
@@ -229,10 +224,6 @@ class SimulationObject(object):
         for event in event_list:
             logger.debug( str( event ), sim_time=self.time )
 
-    def print_event_queue( self ):
-        print(  )
-        print( self.event_queue_to_str() )
-
     def event_queue_to_str( self ):
         eq = '{} at {:5.3f}\n'.format( self.name, self.time ) 
         if self.event_queue.event_heap:
@@ -240,3 +231,9 @@ class SimulationObject(object):
         else:
             eq += 'Empty event queue'
         return eq
+
+    def log_with_time( self, msg, local_call_depth=1 ):
+        """Write a debug log message with the simulation time.
+        """
+        debug_log.get_logger( 'wc.debug.file' ).debug( msg, sim_time=self.time,
+            local_call_depth=local_call_depth )

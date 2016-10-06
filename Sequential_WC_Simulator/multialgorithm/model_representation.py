@@ -11,7 +11,6 @@ Represents a model as a set of objects.
 from itertools import chain
 import math
 import numpy as np
-import logging
 import warnings
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
@@ -19,12 +18,16 @@ with warnings.catch_warnings():
     from cobra import Model as CobraModel
     from cobra import Reaction as CobraReaction
 
-from Sequential_WC_Simulator.core.logging_config import setup_logger_old
 from Sequential_WC_Simulator.core.utilities import N_AVOGADRO
 from Sequential_WC_Simulator.multialgorithm.utilities import species_compartment_name
-from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
+from Sequential_WC_Simulator.multialgorithm.config_constants_old import WC_SimulatorConfig
 from Sequential_WC_Simulator.multialgorithm.shared_memory_cell_state import SharedMemoryCellState
 from wc_utilities.util.decorate_default_data_struct import default_mutable_params
+
+# logging
+from Sequential_WC_Simulator.multialgorithm.config.setup_local_debug_log import debug_log
+debugging_logger = debug_log.get_logger( 'wc.debug.file' )
+
 
 class Model(object):
     """Model represents all the data in a whole-cell model.
@@ -53,26 +56,24 @@ class Model(object):
     # TODO(Arthur): expand this attribute documentation
     """
     
-    def __init__(self, submodels = None, compartments = None, species = None, reactions = None, 
-        parameters = None, references = None, debug=False ):
+    @default_mutable_params( ['submodels_list', 'compartments_list', 'species_list',
+        'reactions_list', 'parameters_list', 'references_list'] )
+    def __init__(self, submodels_list = None, compartments_list = None, species_list = None,
+        reactions_list = None, parameters_list = None, references_list = None ):
         self.name = 'temp_name'         # TODO(Arthur): get real name
-        # this approach to handling mutable types as default parameter values is presented
-        # in https://docs.python.org/3.5/reference/compound_stmts.html#function-definitions
-        for param in 'submodels compartments species reactions parameters references'.split():
-            if eval( param + " is None"):
-                setattr(self, param, [])
-            else:
-                setattr(self, param, eval(param))
-        self.logger_name = "Model"
-        self.debug = debug
-        if debug:
-            # make a logger for this Model
-            # TODO(Arthur): eventually control logging more comprehensively in LoggingConfig
-            setup_logger_old( self.logger_name, level=logging.DEBUG )
-            mylog = logging.getLogger(self.logger_name)
-            # write initialization data
-            mylog.debug( "init: species: {}".format( str([str(s.name) for s in species]) ) )
-            mylog.debug( "init: reactions: {}".format( str([str(r.name) for r in reactions]) ) )
+        self.submodels = submodels_list
+        self.compartments = compartments_list
+        self.species = species_list
+        self.reactions = reactions_list
+        self.parameters = parameters_list
+        self.references = references_list
+
+        # make a logger for this Model
+        # write initialization data
+        debugging_logger.debug( "init: species: {}".format( str([str(s.name) for s in self.species]) ),
+            sim_time=0 )
+        debugging_logger.debug( "init: reactions: {}".format( str([str(r.name) for r in self.reactions]) ),
+            sim_time=0 )
         
     def setupSimulation(self):
         """Set up a discrete-event simulation from the specification.

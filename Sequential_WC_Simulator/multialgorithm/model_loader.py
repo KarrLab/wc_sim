@@ -16,7 +16,7 @@ from openpyxl import load_workbook
 import math
 import re
 
-from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
+from Sequential_WC_Simulator.multialgorithm.config_constants_old import WC_SimulatorConfig
 from Sequential_WC_Simulator.multialgorithm.model_representation import *
 from Sequential_WC_Simulator.multialgorithm.submodels import submodel
 
@@ -28,7 +28,7 @@ def getModelFromExcel(filename, debug_option=False ):
         wb = load_workbook(filename = filename)
 
     #initialize model object
-    model = Model( debug=debug_option )
+    model = Model( )
 
     '''Read details from Excel'''
     #submodels

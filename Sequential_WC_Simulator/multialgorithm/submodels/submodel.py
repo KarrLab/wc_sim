@@ -9,7 +9,6 @@
 '''
 
 from itertools import chain
-import logging
 
 import math
 import numpy as np
@@ -17,12 +16,12 @@ import re
 
 import Sequential_WC_Simulator.core.utilities
 from Sequential_WC_Simulator.core.simulation_object import SimulationObject
-from Sequential_WC_Simulator.core.logging_config import setup_logger_old
 from Sequential_WC_Simulator.core.utilities import N_AVOGADRO
 from Sequential_WC_Simulator.multialgorithm.utilities import species_compartment_name
-from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
+from Sequential_WC_Simulator.multialgorithm.config_constants_old import WC_SimulatorConfig
 from Sequential_WC_Simulator.multialgorithm.model_representation import Model, ExchangedSpecies
 from Sequential_WC_Simulator.multialgorithm.shared_memory_cell_state import SharedMemoryCellState
+from Sequential_WC_Simulator.multialgorithm.config.setup_local_debug_log import debug_log
 
 class Submodel(SimulationObject):
     """
@@ -35,8 +34,7 @@ class Submodel(SimulationObject):
 
     """
     
-    def __init__(self, model, name, id, private_cell_state, shared_cell_states,
-        reactions, species, debug=False ):
+    def __init__(self, model, name, id, private_cell_state, shared_cell_states, reactions, species ):
         """Initialize a submodel.
 
         Args:
@@ -58,15 +56,6 @@ class Submodel(SimulationObject):
         self.reactions = reactions
         self.species = species
         SimulationObject.__init__( self, name )
-
-        self.Submodel_logger_name = "Submodel {}".format( name )
-        if debug:
-            # make a logger for this Submodel
-            # TODO(Arthur): eventually control logging centrally
-            setup_logger_old( self.Submodel_logger_name, level=logging.DEBUG )
-            mylog = logging.getLogger(self.Submodel_logger_name)
-            # write initialization data
-            mylog.debug( "name: {}".format( name ) )
 
     def get_specie_counts(self, rounded=True):
         """Get a dictionary of current species counts for this submodel.
@@ -164,8 +153,11 @@ class Submodel(SimulationObject):
 
             if not self.enabled_reaction(rxn):
                 enabled[iRxn] = 0
-                logging.getLogger( self.Submodel_logger_name ).debug( 
-                    "reaction: {} of {}: insufficient counts".format( iRxn, len(self.reactions) ) )
+
+                logger = debug_log.get_logger( 'wc.debug.file' )
+                logger.debug( 
+                    "reaction: {} of {}: insufficient counts".format( iRxn, len(self.reactions) ),
+                    sim_time=self.time )
 
         return enabled
                
@@ -187,7 +179,8 @@ class Submodel(SimulationObject):
         try:
             the_SharedMemoryCellState.adjust_discretely( self.time, adjustments )
         except ValueError as e:
-            raise ValueError( "{:7.1f}: submodel {}: reaction: {}: {}".format(self.time, self.name, reaction.id, e) )
+            raise ValueError( "{:7.1f}: submodel {}: reaction: {}: {}".format(self.time, self.name, 
+                reaction.id, e) )
 
     def getComponentById(self, id, components = None):
         if not components:

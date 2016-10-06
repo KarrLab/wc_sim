@@ -1,14 +1,10 @@
-from __future__ import print_function
+""" Core DES mechanisms, including simulation message and object registries, and the scheduler
 
-import datetime
-
-# configure logging
-from .config import config_constants
-from wc_utilities.config.config import ConfigAll
-debug_log = ConfigAll.setup_logger( config_constants )
-
-from Sequential_WC_Simulator.core.event import Event
-from Sequential_WC_Simulator.core.config.config import SimulatorConfig
+:Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
+:Date: 2016-06-01
+:Copyright: 2016, Karr Lab
+:License: MIT
+"""
 
 """
 General-purpose simulation mechanisms, including the event queue for each simulation object and
@@ -16,10 +12,15 @@ the simulation scheduler.
 
 Stores event list, and provides send and next events methods. Architected for an OO simulation that
 is prepared to be parallelized.
-
-Created 2016/05/31
-@author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
 """
+
+import datetime
+
+from Sequential_WC_Simulator.core.event import Event
+from Sequential_WC_Simulator.core.config.config import SimulatorConfig
+
+# configure logging
+from .config.setup_local_debug_log import debug_log
 
 class MessageTypesRegistry( object ):
     """A registry of message types, which is used to check that objects are sending and receiving
@@ -62,8 +63,6 @@ class SimulationEngine(object):
 
     time=0.0
     simulation_objects={}
-
-    debugging_logger = debug_log.get_logger( 'wc.debug.file' )
 
     @staticmethod
     def add_object( name, simulation_object ):
@@ -109,18 +108,18 @@ class SimulationEngine(object):
     @staticmethod
     def print_simulation_state( ):
 
-        SimulationEngine.debugging_logger.debug( ' ' + '\t'.join( ['Sender', 'Message types sent'] ) )
+        SimulationEngine.log_with_time( '\t'.join( ['Sender', 'Message types sent'] ) )
         for sender in MessageTypesRegistry.senders:
-            SimulationEngine.debugging_logger.debug( ' ' + sender + '\t' +
+            SimulationEngine.log_with_time( sender + '\t' +
                 ', '.join( MessageTypesRegistry.senders[sender] ) )
 
-        SimulationEngine.debugging_logger.debug( ' ' + '\t'.join( ['Receiver', 'Message types by priority'] ) )
+        SimulationEngine.log_with_time( '\t'.join( ['Receiver', 'Message types by priority'] ) )
         for receiver in MessageTypesRegistry.receiver_priorities:
-            SimulationEngine.debugging_logger.debug( ' ' + sender + '\t' +
+            SimulationEngine.log_with_time( sender + '\t' +
                 ', '.join( MessageTypesRegistry.receiver_priorities[receiver] ) )
 
     @staticmethod
-    def simulate( end_time, debug=False ):
+    def simulate( end_time ):
         """Run the simulation; return number of events.
 
         Args:
@@ -132,16 +131,14 @@ class SimulationEngine(object):
         """
         # TODO(Arthur): IMPORTANT: add optional logical termation condition(s)
 
-        if debug:
-            SimulationEngine.print_simulation_state()
-
         # write header to a plot log
         # plot logging is controlled by configuration files pointed to by config_constants and by env vars
         plotting_logger = debug_log.get_logger( 'wc.plot.file' )
         plotting_logger.debug( '# {:%Y-%m-%d %H:%M:%S}'.format(datetime.datetime.now()), sim_time=0 )
 
         handle_event_invocations = 0
-        SimulationEngine.debugging_logger.debug( ' ' + "\t".join( 'Time Object_type Object_name'.split() ) )
+        SimulationEngine.print_simulation_state()
+        SimulationEngine.log_with_time( "\t".join( 'Time Object_type Object_name'.split() ) )
         while SimulationEngine.time <= end_time:
 
             # get the earliest next event in the simulation
@@ -153,15 +150,15 @@ class SimulationEngine(object):
                     next_sim_obj = sim_obj
 
             if float('inf') == next_time:
-                SimulationEngine.debugging_logger.debug( " No events remain" )
+                SimulationEngine.log_with_time( " No events remain" )
                 break
 
             if end_time < next_time:
-                SimulationEngine.debugging_logger.debug( " End time exceeded" )
+                SimulationEngine.log_with_time( " End time exceeded" )
                 break
 
             handle_event_invocations += 1
-            SimulationEngine.debugging_logger.debug( " {:6.2f}\t{}\t{}".format( next_time,
+            SimulationEngine.log_with_time( "Next event: {:6.2f}\t{}\t{}".format( next_time,
                 next_sim_obj.__class__.__name__, next_sim_obj.name ) )
 
             # TODO(Arthur): IMPORTANT: test situation when multiple objects have events at minimum simulation time
@@ -169,9 +166,16 @@ class SimulationEngine(object):
             SimulationEngine.time = next_time
             # This assertion cannot be violoated unless init message sent to negative time or objects decrease their time
             assert next_sim_obj.time <= next_time, ("Dispatching '{}', but find object time "
-            "{} > event time {}.".format( next_sim_obj.name, next_sim_obj.time, next_time ) )
+                "{} > event time {}.".format( next_sim_obj.name, next_sim_obj.time, next_time ) )
 
             next_sim_obj.time = next_time
             next_sim_obj.handle_event( next_sim_obj.event_queue.next_events() )
 
         return handle_event_invocations
+
+    @staticmethod
+    def log_with_time( msg, local_call_depth=1 ):
+        """Write a debug log message with the simulation time.
+        """
+        debug_log.get_logger( 'wc.debug.file' ).debug( msg, sim_time=SimulationEngine.time,
+            local_call_depth=local_call_depth )

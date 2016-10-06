@@ -8,7 +8,6 @@ built DES simulation, and converted FBA for DES
 """
     
 import sys
-import logging
 import numpy as np
 import warnings
 with warnings.catch_warnings():
@@ -17,8 +16,7 @@ with warnings.catch_warnings():
     from cobra import Model as CobraModel
     from cobra import Reaction as CobraReaction
 
-from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
-from Sequential_WC_Simulator.core.logging_config import setup_logger_old
+from Sequential_WC_Simulator.multialgorithm.config_constants_old import WC_SimulatorConfig
 from Sequential_WC_Simulator.core.simulation_object import (EventQueue, SimulationObject)
 from Sequential_WC_Simulator.core.simulation_engine import MessageTypesRegistry
 from Sequential_WC_Simulator.core.utilities import N_AVOGADRO, compare_name_with_class, dict_2_key_sorted_str
@@ -68,11 +66,10 @@ class FbaSubmodel(Submodel):
         RunFBA ]
 
     MessageTypesRegistry.set_receiver_priorities( 'FbaSubmodel', MESSAGE_TYPES_BY_PRIORITY )
-    
-    # COMMENT(Arthur): I want to understand this better.
-    
+
+
     def __init__(self, model, name, id, private_cell_state, shared_cell_states, 
-        reactions, species, time_step, debug=False ):        
+        reactions, species, time_step ):
         """Initialize a FbaSubmodel object.
         
         # TODO(Arthur): expand description
@@ -80,25 +77,18 @@ class FbaSubmodel(Submodel):
         Args:
             See pydocs of super classes.
             time_step: float; time between FBA executions
-            debug: boolean; log debugging output
         """
         Submodel.__init__( self, model, name, id, private_cell_state, shared_cell_states,
-            reactions, species, debug=debug )
+            reactions, species )
 
         self.algorithm = 'FBA'
         self.time_step = time_step
 
-        self.logger_name = "FbaSubmodel_{}".format( name )
-        if debug:
-            # make a logger
-            # TODO(Arthur): eventually control logging when creating SimulationObjects, and pass in the logger
-            setup_logger_old( self.logger_name, level=logging.DEBUG )
-            mylog = logging.getLogger(self.logger_name)
-            # log initialization data
-            mylog.debug( "init: name: {}".format( name ) )
-            mylog.debug( "init: id: {}".format( id ) )
-            mylog.debug( "init: species: {}".format( str([s.name for s in species]) ) )
-            mylog.debug( "init: time_step: {}".format( str(time_step) ) )
+        # log initialization data
+        self.log_with_time( "init: name: {}".format( name ) )
+        self.log_with_time( "init: id: {}".format( id ) )
+        self.log_with_time( "init: species: {}".format( str([s.name for s in species]) ) )
+        self.log_with_time( "init: time_step: {}".format( str(time_step) ) )
         
         self.metabolismProductionReaction = None 
         self.exchangedSpecies = None
@@ -301,14 +291,12 @@ class FbaSubmodel(Submodel):
                 # population_values is a GivePopulation body attribute
                 population_values = event_message.event_body.population
 
-                logging.getLogger( self.logger_name ).debug( "GivePopulation: {}".format( 
-                    str(event_message.event_body) ) )
+                self.log_with_time( "GivePopulation: {}".format( str(event_message.event_body) ) )
                 # store population_values in some local cache ...
                     
             elif compare_name_with_class( event_message.event_type, RunFBA ):
             
-                logging.getLogger( self.logger_name ).debug( "{:8.3f}: {} submodel: "
-                "executing".format( self.time, self.name ) ) 
+                self.log_with_time( "submodel '{}' executing".format( self.name ) )
 
                 # run the FBA analysis
                 self.calcReactionBounds()

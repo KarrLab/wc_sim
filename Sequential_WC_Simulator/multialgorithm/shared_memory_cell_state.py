@@ -6,19 +6,17 @@ Created 2016/06/17
 """
 
 # TODO(Arthur): globally, properly name elements that are protected or private within a class
-from __future__ import print_function
 import sys
 import numpy as np
 from threading import RLock
 
 # logging
-from Sequential_WC_Simulator.core.config import config_constants
-from wc_utilities.config.config import ConfigAll
-debugging_logger = ConfigAll.setup_logger( config_constants ).get_logger( 'wc.debug.console' )
+from Sequential_WC_Simulator.multialgorithm.config.setup_local_debug_log import debug_log
+debugging_logger = debug_log.get_logger( 'wc.debug.file' )
 
 from Sequential_WC_Simulator.multialgorithm.utilities import species_compartment_name
 from Sequential_WC_Simulator.core.utilities import dict_2_key_sorted_str
-from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
+from Sequential_WC_Simulator.multialgorithm.config_constants_old import WC_SimulatorConfig
 from Sequential_WC_Simulator.multialgorithm.specie import Specie
     
 class SharedMemoryCellState( object ): 
@@ -91,8 +89,10 @@ class SharedMemoryCellState( object ):
             sys.stderr.write( "Cannot initialize SharedMemoryCellState: {}.\n".format( e.message ) )
         
         # write initialization data
-        debugging_logger.debug( "initial_population: {}".format( dict_2_key_sorted_str(initial_population) ) )
-        debugging_logger.debug( "initial_fluxes: {}".format( dict_2_key_sorted_str(initial_fluxes) ) )
+        debugging_logger.debug( "initial_population: {}".format( dict_2_key_sorted_str(initial_population) ),
+            sim_time=self.time )
+        debugging_logger.debug( "initial_fluxes: {}".format( dict_2_key_sorted_str(initial_fluxes) ),
+            sim_time=self.time )
 
     def init_cell_state_specie( self, specie_name, population, initial_flux_given=None ):
         """Initialize a specie with the given population and flux.
@@ -317,7 +317,8 @@ class SharedMemoryCellState( object ):
                 # when initial values get debugged
                 # raise ValueError( "Error: on specie {}: {}".format( specie, e ) )
                 e = str(e).strip()
-                debugging_logger.error( "Error: on specie {}: {}".format( specie, e ) )
+                debugging_logger.error( "Error: on specie {}: {}".format( specie, e ),
+                    sim_time=self.time )
 
             self.log_event( 'continuous_adjustment', self._population[specie] )
 
@@ -325,7 +326,7 @@ class SharedMemoryCellState( object ):
         """Log simulation events that modify a specie's population.
         
         Log the simulation time, event type, specie population, and current flux for each simulation
-        event message that adjusts the population. The log record is written to a separate log for each specie.
+        event message that adjusts the population.
         
         Args:
             event_type: string; description of the event's type
@@ -335,7 +336,7 @@ class SharedMemoryCellState( object ):
             flux = specie.continuous_flux
         except AttributeError:
             flux = None
-        values = [ self.time, event_type, specie.last_population, flux ]
+        values = [ event_type, specie.last_population, flux ]
         values = map( lambda x: str(x), values )
         # log Sim_time Adjustment_type New_population New_flux
-        debugging_logger.debug( '\t'.join( values ), local_call_depth=1 )
+        debugging_logger.debug( '\t'.join( values ), local_call_depth=1, sim_time=self.time )

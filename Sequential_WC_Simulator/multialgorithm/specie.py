@@ -5,7 +5,7 @@
 
 from Sequential_WC_Simulator.core.utilities import StochasticRound, ReproducibleRandom
 from Sequential_WC_Simulator.core.config.config import SimulatorConfig
-from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
+from Sequential_WC_Simulator.multialgorithm.config_constants_old import WC_SimulatorConfig
 
 class Specie(object):
     """ Specie tracks the population of a single specie.

@@ -31,8 +31,6 @@ class InteractingSimulationObject(SimulationObject):
         super(InteractingSimulationObject, self).__init__( name )
 
     def handle_event( self, event_list ):
-        if self.debug:
-            self.print_event_queue( )
         # schedule events
         # send an event to each InteractingSimulationObject
         for obj in SimulationEngine.simulation_objects.values():
@@ -75,7 +73,7 @@ class TestSimulationEngine(unittest.TestCase):
             obj = ExampleSimulationObject(  obj_name( i ) )
             obj.send_event( 1.0, obj, 'init_msg' )
             obj.send_event( 2.0, obj, 'init_msg' )
-        self.assertEqual( SimulationEngine.simulate( 5.0, debug=True ), 15 )
+        self.assertEqual( SimulationEngine.simulate( 5.0 ), 15 )
 
     def test_multi_interacting_object_simulation(self):
     

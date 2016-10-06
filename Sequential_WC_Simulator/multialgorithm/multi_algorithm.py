@@ -24,16 +24,11 @@ import argparse
 import warnings
 import errno
 
-# logging
-from Sequential_WC_Simulator.core.config import config_constants
-from wc_utilities.config.config import ConfigAll
-debugging_logger = ConfigAll.setup_logger(config_constants).get_logger('wc.debug.console')
-
 from Sequential_WC_Simulator.core.config.config import SimulatorConfig
 from Sequential_WC_Simulator.core.utilities import ReproducibleRandom
-from Sequential_WC_Simulator.core.simulation_object import EventQueue, SimulationObject
+from Sequential_WC_Simulator.core.simulation_object import EventQueue
 from Sequential_WC_Simulator.core.simulation_engine import SimulationEngine, MessageTypesRegistry
-from Sequential_WC_Simulator.multialgorithm.config import WC_SimulatorConfig
+from Sequential_WC_Simulator.multialgorithm.config_constants_old import WC_SimulatorConfig
 from Sequential_WC_Simulator.multialgorithm.model_representation import Model
 from Sequential_WC_Simulator.multialgorithm.model_loader import getModelFromExcel
 from Sequential_WC_Simulator.multialgorithm.cell_state import CellState
@@ -41,6 +36,18 @@ from Sequential_WC_Simulator.multialgorithm.submodels.simple_SSA_submodel import
 from Sequential_WC_Simulator.multialgorithm.submodels.FBA_submodel import FbaSubmodel
 from Sequential_WC_Simulator.multialgorithm.message_types import *
 import Sequential_WC_Simulator.multialgorithm.temp.exercise as Exercise
+from Sequential_WC_Simulator.multialgorithm.config.setup_local_debug_log import debug_log
+
+class log_at_time_zero(object):
+    debugging_logger = debug_log.get_logger( 'wc.debug.console' )
+
+    @staticmethod
+    def debug(msg):
+        log_at_time_zero.debugging_logger.debug( msg, sim_time=0, local_call_depth=1 )
+
+    @staticmethod
+    def info(msg):
+        log_at_time_zero.debugging_logger.info( msg, sim_time=0, local_call_depth=1 )
 
 
 class MultiAlgorithm(object):
@@ -88,12 +95,13 @@ class MultiAlgorithm(object):
         2. run simulation
         3. plot results
         '''
+
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             # 0. read model description
-            debugging_logger.info("Reading model from '{}'".format(args.model_filename))
+            log_at_time_zero.info("Reading model from '{}'".format(args.model_filename))
             the_model = getModelFromExcel(args.model_filename)
-            debugging_logger.debug(the_model.summary())
+            log_at_time_zero.debug(the_model.summary())
 
             '''Prepare submodels for computation'''
             the_model.setupSimulation()
@@ -104,7 +112,7 @@ class MultiAlgorithm(object):
         for submodel_spec in the_model.submodels:
             if submodel_spec.algorithm == 'SSA':
                 if submodel_spec.algorithm in algs_to_run:
-                    debugging_logger.info("create SSA submodel: {} {}".format(submodel_spec.name,
+                    log_at_time_zero.info("create SSA submodel: {} {}".format(submodel_spec.name,
                                                                               submodel_spec.algorithm))
                     submodel_spec.the_submodel = simple_SSA_submodel(the_model, submodel_spec.name,
                                                                      submodel_spec.id, None, 
@@ -113,7 +121,7 @@ class MultiAlgorithm(object):
                                                                      submodel_spec.species)
             elif submodel_spec.algorithm == 'FBA':
                 if submodel_spec.algorithm in algs_to_run:
-                    debugging_logger.info("create FBA submodel: {} {}".format(submodel_spec.name,
+                    log_at_time_zero.info("create FBA submodel: {} {}".format(submodel_spec.name,
                                                                               submodel_spec.algorithm))
                     submodel_spec.the_submodel = FbaSubmodel(the_model, submodel_spec.name,
                                                              submodel_spec.id, None, 
@@ -127,10 +135,10 @@ class MultiAlgorithm(object):
 
         # 2. run simulation
         if args.end_time:
-            debugging_logger.info("Simulating to: {}".format(args.end_time))
+            log_at_time_zero.info("Simulating to: {}".format(args.end_time))
             SimulationEngine.simulate(args.end_time)
         else:
-            debugging_logger.info("Simulating to cellCycleLength: {}".format(
+            log_at_time_zero.info("Simulating to cellCycleLength: {}".format(
                 the_model.getComponentById('cellCycleLength').value))
             SimulationEngine.simulate(the_model.getComponentById('cellCycleLength').value)
 

@@ -14,7 +14,6 @@ from random import Random
 from numpy import random as numpy_random
 import sys
 import math
-import logging
 import numpy as np
 
 class ExponentialMovingAverage(object):

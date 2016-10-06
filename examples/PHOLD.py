@@ -16,11 +16,7 @@ import datetime
 
 from Sequential_WC_Simulator.core.simulation_object import EventQueue, SimulationObject
 from Sequential_WC_Simulator.core.simulation_engine import SimulationEngine, MessageTypesRegistry
-
-# setup logging
-from examples.config import config_constants
-from wc_utilities.config.config import ConfigAll
-debug_log = ConfigAll.setup_logger( config_constants )
+from examples.config.setup_local_debug_log import debug_log
 
 def obj_name( obj_num ):
     # create object name from index
