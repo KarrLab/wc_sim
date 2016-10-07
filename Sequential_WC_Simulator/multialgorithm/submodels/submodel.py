@@ -14,9 +14,9 @@ import math
 import numpy as np
 import re
 
-import Sequential_WC_Simulator.core.utilities
+from wc_utilities.util.MiscUtilities import N_AVOGADRO
+
 from Sequential_WC_Simulator.core.simulation_object import SimulationObject
-from Sequential_WC_Simulator.core.utilities import N_AVOGADRO
 from Sequential_WC_Simulator.multialgorithm.utilities import species_compartment_name
 from Sequential_WC_Simulator.multialgorithm.config_constants_old import WC_SimulatorConfig
 from Sequential_WC_Simulator.multialgorithm.model_representation import Model, ExchangedSpecies

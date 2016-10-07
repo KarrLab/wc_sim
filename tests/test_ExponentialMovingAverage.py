@@ -1,6 +1,6 @@
 import unittest
 
-from Sequential_WC_Simulator.core.utilities import ExponentialMovingAverage
+from wc_utilities.util.StatsUtilities import ExponentialMovingAverage
 
 class TestExponentialMovingAverage(unittest.TestCase):
 

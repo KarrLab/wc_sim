@@ -11,7 +11,8 @@ Simulates metabolism submodel
 #required libraries
 # from WcModelingTutorial.TutorialConstruction.model import getModelFromExcel, Submodel, SsaSubmodel
 # from model import getModelFromExcel, Submodel, SsaSubmodel #code for model in exercises
-from Sequential_WC_Simulator.core.utilities import N_AVOGADRO, ReproducibleRandom
+from wc_utilities.util.RandomUtilities import ReproducibleRandom
+from wc_utilities.util.MiscUtilities import N_AVOGADRO
 
 # from WcModelingTutorial.TutorialConstruction import analysis    #code to analyze simulation results in exercises
 from Sequential_WC_Simulator.multialgorithm.temp import analysis

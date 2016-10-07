@@ -11,10 +11,12 @@ Created 2016/07/14
 import sys
 import numpy as np
 
+from wc_utilities.util.RandomUtilities import ReproducibleRandom
+from wc_utilities.util.MiscUtilities import N_AVOGADRO, compare_name_with_class, dict_2_key_sorted_str
+from wc_utilities.util.StatsUtilities import ExponentialMovingAverage
+
 from Sequential_WC_Simulator.core.simulation_object import (EventQueue, SimulationObject)
 from Sequential_WC_Simulator.core.simulation_engine import MessageTypesRegistry
-from Sequential_WC_Simulator.core.utilities import (N_AVOGADRO, ExponentialMovingAverage,
-    compare_name_with_class, ReproducibleRandom, dict_2_key_sorted_str)
 from Sequential_WC_Simulator.core.config.config import SimulatorConfig
 from Sequential_WC_Simulator.multialgorithm.config_constants_old import WC_SimulatorConfig
 from Sequential_WC_Simulator.multialgorithm.submodels.submodel import Submodel

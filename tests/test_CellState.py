@@ -4,9 +4,10 @@ import re
 import os.path as path
 import json
 
+from wc_utilities.util.RandomUtilities import ReproducibleRandom
+
 from Sequential_WC_Simulator.core.simulation_object import EventQueue, SimulationObject
 from Sequential_WC_Simulator.core.simulation_engine import SimulationEngine, MessageTypesRegistry
-from Sequential_WC_Simulator.core.utilities import ReproducibleRandom
 from Sequential_WC_Simulator.multialgorithm.cell_state import CellState
 from Sequential_WC_Simulator.multialgorithm.message_types import *
 from tests.universal_sender_receiver_simulation_object import UniversalSenderReceiverSimulationObject

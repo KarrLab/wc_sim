@@ -2,9 +2,10 @@ import unittest
 import sys
 import re
 
+from wc_utilities.util.RandomUtilities import ReproducibleRandom
+
 from Sequential_WC_Simulator.multialgorithm.specie import Specie
 from Sequential_WC_Simulator.multialgorithm.shared_memory_cell_state import SharedMemoryCellState
-from Sequential_WC_Simulator.core.utilities import ReproducibleRandom
 
 class TestSharedMemoryCellState(unittest.TestCase):
 

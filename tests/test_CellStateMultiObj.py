@@ -11,10 +11,12 @@ import sys
 import re
 import math
 
+from wc_utilities.util.RandomUtilities import ReproducibleRandom
+from wc_utilities.util.MiscUtilities import compare_name_with_class
+
 # TODO(Arthur): test the exceptions in these modules
 from Sequential_WC_Simulator.core.simulation_object import EventQueue, SimulationObject
 from Sequential_WC_Simulator.core.simulation_engine import SimulationEngine, MessageTypesRegistry
-from Sequential_WC_Simulator.core.utilities import ReproducibleRandom, compare_name_with_class
 from Sequential_WC_Simulator.multialgorithm.message_types import *
 from Sequential_WC_Simulator.multialgorithm.cell_state import CellState
 from tests.universal_sender_receiver_simulation_object import UniversalSenderReceiverSimulationObject

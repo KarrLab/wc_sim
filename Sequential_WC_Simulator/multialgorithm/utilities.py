@@ -33,6 +33,7 @@ def get_species_and_compartment_from_name( species_compartment_name ):
         (species, rest1 ) = species_compartment_name.split('[')
         (compartment, rest2) = rest1.split(']')
     except ValueError as e:
-        raise ValueError( "species_compartment_name must have the form species_id[compartment_id], but is '{}'".format( species_compartment_name ) )
+        raise ValueError( "species_compartment_name must have the form species_id[compartment_id], "
+            "but is '{}'".format( species_compartment_name ) )
     return (species, compartment)
 

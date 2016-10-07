@@ -10,12 +10,13 @@ import sys
 import numpy as np
 from threading import RLock
 
+from wc_utilities.util.MiscUtilities import dict_2_key_sorted_str
+
 # logging
 from Sequential_WC_Simulator.multialgorithm.config.setup_local_debug_log import debug_log
 debugging_logger = debug_log.get_logger( 'wc.debug.file' )
 
 from Sequential_WC_Simulator.multialgorithm.utilities import species_compartment_name
-from Sequential_WC_Simulator.core.utilities import dict_2_key_sorted_str
 from Sequential_WC_Simulator.multialgorithm.config_constants_old import WC_SimulatorConfig
 from Sequential_WC_Simulator.multialgorithm.specie import Specie
     
