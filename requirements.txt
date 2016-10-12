@@ -11,3 +11,4 @@ python-libsbml
 git+https://github.com/KarrLab/wc_utilities.git
 # install wheel of our public log repo
 -e git+https://github.com/KarrLab/log#egg=log
+# 
