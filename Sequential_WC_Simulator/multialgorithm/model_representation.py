@@ -19,10 +19,11 @@ with warnings.catch_warnings():
     from cobra import Reaction as CobraReaction
 
 from wc_utilities.util.MiscUtilities import N_AVOGADRO
+from wc_utilities.util.decorate_default_data_struct import default_mutable_params
+
 from Sequential_WC_Simulator.multialgorithm.utilities import species_compartment_name
 from Sequential_WC_Simulator.multialgorithm.config_constants_old import WC_SimulatorConfig
 from Sequential_WC_Simulator.multialgorithm.shared_memory_cell_state import SharedMemoryCellState
-from wc_utilities.util.decorate_default_data_struct import default_mutable_params
 
 # logging
 from Sequential_WC_Simulator.multialgorithm.config.setup_local_debug_log import debug_log
