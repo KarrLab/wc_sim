@@ -10,5 +10,4 @@ python-libsbml
 # install our public wc_utilities repo
 git+https://github.com/KarrLab/wc_utilities.git
 # install wheel of our public log repo
---editable=git+https://github.com/KarrLab/log#egg=log
-# 
+# try in circle.yml instead; --editable=git+https://github.com/KarrLab/log#egg=log
