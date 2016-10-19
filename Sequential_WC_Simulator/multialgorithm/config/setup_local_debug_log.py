@@ -8,5 +8,5 @@
 
 # setup logging
 from Sequential_WC_Simulator.multialgorithm.config import config_constants
-from wc_utilities.config.config import ConfigAll
+from wc_utils.config.config import ConfigAll
 debug_log = ConfigAll.setup_logger( config_constants )

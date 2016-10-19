@@ -4,7 +4,7 @@ import re
 import os.path as path
 import json
 
-from wc_utilities.util.RandomUtilities import ReproducibleRandom
+from wc_utils.util.RandomUtilities import ReproducibleRandom
 
 from Sequential_WC_Simulator.core.simulation_object import EventQueue, SimulationObject
 from Sequential_WC_Simulator.core.simulation_engine import SimulationEngine, MessageTypesRegistry

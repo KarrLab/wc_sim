@@ -7,7 +7,7 @@ future
 recordtype
 lxml
 python-libsbml
-# install our public wc_utilities repo
-git+https://github.com/KarrLab/wc_utilities.git
+# install our public wc_utils repo
+git+https://github.com/KarrLab/wc_utils.git#egg=wc_utils
 # install wheel of our public log repo
 # try in circle.yml instead; --editable=git+https://github.com/KarrLab/log#egg=log

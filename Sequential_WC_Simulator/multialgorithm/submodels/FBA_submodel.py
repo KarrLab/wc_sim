@@ -16,8 +16,8 @@ with warnings.catch_warnings():
     from cobra import Model as CobraModel
     from cobra import Reaction as CobraReaction
 
-from wc_utilities.util.MiscUtilities import N_AVOGADRO, compare_name_with_class, dict_2_key_sorted_str
-import wc_utilities.util.MiscUtilities as utilities
+from wc_utils.util.MiscUtilities import N_AVOGADRO, compare_name_with_class, dict_2_key_sorted_str
+import wc_utils.util.MiscUtilities as utilities
 
 from Sequential_WC_Simulator.multialgorithm.config_constants_old import WC_SimulatorConfig
 from Sequential_WC_Simulator.core.simulation_object import (EventQueue, SimulationObject)

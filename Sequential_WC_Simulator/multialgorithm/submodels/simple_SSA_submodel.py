@@ -11,9 +11,9 @@ Created 2016/07/14
 import sys
 import numpy as np
 
-from wc_utilities.util.RandomUtilities import ReproducibleRandom
-from wc_utilities.util.MiscUtilities import N_AVOGADRO, compare_name_with_class, dict_2_key_sorted_str
-from wc_utilities.util.StatsUtilities import ExponentialMovingAverage
+from wc_utils.util.RandomUtilities import ReproducibleRandom
+from wc_utils.util.MiscUtilities import N_AVOGADRO, compare_name_with_class, dict_2_key_sorted_str
+from wc_utils.util.StatsUtilities import ExponentialMovingAverage
 
 from Sequential_WC_Simulator.core.simulation_object import (EventQueue, SimulationObject)
 from Sequential_WC_Simulator.core.simulation_engine import MessageTypesRegistry

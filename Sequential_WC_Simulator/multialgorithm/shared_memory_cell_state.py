@@ -10,7 +10,7 @@ import sys
 import numpy as np
 from threading import RLock
 
-from wc_utilities.util.MiscUtilities import dict_2_key_sorted_str
+from wc_utils.util.MiscUtilities import dict_2_key_sorted_str
 
 # logging
 from Sequential_WC_Simulator.multialgorithm.config.setup_local_debug_log import debug_log

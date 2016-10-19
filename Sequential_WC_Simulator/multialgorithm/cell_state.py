@@ -6,7 +6,7 @@ Created 2016/07/19
 """
 import sys
 
-from wc_utilities.util.MiscUtilities import compare_name_with_class, dict_2_key_sorted_str
+from wc_utils.util.MiscUtilities import compare_name_with_class, dict_2_key_sorted_str
 
 from Sequential_WC_Simulator.core.simulation_object import (EventQueue, SimulationObject)
 from Sequential_WC_Simulator.core.simulation_engine import MessageTypesRegistry

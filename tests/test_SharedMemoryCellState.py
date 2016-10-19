@@ -2,7 +2,7 @@ import unittest
 import sys
 import re
 
-from wc_utilities.util.RandomUtilities import ReproducibleRandom
+from wc_utils.util.RandomUtilities import ReproducibleRandom
 
 from Sequential_WC_Simulator.multialgorithm.specie import Specie
 from Sequential_WC_Simulator.multialgorithm.shared_memory_cell_state import SharedMemoryCellState

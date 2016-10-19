@@ -1,6 +1,6 @@
 import unittest
 
-from wc_utilities.util.MiscUtilities import compare_name_with_class
+from wc_utils.util.MiscUtilities import compare_name_with_class
 
 from Sequential_WC_Simulator.multialgorithm.message_types import *
 

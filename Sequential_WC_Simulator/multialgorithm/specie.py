@@ -3,7 +3,7 @@
 @date 7/19/2016
 '''
 
-from wc_utilities.util.RandomUtilities import StochasticRound, ReproducibleRandom
+from wc_utils.util.RandomUtilities import StochasticRound, ReproducibleRandom
 
 from Sequential_WC_Simulator.core.config.config import SimulatorConfig
 from Sequential_WC_Simulator.multialgorithm.config_constants_old import WC_SimulatorConfig
