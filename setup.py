@@ -1,9 +1,6 @@
 from setuptools import setup, find_packages
 import Sequential_WC_Simulator
 
-# parse requirements.txt
-install_requires = [line.rstrip() for line in open('requirements.txt')]
-
 setup(
     name="Sequential_WC_Simulator",
     version=Sequential_WC_Simulator.__version__,
@@ -15,7 +12,8 @@ setup(
     license="MIT",
     keywords='whole-cell systems cell molecular biology',
     packages=find_packages(exclude=['tests', 'tests.*']),
-    install_requires=install_requires,
+    install_requires=['cobra', 'matplotlib', 'numpy', 'scipy', 'openpyxl', 
+        'future', 'recordtype', 'lxml', 'python-libsbml'],
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Science/Research',
