@@ -1,5 +1,15 @@
+import pip
+pip.main(['install', 'git+git://github.com/KarrLab/wc_utils.git#egg=wc_utils'])
+
 from setuptools import setup, find_packages
+from wc_utils.util.installation import install_packages
 import Sequential_WC_Simulator
+
+# parse requirements.txt files
+with open('requirements.txt', 'r') as file:
+    install_requires = install_packages(file.readlines())
+with open('tests/requirements.txt', 'r') as file:
+    tests_require = install_packages(file.readlines())
 
 setup(
     name="Sequential_WC_Simulator",
@@ -12,8 +22,8 @@ setup(
     license="MIT",
     keywords='whole-cell systems cell molecular biology',
     packages=find_packages(exclude=['tests', 'tests.*']),
-    install_requires=['cobra', 'matplotlib', 'numpy', 'scipy', 'openpyxl', 
-        'future', 'recordtype', 'lxml', 'python-libsbml'],
+    install_requires=install_requires,
+    tests_require=tests_require,
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Science/Research',

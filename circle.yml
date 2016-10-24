@@ -9,9 +9,9 @@ dependencies:
     - /opt/circleci/python/3.5.1
     - /opt/circleci/.pyenv/shims
   pre:
-    - pip2 install git+git://github.com/jonrkarr/junit2html.git
-    - pip3 install git+git://github.com/jonrkarr/junit2html.git
     - sudo apt-get install libglpk-dev
+    - pip2 install -e .
+    - pip3 install -e .
     - pip2 install git+git://github.com/KarrLab/Karr-Lab-build-utils.git
     - pip3 install git+git://github.com/KarrLab/Karr-Lab-build-utils.git
     - karr-lab-build-utils-2 install-requirements

@@ -7,7 +7,4 @@ future
 recordtype
 lxml
 python-libsbml
-# install our public wc_utils repo
-git+https://github.com/KarrLab/wc_utils.git#egg=wc_utils
-# install wheel of our public log repo
---editable=git+https://github.com/KarrLab/log#egg=log
+git+git://github.com/KarrLab/wc_utils.git#egg=wc_utils
