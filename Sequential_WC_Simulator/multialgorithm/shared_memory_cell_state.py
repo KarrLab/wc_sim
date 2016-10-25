@@ -41,14 +41,13 @@ class SharedMemoryCellState( object ):
         last_access_time: dict: species_name -> last_time; the last time at which the specie was accessed
         history: nested dict; an optional history of the cell's state, created if retain_history is set.
             the population history is recorded at each continuous adjustment.
-    
-    # TODO(Arthur): IMPORTANT: support tracking the population history of species added at any time
-        in the simulation
+    """
+
+    # TODO(Arthur): IMPORTANT: support tracking the population history of species added at any time in the simulation
     # TODO(Arthur): standardize on specie_name or specie_id
     # TODO(Arthur): extend beyond population, e.g., to represent binding sites for individual macromolecules
     # TODO(Arthur): optimize to represent just the state of shared species
-    # TODO(Arthur): report error if a Specie instance is updated by multiple continuous sub-models
-    """
+    # TODO(Arthur): report error if a Specie instance is updated by multiple continuous sub-models    
     
     def __init__( self, model, name, initial_population, initial_fluxes=None, retain_history=True ):
         """Initialize a SharedMemoryCellState object.
