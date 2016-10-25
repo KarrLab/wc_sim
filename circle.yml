@@ -1,15 +1,10 @@
 machine:
   python:
     version: 2.7.12
-  post:
-    - pyenv global 2.7.12 3.5.2
 dependencies:
   cache_directories:
-    - /home/ubuntu/virtualenvs/venv-2.7.12
-    - /opt/circleci/python/3.5.2
-    - /opt/circleci/.pyenv/shims
-    - /home/ubuntu/miniconda2
-    - /home/ubuntu/miniconda3
+    - ~/miniconda2
+    - ~/miniconda3
   pre:
     - sudo apt-get install libglpk-dev   
     - >
