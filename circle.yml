@@ -1,24 +1,39 @@
 machine:
   python:
-    version: 2.7.11
+    version: 2.7.12
   post:
-    - pyenv global 2.7.11 3.5.1
+    - pyenv global 2.7.12 3.5.2
 dependencies:
   cache_directories:
-    - /home/ubuntu/virtualenvs/venv-2.7.11
-    - /opt/circleci/python/3.5.1
+    - /home/ubuntu/virtualenvs/venv-2.7.12
+    - /opt/circleci/python/3.5.2
     - /opt/circleci/.pyenv/shims
+    - /home/ubuntu/miniconda2
+    - /home/ubuntu/miniconda3
   pre:
-    - sudo apt-get install libglpk-dev
-    - pip2 install -e .
-    - pip3 install -e .
-    - pip2 install git+git://github.com/KarrLab/Karr-Lab-build-utils.git
-    - pip3 install git+git://github.com/KarrLab/Karr-Lab-build-utils.git
-    - karr-lab-build-utils-2 install-requirements
-    - karr-lab-build-utils-3 install-requirements
+    - sudo apt-get install libglpk-dev   
+    - >
+      if [ ! -d ~/miniconda2 ]; then
+        wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O ~/Miniconda2-latest-Linux-x86_64.sh
+        bash ~/Miniconda2-latest-Linux-x86_64.sh -b
+      fi
+    - ~/miniconda2/bin/conda install -y lxml matplotlib openpyxl numpy scipy
+    - ~/miniconda2/bin/pip install -e .
+    - ~/miniconda2/bin/pip install git+git://github.com/KarrLab/Karr-Lab-build-utils.git
+    - ~/miniconda2/bin/karr-lab-build-utils install-requirements
+    
+    - >
+      if [ ! -d ~/miniconda3 ]; then
+        wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/Miniconda3-latest-Linux-x86_64.sh    
+        bash ~/Miniconda3-latest-Linux-x86_64.sh -b
+      fi
+    - ~/miniconda3/bin/conda install -y lxml matplotlib openpyxl numpy scipy
+    - ~/miniconda3/bin/pip install -e .
+    - ~/miniconda3/bin/pip install git+git://github.com/KarrLab/Karr-Lab-build-utils.git
+    - ~/miniconda3/bin/karr-lab-build-utils install-requirements
 test:
   override:
-    - karr-lab-build-utils-2 run-tests tests --with-xunit --with-coverage
-    - karr-lab-build-utils-3 run-tests tests --with-xunit --with-coverage
+    - ~/miniconda2/bin/karr-lab-build-utils run-tests tests --with-xunit --with-coverage
+    - ~/miniconda3/bin/karr-lab-build-utils run-tests tests --with-xunit --with-coverage
   post:
-    - karr-lab-build-utils make-and-archive-reports
+    - ~/miniconda2/bin/karr-lab-build-utils make-and-archive-reports
