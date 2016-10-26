@@ -3,6 +3,9 @@ machine:
     version: 2.7.12
 dependencies:
   cache_directories:
+    - /home/ubuntu/virtualenvs/venv-2.7.12
+    - /opt/circleci/python/3.5.2
+    - /opt/circleci/.pyenv/shims
     - ~/miniconda2
     - ~/miniconda3
   pre:
