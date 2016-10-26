@@ -3,10 +3,12 @@
 @date 7/19/2016
 '''
 
+from Sequential_WC_Simulator.multialgorithm.config import paths as config_paths
+from wc_utils.config.core import ConfigManager
 from wc_utils.util.RandomUtilities import StochasticRound, ReproducibleRandom
 
-from Sequential_WC_Simulator.core.config.config import SimulatorConfig
-from Sequential_WC_Simulator.multialgorithm.config_constants_old import WC_SimulatorConfig
+config = ConfigManager(config_paths.core).get_config()['Sequential_WC_Simulator']['multialgorithm']
+
 
 class Specie(object):
     """ Specie tracks the population of a single specie.
@@ -150,7 +152,7 @@ class Specie(object):
                 raise ValueError( "get_population(): time < self.continuous_time: {:.2f} < {:.2f}\n".format( 
                     time, self.continuous_time ) )
             interpolation=0
-            if WC_SimulatorConfig.INTERPOLATE:
+            if config['interpolate']:
                 interpolation = (time - self.continuous_time) * self.continuous_flux
             float_copy_number = self.last_population + interpolation
             return self.stochasticRounder( float_copy_number )

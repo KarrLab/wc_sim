@@ -18,10 +18,9 @@ from wc_utils.util.MiscUtilities import N_AVOGADRO
 
 from Sequential_WC_Simulator.core.simulation_object import SimulationObject
 from Sequential_WC_Simulator.multialgorithm.utilities import species_compartment_name
-from Sequential_WC_Simulator.multialgorithm.config_constants_old import WC_SimulatorConfig
 from Sequential_WC_Simulator.multialgorithm.model_representation import Model, ExchangedSpecies
 from Sequential_WC_Simulator.multialgorithm.shared_memory_cell_state import SharedMemoryCellState
-from Sequential_WC_Simulator.multialgorithm.config.setup_local_debug_log import debug_log
+from Sequential_WC_Simulator.multialgorithm.debug_logs import logs as debug_logs
 
 class Submodel(SimulationObject):
     """
@@ -154,8 +153,8 @@ class Submodel(SimulationObject):
             if not self.enabled_reaction(rxn):
                 enabled[iRxn] = 0
 
-                logger = debug_log.get_logger( 'wc.debug.file' )
-                logger.debug( 
+                log = debug_logs.get_log( 'wc.debug.file' )
+                log.debug( 
                     "reaction: {} of {}: insufficient counts".format( iRxn, len(self.reactions) ),
                     sim_time=self.time )
 

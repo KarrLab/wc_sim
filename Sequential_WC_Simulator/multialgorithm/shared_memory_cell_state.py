@@ -13,11 +13,10 @@ from threading import RLock
 from wc_utils.util.MiscUtilities import dict_2_key_sorted_str
 
 # logging
-from Sequential_WC_Simulator.multialgorithm.config.setup_local_debug_log import debug_log
-debugging_logger = debug_log.get_logger( 'wc.debug.file' )
+from Sequential_WC_Simulator.multialgorithm.debug_logs import logs as debug_logs
+debug_log = debug_logs.get_log( 'wc.debug.file' )
 
 from Sequential_WC_Simulator.multialgorithm.utilities import species_compartment_name
-from Sequential_WC_Simulator.multialgorithm.config_constants_old import WC_SimulatorConfig
 from Sequential_WC_Simulator.multialgorithm.specie import Specie
     
 class SharedMemoryCellState( object ): 
@@ -89,9 +88,9 @@ class SharedMemoryCellState( object ):
             sys.stderr.write( "Cannot initialize SharedMemoryCellState: {}.\n".format( e.message ) )
         
         # write initialization data
-        debugging_logger.debug( "initial_population: {}".format( dict_2_key_sorted_str(initial_population) ),
+        debug_log.debug( "initial_population: {}".format( dict_2_key_sorted_str(initial_population) ),
             sim_time=self.time )
-        debugging_logger.debug( "initial_fluxes: {}".format( dict_2_key_sorted_str(initial_fluxes) ),
+        debug_log.debug( "initial_fluxes: {}".format( dict_2_key_sorted_str(initial_fluxes) ),
             sim_time=self.time )
 
     def init_cell_state_specie( self, specie_name, population, initial_flux_given=None ):
@@ -317,7 +316,7 @@ class SharedMemoryCellState( object ):
                 # when initial values get debugged
                 # raise ValueError( "Error: on specie {}: {}".format( specie, e ) )
                 e = str(e).strip()
-                debugging_logger.error( "Error: on specie {}: {}".format( specie, e ),
+                debug_log.error( "Error: on specie {}: {}".format( specie, e ),
                     sim_time=self.time )
 
             self.log_event( 'continuous_adjustment', self._population[specie] )
@@ -339,4 +338,4 @@ class SharedMemoryCellState( object ):
         values = [ event_type, specie.last_population, flux ]
         values = map( lambda x: str(x), values )
         # log Sim_time Adjustment_type New_population New_flux
-        debugging_logger.debug( '\t'.join( values ), local_call_depth=1, sim_time=self.time )
+        debug_log.debug( '\t'.join( values ), local_call_depth=1, sim_time=self.time )

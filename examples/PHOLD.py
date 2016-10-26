@@ -14,9 +14,9 @@ import random
 import argparse
 import datetime
 
+from .debug_logs import logs as debug_logs
 from Sequential_WC_Simulator.core.simulation_object import EventQueue, SimulationObject
 from Sequential_WC_Simulator.core.simulation_engine import SimulationEngine, MessageTypesRegistry
-from examples.config.setup_local_debug_log import debug_log
 
 def obj_name( obj_num ):
     # create object name from index
@@ -81,8 +81,8 @@ class PHOLDsimulationObject(SimulationObject):
             self.send_event( exp_delay(), receiver, event_type )
 
     def log_debug_msg(self, msg):
-        logger = debug_log.get_logger( 'wc.debug.console' )
-        logger.debug( msg, sim_time=self.time, local_call_depth=1 )
+        log = debug_logs.get_log( 'wc.debug.console' )
+        log.debug( msg, sim_time=self.time, local_call_depth=1 )
 
 class runPHOLD(object):
 

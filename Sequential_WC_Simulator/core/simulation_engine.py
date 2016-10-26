@@ -17,10 +17,9 @@ is prepared to be parallelized.
 import datetime
 
 from Sequential_WC_Simulator.core.event import Event
-from Sequential_WC_Simulator.core.config.config import SimulatorConfig
 
 # configure logging
-from .config.setup_local_debug_log import debug_log
+from .debug_logs import logs as debug_logs
 
 class MessageTypesRegistry( object ):
     """A registry of message types, which is used to check that objects are sending and receiving
@@ -133,7 +132,7 @@ class SimulationEngine(object):
 
         # write header to a plot log
         # plot logging is controlled by configuration files pointed to by config_constants and by env vars
-        plotting_logger = debug_log.get_logger( 'wc.plot.file' )
+        plotting_logger = debug_logs.get_log( 'wc.plot.file' )
         plotting_logger.debug( '# {:%Y-%m-%d %H:%M:%S}'.format(datetime.datetime.now()), sim_time=0 )
 
         handle_event_invocations = 0
@@ -177,5 +176,5 @@ class SimulationEngine(object):
     def log_with_time( msg, local_call_depth=1 ):
         """Write a debug log message with the simulation time.
         """
-        debug_log.get_logger( 'wc.debug.file' ).debug( msg, sim_time=SimulationEngine.time,
+        debug_logs.get_log( 'wc.debug.file' ).debug( msg, sim_time=SimulationEngine.time,
             local_call_depth=local_call_depth )

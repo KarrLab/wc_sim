@@ -22,12 +22,11 @@ from wc_utils.util.MiscUtilities import N_AVOGADRO
 from wc_utils.util.decorate_default_data_struct import default_mutable_params
 
 from Sequential_WC_Simulator.multialgorithm.utilities import species_compartment_name
-from Sequential_WC_Simulator.multialgorithm.config_constants_old import WC_SimulatorConfig
 from Sequential_WC_Simulator.multialgorithm.shared_memory_cell_state import SharedMemoryCellState
 
 # logging
-from Sequential_WC_Simulator.multialgorithm.config.setup_local_debug_log import debug_log
-debugging_logger = debug_log.get_logger( 'wc.debug.file' )
+from Sequential_WC_Simulator.multialgorithm.debug_logs import logs as debug_logs
+debug_log = debug_logs.get_log( 'wc.debug.file' )
 
 
 class Model(object):
@@ -71,9 +70,9 @@ class Model(object):
 
         # make a logger for this Model
         # write initialization data
-        debugging_logger.debug( "init: species: {}".format( str([str(s.name) for s in self.species]) ),
+        debug_log.debug( "init: species: {}".format( str([str(s.name) for s in self.species]) ),
             sim_time=0 )
-        debugging_logger.debug( "init: reactions: {}".format( str([str(r.name) for r in self.reactions]) ),
+        debug_log.debug( "init: reactions: {}".format( str([str(r.name) for r in self.reactions]) ),
             sim_time=0 )
         
     def setupSimulation(self):

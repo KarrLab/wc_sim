@@ -16,7 +16,6 @@ from wc_utils.util.MiscUtilities import N_AVOGADRO
 
 # from WcModelingTutorial.TutorialConstruction import analysis    #code to analyze simulation results in exercises
 from Sequential_WC_Simulator.multialgorithm.temp import analysis
-from Sequential_WC_Simulator.multialgorithm.config_constants_old import WC_SimulatorConfig
 import numpy as np
 import os
 

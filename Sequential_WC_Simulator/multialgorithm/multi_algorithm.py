@@ -26,10 +26,10 @@ import errno
 
 from wc_utils.util.RandomUtilities import ReproducibleRandom
 
-from Sequential_WC_Simulator.core.config.config import SimulatorConfig
+from Sequential_WC_Simulator.core.config import paths as config_paths_core
 from Sequential_WC_Simulator.core.simulation_object import EventQueue
 from Sequential_WC_Simulator.core.simulation_engine import SimulationEngine, MessageTypesRegistry
-from Sequential_WC_Simulator.multialgorithm.config_constants_old import WC_SimulatorConfig
+from Sequential_WC_Simulator.multialgorithm.config import paths as config_paths_multialgorithm
 from Sequential_WC_Simulator.multialgorithm.model_representation import Model
 from Sequential_WC_Simulator.multialgorithm.model_loader import getModelFromExcel
 from Sequential_WC_Simulator.multialgorithm.cell_state import CellState
@@ -37,18 +37,22 @@ from Sequential_WC_Simulator.multialgorithm.submodels.simple_SSA_submodel import
 from Sequential_WC_Simulator.multialgorithm.submodels.FBA_submodel import FbaSubmodel
 from Sequential_WC_Simulator.multialgorithm.message_types import *
 import Sequential_WC_Simulator.multialgorithm.temp.exercise as Exercise
-from Sequential_WC_Simulator.multialgorithm.config.setup_local_debug_log import debug_log
+from Sequential_WC_Simulator.multialgorithm.debug_logs import logs as debug_logs
+from wc_utils.config.core import ConfigManager
+
+config_core = ConfigManager(config_paths_core.core).get_config()['Sequential_WC_Simulator']['core']
+config_multialgorithm = ConfigManager(config_paths_multialgorithm.core).get_config()['Sequential_WC_Simulator']['multialgorithm']
 
 class log_at_time_zero(object):
-    debugging_logger = debug_log.get_logger( 'wc.debug.console' )
+    debug_log = debug_logs.get_log( 'wc.debug.console' )
 
     @staticmethod
     def debug(msg):
-        log_at_time_zero.debugging_logger.debug( msg, sim_time=0, local_call_depth=1 )
+        log_at_time_zero.debug_log.debug( msg, sim_time=0, local_call_depth=1 )
 
     @staticmethod
     def info(msg):
-        log_at_time_zero.debugging_logger.info( msg, sim_time=0, local_call_depth=1 )
+        log_at_time_zero.debug_log.info( msg, sim_time=0, local_call_depth=1 )
 
 
 class MultiAlgorithm(object):
@@ -64,18 +68,16 @@ class MultiAlgorithm(object):
         parser.add_argument('--end_time', '-e', type=float, help="End time for the simulation (s)")
 
         parser.add_argument('--output_directory', '-o', type=str,
-                            help="Output directory; default '{}'".format(
-                                WC_SimulatorConfig.DEFAULT_OUTPUT_DIRECTORY),
-                            default=WC_SimulatorConfig.DEFAULT_OUTPUT_DIRECTORY)
+                            help="Output directory; default '{}'".format(config_multialgorithm['default_output_directory']),
+                            default=config_multialgorithm['default_output_directory'])
 
         parser.add_argument('--FBA_time_step', '-F', type=float,
-                            help="FBA time step in sec; default: '{:3.1f}'".format(
-                                WC_SimulatorConfig.DEFAULT_FBA_TIME_STEP),
-                            default=WC_SimulatorConfig.DEFAULT_FBA_TIME_STEP)
+                            help="FBA time step in sec; default: '{:3.1f}'".format(config_multialgorithm['default_fba_time_step']),
+                            default=config_multialgorithm['default_fba_time_step'])
 
         output_options = parser.add_mutually_exclusive_group()
         parser.add_argument('--seed', '-s', type=int, help='Random number seed; if not provided '
-                            'then reproducibility determined by SimulatorConfig.REPRODUCIBLE_SEED')
+                            'then reproducibility determined by config_core[''REPRODUCIBLE_SEED'']')
         args = parser.parse_args()
         return args
 
@@ -87,7 +89,7 @@ class MultiAlgorithm(object):
         if args.seed:
             ReproducibleRandom.init(seed=args.seed)
         else:
-            ReproducibleRandom.init(seed=SimulatorConfig.REPRODUCIBLE_SEED)
+            ReproducibleRandom.init(seed=config_core['reproducible_seed'])
 
         '''
         Steps:

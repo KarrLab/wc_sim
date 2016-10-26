@@ -11,16 +11,20 @@ Created 2016/07/14
 import sys
 import numpy as np
 
+from wc_utils.config.core import ConfigManager
 from wc_utils.util.RandomUtilities import ReproducibleRandom
 from wc_utils.util.MiscUtilities import N_AVOGADRO, compare_name_with_class, dict_2_key_sorted_str
 from wc_utils.util.StatsUtilities import ExponentialMovingAverage
 
+from Sequential_WC_Simulator.core.config import paths as config_paths_core
 from Sequential_WC_Simulator.core.simulation_object import (EventQueue, SimulationObject)
 from Sequential_WC_Simulator.core.simulation_engine import MessageTypesRegistry
-from Sequential_WC_Simulator.core.config.config import SimulatorConfig
-from Sequential_WC_Simulator.multialgorithm.config_constants_old import WC_SimulatorConfig
+from Sequential_WC_Simulator.multialgorithm.config import paths as config_paths_multialgorithm
 from Sequential_WC_Simulator.multialgorithm.submodels.submodel import Submodel
 from Sequential_WC_Simulator.multialgorithm.message_types import *
+
+config_core = ConfigManager(config_paths_core.core).get_config()['Sequential_WC_Simulator']['core']
+config_multialgorithm = ConfigManager(config_paths_multialgorithm.core).get_config()['Sequential_WC_Simulator']['multialgorithm']
 
 
 class simple_SSA_submodel( Submodel ):
@@ -64,7 +68,7 @@ class simple_SSA_submodel( Submodel ):
 
     Attributes:
         random: a numpy RandomState() instance object; private PRNG; may be reproducible, as
-            determined by the value of SimulatorConfig.REPRODUCIBLE_SEED and how the main program, MultiAlgorithm,
+            determined by the value of config_core['reproducible_seed'] and how the main program, MultiAlgorithm,
             calls ReproducibleRandom.init()
         num_SSAWaits: integer; count of SSAWaits
         ema_of_inter_event_time: an ExponentialMovingAverage; an EMA of the time between
@@ -95,7 +99,7 @@ class simple_SSA_submodel( Submodel ):
     MessageTypesRegistry.set_receiver_priorities( 'simple_SSA_submodel', MESSAGE_TYPES_BY_PRIORITY )
 
     def __init__( self, model, name, id, private_cell_state, shared_cell_states,
-        reactions, species, default_center_of_mass=SimulatorConfig.DEFAULT_CENTER_OF_MASS ):
+        reactions, species, default_center_of_mass=config_core['default_center_of_mass']):
         """Initialize a simple_SSA_submodel object.
 
         # TODO(Arthur): expand description
@@ -112,7 +116,7 @@ class simple_SSA_submodel( Submodel ):
         self.num_SSAWaits=0
         # INITIAL_SSA_WAIT_EMA should be positive, as otherwise an infinite loop of SSAWait messages
         # will form at the start of a simulation if no reactions are enabled
-        self.ema_of_inter_event_time=ExponentialMovingAverage( WC_SimulatorConfig.INITIAL_SSA_WAIT_EMA,
+        self.ema_of_inter_event_time=ExponentialMovingAverage(config_multialgorithm['initial_ssa_wait_ema'],
             center_of_mass=default_center_of_mass )
         self.numpy_random = ReproducibleRandom.get_numpy_random()
 
@@ -222,7 +226,7 @@ class simple_SSA_submodel( Submodel ):
         """
         # call handle_event() in class SimulationObject which performs generic tasks on the event list
         SimulationObject.handle_event( self, event_list )
-        if not self.num_events % WC_SimulatorConfig.SSA_EVENT_LOGGING_SPACING:
+        if not self.num_events % config_multialgorithm['ssa_event_logging_spacing']:
             # TODO(Arthur): perhaps log this msg to console
             self.log_with_time( "submodel {}, event {}".format( self.name, self.num_events ) )
 

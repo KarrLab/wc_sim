@@ -11,11 +11,10 @@ import heapq
 import warnings
 
 # configure logging
-from .config.setup_local_debug_log import debug_log
+from .debug_logs import logs as debug_logs
 
 from Sequential_WC_Simulator.core.event import Event
 from Sequential_WC_Simulator.core.simulation_engine import (SimulationEngine, MessageTypesRegistry)
-from Sequential_WC_Simulator.core.config.config import SimulatorConfig
 
 class EventQueue(object):
     """A simulation object's event queue.
@@ -220,7 +219,7 @@ class SimulationObject(object):
 
         # write events to a plot log, for plotting by plotSpaceTimeDiagram.py
         # plot logging is controlled by configuration files pointed to by config_constants and by env vars
-        logger = debug_log.get_logger( 'wc.plot.file' )
+        logger = debug_logs.get_log( 'wc.plot.file' )
         for event in event_list:
             logger.debug( str( event ), sim_time=self.time )
 
@@ -235,5 +234,5 @@ class SimulationObject(object):
     def log_with_time( self, msg, local_call_depth=1 ):
         """Write a debug log message with the simulation time.
         """
-        debug_log.get_logger( 'wc.debug.file' ).debug( msg, sim_time=self.time,
+        debug_logs.get_log( 'wc.debug.file' ).debug( msg, sim_time=self.time,
             local_call_depth=local_call_depth )
