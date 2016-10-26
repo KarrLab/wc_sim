@@ -1,16 +1,18 @@
-import pip
-pip.main(['install', '-U', 'git+git://github.com/KarrLab/wc_utils.git#egg=wc_utils'])
-
 from setuptools import setup, find_packages
-from wc_utils.util.installation import install_packages
+from wc_utils.util.installation import parse_requirements, install_dependencies_from_links
 import Sequential_WC_Simulator
 
-# parse requirements.txt files
+# parse dependencies and links from requirements.txt files
 with open('requirements.txt', 'r') as file:
-    install_requires = install_packages(file.readlines())
+    install_requires, dependency_links_install = parse_requirements(file.readlines())
 with open('tests/requirements.txt', 'r') as file:
-    tests_require = install_packages(file.readlines())
+    tests_require, dependency_links_tests = parse_requirements(file.readlines())
+dependency_links = list(set(dependency_links_install + dependency_links_tests))
 
+# install non-PyPI dependencies
+install_dependencies_from_links(dependency_links)
+
+# install package
 setup(
     name="Sequential_WC_Simulator",
     version=Sequential_WC_Simulator.__version__,
@@ -24,6 +26,7 @@ setup(
     packages=find_packages(exclude=['tests', 'tests.*']),
     install_requires=install_requires,
     tests_require=tests_require,
+    dependency_links=dependency_links,
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Science/Research',

@@ -7,4 +7,4 @@ future
 recordtype
 lxml
 python-libsbml
-git+git://github.com/KarrLab/wc_utils.git#egg=wc_utils
+git+https://github.com/KarrLab/wc_utils.git#egg=wc_utils
