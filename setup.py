@@ -1,5 +1,5 @@
 import pip
-pip.main(['install', 'git+git://github.com/KarrLab/wc_utils.git#egg=wc_utils'])
+pip.main(['install', '-U', 'git+git://github.com/KarrLab/wc_utils.git#egg=wc_utils'])
 
 from setuptools import setup, find_packages
 from wc_utils.util.installation import install_packages
