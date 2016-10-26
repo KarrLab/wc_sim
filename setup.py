@@ -1,3 +1,6 @@
+import pip
+pip.main(['install', 'git+https://github.com/KarrLab/wc_utils.git#egg=wc_utils'])
+
 from setuptools import setup, find_packages
 from wc_utils.util.installation import parse_requirements, install_dependencies_from_links
 import Sequential_WC_Simulator
