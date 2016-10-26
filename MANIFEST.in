@@ -8,10 +8,4 @@ include requirements.txt
 recursive-include examples *
 
 # configuration files
-Sequential_WC_Simulator/core/config/core.schema.cfg
-Sequential_WC_Simulator/core/config/core.default.cfg
-Sequential_WC_Simulator/core/config/debug.default.cfg
-Sequential_WC_Simulator/multialgorithm/config/core.schema.cfg
-Sequential_WC_Simulator/multialgorithm/config/core.default.cfg
-Sequential_WC_Simulator/multialgorithm/config/debug.default.cfg
-examples/config/debug.default.cfg
+recursive-include Sequential_WC_Simulator *.cfg
