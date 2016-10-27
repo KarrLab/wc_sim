@@ -27,6 +27,17 @@ setup(
     license="MIT",
     keywords='whole-cell systems cell molecular biology',
     packages=find_packages(exclude=['tests', 'tests.*']),
+    package_data={
+        'Sequential_WC_Simulator': [
+            'core/config/core.default.cfg',
+            'core/config/core.schema.cfg',
+            'core/config/debug.default.cfg',
+            'multialgorithm/config/core.default.cfg',
+            'multialgorithm/config/core.schema.cfg',
+            'multialgorithm/config/debug.default.cfg',
+            'examples/config/debug.default.cfg',
+        ],
+    },
     install_requires=install_requires,
     tests_require=tests_require,
     dependency_links=dependency_links,

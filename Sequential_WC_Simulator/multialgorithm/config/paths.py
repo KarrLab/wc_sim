@@ -6,14 +6,15 @@
 :License: MIT
 """
 
+from pkg_resources import resource_filename
 from wc_utils.config.core import ConfigPaths
 from wc_utils.debug_logs.config import paths as debug_logs_default_paths
 import os
 
 
 core = ConfigPaths(
-    default=os.path.join(os.path.dirname(__file__), 'core.default.cfg'),
-    schema=os.path.join(os.path.dirname(__file__), 'core.schema.cfg'),
+    default=resource_filename('Sequential_WC_Simulator', 'multialgorithm/config/core.default.cfg'),
+    schema=resource_filename('Sequential_WC_Simulator', 'multialgorithm/config/core.schema.cfg'),
     user=(
         'Sequential_WC_Simulator.multialgorithm.core.cfg',
         os.path.expanduser('~/.wc/Sequential_WC_Simulator.multialgorithm.core.cfg'),
@@ -21,7 +22,7 @@ core = ConfigPaths(
 )
 
 debug_logs = debug_logs_default_paths.deepcopy()
-debug_logs.default = os.path.join(os.path.dirname(__file__), 'debug.default.cfg')
+debug_logs.default = resource_filename('Sequential_WC_Simulator', 'multialgorithm/config/debug.default.cfg')
 debug_logs.user = (
     'Sequential_WC_Simulator.multialgorithm.debug.cfg',
     os.path.expanduser('~/.wc/Sequential_WC_Simulator.multialgorithm.debug.cfg'),
