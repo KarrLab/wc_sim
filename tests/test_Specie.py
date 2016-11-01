@@ -76,6 +76,7 @@ class TestSpecie(unittest.TestCase):
         n1.last_population += 1
         self.assertNotEqual( n1, NegativePopulationError( *args ) )
         self.assertTrue( n1.__ne__( NegativePopulationError( *args ) ) )
+        self.assertFalse( n1 == 3 )
 
         p = "m(): negative population for 'specie_3', with decline from 3 to -1"
         self.assertEqual( str(n1), p )
