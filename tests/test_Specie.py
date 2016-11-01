@@ -75,11 +75,15 @@ class TestSpecie(unittest.TestCase):
         self.assertEqual( n1, NegativePopulationError( *args ) )
         n1.last_population += 1
         self.assertNotEqual( n1, NegativePopulationError( *args ) )
+        self.assertTrue( n1.__ne__( NegativePopulationError( *args ) ) )
 
         p = "m(): negative population for 'specie_3', with decline from 3 to -1"
         self.assertEqual( str(n1), p )
         n1.delta_time=2
         self.assertEqual( str(n1), p + " over 2 time units" )
+
+        d = { n1:1 }
+        self.assertTrue( n1 in d )
 
     def test_raise_NegativePopulationError(self):
         s1 = Specie( 'specie_3', 2, -2.0 )
