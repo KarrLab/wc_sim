@@ -11,8 +11,8 @@ import sys
 import re
 import math
 
-from wc_utils.util.RandomUtilities import ReproducibleRandom
-from wc_utils.util.MiscUtilities import compare_name_with_class
+from wc_utils.util.rand_utils import ReproducibleRandom
+from wc_utils.util.misc_utils import compare_name_with_class
 
 # TODO(Arthur): test the exceptions in these modules
 from Sequential_WC_Simulator.core.simulation_object import EventQueue, SimulationObject

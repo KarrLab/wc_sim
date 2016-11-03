@@ -5,7 +5,7 @@
 
 from Sequential_WC_Simulator.multialgorithm.config import paths as config_paths
 from wc_utils.config.core import ConfigManager
-from wc_utils.util.RandomUtilities import StochasticRound, ReproducibleRandom
+from wc_utils.util.rand_utils import StochasticRound, ReproducibleRandom
 
 config = ConfigManager(config_paths.core).get_config()['Sequential_WC_Simulator']['multialgorithm']
 

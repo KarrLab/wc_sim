@@ -3,7 +3,7 @@ import re
 
 # TODO(Arthur): test the singleton ReproducibleRandom in a nosetests run of other code that uses it
 
-from wc_utils.util.RandomUtilities import ReproducibleRandom as RepRand
+from wc_utils.util.rand_utils import ReproducibleRandom as RepRand
 
 class TestReproducibleRandomErrors(unittest.TestCase):
 

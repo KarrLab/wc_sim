@@ -1,6 +1,6 @@
 import unittest
 
-from wc_utils.util.StatsUtilities import ExponentialMovingAverage
+from wc_utils.util.stat_utils import ExponentialMovingAverage
 
 class TestExponentialMovingAverage(unittest.TestCase):
 

@@ -14,7 +14,7 @@ import re
 
 from matplotlib.backends.backend_pdf import PdfPages
 from Sequential_WC_Simulator.multialgorithm.model_representation import Model
-from wc_utils.util.MiscUtilities import N_AVOGADRO 
+from wc_utils.util.misc_utils import N_AVOGADRO 
 
 def plot(model, time = np.zeros(0), 
     speciesCounts = None, volume = np.zeros(0), extracellularVolume = np.zeros(0),
