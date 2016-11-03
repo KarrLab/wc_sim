@@ -44,6 +44,10 @@ class TestSpecie(unittest.TestCase):
         self.assertEqual( s1.get_population( 4.0 ), 12 )
         self.assertEqual( s1.get_population( 6.0 ), 14 )
 
+        # ensure that continuous_adjustment() returns an integral population
+        adjusted_pop = s1.continuous_adjustment( 0.5, 5, 0 )
+        self.assertEqual( int(adjusted_pop), adjusted_pop )
+
         with self.assertRaises(ValueError) as context:
             s1.continuous_adjustment( 2, 3, 1 )
         self.assertIn( 'continuous_adjustment(): time <= self.continuous_time', str(context.exception) )
@@ -78,7 +82,7 @@ class TestSpecie(unittest.TestCase):
         self.assertTrue( n1.__ne__( NegativePopulationError( *args ) ) )
         self.assertFalse( n1 == 3 )
 
-        p = "m(): negative population for 'specie_3', with decline from 3 to -1"
+        p = "m(): negative population predicted for 'specie_3', with decline from 3 to -1"
         self.assertEqual( str(n1), p )
         n1.delta_time=2
         self.assertEqual( str(n1), p + " over 2 time units" )
