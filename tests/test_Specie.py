@@ -87,11 +87,3 @@ class TestSpecie(unittest.TestCase):
         s1.continuous_adjustment( 0, 1, 0.25 )
         for i in range(samples):
             self.assertEqual( s1.get_population( 3 ), 11.0 )
-            
-        ReproducibleRandom.init( seed=123 )
-        s2 = Specie( 'specie', 10.5 )
-        pops=[]
-        for i in range(10):
-            pops.append( s2.get_population( ) )
-        expected_pops = [10, 11, 10, 10, 11, 10, 11, 10, 11, 11]
-        self.assertEqual( pops, expected_pops )
