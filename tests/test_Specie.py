@@ -1,12 +1,13 @@
-import unittest
-import sys
+import numpy as np
 import re
+import sys
+import unittest
 
-from wc_utils.util.rand_utils import ReproducibleRandom
-
+from scipy.stats import binom
 from Sequential_WC_Simulator.core.simulation_object import EventQueue, SimulationObject
 from Sequential_WC_Simulator.core.simulation_engine import SimulationEngine, MessageTypesRegistry
 from Sequential_WC_Simulator.multialgorithm.specie import Specie
+from wc_utils.util.rand_utils import ReproducibleRandom
 
 
 class TestSpecie(unittest.TestCase):
@@ -75,11 +76,12 @@ class TestSpecie(unittest.TestCase):
         samples = 1000
         for i in range(samples):
             pop = s1.get_population( )
-            self.assertTrue( pop == 10 or pop == 11 )
+            self.assertTrue( pop in [10, 11] )
         
-        mean = sum(s1.get_population( ) for i in range(samples) ) / float(samples)
-        # TODO(Arthur): make sure P[ 10.4 <= mean <= 10.6 ] is high enough 
-        self.assertTrue( 10.4 <= mean <= 10.6 )
+        mean = np.mean([s1.get_population( ) for i in range(samples) ])
+        min = 10 + binom.ppf(0.01, n=samples, p=0.5) / samples
+        max = 10 + binom.ppf(0.99, n=samples, p=0.5) / samples
+        self.assertTrue( min <= mean <= max )
         
         s1 = Specie( 'specie', 10.5, initial_flux=0 )
         s1.continuous_adjustment( 0, 1, 0.25 )
