@@ -5,7 +5,7 @@ dependencies:
   cache_directories:
     - ~/miniconda2
     - ~/miniconda3
-  pre:
+  override:
     - sudo apt-get install libglpk-dev
 
     - >
