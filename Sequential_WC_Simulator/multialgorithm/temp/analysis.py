@@ -14,7 +14,7 @@ import re
 
 from matplotlib.backends.backend_pdf import PdfPages
 from Sequential_WC_Simulator.multialgorithm.model_representation import Model
-from wc_utils.util.misc_utils import N_AVOGADRO 
+from scipy.constants import Avogadro
 
 def plot(model, time = np.zeros(0), 
     speciesCounts = None, volume = np.zeros(0), extracellularVolume = np.zeros(0),
@@ -53,15 +53,15 @@ def plot(model, time = np.zeros(0),
                 V = extracellularVolume
             
             if units == 'pM':
-                scale = 1 / N_AVOGADRO / V * 1e12
+                scale = 1 / Avogadro / V * 1e12
             elif units == 'nM':
-                scale = 1 / N_AVOGADRO / V * 1e9
+                scale = 1 / Avogadro / V * 1e9
             elif units == 'uM':
-                scale = 1 / N_AVOGADRO / V * 1e6
+                scale = 1 / Avogadro / V * 1e6
             elif units == 'mM':
-                scale = 1 / N_AVOGADRO / V * 1e3
+                scale = 1 / Avogadro / V * 1e3
             elif units == 'M':
-                scale = 1 / N_AVOGADRO / V * 1e0
+                scale = 1 / Avogadro / V * 1e0
             elif units == 'molecules':
                 scale = 1
             else:

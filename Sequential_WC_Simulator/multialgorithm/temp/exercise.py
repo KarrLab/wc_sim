@@ -12,7 +12,7 @@ Simulates metabolism submodel
 # from WcModelingTutorial.TutorialConstruction.model import getModelFromExcel, Submodel, SsaSubmodel
 # from model import getModelFromExcel, Submodel, SsaSubmodel #code for model in exercises
 from wc_utils.util.rand_utils import ReproducibleRandom
-from wc_utils.util.misc_utils import N_AVOGADRO
+from scipy.constants import Avogadro
 
 # from WcModelingTutorial.TutorialConstruction import analysis    #code to analyze simulation results in exercises
 from Sequential_WC_Simulator.multialgorithm.temp import analysis
@@ -84,13 +84,13 @@ def simulate(model):
             #calculate concentrations
             speciesConcentrations = {}
             for id, cnt in speciesCountsDict.iteritems():
-                speciesConcentrations[id] = speciesCountsDict[id] / model.volume / N_AVOGADRO
+                speciesConcentrations[id] = speciesCountsDict[id] / model.volume / Avogadro
         
             #calculate propensities
             totalPropensities = np.zeros(len(ssaSubmodels))
             reactionPropensities = []
             for iSubmodel, submodel in enumerate(ssaSubmodels):
-                p = np.maximum(0, Submodel.calcReactionRates(submodel.reactions, speciesConcentrations) * model.volume * N_AVOGADRO)
+                p = np.maximum(0, Submodel.calcReactionRates(submodel.reactions, speciesConcentrations) * model.volume * Avogadro)
                 totalPropensities[iSubmodel] = np.sum(p)
                 reactionPropensities.append(p)
             

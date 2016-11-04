@@ -11,9 +11,10 @@ Created 2016/07/14
 import sys
 import numpy as np
 
+from scipy.constants import Avogadro
 from wc_utils.config.core import ConfigManager
 from wc_utils.util.rand_utils import ReproducibleRandom
-from wc_utils.util.misc_utils import N_AVOGADRO, compare_name_with_class, dict_2_key_sorted_str
+from wc_utils.util.misc_utils import compare_name_with_class, dict_2_key_sorted_str
 from wc_utils.util.stat_utils import ExponentialMovingAverage
 
 from Sequential_WC_Simulator.core.config import paths as config_paths_core
@@ -148,11 +149,11 @@ class simple_SSA_submodel( Submodel ):
         """
 
         # TODO(Arthur): optimization: I understand physicality of concentrations and propensities,
-        # but wasteful to divide by volume & N_AVOGADRO and then multiply by them; stop doing this
+        # but wasteful to divide by volume & Avogadro and then multiply by them; stop doing this
         # TODO(Arthur): optimization: only calculate new reaction rates for species whose
         # speciesConcentrations (counts) have changed
         propensities = np.maximum(0, Submodel.calcReactionRates(self.reactions, self.get_specie_concentrations())
-            * self.model.volume * N_AVOGADRO)
+            * self.model.volume * Avogadro)
         # avoid reactions with inadequate specie counts
         enabled_reactions = self.identify_enabled_reactions( propensities )
         propensities = enabled_reactions * propensities

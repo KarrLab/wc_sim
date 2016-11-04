@@ -16,7 +16,8 @@ with warnings.catch_warnings():
     from cobra import Model as CobraModel
     from cobra import Reaction as CobraReaction
 
-from wc_utils.util.misc_utils import N_AVOGADRO, compare_name_with_class, dict_2_key_sorted_str
+from scipy.constants import Avogadro
+from wc_utils.util.misc_utils import compare_name_with_class, dict_2_key_sorted_str
 import wc_utils.util.misc_utils as utilities
 
 from Sequential_WC_Simulator.core.simulation_object import (EventQueue, SimulationObject)
@@ -248,7 +249,7 @@ class FbaSubmodel(Submodel):
         upperBounds[0:len(self.reactions)] = utilities.nanminimum(
             upperBounds[0:len(self.reactions)], 
             Submodel.calcReactionRates(self.reactions, self.get_specie_concentrations()) 
-                * self.model.volume * N_AVOGADRO )
+                * self.model.volume * Avogadro )
         
         # external nutrients availability
         specie_counts = self.get_specie_counts()
@@ -258,9 +259,9 @@ class FbaSubmodel(Submodel):
                 / self.time_step)
         
         # exchange bounds
-        lowerBounds = utilities.nanminimum(lowerBounds, self.model.dryWeight / 3600 * N_AVOGADRO 
+        lowerBounds = utilities.nanminimum(lowerBounds, self.model.dryWeight / 3600 * Avogadro 
             * 1e-3 * self.exchangeRateBounds['lower'])
-        upperBounds = utilities.nanminimum(upperBounds, self.model.dryWeight / 3600 * N_AVOGADRO 
+        upperBounds = utilities.nanminimum(upperBounds, self.model.dryWeight / 3600 * Avogadro 
             * 1e-3 * self.exchangeRateBounds['upper'])
         
         for i_rxn, rxn in enumerate(self.cobraModel.reactions):

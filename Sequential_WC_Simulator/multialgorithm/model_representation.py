@@ -18,7 +18,7 @@ with warnings.catch_warnings():
     from cobra import Model as CobraModel
     from cobra import Reaction as CobraReaction
 
-from wc_utils.util.misc_utils import N_AVOGADRO
+from scipy.constants import Avogadro
 from wc_utils.util.decorate_default_data_struct import default_mutable_params
 
 from Sequential_WC_Simulator.multialgorithm.utilities import species_compartment_name
@@ -108,7 +108,7 @@ class Model(object):
                 # TODO(Arthur): just initialize species that participate in continuous models
                 self.the_SharedMemoryCellState.init_cell_state_specie( 
                     species_compartment_name( species, conc.compartment ), 
-                    conc.value * conc.compartment.initialVolume * N_AVOGADRO,
+                    conc.value * conc.compartment.initialVolume * Avogadro,
                     initial_flux_given = 0 )
         
         #cell mass
@@ -152,7 +152,7 @@ class Model(object):
             if species.molecularWeight is not None:
                 mass += speciesCounts[species.index, iCellComp] * species.molecularWeight
                 
-        mass /= N_AVOGADRO
+        mass /= Avogadro
         
         self.mass = mass
         self.dryWeight = self.fractionDryWeight * mass
@@ -199,7 +199,7 @@ class Model(object):
     #get species concentrations
     def getSpeciesConcentrations(self, now ):
         speciesCounts = self.getSpeciesCountArray( now )
-        return ( speciesCounts / self.getSpeciesVolumes() ) / N_AVOGADRO
+        return ( speciesCounts / self.getSpeciesVolumes() ) / Avogadro
         
     #get species concentrations
     def getSpeciesConcentrationsDict(self, now ):

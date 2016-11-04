@@ -14,7 +14,7 @@ import math
 import numpy as np
 import re
 
-from wc_utils.util.misc_utils import N_AVOGADRO
+from scipy.constants import Avogadro
 
 from Sequential_WC_Simulator.core.simulation_object import SimulationObject
 from Sequential_WC_Simulator.multialgorithm.utilities import species_compartment_name
@@ -77,7 +77,7 @@ class Submodel(SimulationObject):
         """
         counts = self.get_specie_counts()
         ids = [ s.id for s in self.species ]
-        return { specie_id:(counts[specie_id] / self.model.volume)/N_AVOGADRO for specie_id in ids }
+        return { specie_id:(counts[specie_id] / self.model.volume) / Avogadro for specie_id in ids }
 
     # TODO(Arthur): make this an instance method, and drop the arguments
     @staticmethod
