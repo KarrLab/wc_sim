@@ -2,7 +2,7 @@ import pip
 pip.main(['install', 'git+https://github.com/KarrLab/wc_utils.git#egg=wc_utils'])
 
 from setuptools import setup, find_packages
-from wc_utils.util.installation import parse_requirements, install_dependencies_from_links
+from wc_utils.util.install import parse_requirements, install_dependencies
 import Sequential_WC_Simulator
 
 # parse dependencies and links from requirements.txt files
@@ -13,7 +13,7 @@ with open('tests/requirements.txt', 'r') as file:
 dependency_links = list(set(dependency_links_install + dependency_links_tests))
 
 # install non-PyPI dependencies
-install_dependencies_from_links(dependency_links)
+install_dependencies(dependency_links)
 
 # install package
 setup(
