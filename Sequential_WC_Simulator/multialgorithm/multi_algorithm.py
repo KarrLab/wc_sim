@@ -24,7 +24,7 @@ import argparse
 import warnings
 import errno
 
-from wc_utils.util.rand_utils import ReproducibleRandom
+from wc_utils.util.rand import ReproducibleRandom
 
 from Sequential_WC_Simulator.core.config import paths as config_paths_core
 from Sequential_WC_Simulator.core.simulation_object import EventQueue

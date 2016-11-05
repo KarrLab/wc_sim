@@ -11,7 +11,7 @@ Simulates metabolism submodel
 #required libraries
 # from WcModelingTutorial.TutorialConstruction.model import getModelFromExcel, Submodel, SsaSubmodel
 # from model import getModelFromExcel, Submodel, SsaSubmodel #code for model in exercises
-from wc_utils.util.rand_utils import ReproducibleRandom
+from wc_utils.util.rand import ReproducibleRandom
 from scipy.constants import Avogadro
 
 # from WcModelingTutorial.TutorialConstruction import analysis    #code to analyze simulation results in exercises

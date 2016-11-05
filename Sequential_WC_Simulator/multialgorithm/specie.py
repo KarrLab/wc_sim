@@ -5,7 +5,7 @@
 
 from Sequential_WC_Simulator.multialgorithm.config import paths as config_paths
 from wc_utils.config.core import ConfigManager
-from wc_utils.util.rand_utils import StochasticRound, ReproducibleRandom
+from wc_utils.util.rand import StochasticRound, ReproducibleRandom
 
 config = ConfigManager(config_paths.core).get_config()['Sequential_WC_Simulator']['multialgorithm']
 
@@ -85,7 +85,7 @@ class Specie(object):
             self.continuous_time = 0
             self.continuous_flux = initial_flux
 
-        self.stochasticRounder = StochasticRound( ReproducibleRandom.get_numpy_random() ).Round
+        self.stochasticRounder = StochasticRound( ReproducibleRandom.get_numpy_random() ).round
 
     def discrete_adjustment( self, population_change ):
         """A discrete model adjusts the specie's population.

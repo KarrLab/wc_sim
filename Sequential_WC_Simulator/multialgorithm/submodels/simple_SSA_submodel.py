@@ -13,9 +13,9 @@ import numpy as np
 
 from scipy.constants import Avogadro
 from wc_utils.config.core import ConfigManager
-from wc_utils.util.rand_utils import ReproducibleRandom
-from wc_utils.util.misc_utils import compare_name_with_class, dict_2_key_sorted_str
-from wc_utils.util.stat_utils import ExponentialMovingAverage
+from wc_utils.util.rand import ReproducibleRandom
+from wc_utils.util.misc import isclass_by_name
+from wc_utils.util.stats import ExponentialMovingAverage
 
 from Sequential_WC_Simulator.core.config import paths as config_paths_core
 from Sequential_WC_Simulator.core.simulation_object import (EventQueue, SimulationObject)
@@ -232,7 +232,7 @@ class simple_SSA_submodel( Submodel ):
             self.log_with_time( "submodel {}, event {}".format( self.name, self.num_events ) )
 
         for event_message in event_list:
-            if compare_name_with_class( event_message.event_type, GivePopulation ):
+            if isclass_by_name( event_message.event_type, GivePopulation ):
 
                 continue
                 # TODO(Arthur): add this functionality; currently, handling accessing memory directly
@@ -243,7 +243,7 @@ class simple_SSA_submodel( Submodel ):
                 self.log_with_time( "GivePopulation: {}".format( str(event_message.event_body) ) )
                 # store population_values in some cache ...
 
-            elif compare_name_with_class( event_message.event_type, ExecuteSSAReaction ):
+            elif isclass_by_name( event_message.event_type, ExecuteSSAReaction ):
 
                 reaction_index = event_message.event_body.reaction_index
 
@@ -268,7 +268,7 @@ class simple_SSA_submodel( Submodel ):
 
                 self.schedule_next_event()
 
-            elif compare_name_with_class( event_message.event_type, SSAWait ):
+            elif isclass_by_name( event_message.event_type, SSAWait ):
 
                 # TODO(Arthur): generate error(s) if SSAWaits are numerous, or a high fraction of events
                 # no reaction to execute

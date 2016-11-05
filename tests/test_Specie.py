@@ -7,7 +7,7 @@ from scipy.stats import binom
 from Sequential_WC_Simulator.core.simulation_object import EventQueue, SimulationObject
 from Sequential_WC_Simulator.core.simulation_engine import SimulationEngine, MessageTypesRegistry
 from Sequential_WC_Simulator.multialgorithm.specie import Specie
-from wc_utils.util.rand_utils import ReproducibleRandom
+from wc_utils.util.rand import ReproducibleRandom
 
 
 class TestSpecie(unittest.TestCase):
