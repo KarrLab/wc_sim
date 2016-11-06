@@ -5,7 +5,7 @@
 
 from Sequential_WC_Simulator.multialgorithm.config import paths as config_paths
 from wc_utils.config.core import ConfigManager
-from wc_utils.util.rand import StochasticRound, RandomStateManager
+from wc_utils.util.rand import RandomStateManager
 
 config = ConfigManager(config_paths.core).get_config()['Sequential_WC_Simulator']['multialgorithm']
 
@@ -63,7 +63,7 @@ class Specie(object):
         overhead of a Class instance for each Specie.
     """
     # use __slots__ to save space
-    __slots__ = "specie_name last_population continuous_time continuous_flux stochasticRounder".split()
+    __slots__ = "specie_name last_population continuous_time continuous_flux random_state".split()
 
     def __init__( self, specie_name, initial_population, initial_flux=None ):
         """Initialize a Specie object.
@@ -85,7 +85,7 @@ class Specie(object):
             self.continuous_time = 0
             self.continuous_flux = initial_flux
 
-        self.stochasticRounder = StochasticRound( RandomStateManager.instance() ).round
+        self.random_state = RandomStateManager.instance()
 
     def discrete_adjustment( self, population_change ):
         """A discrete model adjusts the specie's population.
@@ -143,7 +143,7 @@ class Specie(object):
             ValueError: time is earlier than a previous continuous adjustment
         """
         if self.continuous_time == None:
-            return self.stochasticRounder( self.last_population )
+            return self.random_state.round( self.last_population )
         else:
             if time == None:
                 raise ValueError( "get_population(): time needed because "
@@ -155,7 +155,7 @@ class Specie(object):
             if config['interpolate']:
                 interpolation = (time - self.continuous_time) * self.continuous_flux
             float_copy_number = self.last_population + interpolation
-            return self.stochasticRounder( float_copy_number )
+            return self.random_state.round( float_copy_number )
             
     def __str__( self ):
         return "specie_name:{}; last_population:{}; continuous_time:{}; continuous_flux:{}".format( 
