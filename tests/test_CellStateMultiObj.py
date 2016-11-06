@@ -11,8 +11,8 @@ import sys
 import re
 import math
 
-from wc_utils.util.rand import ReproducibleRandom
 from wc_utils.util.misc import isclass_by_name
+from wc_utils.util.rand import RandomStateManager
 
 # TODO(Arthur): test the exceptions in these modules
 from Sequential_WC_Simulator.core.simulation_object import EventQueue, SimulationObject
@@ -215,5 +215,5 @@ class _CellStateMaker(object):
     def make_CellState( pop, init_flux, name=None ):
         if name is None:
             name = _CellStateMaker.get_name()
-        ReproducibleRandom.init( seed=123 )
+        RandomStateManager.initialize( seed=123 )
         return CellState( name, pop, initial_fluxes=init_flux )

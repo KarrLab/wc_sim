@@ -24,8 +24,6 @@ import argparse
 import warnings
 import errno
 
-from wc_utils.util.rand import ReproducibleRandom
-
 from Sequential_WC_Simulator.core.config import paths as config_paths_core
 from Sequential_WC_Simulator.core.simulation_object import EventQueue
 from Sequential_WC_Simulator.core.simulation_engine import SimulationEngine, MessageTypesRegistry
@@ -39,6 +37,7 @@ from Sequential_WC_Simulator.multialgorithm.message_types import *
 import Sequential_WC_Simulator.multialgorithm.temp.exercise as Exercise
 from Sequential_WC_Simulator.multialgorithm.debug_logs import logs as debug_logs
 from wc_utils.config.core import ConfigManager
+from wc_utils.util.rand import RandomStateManager
 
 config_core = ConfigManager(config_paths_core.core).get_config()['Sequential_WC_Simulator']['core']
 config_multialgorithm = ConfigManager(config_paths_multialgorithm.core).get_config()['Sequential_WC_Simulator']['multialgorithm']
@@ -85,11 +84,13 @@ class MultiAlgorithm(object):
     def main(args):
 
         SimulationEngine.reset()
+
         # setup PRNG
         if args.seed:
-            ReproducibleRandom.init(seed=args.seed)
+            seed = args.seed
         else:
-            ReproducibleRandom.init(seed=config_core['reproducible_seed'])
+            seed = config_core['reproducible_seed']
+        RandomStateManager.instance().seed(seed)
 
         '''
         Steps:

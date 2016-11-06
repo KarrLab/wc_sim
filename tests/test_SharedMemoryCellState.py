@@ -2,7 +2,7 @@ import unittest
 import sys
 import re
 
-from wc_utils.util.rand import ReproducibleRandom
+from wc_utils.util.rand import RandomStateManager
 
 from Sequential_WC_Simulator.multialgorithm.specie import Specie
 from Sequential_WC_Simulator.multialgorithm.shared_memory_cell_state import SharedMemoryCellState
@@ -10,7 +10,7 @@ from Sequential_WC_Simulator.multialgorithm.shared_memory_cell_state import Shar
 class TestSharedMemoryCellState(unittest.TestCase):
 
     def setUp(self):
-        ReproducibleRandom.init( seed=123 )
+        RandomStateManager.initialize( seed=123 )
         
         species = list( map( lambda x: "specie_{}".format( x ), range( 1, 5 ) ) )
         self.species = species

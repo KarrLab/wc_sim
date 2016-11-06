@@ -13,7 +13,7 @@ import numpy as np
 
 from scipy.constants import Avogadro
 from wc_utils.config.core import ConfigManager
-from wc_utils.util.rand import ReproducibleRandom
+from wc_utils.util.rand import RandomStateManager
 from wc_utils.util.misc import isclass_by_name
 from wc_utils.util.stats import ExponentialMovingAverage
 
@@ -119,7 +119,7 @@ class simple_SSA_submodel( Submodel ):
         # will form at the start of a simulation if no reactions are enabled
         self.ema_of_inter_event_time=ExponentialMovingAverage(config_multialgorithm['initial_ssa_wait_ema'],
             center_of_mass=default_center_of_mass )
-        self.numpy_random = ReproducibleRandom.get_numpy_random()
+        self.random_state = RandomStateManager.instance()
 
         self.log_with_time( "init: name: {}".format( name ) )
         self.log_with_time( "init: id: {}".format( id ) )
@@ -203,10 +203,10 @@ class simple_SSA_submodel( Submodel ):
             return
 
         # Select time to next reaction from exponential distribution
-        dt = self.numpy_random.exponential(1/total_propensities)
+        dt = self.random_state.exponential(1/total_propensities)
 
         # schedule next reaction
-        reaction_index = self.numpy_random.choice( len(propensities), p = propensities/total_propensities)
+        reaction_index = self.random_state.choice( len(propensities), p = propensities/total_propensities)
         self.schedule_ExecuteSSAReaction( dt, reaction_index )
 
     def execute_SSA_reaction(self, reaction_index):
@@ -262,7 +262,7 @@ class simple_SSA_submodel( Submodel ):
                     else:
 
                         # select a reaction
-                        reaction_index = self.numpy_random.choice( len(propensities),
+                        reaction_index = self.random_state.choice( len(propensities),
                             p = propensities/total_propensities)
                         self.execute_SSA_reaction( reaction_index )
 

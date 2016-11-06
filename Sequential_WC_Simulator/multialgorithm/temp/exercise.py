@@ -11,8 +11,8 @@ Simulates metabolism submodel
 #required libraries
 # from WcModelingTutorial.TutorialConstruction.model import getModelFromExcel, Submodel, SsaSubmodel
 # from model import getModelFromExcel, Submodel, SsaSubmodel #code for model in exercises
-from wc_utils.util.rand import ReproducibleRandom
 from scipy.constants import Avogadro
+from wc_utils.util.rand import RandomStateManager
 
 # from WcModelingTutorial.TutorialConstruction import analysis    #code to analyze simulation results in exercises
 from Sequential_WC_Simulator.multialgorithm.temp import analysis
@@ -39,7 +39,7 @@ def simulate(model):
     cellCycleLength = model.getComponentById('cellCycleLength').value
 
     #seed random number generator to generate reproducible results
-    numpy_random = ReproducibleRandom.get_numpy_random()
+    random_state = RandomStateManager.isinstance()
 
     #Initialize state
     model.calcInitialConditions()
@@ -95,16 +95,16 @@ def simulate(model):
                 reactionPropensities.append(p)
             
             #Select time to next reaction from exponential distribution
-            dt = numpy_random.exponential(1/np.sum(totalPropensities))
+            dt = random_state.exponential(1/np.sum(totalPropensities))
             if time2 + dt > TIME_STEP:
-                if numpy_random.rand() > (TIME_STEP - time2) / dt:                
+                if random_state.rand() > (TIME_STEP - time2) / dt:                
                     break
                 else:
                     dt = TIME_STEP - time2
             
             #Select next reaction
-            iSubmodel = numpy_random.choice(len(ssaSubmodels), p = totalPropensities / np.sum(totalPropensities))                    
-            iRxn = numpy_random.choice(len(reactionPropensities[iSubmodel]), p = reactionPropensities[iSubmodel] / totalPropensities[iSubmodel])
+            iSubmodel = random_state.choice(len(ssaSubmodels), p = totalPropensities / np.sum(totalPropensities))                    
+            iRxn = random_state.choice(len(reactionPropensities[iSubmodel]), p = reactionPropensities[iSubmodel] / totalPropensities[iSubmodel])
 
             #update time
             time2 += dt
