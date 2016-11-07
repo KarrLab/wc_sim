@@ -138,7 +138,7 @@ Time                 Event                Pop_adjust           Flux             
         for time, (Pop_adjust, Flux, unused_Population) in pop_history_dict['continuous_adjust'].items():
             usr.send_event( time, cs1, message_types.AdjustPopulationByContinuousModel, 
                 event_body=message_types.AdjustPopulationByContinuousModel.body( 
-                    { specie: message_types.Continuous_change( Pop_adjust, Flux ) }
+                    { specie: message_types.ContinuousChange( Pop_adjust, Flux ) }
                 )
             )
 
@@ -194,7 +194,7 @@ Time                 Event                Pop_adjust           Flux             
         for time, (Pop_adjust, Flux, unused_Population) in pop_history_dict['continuous_adjust'].items():
             usr.send_event( time, cs, message_types.AdjustPopulationByContinuousModel, 
                 event_body=message_types.AdjustPopulationByContinuousModel.body( 
-                    { specie: message_types.Continuous_change( Pop_adjust, Flux ) }
+                    { specie: message_types.ContinuousChange( Pop_adjust, Flux ) }
                 )
             )
 

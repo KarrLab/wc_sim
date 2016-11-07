@@ -2,22 +2,22 @@ import unittest
 
 from wc_utils.util.misc import isclass_by_name
 
-from wc_sim.multialgorithm.message_types import AdjustPopulationByContinuousModel, Continuous_change
+from wc_sim.multialgorithm.message_types import AdjustPopulationByContinuousModel, ContinuousChange
 
 class TestMessageTypes(unittest.TestCase):
     
     def test_type_check(self):
     
         change, flux = 7, 9
-        t = Continuous_change( change, flux )
+        t = ContinuousChange( change, flux )
         self.assertEqual( t.change, change )
         self.assertEqual( t.flux, flux )
 
         for (change, flux) in ( (None, 3), ('x', 7), ):
             with self.assertRaises(ValueError) as context:
-                Continuous_change( change, flux )
+                ContinuousChange( change, flux )
             self.assertRegexpMatches( str(context.exception), 
-                "Continuous_change.type_check\(\): .* is '.*' which is not an int or float" )
+                "ContinuousChange.type_check\(\): .* is '.*' which is not an int or float" )
 
     def test_one_message_type(self):
     

@@ -53,7 +53,7 @@ class TestCellState(unittest.TestCase):
         )
         t = 2.0
         d = dict( zip( _CellStateMaker.species,
-                map( lambda x: Continuous_change(2.0, 1.0), [1]*len( _CellStateMaker.species ) ) ) )
+                map( lambda x: ContinuousChange(2.0, 1.0), [1]*len( _CellStateMaker.species ) ) ) )
 
         usr.send_event( t, cs1, AdjustPopulationByContinuousModel, 
             event_body=AdjustPopulationByContinuousModel.body( d ) )
@@ -85,7 +85,7 @@ class TestCellState(unittest.TestCase):
         )
         t = 2.0
         d = dict( zip( _CellStateMaker.species,
-                map( lambda x: Continuous_change(2.0, 1.0), [1]*len( _CellStateMaker.species ) ) ) )
+                map( lambda x: ContinuousChange(2.0, 1.0), [1]*len( _CellStateMaker.species ) ) ) )
 
         usr.send_event( t, cs1, AdjustPopulationByContinuousModel, 
             event_body=AdjustPopulationByContinuousModel.body( d ) )

@@ -59,10 +59,10 @@ class AdjustPopulationByDiscreteModel( object ):
                 sorted( self.population_change.keys() ) ]
             return "specie:change: {}".format( ', '.join( l ) )
 
-Continuous_change_namedtuple = namedtuple( 'Continuous_change_namedtuple', 'change, flux' )
-class Continuous_change(Continuous_change_namedtuple):
+ContinuousChange_namedtuple = namedtuple( 'ContinuousChange_namedtuple', 'change, flux' )
+class ContinuousChange(ContinuousChange_namedtuple):
     def type_check(self):
-        """Check that the fields in Continuous_change are numbers.
+        """Check that the fields in ContinuousChange are numbers.
         
         Raises:
             ValueError: if one of the fields is non-numeric.
@@ -72,16 +72,16 @@ class Continuous_change(Continuous_change_namedtuple):
         for f in self._fields:
             v = getattr(self,f)
             if not ( isinstance( v, int ) or isinstance( v, float ) ):
-                raise ValueError( "Continuous_change.type_check(): {} is '{}' "
+                raise ValueError( "ContinuousChange.type_check(): {} is '{}' "
                     "which is not an int or float".format( f, v ) )        
                     
     def __new__( cls, change, flux ):
-        """Initialize a Continuous_change.
+        """Initialize a ContinuousChange.
         
         Raises:
             ValueError: if some fields are not numbers.
         """
-        self = super( Continuous_change, cls ).__new__( cls, change, flux )
+        self = super( ContinuousChange, cls ).__new__( cls, change, flux )
         self.type_check()
         return self
 
@@ -90,7 +90,7 @@ class AdjustPopulationByContinuousModel( object ):
     """An AdjustPopulationByContinuousModel message.
     
         Attributes:
-            population_change: dict: species_name -> Continuous_change namedtuple; 
+            population_change: dict: species_name -> ContinuousChange namedtuple; 
             the increase or decrease in some species copy numbers, and the predicted
             future flux of the species (which may be just the historic flux)
     """
@@ -105,7 +105,7 @@ class AdjustPopulationByContinuousModel( object ):
             """
                 Arguments:
                     specie: string; a specie name
-                    cont_change: Continuous_change = namedtuple; the continuous change for the named tuple
+                    cont_change: ContinuousChange = namedtuple; the continuous change for the named tuple
             """
             self.population_change[ specie ] = cont_change
     
