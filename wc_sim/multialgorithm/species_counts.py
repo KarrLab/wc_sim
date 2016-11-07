@@ -60,3 +60,4 @@ class SpeciesCounts(object):
         self.send_event( 0, receiver, event_type )
     
     """
+    pass
