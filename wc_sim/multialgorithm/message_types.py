@@ -42,7 +42,7 @@ class AdjustPopulationByDiscreteModel( object ):
             in some species copy numbers
     """
     
-    class body(object):
+    class Body(object):
             
         __slots__ = ["population_change"]
         def __init__( self, population_change  ):
@@ -95,7 +95,7 @@ class AdjustPopulationByContinuousModel( object ):
             future flux of the species (which may be just the historic flux)
     """
 
-    class body(object):
+    class Body(object):
         __slots__ = ["population_change"]
     
         def __init__( self, population_change  ):
@@ -125,7 +125,7 @@ class GetPopulation( object ):
             species: set of species_names; the species whose populations are requested
     """
 
-    class body(object):
+    class Body(object):
         __slots__ = ["species"]
         def __init__( self, species  ):
             self.species = species
@@ -143,7 +143,7 @@ class GivePopulation( object ):
             population: dict: species_name -> population; the copy numbers of some species 
     """
 
-    class body(object):
+    class Body(object):
         __slots__ = ["population"]
         def __init__( self, population ):
             self.population = population
@@ -156,25 +156,25 @@ class GivePopulation( object ):
                 for x in sorted( self.population.keys() ) ]
             return "specie:population: {}".format( ', '.join( l ) )
 
-class ExecuteSSAReaction( object ):
-    """A ExecuteSSAReaction message.
+class ExecuteSsaReaction( object ):
+    """A ExecuteSsaReaction message.
 
         Attributes:
             reaction_index: integer; the index of the selected reaction in SsaSubmodel.reactions
     """
 
-    class body(object):
+    class Body(object):
         __slots__ = ["reaction_index"]
         def __init__( self, reaction_index ):
             self.reaction_index = reaction_index
 
-class SSAWait( object ):
-    """A SSAWait message.
+class SsaWait( object ):
+    """A SsaWait message.
     """
     pass
 
-class RunFBA( object ):
-    """A RunFBA message.
+class RunFba( object ):
+    """A RunFba message.
     """
     pass
 
@@ -184,6 +184,6 @@ ALL_MESSAGE_TYPES = [
     AdjustPopulationByContinuousModel,
     GetPopulation,
     GivePopulation,
-    ExecuteSSAReaction,
-    SSAWait,
+    ExecuteSsaReaction,
+    SsaWait,
 ]

@@ -46,7 +46,7 @@ class SsaSubmodel( Submodel ):
         schedule_next_event():
             determine_reaction_propensities()
             if total_propensities == 0: **
-                schedule_SSAWait() **
+                schedule_SsaWait() **
             else:
                 reaction delay = random sample of exp( 1/sum(propensities) )
                 select and schedule the next reaction
@@ -57,7 +57,7 @@ class SsaSubmodel( Submodel ):
             else: *
                 determine_reaction_propensities()
                 if total_propensities == 0: **
-                    schedule_SSAWait() **
+                    schedule_SsaWait() **
                     return
                 else:
                     select and schedule a reaction
@@ -71,15 +71,15 @@ class SsaSubmodel( Submodel ):
         random: a numpy RandomState() instance object; private PRNG; may be reproducible, as
             determined by the value of config_core['reproducible_seed'] and how the main program, MultiAlgorithm,
             calls ReproducibleRandom.init()
-        num_SSAWaits: integer; count of SSAWaits
+        num_SsaWaits: integer; count of SsaWaits
         ema_of_inter_event_time: an ExponentialMovingAverage; an EMA of the time between
-            ExecuteSSAReaction events; when total propensities == 0, ema_of_inter_event_time
-            is used as the time between SSAWait events
+            ExecuteSsaReaction events; when total propensities == 0, ema_of_inter_event_time
+            is used as the time between SsaWait events
         Plus see superclasses.
 
     Event messages:
-        ExecuteSSAReaction
-        SSAWait
+        ExecuteSsaReaction
+        SsaWait
         # messages after future enhancement
         AdjustPopulationByDiscreteModel
         GetPopulation
@@ -88,18 +88,18 @@ class SsaSubmodel( Submodel ):
 
     SENT_MESSAGE_TYPES = [ 
         message_types.AdjustPopulationByDiscreteModel,
-        message_types.ExecuteSSAReaction, 
+        message_types.ExecuteSsaReaction, 
         message_types.GetPopulation, 
-        message_types.SSAWait,
+        message_types.SsaWait,
         ]
 
     MessageTypesRegistry.set_sent_message_types( 'SsaSubmodel', SENT_MESSAGE_TYPES )
 
     # at any time instant, process messages in this order
     MESSAGE_TYPES_BY_PRIORITY = [
-        message_types.SSAWait,
+        message_types.SsaWait,
         message_types.GivePopulation,
-        message_types.ExecuteSSAReaction,
+        message_types.ExecuteSsaReaction,
         ]
 
     MessageTypesRegistry.set_receiver_priorities( 'SsaSubmodel', MESSAGE_TYPES_BY_PRIORITY )
@@ -119,8 +119,8 @@ class SsaSubmodel( Submodel ):
             reactions, species )
         # TODO(Arthur): use private_cell_state & shared_cell_states, or get rid of them
 
-        self.num_SSAWaits=0
-        # INITIAL_SSA_WAIT_EMA should be positive, as otherwise an infinite loop of SSAWait messages
+        self.num_SsaWaits=0
+        # INITIAL_SSA_WAIT_EMA should be positive, as otherwise an infinite loop of SsaWait messages
         # will form at the start of a simulation if no reactions are enabled
         self.ema_of_inter_event_time=ExponentialMovingAverage(config_multialgorithm['initial_ssa_wait_ema'],
             center_of_mass=default_center_of_mass )
@@ -165,22 +165,22 @@ class SsaSubmodel( Submodel ):
         total_propensities = np.sum(propensities)
         return (propensities, total_propensities)
 
-    def schedule_SSAWait(self):
-        """Schedule an SSAWait.
+    def schedule_SsaWait(self):
+        """Schedule an SsaWait.
         """
-        self.send_event( self.ema_of_inter_event_time.get_value(), self, message_types.SSAWait )
-        self.num_SSAWaits += 1
+        self.send_event( self.ema_of_inter_event_time.get_value(), self, message_types.SsaWait )
+        self.num_SsaWaits += 1
         # TODO(Arthur): IMPORTANT: avoid possible infinite loop / infinitely slow progress
-        # arises when 1) no reactions are enabled & 2) EMA of the time between ExecuteSSAReaction events
+        # arises when 1) no reactions are enabled & 2) EMA of the time between ExecuteSsaReaction events
         # is very small (initializing to 0 may be bad)
 
-    def schedule_ExecuteSSAReaction(self, dt, reaction_index):
-        """Schedule an ExecuteSSAReaction.
+    def schedule_ExecuteSsaReaction(self, dt, reaction_index):
+        """Schedule an ExecuteSsaReaction.
         """
         self.send_event( dt, self,
-            message_types.ExecuteSSAReaction, message_types.ExecuteSSAReaction.body(reaction_index) )
+            message_types.ExecuteSsaReaction, message_types.ExecuteSsaReaction.Body(reaction_index) )
 
-        # maintain EMA of the time between ExecuteSSAReaction events
+        # maintain EMA of the time between ExecuteSsaReaction events
         self.ema_of_inter_event_time.add_value( dt )
 
     def schedule_next_event(self):
@@ -204,7 +204,7 @@ class SsaSubmodel( Submodel ):
 
         (propensities, total_propensities) = self.determine_reaction_propensities()
         if total_propensities <= 0:
-            self.schedule_SSAWait()
+            self.schedule_SsaWait()
             return
 
         # Select time to next reaction from exponential distribution
@@ -212,7 +212,7 @@ class SsaSubmodel( Submodel ):
 
         # schedule next reaction
         reaction_index = self.random_state.choice( len(propensities), p = propensities/total_propensities)
-        self.schedule_ExecuteSSAReaction( dt, reaction_index )
+        self.schedule_ExecuteSsaReaction( dt, reaction_index )
 
     def execute_SSA_reaction(self, reaction_index):
         """Execute a reaction now.
@@ -224,7 +224,7 @@ class SsaSubmodel( Submodel ):
     def handle_event( self, event_list ):
         """Handle a SsaSubmodel simulation event.
 
-        In this shared-memory SSA, the only event is ExecuteSSAReaction, and event_list should
+        In this shared-memory SSA, the only event is ExecuteSsaReaction, and event_list should
         always contain one event.
 
         Args:
@@ -248,7 +248,7 @@ class SsaSubmodel( Submodel ):
                 self.log_with_time( "GivePopulation: {}".format( str(event_message.event_body) ) )
                 # store population_values in some cache ...
 
-            elif isclass_by_name( event_message.event_type, message_types.ExecuteSSAReaction ):
+            elif isclass_by_name( event_message.event_type, message_types.ExecuteSsaReaction ):
 
                 reaction_index = event_message.event_body.reaction_index
 
@@ -261,7 +261,7 @@ class SsaSubmodel( Submodel ):
                     if total_propensities == 0:
                         self.log_with_time( "submodel: {}: no reaction to execute".format(
                             self.name ) )
-                        self.schedule_SSAWait()
+                        self.schedule_SsaWait()
                         continue
 
                     else:
@@ -273,9 +273,9 @@ class SsaSubmodel( Submodel ):
 
                 self.schedule_next_event()
 
-            elif isclass_by_name( event_message.event_type, message_types.SSAWait ):
+            elif isclass_by_name( event_message.event_type, message_types.SsaWait ):
 
-                # TODO(Arthur): generate error(s) if SSAWaits are numerous, or a high fraction of events
+                # TODO(Arthur): generate error(s) if SsaWaits are numerous, or a high fraction of events
                 # no reaction to execute
                 self.schedule_next_event()
 
@@ -284,5 +284,5 @@ class SsaSubmodel( Submodel ):
                 "event_message.event_type '{}'".format(event_message.event_type)
 
         self.log_with_time( "EMA of inter event time: "
-            "{:3.2f}; num_events: {}; num_SSAWaits: {}".format(
-                self.ema_of_inter_event_time.get_value(), self.num_events, self.num_SSAWaits ) )
+            "{:3.2f}; num_events: {}; num_SsaWaits: {}".format(
+                self.ema_of_inter_event_time.get_value(), self.num_events, self.num_SsaWaits ) )

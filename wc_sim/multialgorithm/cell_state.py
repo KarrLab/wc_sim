@@ -168,7 +168,7 @@ class CellState( SimulationObject ):
                     population = self.population[specie].get_population( time=self.time ) 
                     reported_population[ specie ] = population
                 self.send_event( 0, event_message.sending_object, 
-                    message_types.GivePopulation, event_body=message_types.GivePopulation.body(reported_population) )
+                    message_types.GivePopulation, event_body=message_types.GivePopulation.Body(reported_population) )
 
             else:
                 assert False, "Shouldn't get here - event_message.event_type should be covered in the "\

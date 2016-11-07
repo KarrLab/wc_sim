@@ -26,8 +26,8 @@ class TestCellState(unittest.TestCase):
         cs1 = CellState( 'name', pop ) 
         # initial events
         with self.assertRaises(ValueError) as context:
-            cs1.send_event( 1.0, cs1, 'init_msg1' )
-        self.assertIn( "'CellState' simulation objects not registered to send 'init_msg1' messages", 
+            cs1.send_event( 1.0, cs1, 'InitMsg1' )
+        self.assertIn( "'CellState' simulation objects not registered to send 'InitMsg1' messages", 
             str(context.exception) )
 
     def test_CellState_debugging(self):
@@ -47,7 +47,7 @@ class TestCellState(unittest.TestCase):
         # initial events
         usr = UniversalSenderReceiverSimulationObject( 'usr1' )
         usr.send_event( 1.0, cs1, AdjustPopulationByDiscreteModel, 
-            event_body=AdjustPopulationByDiscreteModel.body(
+            event_body=AdjustPopulationByDiscreteModel.Body(
                 dict( zip( _CellStateMaker.species, [1]*len( _CellStateMaker.species ) ) )
             )
         )
@@ -56,7 +56,7 @@ class TestCellState(unittest.TestCase):
                 map( lambda x: ContinuousChange(2.0, 1.0), [1]*len( _CellStateMaker.species ) ) ) )
 
         usr.send_event( t, cs1, AdjustPopulationByContinuousModel, 
-            event_body=AdjustPopulationByContinuousModel.body( d ) )
+            event_body=AdjustPopulationByContinuousModel.Body( d ) )
         SimulationEngine.simulate( 5.0 )
         
         text_in_log_s1_by_line = '''.*; s1; .* #Sim_time\tAdjustment_type\tNew_population\tNew_flux
@@ -79,7 +79,7 @@ class TestCellState(unittest.TestCase):
         # initial events
         usr = UniversalSenderReceiverSimulationObject( 'usr1' )
         usr.send_event( 1.0, cs1, AdjustPopulationByDiscreteModel, 
-            event_body=AdjustPopulationByDiscreteModel.body(
+            event_body=AdjustPopulationByDiscreteModel.Body(
                 dict( zip( _CellStateMaker.species, [1]*len( _CellStateMaker.species ) ) )
             )
         )
@@ -88,7 +88,7 @@ class TestCellState(unittest.TestCase):
                 map( lambda x: ContinuousChange(2.0, 1.0), [1]*len( _CellStateMaker.species ) ) ) )
 
         usr.send_event( t, cs1, AdjustPopulationByContinuousModel, 
-            event_body=AdjustPopulationByContinuousModel.body( d ) )
+            event_body=AdjustPopulationByContinuousModel.Body( d ) )
         SimulationEngine.simulate( 5.0 )
         
         expected_initial_population = {'s3': 35, 's2': 28, 's1': 21}

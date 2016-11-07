@@ -25,5 +25,5 @@ class TestMessageTypes(unittest.TestCase):
             AdjustPopulationByContinuousModel ) )
         specie_id = 'x'
         adjustment = 7
-        body = AdjustPopulationByContinuousModel.body( { specie_id:adjustment } )
+        body = AdjustPopulationByContinuousModel.Body( { specie_id:adjustment } )
         self.assertEqual( body.population_change[specie_id], adjustment )

@@ -3,11 +3,11 @@ import unittest
 
 from wc_sim.core.simulation_object import (EventQueue, SimulationObject)
 from wc_sim.core.simulation_engine import (SimulationEngine, MessageTypesRegistry)
-from tests.some_message_types import init_msg, test1
+from tests.some_message_types import InitMsg, Test1
 
 class ExampleSimulationObject(SimulationObject):
 
-    ALL_MESSAGE_TYPES = [init_msg, test1]
+    ALL_MESSAGE_TYPES = [InitMsg, Test1]
     MessageTypesRegistry.set_sent_message_types( 'ExampleSimulationObject', ALL_MESSAGE_TYPES )
     MessageTypesRegistry.set_receiver_priorities( 'ExampleSimulationObject', ALL_MESSAGE_TYPES )
 
@@ -22,7 +22,7 @@ class TestSimulationObject(unittest.TestCase):
     def test_event(self):
         times=[1.0, 2.0, 0.5]
         for t in times:
-            self.o1.send_event( t, self.o2, 'test1' )
+            self.o1.send_event( t, self.o2, 'Test1' )
         
         tmp = sorted(times)
         while self.o2.event_queue.next_event_time() < float('inf'):
@@ -33,7 +33,7 @@ class TestSimulationObject(unittest.TestCase):
     def test_event_ties(self):
         times=[1.0, 2.0, 1.0]
         for t in times:
-            self.o1.send_event( t, self.o2, 'test1' )
+            self.o1.send_event( t, self.o2, 'Test1' )
         
         tmp = sorted(times[0:2])
         while self.o2.event_queue.next_event_time() < float('inf'):
@@ -44,7 +44,7 @@ class TestSimulationObject(unittest.TestCase):
     def test_exceptions(self):
         delay = -1.0
         with self.assertRaises(ValueError) as context:
-            self.o1.send_event( delay, self.o2, 'test1' )
+            self.o1.send_event( delay, self.o2, 'Test1' )
         self.assertEqual( str(context.exception),
             "delay < 0 in send_event(): {}".format( str( delay ) ) )
         

@@ -41,16 +41,16 @@ from wc_utils.util.rand import RandomStateManager
 config_core = ConfigManager(config_paths_core.core).get_config()['wc_sim']['core']
 config_multialgorithm = ConfigManager(config_paths_multialgorithm.core).get_config()['wc_sim']['multialgorithm']
 
-class log_at_time_zero(object):
+class LogAtTimeZero(object):
     debug_log = debug_logs.get_log( 'wc.debug.console' )
 
     @staticmethod
     def debug(msg):
-        log_at_time_zero.debug_log.debug( msg, sim_time=0, local_call_depth=1 )
+        LogAtTimeZero.debug_log.debug( msg, sim_time=0, local_call_depth=1 )
 
     @staticmethod
     def info(msg):
-        log_at_time_zero.debug_log.info( msg, sim_time=0, local_call_depth=1 )
+        LogAtTimeZero.debug_log.info( msg, sim_time=0, local_call_depth=1 )
 
 
 class MultiAlgorithm(object):
@@ -102,9 +102,9 @@ class MultiAlgorithm(object):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             # 0. read model description
-            log_at_time_zero.info("Reading model from '{}'".format(args.model_filename))
+            LogAtTimeZero.info("Reading model from '{}'".format(args.model_filename))
             the_model = getModelFromExcel(args.model_filename)
-            log_at_time_zero.debug(the_model.summary())
+            LogAtTimeZero.debug(the_model.summary())
 
             '''Prepare submodels for computation'''
             the_model.setupSimulation()
@@ -115,7 +115,7 @@ class MultiAlgorithm(object):
         for submodel_spec in the_model.submodels:
             if submodel_spec.algorithm == 'SSA':
                 if submodel_spec.algorithm in algs_to_run:
-                    log_at_time_zero.info("create SSA submodel: {} {}".format(submodel_spec.name,
+                    LogAtTimeZero.info("create SSA submodel: {} {}".format(submodel_spec.name,
                                                                               submodel_spec.algorithm))
                     submodel_spec.the_submodel = SsaSubmodel(the_model, submodel_spec.name,
                                                                      submodel_spec.id, None, 
@@ -124,7 +124,7 @@ class MultiAlgorithm(object):
                                                                      submodel_spec.species)
             elif submodel_spec.algorithm == 'FBA':
                 if submodel_spec.algorithm in algs_to_run:
-                    log_at_time_zero.info("create FBA submodel: {} {}".format(submodel_spec.name,
+                    LogAtTimeZero.info("create FBA submodel: {} {}".format(submodel_spec.name,
                                                                               submodel_spec.algorithm))
                     submodel_spec.the_submodel = FbaSubmodel(the_model, submodel_spec.name,
                                                              submodel_spec.id, None, 
@@ -138,10 +138,10 @@ class MultiAlgorithm(object):
 
         # 2. run simulation
         if args.end_time:
-            log_at_time_zero.info("Simulating to: {}".format(args.end_time))
+            LogAtTimeZero.info("Simulating to: {}".format(args.end_time))
             SimulationEngine.simulate(args.end_time)
         else:
-            log_at_time_zero.info("Simulating to cellCycleLength: {}".format(
+            LogAtTimeZero.info("Simulating to cellCycleLength: {}".format(
                 the_model.getComponentById('cellCycleLength').value))
             SimulationEngine.simulate(the_model.getComponentById('cellCycleLength').value)
 

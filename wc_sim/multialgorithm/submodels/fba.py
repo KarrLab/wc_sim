@@ -45,7 +45,7 @@ class FbaSubmodel(Submodel):
         Plus see superclasses.
 
     Event messages:
-        RunFBA
+        RunFba
         # messages after future enhancement
         AdjustPopulationByContinuousModel
         GetPopulation
@@ -53,7 +53,7 @@ class FbaSubmodel(Submodel):
     """
 
     SENT_MESSAGE_TYPES = [ 
-        message_types.RunFBA, 
+        message_types.RunFba, 
         message_types.AdjustPopulationByContinuousModel, 
         message_types.GetPopulation,
         ]
@@ -63,7 +63,7 @@ class FbaSubmodel(Submodel):
     # at any time instant, process messages in this order
     MESSAGE_TYPES_BY_PRIORITY = [ 
         message_types.GivePopulation, 
-        message_types.RunFBA,
+        message_types.RunFba,
         ]
 
     MessageTypesRegistry.set_receiver_priorities( 'FbaSubmodel', MESSAGE_TYPES_BY_PRIORITY )
@@ -198,7 +198,7 @@ class FbaSubmodel(Submodel):
     def schedule_next_FBA_analysis(self):
         """Schedule the next analysis by this FBA submodel.
         """
-        self.send_event( self.time_step, self, message_types.RunFBA )
+        self.send_event( self.time_step, self, message_types.RunFba )
 
     def calcReactionFluxes(self):
         """calculate growth rate.
@@ -272,7 +272,7 @@ class FbaSubmodel(Submodel):
     def handle_event( self, event_list ):
         """Handle a FbaSubmodel simulation event.
         
-        In this shared-memory FBA, the only event is RunFBA, and event_list should
+        In this shared-memory FBA, the only event is RunFba, and event_list should
         always contain one event.
         
         Args:
@@ -287,7 +287,7 @@ class FbaSubmodel(Submodel):
             if isclass_by_name( event_message.event_type, message_types.GivePopulation ):
                 
                 pass
-                # TODO(Arthur): add this functionality; currently, handling RunFBA accesses memory directly
+                # TODO(Arthur): add this functionality; currently, handling RunFba accesses memory directly
 
                 # population_values is a GivePopulation body attribute
                 population_values = event_message.event_body.population
@@ -295,7 +295,7 @@ class FbaSubmodel(Submodel):
                 self.log_with_time( "GivePopulation: {}".format( str(event_message.event_body) ) )
                 # store population_values in some local cache ...
                     
-            elif isclass_by_name( event_message.event_type, message_types.RunFBA ):
+            elif isclass_by_name( event_message.event_type, message_types.RunFba ):
             
                 self.log_with_time( "submodel '{}' executing".format( self.name ) )
 
