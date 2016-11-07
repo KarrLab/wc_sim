@@ -4,7 +4,7 @@ import unittest
 from wc_sim.core.simulation_object import (EventQueue, SimulationObject)
 from wc_sim.core.event import Event
 from wc_sim.core.simulation_engine import (SimulationEngine, MessageTypesRegistry)
-from tests.some_message_types import *
+from tests.some_message_types import init_msg
 
 class ExampleSimulationObject(SimulationObject):
 

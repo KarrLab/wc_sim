@@ -9,7 +9,7 @@ from wc_utils.util.rand import RandomStateManager
 from wc_sim.core.simulation_object import EventQueue, SimulationObject
 from wc_sim.core.simulation_engine import SimulationEngine, MessageTypesRegistry
 from wc_sim.multialgorithm.cell_state import CellState
-from wc_sim.multialgorithm.message_types import *
+from wc_sim.multialgorithm.message_types import GetPopulation
 from tests.universal_sender_receiver_simulation_object import UniversalSenderReceiverSimulationObject
 # from wc_sim.core.logging_config import LOGGING_ROOT_DIR
 

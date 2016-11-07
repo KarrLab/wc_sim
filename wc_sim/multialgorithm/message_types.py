@@ -27,7 +27,6 @@ Created 2016/06/10
 @author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
 """
 
-
 '''
 Define a class that stores the body of each message type. This avoids confusing the structure of a message body.
 These classes should be used by all message senders and receivers.
@@ -180,3 +179,11 @@ class RunFBA( object ):
     pass
 
 
+ALL_MESSAGE_TYPES = [
+    AdjustPopulationByDiscreteModel,
+    AdjustPopulationByContinuousModel,
+    GetPopulation,
+    GivePopulation,
+    ExecuteSSAReaction,
+    SSAWait,
+]

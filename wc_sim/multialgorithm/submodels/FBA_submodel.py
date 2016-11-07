@@ -20,8 +20,8 @@ from scipy.constants import Avogadro
 from wc_lang.model_representation import ExchangedSpecies
 from wc_sim.core.simulation_object import (EventQueue, SimulationObject)
 from wc_sim.core.simulation_engine import MessageTypesRegistry
+from wc_sim.multialgorithm import message_types
 from wc_sim.multialgorithm.submodels.submodel import Submodel
-from wc_sim.multialgorithm.message_types import *
 from wc_utils.util.misc import isclass_by_name
 
 class FbaSubmodel(Submodel):
@@ -52,16 +52,19 @@ class FbaSubmodel(Submodel):
         GivePopulation
     """
 
-    SENT_MESSAGE_TYPES = [ RunFBA, 
-        AdjustPopulationByContinuousModel, 
-        GetPopulation ]
+    SENT_MESSAGE_TYPES = [ 
+        message_types.RunFBA, 
+        message_types.AdjustPopulationByContinuousModel, 
+        message_types.GetPopulation,
+        ]
 
     MessageTypesRegistry.set_sent_message_types( 'FbaSubmodel', SENT_MESSAGE_TYPES )
 
     # at any time instant, process messages in this order
     MESSAGE_TYPES_BY_PRIORITY = [ 
-        GivePopulation, 
-        RunFBA ]
+        message_types.GivePopulation, 
+        message_types.RunFBA,
+        ]
 
     MessageTypesRegistry.set_receiver_priorities( 'FbaSubmodel', MESSAGE_TYPES_BY_PRIORITY )
 
@@ -195,7 +198,7 @@ class FbaSubmodel(Submodel):
     def schedule_next_FBA_analysis(self):
         """Schedule the next analysis by this FBA submodel.
         """
-        self.send_event( self.time_step, self, RunFBA )
+        self.send_event( self.time_step, self, message_types.RunFBA )
 
     def calcReactionFluxes(self):
         """calculate growth rate.
@@ -281,7 +284,7 @@ class FbaSubmodel(Submodel):
             print( "{:7.1f}: submodel {}, event {}".format( self.time, self.name, self.num_events ) )
 
         for event_message in event_list:
-            if isclass_by_name( event_message.event_type, GivePopulation ):
+            if isclass_by_name( event_message.event_type, message_types.GivePopulation ):
                 
                 pass
                 # TODO(Arthur): add this functionality; currently, handling RunFBA accesses memory directly
@@ -292,7 +295,7 @@ class FbaSubmodel(Submodel):
                 self.log_with_time( "GivePopulation: {}".format( str(event_message.event_body) ) )
                 # store population_values in some local cache ...
                     
-            elif isclass_by_name( event_message.event_type, RunFBA ):
+            elif isclass_by_name( event_message.event_type, message_types.RunFBA ):
             
                 self.log_with_time( "submodel '{}' executing".format( self.name ) )
 

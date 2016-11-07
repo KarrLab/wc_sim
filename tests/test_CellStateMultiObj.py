@@ -17,7 +17,7 @@ from wc_utils.util.rand import RandomStateManager
 # TODO(Arthur): test the exceptions in these modules
 from wc_sim.core.simulation_object import EventQueue, SimulationObject
 from wc_sim.core.simulation_engine import SimulationEngine, MessageTypesRegistry
-from wc_sim.multialgorithm.message_types import *
+from wc_sim.multialgorithm import message_types
 from wc_sim.multialgorithm.cell_state import CellState
 from tests.universal_sender_receiver_simulation_object import UniversalSenderReceiverSimulationObject
 
@@ -43,11 +43,11 @@ def parse_population_history( pop_history ):
     
 class MockSimulationObject(SimulationObject):
 
-    SENT_MESSAGE_TYPES = [ GetPopulation ]
+    SENT_MESSAGE_TYPES = [ message_types.GetPopulation ]
     MessageTypesRegistry.set_sent_message_types( 'MockSimulationObject', SENT_MESSAGE_TYPES )
 
     # at any time instant, process messages in this order
-    MESSAGE_TYPES_BY_PRIORITY = [ GivePopulation ]
+    MESSAGE_TYPES_BY_PRIORITY = [ message_types.GivePopulation ]
     MessageTypesRegistry.set_receiver_priorities( 'MockSimulationObject', MESSAGE_TYPES_BY_PRIORITY )
     
     def __init__( self, name, pop_history, specie, debug=False):
@@ -69,7 +69,7 @@ class MockSimulationObject(SimulationObject):
         
         for event_message in event_list:
             # switch/case on event message type
-            if isclass_by_name( event_message.event_type, GivePopulation ):
+            if isclass_by_name( event_message.event_type, message_types.GivePopulation ):
             
                 # populations is a GivePopulation_body instance
                 populations = event_message.event_body
@@ -131,21 +131,21 @@ Time                 Event                Pop_adjust           Flux             
         # create initial events
         # AdjustPopulationByDiscreteModel
         for time, (Pop_adjust, unused_Flux, unused_Population) in pop_history_dict['discrete_adjust'].items():
-            usr.send_event( time, cs1, AdjustPopulationByDiscreteModel, 
-                event_body=AdjustPopulationByDiscreteModel.body( { specie:Pop_adjust } ) )
+            usr.send_event( time, cs1, message_types.AdjustPopulationByDiscreteModel, 
+                event_body=message_types.AdjustPopulationByDiscreteModel.body( { specie:Pop_adjust } ) )
         
         # AdjustPopulationByContinuousModel
         for time, (Pop_adjust, Flux, unused_Population) in pop_history_dict['continuous_adjust'].items():
-            usr.send_event( time, cs1, AdjustPopulationByContinuousModel, 
-                event_body=AdjustPopulationByContinuousModel.body( 
-                    { specie: Continuous_change( Pop_adjust, Flux ) }
+            usr.send_event( time, cs1, message_types.AdjustPopulationByContinuousModel, 
+                event_body=message_types.AdjustPopulationByContinuousModel.body( 
+                    { specie: message_types.Continuous_change( Pop_adjust, Flux ) }
                 )
             )
 
         # GetPopulation
         for time in pop_history_dict['get_pop']:
-            TestSimObj.send_event( time, cs1, GetPopulation, 
-                event_body=GetPopulation.body( set(['x']) )
+            TestSimObj.send_event( time, cs1, message_types.GetPopulation, 
+                event_body=message_types.GetPopulation.body( set(['x']) )
             )
         SimulationEngine.simulate( 5.0 )
     
@@ -168,13 +168,13 @@ Time                 Event                Pop_adjust           Flux             
         # create initial events
         # AdjustPopulationByDiscreteModel
         for time, (Pop_adjust, unused_Flux, unused_Population) in pop_history_dict['discrete_adjust'].items():
-            usr.send_event( time, cs, AdjustPopulationByDiscreteModel, 
-                event_body=AdjustPopulationByDiscreteModel.body( { specie:Pop_adjust } ) )
+            usr.send_event( time, cs, message_types.AdjustPopulationByDiscreteModel, 
+                event_body=message_types.AdjustPopulationByDiscreteModel.body( { specie:Pop_adjust } ) )
 
         # GetPopulation
         for time in pop_history_dict['get_pop']:
-            TestSimObj.send_event( time, cs, GetPopulation, 
-                event_body=GetPopulation.body( set([ specie ]) )
+            TestSimObj.send_event( time, cs, message_types.GetPopulation, 
+                event_body=message_types.GetPopulation.body( set([ specie ]) )
             )
         SimulationEngine.simulate( 5.0 )
         
@@ -192,9 +192,9 @@ Time                 Event                Pop_adjust           Flux             
         # create AdjustPopulationByContinuousModel event
         usr = UniversalSenderReceiverSimulationObject( 'usr1' )
         for time, (Pop_adjust, Flux, unused_Population) in pop_history_dict['continuous_adjust'].items():
-            usr.send_event( time, cs, AdjustPopulationByContinuousModel, 
-                event_body=AdjustPopulationByContinuousModel.body( 
-                    { specie: Continuous_change( Pop_adjust, Flux ) }
+            usr.send_event( time, cs, message_types.AdjustPopulationByContinuousModel, 
+                event_body=message_types.AdjustPopulationByContinuousModel.body( 
+                    { specie: message_types.Continuous_change( Pop_adjust, Flux ) }
                 )
             )
 

@@ -33,7 +33,6 @@ from wc_sim.multialgorithm.config import paths as config_paths_multialgorithm
 from wc_sim.multialgorithm.cell_state import CellState
 from wc_sim.multialgorithm.submodels.simple_SSA_submodel import simple_SSA_submodel
 from wc_sim.multialgorithm.submodels.FBA_submodel import FbaSubmodel
-from wc_sim.multialgorithm.message_types import *
 import wc_sim.multialgorithm.temp.exercise as Exercise
 from wc_sim.multialgorithm.debug_logs import logs as debug_logs
 from wc_utils.config.core import ConfigManager

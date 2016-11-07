@@ -2,7 +2,7 @@ import unittest
 
 from wc_utils.util.misc import isclass_by_name
 
-from wc_sim.multialgorithm.message_types import *
+from wc_sim.multialgorithm.message_types import AdjustPopulationByContinuousModel, Continuous_change
 
 class TestMessageTypes(unittest.TestCase):
     

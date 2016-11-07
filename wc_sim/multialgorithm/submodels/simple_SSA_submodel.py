@@ -20,9 +20,9 @@ from wc_utils.util.stats import ExponentialMovingAverage
 from wc_sim.core.config import paths as config_paths_core
 from wc_sim.core.simulation_object import (EventQueue, SimulationObject)
 from wc_sim.core.simulation_engine import MessageTypesRegistry
+from wc_sim.multialgorithm import message_types
 from wc_sim.multialgorithm.config import paths as config_paths_multialgorithm
 from wc_sim.multialgorithm.submodels.submodel import Submodel
-from wc_sim.multialgorithm.message_types import *
 
 config_core = ConfigManager(config_paths_core.core).get_config()['wc_sim']['core']
 config_multialgorithm = ConfigManager(config_paths_multialgorithm.core).get_config()['wc_sim']['multialgorithm']
@@ -86,16 +86,21 @@ class simple_SSA_submodel( Submodel ):
         GivePopulation
     """
 
-    SENT_MESSAGE_TYPES = [ AdjustPopulationByDiscreteModel,
-        ExecuteSSAReaction, GetPopulation, SSAWait ]
+    SENT_MESSAGE_TYPES = [ 
+        message_types.AdjustPopulationByDiscreteModel,
+        message_types.ExecuteSSAReaction, 
+        message_types.GetPopulation, 
+        message_types.SSAWait,
+        ]
 
     MessageTypesRegistry.set_sent_message_types( 'simple_SSA_submodel', SENT_MESSAGE_TYPES )
 
     # at any time instant, process messages in this order
     MESSAGE_TYPES_BY_PRIORITY = [
-        SSAWait,
-        GivePopulation,
-        ExecuteSSAReaction ]
+        message_types.SSAWait,
+        message_types.GivePopulation,
+        message_types.ExecuteSSAReaction,
+        ]
 
     MessageTypesRegistry.set_receiver_priorities( 'simple_SSA_submodel', MESSAGE_TYPES_BY_PRIORITY )
 
@@ -163,7 +168,7 @@ class simple_SSA_submodel( Submodel ):
     def schedule_SSAWait(self):
         """Schedule an SSAWait.
         """
-        self.send_event( self.ema_of_inter_event_time.get_value(), self, SSAWait )
+        self.send_event( self.ema_of_inter_event_time.get_value(), self, message_types.SSAWait )
         self.num_SSAWaits += 1
         # TODO(Arthur): IMPORTANT: avoid possible infinite loop / infinitely slow progress
         # arises when 1) no reactions are enabled & 2) EMA of the time between ExecuteSSAReaction events
@@ -173,7 +178,7 @@ class simple_SSA_submodel( Submodel ):
         """Schedule an ExecuteSSAReaction.
         """
         self.send_event( dt, self,
-            ExecuteSSAReaction, ExecuteSSAReaction.body(reaction_index) )
+            message_types.ExecuteSSAReaction, message_types.ExecuteSSAReaction.body(reaction_index) )
 
         # maintain EMA of the time between ExecuteSSAReaction events
         self.ema_of_inter_event_time.add_value( dt )
@@ -232,7 +237,7 @@ class simple_SSA_submodel( Submodel ):
             self.log_with_time( "submodel {}, event {}".format( self.name, self.num_events ) )
 
         for event_message in event_list:
-            if isclass_by_name( event_message.event_type, GivePopulation ):
+            if isclass_by_name( event_message.event_type, message_types.GivePopulation ):
 
                 continue
                 # TODO(Arthur): add this functionality; currently, handling accessing memory directly
@@ -243,7 +248,7 @@ class simple_SSA_submodel( Submodel ):
                 self.log_with_time( "GivePopulation: {}".format( str(event_message.event_body) ) )
                 # store population_values in some cache ...
 
-            elif isclass_by_name( event_message.event_type, ExecuteSSAReaction ):
+            elif isclass_by_name( event_message.event_type, message_types.ExecuteSSAReaction ):
 
                 reaction_index = event_message.event_body.reaction_index
 
@@ -268,7 +273,7 @@ class simple_SSA_submodel( Submodel ):
 
                 self.schedule_next_event()
 
-            elif isclass_by_name( event_message.event_type, SSAWait ):
+            elif isclass_by_name( event_message.event_type, message_types.SSAWait ):
 
                 # TODO(Arthur): generate error(s) if SSAWaits are numerous, or a high fraction of events
                 # no reaction to execute
