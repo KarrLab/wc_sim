@@ -3,8 +3,6 @@
 # @author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
 # run all unittests
 
-# TODO(Arthur): make a fast option, which must skip test_StochasticRound.py (or run a 
-# fast version)
 # TODO(Arthur): IMPORTANT: almost all unittests should be in multialgorithm, which they test
 # TODO(Arthur): IMPORTANT: make sure that each unit test succeeds on its own
 
