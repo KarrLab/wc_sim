@@ -11,8 +11,8 @@ import sys
 import re
 import math
 
-from wc_utils.util.RandomUtilities import ReproducibleRandom
-from wc_utils.util.MiscUtilities import compare_name_with_class
+from wc_utils.util.rand import ReproducibleRandom
+from wc_utils.util.misc import isclass_by_name
 
 # TODO(Arthur): test the exceptions in these modules
 from Sequential_WC_Simulator.core.simulation_object import EventQueue, SimulationObject
@@ -69,7 +69,7 @@ class MockSimulationObject(SimulationObject):
         
         for event_message in event_list:
             # switch/case on event message type
-            if compare_name_with_class( event_message.event_type, GivePopulation ):
+            if isclass_by_name( event_message.event_type, GivePopulation ):
             
                 # populations is a GivePopulation_body instance
                 populations = event_message.event_body

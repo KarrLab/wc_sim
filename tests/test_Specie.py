@@ -9,7 +9,7 @@ import unittest
 import sys
 import re
 
-from wc_utils.util.RandomUtilities import ReproducibleRandom
+from wc_utils.util.rand import ReproducibleRandom
 
 from Sequential_WC_Simulator.core.simulation_object import EventQueue, SimulationObject
 from Sequential_WC_Simulator.core.simulation_engine import SimulationEngine, MessageTypesRegistry
@@ -138,5 +138,5 @@ class TestSpecie(unittest.TestCase):
         pops=[]
         for i in range(10):
             pops.append( s2.get_population( ) )
-        expected_pops = [10, 11, 10, 10, 11, 10, 11, 10, 11, 11]
+        expected_pops = [10, 11, 11, 11, 11, 11, 10, 10, 11, 10]
         self.assertEqual( pops, expected_pops )

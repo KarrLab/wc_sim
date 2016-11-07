@@ -14,7 +14,7 @@ import math
 import numpy as np
 import re
 
-from wc_utils.util.MiscUtilities import N_AVOGADRO
+from scipy.constants import Avogadro as N_AVOGADRO
 
 from Sequential_WC_Simulator.core.simulation_object import SimulationObject
 from Sequential_WC_Simulator.multialgorithm.utilities import species_compartment_name

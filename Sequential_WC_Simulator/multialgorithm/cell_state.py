@@ -6,7 +6,8 @@ Created 2016/07/19
 """
 import sys
 
-from wc_utils.util.MiscUtilities import compare_name_with_class, dict_2_key_sorted_str
+from wc_utils.util.misc import isclass_by_name
+from wc_utils.util.dict import DictUtil
 
 from Sequential_WC_Simulator.core.simulation_object import (EventQueue, SimulationObject)
 from Sequential_WC_Simulator.core.simulation_engine import MessageTypesRegistry
@@ -85,9 +86,9 @@ class CellState( SimulationObject ):
             sys.stderr.write( "Cannot initialize CellState: {}.\n".format( e.message ) )
 
         # log initialization data
-        self.log_with_time( "initial_population: {}".format( dict_2_key_sorted_str(
+        self.log_with_time( "initial_population: {}".format( DictUtil.to_string_sorted_by_key(
             initial_population ) ) )
-        self.log_with_time( "initial_fluxes: {}".format( dict_2_key_sorted_str( initial_fluxes ) ) )
+        self.log_with_time( "initial_fluxes: {}".format( DictUtil.to_string_sorted_by_key( initial_fluxes ) ) )
 
 
     def handle_event( self, event_list ):
@@ -111,7 +112,7 @@ class CellState( SimulationObject ):
         
         for event_message in event_list:
             # switch/case on event message type
-            if compare_name_with_class( event_message.event_type, AdjustPopulationByDiscreteModel ):
+            if isclass_by_name( event_message.event_type, AdjustPopulationByDiscreteModel ):
 
                 # population_changes is an AdjustPopulationByDiscreteModel body attribute
                 population_changes = event_message.event_body.population_change
@@ -123,10 +124,10 @@ class CellState( SimulationObject ):
                         self.population[specie_name] = Specie( specie_name, 0 )
                     
                     self.population[specie_name].discrete_adjustment( 
-                        population_changes[specie_name] )
+                        population_changes[specie_name], self.time )
                     self.log_event( 'discrete_adjustment', self.population[specie_name] )
                     
-            elif compare_name_with_class( event_message.event_type, AdjustPopulationByContinuousModel ):
+            elif isclass_by_name( event_message.event_type, AdjustPopulationByContinuousModel ):
             
                 # population_changes is an AdjustPopulationByContinuousModel body attribute
                 population_changes = event_message.event_body.population_change
@@ -147,7 +148,7 @@ class CellState( SimulationObject ):
                         population_changes[specie_name].flux )
                     self.log_event( 'continuous_adjustment', self.population[specie_name] )
 
-            elif compare_name_with_class( event_message.event_type, GetPopulation ):
+            elif isclass_by_name( event_message.event_type, GetPopulation ):
 
                 # species is a GetPopulation body attribute
                 species = event_message.event_body.species

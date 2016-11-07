@@ -10,7 +10,7 @@ import sys
 import numpy as np
 from threading import RLock
 
-from wc_utils.util.MiscUtilities import dict_2_key_sorted_str
+from wc_utils.util.dict import DictUtil
 
 # logging
 from Sequential_WC_Simulator.multialgorithm.debug_logs import logs as debug_logs
@@ -88,9 +88,9 @@ class SharedMemoryCellState( object ):
             sys.stderr.write( "Cannot initialize SharedMemoryCellState: {}.\n".format( e.message ) )
         
         # write initialization data
-        debug_log.debug( "initial_population: {}".format( dict_2_key_sorted_str(initial_population) ),
+        debug_log.debug( "initial_population: {}".format( DictUtil.to_string_sorted_by_key(initial_population) ),
             sim_time=self.time )
-        debug_log.debug( "initial_fluxes: {}".format( dict_2_key_sorted_str(initial_fluxes) ),
+        debug_log.debug( "initial_fluxes: {}".format( DictUtil.to_string_sorted_by_key(initial_fluxes) ),
             sim_time=self.time )
 
     def init_cell_state_specie( self, specie_name, population, initial_flux_given=None ):
@@ -283,7 +283,7 @@ class SharedMemoryCellState( object ):
         self.time = time
         for specie in adjustments:
             try:
-                self._population[specie].discrete_adjustment( adjustments[specie] )
+                self._population[specie].discrete_adjustment( adjustments[specie], self.time )
                 self.__update_access_times( time, [specie] )
             except ValueError as e:
                 raise ValueError( "Error: on specie {}: {}".format( specie, e ) )

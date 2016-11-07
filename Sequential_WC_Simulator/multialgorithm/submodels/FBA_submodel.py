@@ -16,8 +16,10 @@ with warnings.catch_warnings():
     from cobra import Model as CobraModel
     from cobra import Reaction as CobraReaction
 
-from wc_utils.util.MiscUtilities import N_AVOGADRO, compare_name_with_class, dict_2_key_sorted_str
-import wc_utils.util.MiscUtilities as utilities
+from scipy.constants import Avogadro as N_AVOGADRO
+from wc_utils.util.dict import DictUtil
+import wc_utils.util.misc as utilities
+from wc_utils.util.misc import isclass_by_name
 
 from Sequential_WC_Simulator.core.simulation_object import (EventQueue, SimulationObject)
 from Sequential_WC_Simulator.core.simulation_engine import MessageTypesRegistry
@@ -283,7 +285,7 @@ class FbaSubmodel(Submodel):
             print( "{:7.1f}: submodel {}, event {}".format( self.time, self.name, self.num_events ) )
 
         for event_message in event_list:
-            if compare_name_with_class( event_message.event_type, GivePopulation ):
+            if isclass_by_name( event_message.event_type, GivePopulation ):
                 
                 pass
                 # TODO(Arthur): add this functionality; currently, handling RunFBA accesses memory directly
@@ -294,7 +296,7 @@ class FbaSubmodel(Submodel):
                 self.log_with_time( "GivePopulation: {}".format( str(event_message.event_body) ) )
                 # store population_values in some local cache ...
                     
-            elif compare_name_with_class( event_message.event_type, RunFBA ):
+            elif isclass_by_name( event_message.event_type, RunFBA ):
             
                 self.log_with_time( "submodel '{}' executing".format( self.name ) )
 

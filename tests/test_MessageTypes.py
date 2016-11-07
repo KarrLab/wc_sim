@@ -1,6 +1,6 @@
 import unittest
 
-from wc_utils.util.MiscUtilities import compare_name_with_class
+from wc_utils.util.misc import isclass_by_name
 
 from Sequential_WC_Simulator.multialgorithm.message_types import *
 
@@ -21,7 +21,7 @@ class TestMessageTypes(unittest.TestCase):
 
     def test_one_message_type(self):
     
-        self.assertTrue( compare_name_with_class( 'AdjustPopulationByContinuousModel',
+        self.assertTrue( isclass_by_name( 'AdjustPopulationByContinuousModel',
             AdjustPopulationByContinuousModel ) )
         specie_id = 'x'
         adjustment = 7
