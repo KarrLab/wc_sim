@@ -1,10 +1,10 @@
 import unittest
 import re
-from wc_sim.multialgorithm.utilities import get_species_and_compartment_from_name
+from wc_sim.multialgorithm.utils import get_species_and_compartment_from_name
 
 class TestUtilities(unittest.TestCase):
 
-    def test_utilities(self):
+    def test_utils(self):
         for test,correct in zip([ 'spc]',  'sp[c]' , 'sp[[c]' , 'sp[cxx ' , 'sp[c]x]x' ],
             [ None,  ('sp','c'), None , None , None , ]):
             if correct is None:

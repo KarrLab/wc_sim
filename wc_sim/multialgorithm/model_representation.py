@@ -21,7 +21,7 @@ with warnings.catch_warnings():
 from scipy.constants import Avogadro
 from wc_utils.util.decorate_default_data_struct import default_mutable_params
 
-from wc_sim.multialgorithm.utilities import species_compartment_name
+from wc_sim.multialgorithm.utils import species_compartment_name
 from wc_sim.multialgorithm.shared_memory_cell_state import SharedMemoryCellState
 
 # logging
