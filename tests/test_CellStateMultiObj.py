@@ -15,10 +15,10 @@ from wc_utils.util.misc import isclass_by_name
 from wc_utils.util.rand import RandomStateManager
 
 # TODO(Arthur): test the exceptions in these modules
-from Sequential_WC_Simulator.core.simulation_object import EventQueue, SimulationObject
-from Sequential_WC_Simulator.core.simulation_engine import SimulationEngine, MessageTypesRegistry
-from Sequential_WC_Simulator.multialgorithm.message_types import *
-from Sequential_WC_Simulator.multialgorithm.cell_state import CellState
+from wc_sim.core.simulation_object import EventQueue, SimulationObject
+from wc_sim.core.simulation_engine import SimulationEngine, MessageTypesRegistry
+from wc_sim.multialgorithm.message_types import *
+from wc_sim.multialgorithm.cell_state import CellState
 from tests.universal_sender_receiver_simulation_object import UniversalSenderReceiverSimulationObject
 
 def parse_population_history( pop_history ):

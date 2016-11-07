@@ -13,8 +13,8 @@ import warnings
 # configure logging
 from .debug_logs import logs as debug_logs
 
-from Sequential_WC_Simulator.core.event import Event
-from Sequential_WC_Simulator.core.simulation_engine import (SimulationEngine, MessageTypesRegistry)
+from wc_sim.core.event import Event
+from wc_sim.core.simulation_engine import (SimulationEngine, MessageTypesRegistry)
 
 class EventQueue(object):
     """A simulation object's event queue.

@@ -19,12 +19,12 @@ with warnings.catch_warnings():
 from scipy.constants import Avogadro
 from wc_utils.util.misc import isclass_by_name
 
-from Sequential_WC_Simulator.core.simulation_object import (EventQueue, SimulationObject)
-from Sequential_WC_Simulator.core.simulation_engine import MessageTypesRegistry
+from wc_sim.core.simulation_object import (EventQueue, SimulationObject)
+from wc_sim.core.simulation_engine import MessageTypesRegistry
 
-from Sequential_WC_Simulator.multialgorithm.submodels.submodel import Submodel
-from Sequential_WC_Simulator.multialgorithm.message_types import *
-from Sequential_WC_Simulator.multialgorithm.model_representation import *
+from wc_sim.multialgorithm.submodels.submodel import Submodel
+from wc_sim.multialgorithm.message_types import *
+from wc_sim.multialgorithm.model_representation import *
 
 class FbaSubmodel(Submodel):
     """

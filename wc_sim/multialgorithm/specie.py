@@ -3,11 +3,11 @@
 @date 7/19/2016
 '''
 
-from Sequential_WC_Simulator.multialgorithm.config import paths as config_paths
+from wc_sim.multialgorithm.config import paths as config_paths
 from wc_utils.config.core import ConfigManager
 from wc_utils.util.rand import RandomStateManager
 
-config = ConfigManager(config_paths.core).get_config()['Sequential_WC_Simulator']['multialgorithm']
+config = ConfigManager(config_paths.core).get_config()['wc_sim']['multialgorithm']
 
 
 class Specie(object):

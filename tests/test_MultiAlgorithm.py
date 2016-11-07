@@ -4,11 +4,11 @@ import warnings
 
 from argparse import Namespace
 
-from Sequential_WC_Simulator.multialgorithm.config import paths as config_paths
-from Sequential_WC_Simulator.multialgorithm.multi_algorithm import MultiAlgorithm
+from wc_sim.multialgorithm.config import paths as config_paths
+from wc_sim.multialgorithm.multi_algorithm import MultiAlgorithm
 from wc_utils.config.core import ConfigManager
 
-config = ConfigManager(config_paths.core).get_config()['Sequential_WC_Simulator']['multialgorithm']
+config = ConfigManager(config_paths.core).get_config()['wc_sim']['multialgorithm']
 
 
 class TestMultiAlgorithm(unittest.TestCase):

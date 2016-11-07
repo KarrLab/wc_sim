@@ -4,9 +4,9 @@ import sys
 import unittest
 
 from scipy.stats import binom
-from Sequential_WC_Simulator.core.simulation_object import EventQueue, SimulationObject
-from Sequential_WC_Simulator.core.simulation_engine import SimulationEngine, MessageTypesRegistry
-from Sequential_WC_Simulator.multialgorithm.specie import Specie
+from wc_sim.core.simulation_object import EventQueue, SimulationObject
+from wc_sim.core.simulation_engine import SimulationEngine, MessageTypesRegistry
+from wc_sim.multialgorithm.specie import Specie
 from wc_utils.util.rand import RandomStateManager
 
 

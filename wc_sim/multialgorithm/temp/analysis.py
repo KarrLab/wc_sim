@@ -13,7 +13,7 @@ import numpy as np
 import re
 
 from matplotlib.backends.backend_pdf import PdfPages
-from Sequential_WC_Simulator.multialgorithm.model_representation import Model
+from wc_sim.multialgorithm.model_representation import Model
 from scipy.constants import Avogadro
 
 def plot(model, time = np.zeros(0), 

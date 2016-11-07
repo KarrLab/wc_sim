@@ -11,4 +11,4 @@ from wc_utils.debug_logs.config import paths as debug_logs_default_paths
 import os
 
 debug_logs = debug_logs_default_paths.deepcopy()
-debug_logs.default = resource_filename('Sequential_WC_Simulator', 'examples/config/debug.default.cfg')
+debug_logs.default = resource_filename('wc_sim', 'examples/config/debug.default.cfg')

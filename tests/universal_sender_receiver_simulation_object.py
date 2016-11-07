@@ -1,6 +1,6 @@
-from Sequential_WC_Simulator.core.simulation_object import SimulationObject
-from Sequential_WC_Simulator.core.simulation_engine import MessageTypesRegistry
-from Sequential_WC_Simulator.multialgorithm.message_types import *
+from wc_sim.core.simulation_object import SimulationObject
+from wc_sim.core.simulation_engine import MessageTypesRegistry
+from wc_sim.multialgorithm.message_types import *
 
 class UniversalSenderReceiverSimulationObject(SimulationObject):
 

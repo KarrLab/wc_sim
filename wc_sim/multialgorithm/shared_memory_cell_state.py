@@ -13,11 +13,11 @@ from threading import RLock
 from wc_utils.util.dict import DictUtil
 
 # logging
-from Sequential_WC_Simulator.multialgorithm.debug_logs import logs as debug_logs
+from wc_sim.multialgorithm.debug_logs import logs as debug_logs
 debug_log = debug_logs.get_log( 'wc.debug.file' )
 
-from Sequential_WC_Simulator.multialgorithm.utilities import species_compartment_name
-from Sequential_WC_Simulator.multialgorithm.specie import Specie
+from wc_sim.multialgorithm.utilities import species_compartment_name
+from wc_sim.multialgorithm.specie import Specie
     
 class SharedMemoryCellState( object ): 
     """The cell's state, which represents the state of its species.

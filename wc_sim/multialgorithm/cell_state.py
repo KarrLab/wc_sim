@@ -9,11 +9,11 @@ import sys
 from wc_utils.util.dict import DictUtil
 from wc_utils.util.misc import isclass_by_name
 
-from Sequential_WC_Simulator.core.simulation_object import (EventQueue, SimulationObject)
-from Sequential_WC_Simulator.core.simulation_engine import MessageTypesRegistry
+from wc_sim.core.simulation_object import (EventQueue, SimulationObject)
+from wc_sim.core.simulation_engine import MessageTypesRegistry
 
-from Sequential_WC_Simulator.multialgorithm.message_types import *
-from Sequential_WC_Simulator.multialgorithm.specie import Specie
+from wc_sim.multialgorithm.message_types import *
+from wc_sim.multialgorithm.specie import Specie
 
     
 class CellState( SimulationObject ): 

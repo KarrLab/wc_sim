@@ -17,15 +17,15 @@ from wc_utils.util.rand import RandomStateManager
 from wc_utils.util.misc import isclass_by_name
 from wc_utils.util.stats import ExponentialMovingAverage
 
-from Sequential_WC_Simulator.core.config import paths as config_paths_core
-from Sequential_WC_Simulator.core.simulation_object import (EventQueue, SimulationObject)
-from Sequential_WC_Simulator.core.simulation_engine import MessageTypesRegistry
-from Sequential_WC_Simulator.multialgorithm.config import paths as config_paths_multialgorithm
-from Sequential_WC_Simulator.multialgorithm.submodels.submodel import Submodel
-from Sequential_WC_Simulator.multialgorithm.message_types import *
+from wc_sim.core.config import paths as config_paths_core
+from wc_sim.core.simulation_object import (EventQueue, SimulationObject)
+from wc_sim.core.simulation_engine import MessageTypesRegistry
+from wc_sim.multialgorithm.config import paths as config_paths_multialgorithm
+from wc_sim.multialgorithm.submodels.submodel import Submodel
+from wc_sim.multialgorithm.message_types import *
 
-config_core = ConfigManager(config_paths_core.core).get_config()['Sequential_WC_Simulator']['core']
-config_multialgorithm = ConfigManager(config_paths_multialgorithm.core).get_config()['Sequential_WC_Simulator']['multialgorithm']
+config_core = ConfigManager(config_paths_core.core).get_config()['wc_sim']['core']
+config_multialgorithm = ConfigManager(config_paths_multialgorithm.core).get_config()['wc_sim']['multialgorithm']
 
 
 class simple_SSA_submodel( Submodel ):

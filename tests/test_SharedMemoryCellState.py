@@ -4,8 +4,8 @@ import re
 
 from wc_utils.util.rand import RandomStateManager
 
-from Sequential_WC_Simulator.multialgorithm.specie import Specie
-from Sequential_WC_Simulator.multialgorithm.shared_memory_cell_state import SharedMemoryCellState
+from wc_sim.multialgorithm.specie import Specie
+from wc_sim.multialgorithm.shared_memory_cell_state import SharedMemoryCellState
 
 class TestSharedMemoryCellState(unittest.TestCase):
 

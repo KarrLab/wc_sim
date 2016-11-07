@@ -19,7 +19,7 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
-import Sequential_WC_Simulator
+import wc_sim
 
 # -- General configuration ------------------------------------------------
 
@@ -65,7 +65,7 @@ author = u'Arthur Goldberg'
 # built documents.
 #
 # The short X.Y version.
-version = Sequential_WC_Simulator.__version__
+version = wc_sim.__version__
 # The full version, including alpha/beta/rc tags.
 release = version
 

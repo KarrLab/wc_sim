@@ -3,7 +3,7 @@ pip.main(['install', 'git+https://github.com/KarrLab/wc_utils.git#egg=wc_utils']
 
 from setuptools import setup, find_packages
 from wc_utils.util.install import parse_requirements, install_dependencies
-import Sequential_WC_Simulator
+import wc_sim
 
 # parse dependencies and links from requirements.txt files
 with open('requirements.txt', 'r') as file:
@@ -17,18 +17,18 @@ install_dependencies(dependency_links)
 
 # install package
 setup(
-    name="Sequential_WC_Simulator",
-    version=Sequential_WC_Simulator.__version__,
+    name="wc_sim",
+    version=wc_sim.__version__,
     description="Sequential whole-cell model simulator",
-    url="https://github.com/KarrLab/Sequential_WC_Simulator",
-    download_url='https://github.com/KarrLab/Sequential_WC_Simulator/tarball/{}'.format(Sequential_WC_Simulator.__version__),
+    url="https://github.com/KarrLab/wc_sim",
+    download_url='https://github.com/KarrLab/wc_sim/tarball/{}'.format(wc_sim.__version__),
     author="Arthur Goldberg",
     author_email="arthur.p.goldberg@mssm.edu",
     license="MIT",
     keywords='whole-cell systems cell molecular biology',
     packages=find_packages(exclude=['tests', 'tests.*']),
     package_data={
-        'Sequential_WC_Simulator': [
+        'wc_sim': [
             'core/config/core.default.cfg',
             'core/config/core.schema.cfg',
             'core/config/debug.default.cfg',

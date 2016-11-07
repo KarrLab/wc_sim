@@ -12,7 +12,7 @@ function usage {
     if [ -n "$1" ]; then echo $1 >&2; fi
 cat <<EOF >&2
 usage: $(basename $0) 
-  run all unittests for Sequential_WC_Simulator
+  run all unittests for wc_sim
   -c: perform coverage tests as well
   -h: produce this message 
 EOF
@@ -43,7 +43,7 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 if [[ -n "$OPT_COVERAGE" ]]
 then
-    nosetests $SCRIPT_DIR --with-coverage --cover-package=Sequential_WC_Simulator
+    nosetests $SCRIPT_DIR --with-coverage --cover-package=wc_sim
     coverage html
 else
     nosetests $SCRIPT_DIR

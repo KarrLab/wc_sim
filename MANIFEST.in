@@ -8,4 +8,4 @@ include requirements.txt
 recursive-include examples *
 
 # configuration files
-recursive-include Sequential_WC_Simulator *.cfg
+recursive-include wc_sim *.cfg

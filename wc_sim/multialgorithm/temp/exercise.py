@@ -15,7 +15,7 @@ from scipy.constants import Avogadro
 from wc_utils.util.rand import RandomStateManager
 
 # from WcModelingTutorial.TutorialConstruction import analysis    #code to analyze simulation results in exercises
-from Sequential_WC_Simulator.multialgorithm.temp import analysis
+from wc_sim.multialgorithm.temp import analysis
 import numpy as np
 import os
 

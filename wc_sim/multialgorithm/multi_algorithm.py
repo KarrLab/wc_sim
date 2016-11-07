@@ -24,23 +24,23 @@ import argparse
 import warnings
 import errno
 
-from Sequential_WC_Simulator.core.config import paths as config_paths_core
-from Sequential_WC_Simulator.core.simulation_object import EventQueue
-from Sequential_WC_Simulator.core.simulation_engine import SimulationEngine, MessageTypesRegistry
-from Sequential_WC_Simulator.multialgorithm.config import paths as config_paths_multialgorithm
-from Sequential_WC_Simulator.multialgorithm.model_representation import Model
-from Sequential_WC_Simulator.multialgorithm.model_loader import getModelFromExcel
-from Sequential_WC_Simulator.multialgorithm.cell_state import CellState
-from Sequential_WC_Simulator.multialgorithm.submodels.simple_SSA_submodel import simple_SSA_submodel
-from Sequential_WC_Simulator.multialgorithm.submodels.FBA_submodel import FbaSubmodel
-from Sequential_WC_Simulator.multialgorithm.message_types import *
-import Sequential_WC_Simulator.multialgorithm.temp.exercise as Exercise
-from Sequential_WC_Simulator.multialgorithm.debug_logs import logs as debug_logs
+from wc_sim.core.config import paths as config_paths_core
+from wc_sim.core.simulation_object import EventQueue
+from wc_sim.core.simulation_engine import SimulationEngine, MessageTypesRegistry
+from wc_sim.multialgorithm.config import paths as config_paths_multialgorithm
+from wc_sim.multialgorithm.model_representation import Model
+from wc_sim.multialgorithm.model_loader import getModelFromExcel
+from wc_sim.multialgorithm.cell_state import CellState
+from wc_sim.multialgorithm.submodels.simple_SSA_submodel import simple_SSA_submodel
+from wc_sim.multialgorithm.submodels.FBA_submodel import FbaSubmodel
+from wc_sim.multialgorithm.message_types import *
+import wc_sim.multialgorithm.temp.exercise as Exercise
+from wc_sim.multialgorithm.debug_logs import logs as debug_logs
 from wc_utils.config.core import ConfigManager
 from wc_utils.util.rand import RandomStateManager
 
-config_core = ConfigManager(config_paths_core.core).get_config()['Sequential_WC_Simulator']['core']
-config_multialgorithm = ConfigManager(config_paths_multialgorithm.core).get_config()['Sequential_WC_Simulator']['multialgorithm']
+config_core = ConfigManager(config_paths_core.core).get_config()['wc_sim']['core']
+config_multialgorithm = ConfigManager(config_paths_multialgorithm.core).get_config()['wc_sim']['multialgorithm']
 
 class log_at_time_zero(object):
     debug_log = debug_logs.get_log( 'wc.debug.console' )

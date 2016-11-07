@@ -16,8 +16,8 @@ from openpyxl import load_workbook
 import math
 import re
 
-from Sequential_WC_Simulator.multialgorithm.model_representation import *
-from Sequential_WC_Simulator.multialgorithm.submodels import submodel
+from wc_sim.multialgorithm.model_representation import *
+from wc_sim.multialgorithm.submodels import submodel
 
 
 #Reads model from Excel file into a Python object

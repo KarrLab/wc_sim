@@ -16,7 +16,7 @@ is prepared to be parallelized.
 
 import datetime
 
-from Sequential_WC_Simulator.core.event import Event
+from wc_sim.core.event import Event
 
 # configure logging
 from .debug_logs import logs as debug_logs
