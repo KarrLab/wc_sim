@@ -10,6 +10,7 @@ Created 2016/07/14
 
 import sys
 import numpy as np
+from scipy.constants import Avogadro as N_AVOGADRO
 
 from scipy.constants import Avogadro
 from wc_utils.config.core import ConfigManager

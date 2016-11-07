@@ -15,6 +15,10 @@ from scipy.constants import Avogadro
 import numpy as np
 import re
 
+from matplotlib.backends.backend_pdf import PdfPages
+from wc_lang.model_representation import Model
+from scipy.constants import Avogadro as N_AVOGADRO 
+
 def plot(model, time = np.zeros(0), 
     speciesCounts = None, volume = np.zeros(0), extracellularVolume = np.zeros(0),
     selectedSpeciesCompartments = [], 

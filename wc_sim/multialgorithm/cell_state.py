@@ -123,7 +123,7 @@ class CellState( SimulationObject ):
                         self.population[specie_name] = Specie( specie_name, 0 )
                     
                     self.population[specie_name].discrete_adjustment( 
-                        population_changes[specie_name] )
+                        population_changes[specie_name], self.time )
                     self.log_event( 'discrete_adjustment', self.population[specie_name] )
                     
             elif isclass_by_name( event_message.event_type, message_types.AdjustPopulationByContinuousModel ):

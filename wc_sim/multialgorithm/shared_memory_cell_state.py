@@ -283,7 +283,7 @@ class SharedMemoryCellState( object ):
         self.time = time
         for specie in adjustments:
             try:
-                self._population[specie].discrete_adjustment( adjustments[specie] )
+                self._population[specie].discrete_adjustment( adjustments[specie], self.time )
                 self.__update_access_times( time, [specie] )
             except ValueError as e:
                 raise ValueError( "Error: on specie {}: {}".format( specie, e ) )
