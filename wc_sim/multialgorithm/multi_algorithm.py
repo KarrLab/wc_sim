@@ -24,6 +24,7 @@ import argparse
 import warnings
 import errno
 
+from wc_analysis import exercise
 from wc_lang.model_loader import getModelFromExcel
 from wc_lang.model_representation import Model
 from wc_sim.core.config import paths as config_paths_core
@@ -33,7 +34,6 @@ from wc_sim.multialgorithm.config import paths as config_paths_multialgorithm
 from wc_sim.multialgorithm.cell_state import CellState
 from wc_sim.multialgorithm.submodels.ssa import SsaSubmodel
 from wc_sim.multialgorithm.submodels.fba import FbaSubmodel
-import wc_sim.multialgorithm.temp.exercise as Exercise
 from wc_sim.multialgorithm.debug_logs import logs as debug_logs
 from wc_utils.config.core import ConfigManager
 from wc_utils.util.rand import RandomStateManager
@@ -155,7 +155,7 @@ if __name__ == '__main__':
             numpy_format=True)
         volume = None
         growth = None
-        Exercise.analyzeResults(the_model, time_hist, volume, growth, species_counts_hist)
+        exercise.analyzeResults(the_model, time_hist, volume, growth, species_counts_hist)
     except KeyboardInterrupt:
         pass
     # do not report IOError: [Errno 32] Broken pipe
