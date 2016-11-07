@@ -1,6 +1,6 @@
 configparser
 future
 recordtype
+robpol86-sphinxcontrib-googleanalytics
 Sphinx
 sphinx_rtd_theme
-robpol86-sphinxcontrib-googleanalytics
