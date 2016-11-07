@@ -28,9 +28,9 @@ config_core = ConfigManager(config_paths_core.core).get_config()['wc_sim']['core
 config_multialgorithm = ConfigManager(config_paths_multialgorithm.core).get_config()['wc_sim']['multialgorithm']
 
 
-class simple_SSA_submodel( Submodel ):
+class SsaSubmodel( Submodel ):
     """
-    simple_SSA_submodel employs Gillespie's Stochastic Simulation Algorithm
+    SsaSubmodel employs Gillespie's Stochastic Simulation Algorithm
     to predict the dynamics of a set of chemical species in a 'well-mixed' container.
 
     algorithm:::
@@ -93,7 +93,7 @@ class simple_SSA_submodel( Submodel ):
         message_types.SSAWait,
         ]
 
-    MessageTypesRegistry.set_sent_message_types( 'simple_SSA_submodel', SENT_MESSAGE_TYPES )
+    MessageTypesRegistry.set_sent_message_types( 'SsaSubmodel', SENT_MESSAGE_TYPES )
 
     # at any time instant, process messages in this order
     MESSAGE_TYPES_BY_PRIORITY = [
@@ -102,11 +102,11 @@ class simple_SSA_submodel( Submodel ):
         message_types.ExecuteSSAReaction,
         ]
 
-    MessageTypesRegistry.set_receiver_priorities( 'simple_SSA_submodel', MESSAGE_TYPES_BY_PRIORITY )
+    MessageTypesRegistry.set_receiver_priorities( 'SsaSubmodel', MESSAGE_TYPES_BY_PRIORITY )
 
     def __init__( self, model, name, id, private_cell_state, shared_cell_states,
         reactions, species, default_center_of_mass=config_core['default_center_of_mass']):
-        """Initialize a simple_SSA_submodel object.
+        """Initialize a SsaSubmodel object.
 
         # TODO(Arthur): expand description
 
@@ -222,7 +222,7 @@ class simple_SSA_submodel( Submodel ):
         self.executeReaction( self.model.the_SharedMemoryCellState, self.reactions[reaction_index] )
 
     def handle_event( self, event_list ):
-        """Handle a simple_SSA_submodel simulation event.
+        """Handle a SsaSubmodel simulation event.
 
         In this shared-memory SSA, the only event is ExecuteSSAReaction, and event_list should
         always contain one event.

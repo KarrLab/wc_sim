@@ -160,7 +160,7 @@ class ExecuteSSAReaction( object ):
     """A ExecuteSSAReaction message.
 
         Attributes:
-            reaction_index: integer; the index of the selected reaction in simple_SSA_submodel.reactions
+            reaction_index: integer; the index of the selected reaction in SsaSubmodel.reactions
     """
 
     class body(object):

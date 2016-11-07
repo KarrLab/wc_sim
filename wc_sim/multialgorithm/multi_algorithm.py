@@ -31,8 +31,8 @@ from wc_sim.core.simulation_object import EventQueue
 from wc_sim.core.simulation_engine import SimulationEngine, MessageTypesRegistry
 from wc_sim.multialgorithm.config import paths as config_paths_multialgorithm
 from wc_sim.multialgorithm.cell_state import CellState
-from wc_sim.multialgorithm.submodels.simple_SSA_submodel import simple_SSA_submodel
-from wc_sim.multialgorithm.submodels.FBA_submodel import FbaSubmodel
+from wc_sim.multialgorithm.submodels.ssa import SsaSubmodel
+from wc_sim.multialgorithm.submodels.fba import FbaSubmodel
 import wc_sim.multialgorithm.temp.exercise as Exercise
 from wc_sim.multialgorithm.debug_logs import logs as debug_logs
 from wc_utils.config.core import ConfigManager
@@ -117,7 +117,7 @@ class MultiAlgorithm(object):
                 if submodel_spec.algorithm in algs_to_run:
                     log_at_time_zero.info("create SSA submodel: {} {}".format(submodel_spec.name,
                                                                               submodel_spec.algorithm))
-                    submodel_spec.the_submodel = simple_SSA_submodel(the_model, submodel_spec.name,
+                    submodel_spec.the_submodel = SsaSubmodel(the_model, submodel_spec.name,
                                                                      submodel_spec.id, None, 
                                                                      shared_cell_states, 
                                                                      submodel_spec.reactions,

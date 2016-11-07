@@ -25,7 +25,7 @@ class Submodel(SimulationObject):
     """
     Attributes:
         private_cell_state: a CellState that stores the copy numbers of the species involved in reactions
-            that are modeled only by this simple_SSA_submodel instance.
+            that are modeled only by this SsaSubmodel instance.
         shared_cell_states: a list of CellStates that store the copy numbers of
             the species that are modeled by this Submodel AND other Submodel instances.
     # TODO(Arthur): start using private_cell_state
@@ -170,7 +170,7 @@ class Submodel(SimulationObject):
             reaction: a Reaction object; the reaction being executed
             
         """
-        # TODO(Arthur): move to simple_SSA_submodel.py, unless other submodels would use
+        # TODO(Arthur): move to SsaSubmodel.py, unless other submodels would use
         adjustments={}
         for participant in reaction.participants:
             adjustments[participant.id] = participant.coefficient
