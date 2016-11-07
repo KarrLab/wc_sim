@@ -16,7 +16,7 @@ from openpyxl import load_workbook
 import math
 import re
 
-from wc_sim.multialgorithm.model_representation import *
+from wc_lang import model_representation
 from wc_sim.multialgorithm.submodels import submodel
 
 
@@ -27,7 +27,7 @@ def getModelFromExcel(filename, debug_option=False ):
         wb = load_workbook(filename = filename)
 
     #initialize model object
-    model = Model( )
+    model = model_representation.Model( )
 
     '''Read details from Excel'''
     #submodels
@@ -40,13 +40,13 @@ def getModelFromExcel(filename, debug_option=False ):
         id = ws.cell(row = iRow, column = 1).value
         name = ws.cell(row = iRow, column = 2).value
         algorithm = ws.cell(row = iRow, column = 3).value
-        the_submodel = SubmodelSpecification( id, name, algorithm )
+        the_submodel = model_representation.SubmodelSpecification( id, name, algorithm )
         model.submodels.append(the_submodel)
             
     #compartments
     ws = wb['Compartments']
     for iRow in range(2, ws.max_row + 1):
-        model.compartments.append(Compartment(
+        model.compartments.append(model_representation.Compartment(
             id = ws.cell(row = iRow, column = 1).value,
             name = ws.cell(row = iRow, column = 2).value,
             initialVolume = float(ws.cell(row = iRow, column = 3).value),
@@ -68,7 +68,7 @@ def getModelFromExcel(filename, debug_option=False ):
         else:
             charge = None
     
-        model.species.append(Species(
+        model.species.append(model_representation.Species(
             id = ws.cell(row = iRow, column = 1).value,
             name = ws.cell(row = iRow, column = 2).value,
             structure = ws.cell(row = iRow, column = 3).value,
@@ -77,11 +77,11 @@ def getModelFromExcel(filename, debug_option=False ):
             charge = charge,
             type = ws.cell(row = iRow, column = 7).value,
             concentrations_list = [
-                Concentration(compartment = 'c', value = float(ws.cell(row = iRow, column = 8).value or 0)),
-                Concentration(compartment = 'e', value = float(ws.cell(row = iRow, column = 9).value or 0)),
+                model_representation.Concentration(compartment = 'c', value = float(ws.cell(row = iRow, column = 8).value or 0)),
+                model_representation.Concentration(compartment = 'e', value = float(ws.cell(row = iRow, column = 9).value or 0)),
                 ],
             crossRefs_list = [
-                CrossReference(
+                model_representation.CrossReference(
                     source = ws.cell(row = iRow, column = 10).value, 
                     id = ws.cell(row = iRow, column = 11).value,
                     ),
@@ -96,11 +96,11 @@ def getModelFromExcel(filename, debug_option=False ):
         
         rateLawStr = ws.cell(row = iRow, column = 6).value
         if rateLawStr:
-            rateLaw = RateLaw(rateLawStr)
+            rateLaw = model_representation.RateLaw(rateLawStr)
         else:
             rateLaw = None
         
-        model.reactions.append(Reaction(
+        model.reactions.append(model_representation.Reaction(
             id = ws.cell(row = iRow, column = 1).value,
             name = ws.cell(row = iRow, column = 2).value,
             submodel_spec = ws.cell(row = iRow, column = 3).value,
@@ -111,7 +111,7 @@ def getModelFromExcel(filename, debug_option=False ):
             vmax = ws.cell(row = iRow, column = 7).value,
             km = ws.cell(row = iRow, column = 8).value,
             crossRefs_list = [
-                CrossReference(
+                model_representation.CrossReference(
                     source = ws.cell(row = iRow, column = 9).value, 
                     id = ws.cell(row = iRow, column = 10).value,
                     ),
@@ -122,7 +122,7 @@ def getModelFromExcel(filename, debug_option=False ):
     #parameters
     ws = wb['Parameters']
     for iRow in range(2, ws.max_row + 1):
-        model.parameters.append(Parameter(
+        model.parameters.append(model_representation.Parameter(
             id = ws.cell(row = iRow, column = 1).value,
             name = ws.cell(row = iRow, column = 2).value,
             submodel_spec = ws.cell(row = iRow, column = 3).value,
@@ -134,11 +134,11 @@ def getModelFromExcel(filename, debug_option=False ):
     #references
     ws = wb['References']
     for iRow in range(2, ws.max_row + 1):
-        model.references.append(Reference(
+        model.references.append(model_representation.Reference(
             id = ws.cell(row = iRow, column = 1).value,
             name = ws.cell(row = iRow, column = 2).value,
             crossRefs_list = [
-                CrossReference(
+                model_representation.CrossReference(
                     source = ws.cell(row = iRow, column = 3).value, 
                     id = ws.cell(row = iRow, column = 4).value,
                     ),
@@ -230,7 +230,7 @@ def getModelFromExcel(filename, debug_option=False ):
         for index, speciesStr in enumerate(speciesStrArr):
             speciesId, compId = speciesStr.split('[')
             compId = compId[0:-1]
-            speciesComp = SpeciesCompartment(
+            speciesComp = model_representation.SpeciesCompartment(
                 index = index,
                 species = model.getComponentById(speciesId, model.species),
                 compartment = model.getComponentById(compId, model.compartments),
@@ -284,7 +284,7 @@ def parseStoichiometry(rxnStr):
         compartment = rxnPartDict['compartment'] or globalComp
         coefficient = float(rxnPartDict['coefficient'] or 1)
     
-        participants.append(ReactionParticipant(
+        participants.append(model_representation.ReactionParticipant(
             species = species,
             compartment = compartment,
             coefficient = -coefficient,
@@ -299,7 +299,7 @@ def parseStoichiometry(rxnStr):
         compartment = rxnPartDict['compartment'] or globalComp
         coefficient = float(rxnPartDict['coefficient'] or 1)
         
-        participants.append(ReactionParticipant(
+        participants.append(model_representation.ReactionParticipant(
             species = species,
             compartment = compartment,
             coefficient = coefficient,

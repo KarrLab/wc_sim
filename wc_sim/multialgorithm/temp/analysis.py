@@ -8,13 +8,12 @@ Analysis utility functions
 # TODO(Arthur): IMPORTANT: refactor and replace
 
 from matplotlib import pyplot, ticker
+from matplotlib.backends.backend_pdf import PdfPages
+from wc_lang.model_representation import Model
+from scipy.constants import Avogadro
 #%matplotlib inline
 import numpy as np
 import re
-
-from matplotlib.backends.backend_pdf import PdfPages
-from wc_sim.multialgorithm.model_representation import Model
-from scipy.constants import Avogadro
 
 def plot(model, time = np.zeros(0), 
     speciesCounts = None, volume = np.zeros(0), extracellularVolume = np.zeros(0),

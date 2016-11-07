@@ -24,12 +24,12 @@ import argparse
 import warnings
 import errno
 
+from wc_lang.model_loader import getModelFromExcel
+from wc_lang.model_representation import Model
 from wc_sim.core.config import paths as config_paths_core
 from wc_sim.core.simulation_object import EventQueue
 from wc_sim.core.simulation_engine import SimulationEngine, MessageTypesRegistry
 from wc_sim.multialgorithm.config import paths as config_paths_multialgorithm
-from wc_sim.multialgorithm.model_representation import Model
-from wc_sim.multialgorithm.model_loader import getModelFromExcel
 from wc_sim.multialgorithm.cell_state import CellState
 from wc_sim.multialgorithm.submodels.simple_SSA_submodel import simple_SSA_submodel
 from wc_sim.multialgorithm.submodels.FBA_submodel import FbaSubmodel

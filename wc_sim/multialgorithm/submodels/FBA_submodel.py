@@ -17,14 +17,12 @@ with warnings.catch_warnings():
     from cobra import Reaction as CobraReaction
 
 from scipy.constants import Avogadro
-from wc_utils.util.misc import isclass_by_name
-
+from wc_lang.model_representation import ExchangedSpecies
 from wc_sim.core.simulation_object import (EventQueue, SimulationObject)
 from wc_sim.core.simulation_engine import MessageTypesRegistry
-
 from wc_sim.multialgorithm.submodels.submodel import Submodel
 from wc_sim.multialgorithm.message_types import *
-from wc_sim.multialgorithm.model_representation import *
+from wc_utils.util.misc import isclass_by_name
 
 class FbaSubmodel(Submodel):
     """

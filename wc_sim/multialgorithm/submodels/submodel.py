@@ -15,10 +15,9 @@ import numpy as np
 import re
 
 from scipy.constants import Avogadro
-
+from wc_lang.model_representation import Model, ExchangedSpecies
 from wc_sim.core.simulation_object import SimulationObject
 from wc_sim.multialgorithm.utils import species_compartment_name
-from wc_sim.multialgorithm.model_representation import Model, ExchangedSpecies
 from wc_sim.multialgorithm.shared_memory_cell_state import SharedMemoryCellState
 from wc_sim.multialgorithm.debug_logs import logs as debug_logs
 
