@@ -29,7 +29,7 @@ dependencies:
     - ~/miniconda3/bin/pip install -e .    
 test:
   override:
-    - ~/miniconda2/bin/karr-lab-build-utils run-tests tests/test_Specie.py --with-xunit --with-coverage
-    - ~/miniconda3/bin/karr-lab-build-utils run-tests tests/test_Specie.py --with-xunit --with-coverage
+    - ~/miniconda2/bin/karr-lab-build-utils run-tests tests --with-xunit --with-coverage
+    - ~/miniconda3/bin/karr-lab-build-utils run-tests tests --with-xunit --with-coverage
   post:
     - ~/miniconda2/bin/karr-lab-build-utils make-and-archive-reports
