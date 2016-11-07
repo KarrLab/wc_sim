@@ -1,8 +1,8 @@
 from __future__ import print_function
 import unittest
 
-from wc_sim.core.simulation_object import (EventQueue, SimulationObject)
-from wc_sim.core.simulation_engine import (SimulationEngine, MessageTypesRegistry)
+from wc_sim.core.simulation_object import EventQueue, SimulationObject
+from wc_sim.core.simulation_engine import SimulationEngine, MessageTypesRegistry
 from tests.some_message_types import InitMsg, Test1
 
 class ExampleSimulationObject(SimulationObject):

@@ -14,7 +14,7 @@ import warnings
 from .debug_logs import logs as debug_logs
 
 from wc_sim.core.event import Event
-from wc_sim.core.simulation_engine import (SimulationEngine, MessageTypesRegistry)
+from wc_sim.core.simulation_engine import SimulationEngine, MessageTypesRegistry
 
 class EventQueue(object):
     """A simulation object's event queue.

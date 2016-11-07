@@ -18,7 +18,7 @@ from wc_utils.util.misc import isclass_by_name
 from wc_utils.util.stats import ExponentialMovingAverage
 
 from wc_sim.core.config import paths as config_paths_core
-from wc_sim.core.simulation_object import (EventQueue, SimulationObject)
+from wc_sim.core.simulation_object import EventQueue, SimulationObject
 from wc_sim.core.simulation_engine import MessageTypesRegistry
 from wc_sim.multialgorithm import message_types
 from wc_sim.multialgorithm.config import paths as config_paths_multialgorithm

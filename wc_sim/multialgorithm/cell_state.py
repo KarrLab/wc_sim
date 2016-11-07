@@ -6,7 +6,7 @@ Created 2016/07/19
 """
 import sys
 
-from wc_sim.core.simulation_object import (EventQueue, SimulationObject)
+from wc_sim.core.simulation_object import EventQueue, SimulationObject
 from wc_sim.core.simulation_engine import MessageTypesRegistry
 from wc_sim.multialgorithm import message_types
 from wc_sim.multialgorithm.specie import Specie

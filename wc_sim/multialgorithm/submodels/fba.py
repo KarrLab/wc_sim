@@ -18,7 +18,7 @@ with warnings.catch_warnings():
 
 from scipy.constants import Avogadro
 from wc_lang.model_representation import ExchangedSpecies
-from wc_sim.core.simulation_object import (EventQueue, SimulationObject)
+from wc_sim.core.simulation_object import EventQueue, SimulationObject
 from wc_sim.core.simulation_engine import MessageTypesRegistry
 from wc_sim.multialgorithm import message_types
 from wc_sim.multialgorithm.submodels.submodel import Submodel

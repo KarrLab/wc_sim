@@ -1,7 +1,7 @@
 import unittest
 
-from wc_sim.core.simulation_object import (EventQueue, SimulationObject)
-from wc_sim.core.simulation_engine import (SimulationEngine, MessageTypesRegistry)
+from wc_sim.core.simulation_object import EventQueue, SimulationObject
+from wc_sim.core.simulation_engine import SimulationEngine, MessageTypesRegistry
 from wc_sim.multialgorithm.submodels.ssa import SsaSubmodel
 from wc_sim.multialgorithm.message_types import GivePopulation, ExecuteSsaReaction
 from tests.universal_sender_receiver_simulation_object import UniversalSenderReceiverSimulationObject
