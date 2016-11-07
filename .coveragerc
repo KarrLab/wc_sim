@@ -1,12 +1,4 @@
 [run]
 include =
-	# include these files
 	wc_sim/*
-	tests/*
-	examples/*	
-omit =
-    # omit these files
-	wc_sim/multialgorithm/plot_specie_pop.py
-	wc_sim/multialgorithm/species_counts.py
-	wc_sim/multialgorithm/temp/analysis.py
-	wc_sim/multialgorithm/temp/exercise.py
+	examples/*
