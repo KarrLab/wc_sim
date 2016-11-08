@@ -106,7 +106,7 @@ class SsaSubmodel( Submodel ):
     MessageTypesRegistry.set_receiver_priorities( 'SsaSubmodel', MESSAGE_TYPES_BY_PRIORITY )
 
     def __init__( self, model, name, id, private_cell_state, shared_cell_states,
-        reactions, species, default_center_of_mass=config_core['default_center_of_mass']):
+        reactions, species, parameters, default_center_of_mass=config_core['default_center_of_mass']):
         """Initialize a SsaSubmodel object.
 
         # TODO(Arthur): expand description
@@ -117,7 +117,7 @@ class SsaSubmodel( Submodel ):
 
         """
         Submodel.__init__( self, model, name, id, private_cell_state, shared_cell_states,
-            reactions, species )
+            reactions, species, parameters )
         # TODO(Arthur): use private_cell_state & shared_cell_states, or get rid of them
 
         self.num_SsaWaits=0
