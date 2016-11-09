@@ -17,10 +17,10 @@ with warnings.catch_warnings():
     from cobra import Reaction as CobraReaction
 
 from scipy.constants import Avogadro
-from wc_lang.model_representation import ExchangedSpecies
 from wc_sim.core.simulation_object import EventQueue, SimulationObject
 from wc_sim.core.simulation_engine import MessageTypesRegistry
 from wc_sim.multialgorithm import message_types
+from wc_sim.multialgorithm.model import ExchangedSpecies
 from wc_sim.multialgorithm.submodels.submodel import Submodel
 from wc_utils.util.misc import isclass_by_name
 
@@ -70,7 +70,7 @@ class FbaSubmodel(Submodel):
 
 
     def __init__(self, model, name, id, private_cell_state, shared_cell_states, 
-        reactions, species, time_step ):
+        reactions, species, parameters, time_step ):
         """Initialize a FbaSubmodel object.
         
         # TODO(Arthur): expand description
@@ -80,7 +80,7 @@ class FbaSubmodel(Submodel):
             time_step: float; time between FBA executions
         """
         Submodel.__init__( self, model, name, id, private_cell_state, shared_cell_states,
-            reactions, species )
+            reactions, species, parameters )
 
         self.algorithm = 'FBA'
         self.time_step = time_step
@@ -137,7 +137,7 @@ class FbaSubmodel(Submodel):
         
         # add external exchange reactions
         self.exchangedSpecies = []
-        for species in self.species:
+        for i_species, species in enumerate(self.species):
             if species.compartment.id == 'e':                
                 cbRxn = CobraReaction(
                     id = '{}Ex'.format(species.species.id),
@@ -149,8 +149,12 @@ class FbaSubmodel(Submodel):
                 cobraModel.add_reaction(cbRxn)
                 cbRxn.add_metabolites({species.id: 1})
                 
-                self.exchangedSpecies.append(ExchangedSpecies(id = species.id, 
-                    reactionIndex = cobraModel.reactions.index(cbRxn)))
+                self.exchangedSpecies.append(ExchangedSpecies(
+                    id = species.id, 
+                    species_index = i_species,
+                    fba_reaction_index = cobraModel.reactions.index(cbRxn),
+                    is_carbon_containing = species.species.is_carbon_containing(),
+                    ))
         
         # add biomass exchange reaction
         cbRxn = CobraReaction(
@@ -172,25 +176,25 @@ class FbaSubmodel(Submodel):
             }
         
         # exchange reactions
-        carbonExRate = self.getComponentById('carbonExchangeRate', self.model.parameters).value
-        nonCarbonExRate = self.getComponentById('nonCarbonExchangeRate', self.model.parameters).value
+        carbonExRate = self.get_component_by_id('carbonExchangeRate', 'parameters').value
+        nonCarbonExRate = self.get_component_by_id('nonCarbonExchangeRate', 'parameters').value
         self.exchangeRateBounds = {
             'lower': np.full(len(cobraModel.reactions), -np.nan),
             'upper': np.full(len(cobraModel.reactions),  np.nan),
             }
 
         for exSpecies in self.exchangedSpecies:
-            if self.getComponentById(exSpecies.id, self.species).species.containsCarbon():
-                self.exchangeRateBounds['lower'][exSpecies.reactionIndex] = -carbonExRate
-                self.exchangeRateBounds['upper'][exSpecies.reactionIndex] =  carbonExRate
+            if self.get_component_by_id(exSpecies.id, 'species').species.is_carbon_containing():
+                self.exchangeRateBounds['lower'][exSpecies.fba_reaction_index] = -carbonExRate
+                self.exchangeRateBounds['upper'][exSpecies.fba_reaction_index] =  carbonExRate
             else:
-                self.exchangeRateBounds['lower'][exSpecies.reactionIndex] = -nonCarbonExRate
-                self.exchangeRateBounds['upper'][exSpecies.reactionIndex] =  nonCarbonExRate
+                self.exchangeRateBounds['lower'][exSpecies.fba_reaction_index] = -nonCarbonExRate
+                self.exchangeRateBounds['upper'][exSpecies.fba_reaction_index] =  nonCarbonExRate
             
         '''Setup reactions'''
         self.metabolismProductionReaction = {
             'index': cobraModel.reactions.index(cobraModel.reactions.get_by_id('MetabolismProduction')),
-            'reaction': self.getComponentById('MetabolismProduction', self.reactions),
+            'reaction': self.get_component_by_id('MetabolismProduction', 'reactions'),
             }
 
         self.schedule_next_FBA_analysis()
@@ -231,9 +235,9 @@ class FbaSubmodel(Submodel):
         
         # external nutrients
         for exSpecies in self.exchangedSpecies:
-            # was: self.speciesCounts[exSpecies.id] += self.reactionFluxes[exSpecies.reactionIndex] * timeStep
-            adjustments[exSpecies.id] = (self.reactionFluxes[exSpecies.reactionIndex] * self.time_step,
-                self.reactionFluxes[exSpecies.reactionIndex])
+            # was: self.speciesCounts[exSpecies.id] += self.reactionFluxes[exSpecies.fba_reaction_index] * timeStep
+            adjustments[exSpecies.id] = (self.reactionFluxes[exSpecies.fba_reaction_index] * self.time_step,
+                self.reactionFluxes[exSpecies.fba_reaction_index])
         
         self.model.the_SharedMemoryCellState.adjust_continuously( self.time, adjustments )
         
@@ -254,8 +258,8 @@ class FbaSubmodel(Submodel):
         # external nutrients availability
         specie_counts = self.get_specie_counts()
         for exSpecies in self.exchangedSpecies:
-            upperBounds[exSpecies.reactionIndex] = max(0, 
-                np.minimum(upperBounds[exSpecies.reactionIndex], specie_counts[exSpecies.id]) 
+            upperBounds[exSpecies.fba_reaction_index] = max(0, 
+                np.minimum(upperBounds[exSpecies.fba_reaction_index], specie_counts[exSpecies.id]) 
                 / self.time_step)
         
         # exchange bounds

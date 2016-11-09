@@ -15,7 +15,6 @@ import numpy as np
 import re
 
 from scipy.constants import Avogadro
-from wc_lang.model_representation import Model, ExchangedSpecies
 from wc_sim.core.simulation_object import SimulationObject
 from wc_sim.multialgorithm.utils import species_compartment_name
 from wc_sim.multialgorithm.shared_memory_cell_state import SharedMemoryCellState
@@ -32,7 +31,7 @@ class Submodel(SimulationObject):
 
     """
     
-    def __init__(self, model, name, id, private_cell_state, shared_cell_states, reactions, species ):
+    def __init__(self, model, name, id, private_cell_state, shared_cell_states, reactions, species, parameters ):
         """Initialize a submodel.
 
         Args:
@@ -45,6 +44,7 @@ class Submodel(SimulationObject):
                 the species that are collectively modeled by this Submodel and other Submodel instances.
             reactions: list; reactions modeled by this submodel
             species: list; species that participate in the reactions modeled by this submodel
+            parameters: list
         """
         self.model = model  # the model which this Submodel belongs to
         self.name = name
@@ -53,6 +53,7 @@ class Submodel(SimulationObject):
         self.shared_cell_states = shared_cell_states
         self.reactions = reactions
         self.species = species
+        self.parameters = parameters
         SimulationObject.__init__( self, name )
 
     def get_specie_counts(self, rounded=True):
@@ -97,14 +98,14 @@ class Submodel(SimulationObject):
         """
         rates = np.full(len(reactions), np.nan)
         for iRxn, rxn in enumerate(reactions):          
-            if rxn.rateLaw:
+            if rxn.rate_law:
                 try:
-                    rates[iRxn] = eval(rxn.rateLaw.transcoded, {}, 
+                    rates[iRxn] = eval(rxn.rate_law.transcoded, {}, 
                         {'speciesConcentrations': speciesConcentrations, \
                         'Vmax': rxn.vmax, 'Km': rxn.km})
                 except SyntaxError as error:
                     raise ValueError( "Error: reaction '{}' has syntax error in rate law '{}'.".format(
-                        rxn.id, rxn.rateLaw.native ) )
+                        rxn.id, rxn.rate_law.law ) )
 
         return rates
                
@@ -180,11 +181,25 @@ class Submodel(SimulationObject):
             raise ValueError( "{:7.1f}: submodel {}: reaction: {}: {}".format(self.time, self.name, 
                 reaction.id, e) )
 
-    def getComponentById(self, id, components = None):
-        if not components:
+    def get_component_by_id(self, id, component_type=''):
+        """ Find model component with id.
+
+        Args:
+            id (:obj:`str`): id of component to find
+            component_type (:obj:`str`, optional): type of component to search for; if empty search over all components
+
+        Returns:
+            :obj:`object`: component with id, or `None` if there is no component with the id
+        """
+
+        # components to search over
+        if component_type in ['species', 'reactions', 'parameters']:
+            components = getattr(self, component_type)
+        elif not component_type:
             components = chain(self.species, self.reactions, self.parameters)
-        
-        for component in components:
-            if component.id == id:
-                return component
+        else:
+            raise Exception('Invalid component type "{}"'.format(component_type))
+
+        # find component
+        return next((component for component in components if component.id == id), None)
         

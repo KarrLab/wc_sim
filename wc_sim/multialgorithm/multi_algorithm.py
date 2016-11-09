@@ -19,19 +19,16 @@ Created 2016/07/14
 # TODO(Arthur): provide 'returns' documentation for all return operations
 # TODO(Arthur): rename Seq_DES_WC_simulator
 
-import sys
 import argparse
 import warnings
 import errno
 
 from wc_analysis import exercise
-from wc_lang.model_loader import getModelFromExcel
-from wc_lang.model_representation import Model
+from wc_lang.io import Excel
 from wc_sim.core.config import paths as config_paths_core
-from wc_sim.core.simulation_object import EventQueue
-from wc_sim.core.simulation_engine import SimulationEngine, MessageTypesRegistry
+from wc_sim.core.simulation_engine import SimulationEngine
 from wc_sim.multialgorithm.config import paths as config_paths_multialgorithm
-from wc_sim.multialgorithm.cell_state import CellState
+from wc_sim.multialgorithm.model import Model
 from wc_sim.multialgorithm.submodels.ssa import SsaSubmodel
 from wc_sim.multialgorithm.submodels.fba import FbaSubmodel
 from wc_sim.multialgorithm.debug_logs import logs as debug_logs
@@ -103,10 +100,10 @@ class MultiAlgorithm(object):
             warnings.simplefilter("ignore")
             # 0. read model description
             LogAtTimeZero.info("Reading model from '{}'".format(args.model_filename))
-            the_model = getModelFromExcel(args.model_filename)
-            LogAtTimeZero.debug(the_model.summary())
+            model_def = Excel.read(args.model_filename)            
 
             '''Prepare submodels for computation'''
+            the_model = Model(model_def)
             the_model.setupSimulation()
 
         # 1. create and configure simulation submodels, including initial events
@@ -121,7 +118,9 @@ class MultiAlgorithm(object):
                                                                      submodel_spec.id, None, 
                                                                      shared_cell_states, 
                                                                      submodel_spec.reactions,
-                                                                     submodel_spec.species)
+                                                                     submodel_spec.species, 
+                                                                     submodel_spec.parameters,
+                                                                     )
             elif submodel_spec.algorithm == 'FBA':
                 if submodel_spec.algorithm in algs_to_run:
                     LogAtTimeZero.info("create FBA submodel: {} {}".format(submodel_spec.name,
@@ -131,6 +130,7 @@ class MultiAlgorithm(object):
                                                              shared_cell_states, 
                                                              submodel_spec.reactions,
                                                              submodel_spec.species, 
+                                                             submodel_spec.parameters,
                                                              args.FBA_time_step)
             else:
                 raise Exception("Undefined algorithm '{}' for submodel '{}'".format(
@@ -142,8 +142,8 @@ class MultiAlgorithm(object):
             SimulationEngine.simulate(args.end_time)
         else:
             LogAtTimeZero.info("Simulating to cellCycleLength: {}".format(
-                the_model.getComponentById('cellCycleLength').value))
-            SimulationEngine.simulate(the_model.getComponentById('cellCycleLength').value)
+                the_model.get_component_by_id('cellCycleLength', 'parameters').value))
+            SimulationEngine.simulate(the_model.get_component_by_id('cellCycleLength', 'parameters').value)
 
         return the_model
 

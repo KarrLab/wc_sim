@@ -9,15 +9,10 @@ Analysis utility functions
 
 from matplotlib import pyplot, ticker
 from matplotlib.backends.backend_pdf import PdfPages
-from wc_lang.model_representation import Model
+from wc_lang.core import Model, Submodel
 from scipy.constants import Avogadro
-#%matplotlib inline
 import numpy as np
 import re
-
-from matplotlib.backends.backend_pdf import PdfPages
-from wc_lang.model_representation import Model
-from scipy.constants import Avogadro as N_AVOGADRO 
 
 def plot(model, time = np.zeros(0), 
     speciesCounts = None, volume = np.zeros(0), extracellularVolume = np.zeros(0),
@@ -41,8 +36,8 @@ def plot(model, time = np.zeros(0),
             compartmentId = match['compartmentId']
 
             if isinstance(model, Model):
-                species = model.getComponentById(speciesId)
-                compartment = model.getComponentById(compartmentId)
+                species = model.get_component_by_id(speciesId, 'species')
+                compartment = model.get_component_by_id(compartmentId, 'compartments')
                 yData = speciesCounts[species.index, compartment.index, :]
             elif isinstance(model, Submodel):
                 yData = speciesCounts[speciesCompartmentId]

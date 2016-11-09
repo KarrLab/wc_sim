@@ -23,7 +23,7 @@ def analyzeResults(model, time, volume, growth, speciesCounts):
     if not os.path.exists(OUTPUT_DIRECTORY):
         os.makedirs(OUTPUT_DIRECTORY)
         
-    cellComp = model.getComponentById('c')
+    cellComp = model.get_component_by_id('c', 'compartments')
     
     totalRna = np.zeros(len(time))
     totalProt = np.zeros(len(time))
