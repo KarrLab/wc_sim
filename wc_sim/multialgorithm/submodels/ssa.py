@@ -1,11 +1,16 @@
+'''A sub-model that employs Gillespie's Stochastic Simulation Algorithm (SSA) to model a set of reactions.
+
+:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Date: 2016-07-14
+:Copyright: 2016, Karr Lab
+:License: MIT
+'''
 """
 Gillespie's Stochastic Simulation Algorithm (SSA). This is 'simple' in that
 1) it executes explicit chemical reactions, as opposed to rules, and that
 2) it only uses shared_cell_states, and not private_cell_state.
 I may be able to design a SSA sub-model simulation object that executes either.
 
-Created 2016/07/14
-@author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
 """
 
 import sys
@@ -70,8 +75,8 @@ class SsaSubmodel( Submodel ):
 
     Attributes:
         random: a numpy RandomState() instance object; private PRNG; may be reproducible, as
-            determined by the value of config_core['reproducible_seed'] and how the main program, MultiAlgorithm,
-            calls ReproducibleRandom.init()
+            determined by the value of config_core['reproducible_seed'] and how the main program,
+            MultiAlgorithm, calls ReproducibleRandom.init()
         num_SsaWaits: integer; count of SsaWaits
         ema_of_inter_event_time: an ExponentialMovingAverage; an EMA of the time between
             ExecuteSsaReaction events; when total propensities == 0, ema_of_inter_event_time
@@ -107,13 +112,11 @@ class SsaSubmodel( Submodel ):
 
     def __init__( self, model, name, id, private_cell_state, shared_cell_states,
         reactions, species, parameters, default_center_of_mass=config_core['default_center_of_mass']):
-        """Initialize a SsaSubmodel object.
-
-        # TODO(Arthur): expand description
+        """Initialize an SSA submodel object.
 
         Args:
-            See pydocs of super classes.
-            default_center_of_mass: number; the center_of_mass for the ExponentialMovingAverage
+            Also see pydocs of super classes.
+            default_center_of_mass (type): the center_of_mass for the ExponentialMovingAverage
 
         """
         Submodel.__init__( self, model, name, id, private_cell_state, shared_cell_states,
@@ -220,7 +223,7 @@ class SsaSubmodel( Submodel ):
         """
         self.log_with_time( "submodel: {} "
             "executing reaction {}".format( self.name, self.reactions[reaction_index].id ) )
-        self.executeReaction( self.model.the_SharedMemoryCellState, self.reactions[reaction_index] )
+        self.executeReaction( self.model.shared_memory_cell_state, self.reactions[reaction_index] )
 
     def handle_event( self, event_list ):
         """Handle a SsaSubmodel simulation event.

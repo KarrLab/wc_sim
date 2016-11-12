@@ -1,8 +1,9 @@
-'''
-A shared-memory species counts cell state. Derived from class CellState.
+'''Maintain the population of a set of species.
 
-Created 2016/06/17
-@author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Date: 2016-06-17
+:Copyright: 2016, Karr Lab
+:License: MIT
 '''
 
 # TODO(Arthur): globally, properly name elements that are protected or private within a class

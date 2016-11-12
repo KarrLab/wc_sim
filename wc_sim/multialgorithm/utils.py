@@ -1,8 +1,9 @@
-"""
-Multi-algorithm whole-cell simulation utilities. 
+"""Multi-algorithm whole-cell simulation utilities. 
 
-Created 2016/08/22
-@author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Date: 2016-08-22
+:Copyright: 2016, Karr Lab
+:License: MIT
 """
 
 def species_compartment_name( specie, compartment ):

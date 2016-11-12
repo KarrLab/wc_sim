@@ -1,8 +1,9 @@
-"""
-A species counts cell state encapsulated in a SimulationObject.
+"""A species counts cell state encapsulated in a SimulationObject.
 
-Created 2016/07/19
-@author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Date: 2016-07-19
+:Copyright: 2016, Karr Lab
+:License: MIT
 """
 import sys
 
@@ -19,8 +20,8 @@ class CellState( SimulationObject ):
     
     CellState tracks the population of a set of species. After initialization, population values 
     are incremented or decremented, not written. To enable multi-algorithmic modeling, 
-    it supports adjustments to a specie's population by both discrete and continuous models. E.g., discrete models
-    might synthesize proteins while a continuous model degrades them.
+    it supports adjustments to a specie's population by both discrete and continuous models. E.g.,
+    discrete models might synthesize proteins while a continuous model degrades them.
     
     Attributes:
         population: a set species, represented by Specie objects

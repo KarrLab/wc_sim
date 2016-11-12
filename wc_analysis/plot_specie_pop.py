@@ -1,8 +1,9 @@
-"""
-Plot a specie population's dynamics. Inputs logging log.
+"""Plot a specie population's dynamics. Inputs logging log.
 
-Created 2016/07/12
-@author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Date: 2016-07-12
+:Copyright: 2016, Karr Lab
+:License: MIT
 """
 
 import sys
@@ -32,7 +33,7 @@ Adjustment_event = recordtype( 'Adjustment_event', event_fields )
 
 def convert_floats( l ):
     """Convert all string which represent floats into floats. Changes list l in place."""
-    
+
     for index in range(len(l)):
         try:
             l[index] = float(l[index])
@@ -43,9 +44,9 @@ def print_event_list(el):
     print( '\t'.join( event_fields.split() ) )
     for e in el:
         print( '\t'.join( [ str(e._asdict()[f]) for f in event_fields.split() ] ))
-        
+
 class PlotPopulationDynamics(object):
-    
+
     @staticmethod
     def parse_cli_args():
         parser = argparse.ArgumentParser( description="Plot a specie population's dynamics. "
@@ -59,14 +60,14 @@ class PlotPopulationDynamics(object):
     @staticmethod
     def parse_log( file ):
         """Parse a specie logging log.
-        
-        The log is written by CellState.log_event() and its format is determined by 
+
+        The log is written by CellState.log_event() and its format is determined by
         the plot handlers in .cfg files.
 
-        
+
         Arguments:
             file: string; the log file
-            
+
         Return:
             list of logged events
         """
@@ -84,12 +85,12 @@ class PlotPopulationDynamics(object):
             return events
         except IOError:
             sys.exit( "Error: cannot read {} \n".format( file ) )
-            
+
 
     @staticmethod
     def get_line_segment_endpoints( start_event, end_event ):
         """Determine the plot line segment endpoints between a pair of events.
-        
+
             Given:
                 flux = last flux value
                 pop = population following current adjustment
@@ -97,14 +98,14 @@ class PlotPopulationDynamics(object):
                 time_next = time of next adjustment
 
                 line segment: ( time_cur, pop ) - ( time_next, pop + (time_next - time_cur )*flux )
-            
+
             Return:
                 Return ((x_start, x_end), (y_start, y_end) ), as used by matplotlib
         """
         flux = start_event.flux
         if flux == None or flux == 'None':
             flux = 0
-        return  ( ( start_event.time, end_event.time), 
+        return  ( ( start_event.time, end_event.time),
             ( start_event.population, start_event.population + ( end_event.time-start_event.time)*flux) )
 
     @staticmethod
@@ -115,23 +116,23 @@ class PlotPopulationDynamics(object):
         # plot markers
         continuous_events = filter( lambda x: x.adjustment_type == 'continuous_adjustment', events )
         discrete_events = filter( lambda x: x.adjustment_type == 'discrete_adjustment', events )
-        continuous_params = { 'marker' : 'o', 
+        continuous_params = { 'marker' : 'o',
             'color' : 'red',
             'label' : 'Continuous adjustments' }
-        discrete_params = { 'marker' : '^', 
+        discrete_params = { 'marker' : '^',
             'color' : 'green',
             'label' : 'Discrete adjustments' }
-            
-        plt.scatter( 
-            map( lambda e: e.time, continuous_events ), 
-            map( lambda e: e.population, continuous_events ), 
+
+        plt.scatter(
+            map( lambda e: e.time, continuous_events ),
+            map( lambda e: e.population, continuous_events ),
             **continuous_params )
-        plt.scatter( 
-            map( lambda e: e.time, discrete_events ), 
-            map( lambda e: e.population, discrete_events ), 
+        plt.scatter(
+            map( lambda e: e.time, discrete_events ),
+            map( lambda e: e.population, discrete_events ),
             **discrete_params )
         plt.legend()
-        
+
         # plot piece-wise linear line segments
         data = []
         for index in range( len( events ) - 1 ):
@@ -141,7 +142,7 @@ class PlotPopulationDynamics(object):
             data.append(y_vals)
             data.append('blue')
         plt.plot(*data)
-        
+
         # expand axes by 1 in each direction, so all data shows
         ymin, ymax = plt.ylim()
         plt.ylim( ymin-1, ymax+1)
@@ -168,14 +169,14 @@ class PlotPopulationDynamics(object):
         event_list = PlotPopulationDynamics.parse_log( args.log_file )
         PlotPopulationDynamics.plot_specie_population_dynamics( args, event_list )
         PlotPopulationDynamics.output_plot( args )
-        
+
 if __name__ == '__main__':
     try:
         # TODO(Arthur): important: plot multiple species simultaneously, either on one plot and/or in a grid
         # TODO(Arthur): time units
         # TODO(Arthur): important: label with species name
         # TODO(Arthur): command line control of markers, colors, labels, etc.
-        
+
         PlotPopulationDynamics.main()
     except KeyboardInterrupt:
         pass

@@ -1,11 +1,11 @@
-"""
+'''A Flux Balance Analysis (FBA) sub-model that represents a set of reactions.
 
-@author Jonathan Karr, karr@mssm.edu
-Created 2016/07/14, built FBA use of Cobra
-@author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
-built DES simulation, and converted FBA for DES
-
-"""
+:Author: Jonathan Karr, karr@mssm.edu
+:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Date: 2016-07-14
+:Copyright: 2016, Karr Lab
+:License: MIT
+'''
     
 import sys
 import numpy as np
@@ -20,12 +20,12 @@ from scipy.constants import Avogadro
 from wc_sim.core.simulation_object import EventQueue, SimulationObject
 from wc_sim.core.simulation_engine import MessageTypesRegistry
 from wc_sim.multialgorithm import message_types
-from wc_sim.multialgorithm.model import ExchangedSpecies
+from wc_sim.multialgorithm.extended_model import ExchangedSpecies
 from wc_sim.multialgorithm.submodels.submodel import Submodel
 from wc_utils.util.misc import isclass_by_name
 
 class FbaSubmodel(Submodel):
-    """
+    '''
     FbaSubmodel employs Flus Balance Analysis to predict the reaction fluxes of 
     a set of chemical species in a 'well-mixed' container constrained by maximizing
     biomass increase. 
@@ -50,7 +50,7 @@ class FbaSubmodel(Submodel):
         AdjustPopulationByContinuousModel
         GetPopulation
         GivePopulation
-    """
+    '''
 
     SENT_MESSAGE_TYPES = [ 
         message_types.RunFba, 
@@ -71,14 +71,14 @@ class FbaSubmodel(Submodel):
 
     def __init__(self, model, name, id, private_cell_state, shared_cell_states, 
         reactions, species, parameters, time_step ):
-        """Initialize a FbaSubmodel object.
+        '''Initialize an FBA submodel.
         
         # TODO(Arthur): expand description
         
         Args:
             See pydocs of super classes.
             time_step: float; time between FBA executions
-        """
+        '''
         Submodel.__init__( self, model, name, id, private_cell_state, shared_cell_states,
             reactions, species, parameters )
 
@@ -104,11 +104,11 @@ class FbaSubmodel(Submodel):
         self.set_up_fba_submodel()
         
     def set_up_fba_submodel( self ):
-        """Set up this FBA submodel for simulation.
+        '''Set up this FBA submodel for simulation.
         
         Setup species fluxes, reaction participant, enzyme counts matrices. 
         Create initial event for this FBA submodel.
-        """
+        '''
 
         cobraModel = CobraModel(self.id)
         self.cobraModel = cobraModel
@@ -200,13 +200,13 @@ class FbaSubmodel(Submodel):
         self.schedule_next_FBA_analysis()
         
     def schedule_next_FBA_analysis(self):
-        """Schedule the next analysis by this FBA submodel.
-        """
+        '''Schedule the next analysis by this FBA submodel.
+        '''
         self.send_event( self.time_step, self, message_types.RunFba )
 
     def calcReactionFluxes(self):
-        """calculate growth rate.
-        """
+        '''calculate growth rate.
+        '''
 
         '''
         assertion because 
@@ -223,8 +223,8 @@ class FbaSubmodel(Submodel):
         self.model.growth = self.reactionFluxes[self.metabolismProductionReaction['index']] #fraction cell/s
         
     def updateMetabolites(self):
-        """Update species (metabolite) counts and fluxes.
-        """
+        '''Update species (metabolite) counts and fluxes.
+        '''
         # biomass production
         adjustments={}
         local_fluxes={}
@@ -239,12 +239,12 @@ class FbaSubmodel(Submodel):
             adjustments[exSpecies.id] = (self.reactionFluxes[exSpecies.fba_reaction_index] * self.time_step,
                 self.reactionFluxes[exSpecies.fba_reaction_index])
         
-        self.model.the_SharedMemoryCellState.adjust_continuously( self.time, adjustments )
+        self.model.shared_memory_cell_state.adjust_continuously( self.time, adjustments )
         
         
     def calcReactionBounds(self):
-        """Compute FBA reaction bounds.
-        """
+        '''Compute FBA reaction bounds.
+        '''
         # thermodynamics
         lowerBounds = self.thermodynamicBounds['lower'].copy()
         upperBounds = self.thermodynamicBounds['upper'].copy()
@@ -274,14 +274,14 @@ class FbaSubmodel(Submodel):
 
 
     def handle_event( self, event_list ):
-        """Handle a FbaSubmodel simulation event.
+        '''Handle a FbaSubmodel simulation event.
         
         In this shared-memory FBA, the only event is RunFba, and event_list should
         always contain one event.
         
         Args:
             event_list: list of event messages to process
-        """
+        '''
         # call handle_event() in class SimulationObject which performs generic tasks on the event list
         SimulationObject.handle_event( self, event_list )
         if not self.num_events % 100:

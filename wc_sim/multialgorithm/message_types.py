@@ -1,10 +1,12 @@
-from collections import namedtuple
+"""A simulation application's static set of message types and their content.
 
-"""
-A simulation application's static set of message types and their content.
+:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Date: 2016-06-10
+:Copyright: 2016, Karr Lab
+:License: MIT
 
 Declare
-    2. For each message type which has an event_body, a class that represents the body
+    1. For each message type which has an event_body, a class that represents the body
 
 Attributes:
     These are global attributes, since MessageTypes is static.
@@ -23,8 +25,6 @@ Event message types, bodies and reply message:
     For sequential simulator, store message bodies as a copy of or reference to sender's data structure
     # TODO(Arthur): for parallel simulation, use Pickle to serialize and deserialize message bodies
 
-Created 2016/06/10
-@author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
 """
 
 '''
@@ -34,6 +34,9 @@ It is enforced by checking class names against message body types.
 
 # TODO(Arthur): these class names should be changed to standard class name CamelCase format
 '''
+
+from collections import namedtuple
+
 class AdjustPopulationByDiscreteModel( object ):
     """An AdjustPopulationByDiscreteModel message.
     
