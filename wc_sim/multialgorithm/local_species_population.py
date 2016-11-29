@@ -8,7 +8,6 @@
 
 import sys
 import numpy as np
-from threading import RLock
 
 from wc_utils.util.dict import DictUtil
 
@@ -27,7 +26,8 @@ class LocalSpeciesPopulation(object):
     population by both discrete and continuous models.
 
     All accesses to this object must provide a simulation time, which supports simple synchronization
-    of interactions between sub-models: reads access the previous writes (called adjustments).
+    of interactions between sub-models in a sequential simulator: reads access the previous writes
+    (called adjustments).
 
     For any given specie, all operations must occur in non-decreasing simulation time order.
     Record history operations must also occur in time order.
@@ -41,8 +41,6 @@ class LocalSpeciesPopulation(object):
         time (float): the time of the current operation.
         _population (:obj:`dict` of :obj:`Specie`): map: specie_id -> Specie(); the species whose
             counts are stored, represented by Specie objects.
-        _population_lock (:obj:`RLock`): a reentrant lock used to make a LocalSpeciesPopulation
-            thread-safe.
         last_access_time (:obj:`dict` of `float`): map: species_name -> last_time; the last time at
             which the specie was accessed.
         history (:obj:`dict`) nested dict; an optional history of the species' state. The population
@@ -76,7 +74,6 @@ class LocalSpeciesPopulation(object):
         self.name = name
         self.time = 0
         self._population = {}
-        self._population_lock = RLock()
         self.last_access_time = {}
 
         if retain_history:
@@ -115,8 +112,7 @@ class LocalSpeciesPopulation(object):
         if specie_id in self._population:
             raise ValueError( "Error: specie_id '{}' already stored by this "
                 "LocalSpeciesPopulation".format( specie_id ) )
-        with self._population_lock:
-            self._population[specie_id] = Specie( specie_id, population, initial_flux=initial_flux_given )
+        self._population[specie_id] = Specie( specie_id, population, initial_flux=initial_flux_given )
         self.last_access_time[specie_id] = self.time
         self._add_to_history(specie_id)
 
@@ -135,9 +131,8 @@ class LocalSpeciesPopulation(object):
             specie_id (str): a unique specie identifier.
         '''
         if self._recording_history():
-            with self._population_lock:
-                population = self.read( self.time, [specie_id] )[specie_id]
-                self._history['population'][specie_id] = [population]
+            population = self.read( self.time, [specie_id] )[specie_id]
+            self._history['population'][specie_id] = [population]
 
     def _recording_history(self):
         '''Is history being recorded?
@@ -161,9 +156,8 @@ class LocalSpeciesPopulation(object):
             raise ValueError( "time of previous _record_history() ({}) not less than current time ({})".format(
                 self._history['time'][-1], self.time ) )
         self._history['time'].append( self.time )
-        with self._population_lock:
-            for specie_id, population in self.read( self.time, list(self._population.keys()) ).items():
-                self._history['population'][specie_id].append( population )
+        for specie_id, population in self.read( self.time, list(self._population.keys()) ).items():
+            self._history['population'][specie_id].append( population )
 
     # TODO(Arthur): unit test this with numpy_format=True
     def report_history(self, numpy_format=False ):
@@ -237,8 +231,7 @@ class LocalSpeciesPopulation(object):
         '''
         if not isinstance( species, list ):
             raise ValueError( "Error: species '{}' must be a list".format( species ) )
-        with self._population_lock:
-            unknown_species = set( species ) - set( list(self._population.keys()) )
+        unknown_species = set( species ) - set( list(self._population.keys()) )
         if unknown_species:
             # raise exeception if some species are non-existent
             raise ValueError( "Error: request for population of unknown specie(s): {}".format(
