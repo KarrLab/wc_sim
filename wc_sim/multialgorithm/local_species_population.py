@@ -6,7 +6,6 @@
 :License: MIT
 '''
 
-# TODO(Arthur): globally, properly name elements that are protected or private within a class
 import sys
 import numpy as np
 from threading import RLock
@@ -20,58 +19,64 @@ debug_log = debug_logs.get_log( 'wc.debug.file' )
 from wc_sim.multialgorithm.utils import species_compartment_name
 from wc_sim.multialgorithm.specie import Specie
 
-class SharedMemoryCellState( object ):
-    '''The cell's state, which represents the state of its species.
+class LocalSpeciesPopulation(object):
+    '''Maintain the population of a set of species, while supporting thread-safe access.
 
-    SharedMemoryCellState tracks the population of a set of species. Population values (copy numbers)
+    LocalSpeciesPopulation tracks the population of a set of species. Population values (copy numbers)
     can be read or written. To enable multi-algorithmic modeling, it supports writes to a specie's
     population by both discrete and continuous models.
 
-    All accesses to this state must provide a simulation time, which supports simple synchronization
+    All accesses to this object must provide a simulation time, which supports simple synchronization
     of interactions between sub-models: reads access the previous writes (called adjustments).
 
     For any given specie, all operations must occur in non-decreasing simulation time order.
-    Record history operations must also occur in non-decreasing time order.
+    Record history operations must also occur in time order.
+
+    A LocalSpeciesPopulation object is accessed via local method calls. It can be wrapped as a
+    DES simulation object to provide distributed access.
 
     Attributes:
-        name: the name of this object
-        time: the time of the current operation
-        population: dict: specie_name -> Specie(); the species whose counts are stored,
-            represented by Specie objects
-        last_access_time: dict: species_name -> last_time; the last time at which the specie was accessed
-        history: nested dict; an optional history of the cell's state, created if retain_history is set.
-            the population history is recorded at each continuous adjustment.
+        model (:obj:`Model`): the `Model` containing this LocalSpeciesPopulation.
+        name (str): the name of this object.
+        time (float): the time of the current operation.
+        _population (:obj:`dict` of :obj:`Specie`): map: specie_id -> Specie(); the species whose
+            counts are stored, represented by Specie objects.
+        _population_lock (:obj:`RLock`): a reentrant lock used to make a LocalSpeciesPopulation
+            thread-safe.
+        last_access_time (:obj:`dict` of `float`): map: species_name -> last_time; the last time at
+            which the specie was accessed.
+        history (:obj:`dict`) nested dict; an optional history of the species' state. The population
+            history is recorded at each continuous adjustment.
     '''
 
-    # TODO(Arthur): IMPORTANT: support tracking the population history of species added at any time in the simulation
-    # TODO(Arthur): standardize on specie_name or specie_id
-    # TODO(Arthur): extend beyond population, e.g., to represent binding sites for individual macromolecules
-    # TODO(Arthur): optimize to represent just the state of shared species
+    # TODO(Arthur): IMPORTANT: support tracking the population history of species added at any time
+    # in the simulation
     # TODO(Arthur): report error if a Specie instance is updated by multiple continuous sub-models
 
     def __init__( self, model, name, initial_population, initial_fluxes=None, retain_history=True ):
-        '''Initialize a SharedMemoryCellState object.
+        '''Initialize a LocalSpeciesPopulation object.
 
-        Initialize a SharedMemoryCellState object. Establish its initial population, and set debugging booleans.
+        Initialize a LocalSpeciesPopulation object. Establish its initial population, and set debugging booleans.
 
         Args:
-            model: object ref; the model containing this SharedMemoryCellState
-            initial_population: initial population for some species;
-                dict: specie_name -> initial_population
-            initial_fluxes: optional; dict: specie_name -> initial_flux;
+            model (:obj:`Model`): the `Model` containing this LocalSpeciesPopulation.
+            initial_population (:obj:`dict` of float): initial population for some species;
+                dict: specie_id -> initial_population.
+            initial_fluxes (:obj:`dict` of float, optional): map: specie_id -> initial_flux;
                 initial fluxes for all species whose populations are estimated by a continuous model
-                fluxes are ignored for species not specified in initial_population
-            retain_history: boolean; whether to retain species population history
+                fluxes are ignored for species not specified in initial_population.
+            retain_history (bool): whether to retain species population history.
 
         Raises:
             AssertionError: if the population cannot be initialized.
         '''
 
+        # TODO(Arthur): IMPORTANT: stop using model, which might not be in the same address space as this object
         self.model = model
         self.name = name
         self.time = 0
         self._population = {}
-        self._population_lock = RLock()   # make accesses to self._population thread-safe
+        self._population_lock = RLock()
         self.last_access_time = {}
 
         if retain_history:
@@ -86,34 +91,34 @@ class SharedMemoryCellState( object ):
                 for specie_id in initial_population:
                     self.init_cell_state_specie( specie_id, initial_population[specie_id] )
         except AssertionError as e:
-            sys.stderr.write( "Cannot initialize SharedMemoryCellState: {}.\n".format( e.message ) )
+            sys.stderr.write( "Cannot initialize LocalSpeciesPopulation: {}.\n".format( e.message ) )
 
         # write initialization data
-        debug_log.debug( "initial_population: {}".format( DictUtil.to_string_sorted_by_key(initial_population) ),
-            sim_time=self.time )
+        debug_log.debug( "initial_population: {}".format( DictUtil.to_string_sorted_by_key(
+            initial_population) ), sim_time=self.time )
         debug_log.debug( "initial_fluxes: {}".format( DictUtil.to_string_sorted_by_key(initial_fluxes) ),
             sim_time=self.time )
 
-    def init_cell_state_specie( self, specie_name, population, initial_flux_given=None ):
+    def init_cell_state_specie( self, specie_id, population, initial_flux_given=None ):
         '''Initialize a specie with the given population and flux.
 
         Add a specie to the cell state. The specie's population is set at the current time.
 
         Args:
-            specie: string; a unique specie name
-            population: float; initial population of the specie
-            initial_flux_given: float; optional; initial flux for the specie
+            specie_id (str): a unique specie identifier.
+            population (float): initial population of the specie.
+            initial_flux_given (:obj:`float`, optional): initial flux for the specie.
 
         Raises:
-            ValueError: if the specie is already stored by this SharedMemoryCellState
+            ValueError: if the specie is already stored by this LocalSpeciesPopulation.
         '''
-        if specie_name in self._population:
-            raise ValueError( "Error: specie_name '{}' already stored by this "
-                "SharedMemoryCellState".format( specie_name ) )
+        if specie_id in self._population:
+            raise ValueError( "Error: specie_id '{}' already stored by this "
+                "LocalSpeciesPopulation".format( specie_id ) )
         with self._population_lock:
-            self._population[specie_name] = Specie( specie_name, population, initial_flux=initial_flux_given )
-        self.last_access_time[specie_name] = self.time
-        self._add_to_history(specie_name)
+            self._population[specie_id] = Specie( specie_id, population, initial_flux=initial_flux_given )
+        self.last_access_time[specie_id] = self.time
+        self._add_to_history(specie_id)
 
     def _initialize_history(self):
         '''Initialize the population history with current population.'''
@@ -124,7 +129,11 @@ class SharedMemoryCellState( object ):
         self._history['population'] = { }
 
     def _add_to_history(self, specie_id):
-        '''Add a specie to the history.'''
+        '''Add a specie to the history.
+
+        Args:
+            specie_id (str): a unique specie identifier.
+        '''
         if self._recording_history():
             with self._population_lock:
                 population = self.read( self.time, [specie_id] )[specie_id]
@@ -133,7 +142,7 @@ class SharedMemoryCellState( object ):
     def _recording_history(self):
         '''Is history being recorded?
 
-        Return:
+        Returns:
             True if history is being recorded.
         '''
         return hasattr(self, '_history')
@@ -142,7 +151,7 @@ class SharedMemoryCellState( object ):
         '''Record the current population in the history.
 
         Snapshot the current population of all species in the history. The current time
-        is obtained from self.time.
+        is obtained from `self.time`.
 
         Raises:
             ValueError if the current time is not greater than the previous time at which the
@@ -161,7 +170,7 @@ class SharedMemoryCellState( object ):
         '''Provide the time and species count history.
 
         Args:
-            numpy_format: boolean; if set return history in numpy data structures
+            numpy_format (bool): if set return history in numpy data structures.
 
         Returns:
             The time and species count history. By default, the return value rv is a dict, with
@@ -170,10 +179,12 @@ class SharedMemoryCellState( object ):
             If numpy_format set, return the same data structure as was used in WcTutorial.
 
         Raises:
-            ValueError if the history was not recorded
+            ValueError if the history was not recorded.
         '''
         if self._recording_history():
             if numpy_format:
+                # TODO(Arthur): IMPORTANT: stop using model, as it may not be in this address space
+                # instead, don't provide the history in 'numpy_format'
                 timeHist = np.asarray( self._history['time'] )
                 speciesCountsHist = np.zeros((len(self.model.species), len(self.model.compartments),
                     len(self._history['time'])))
@@ -196,12 +207,12 @@ class SharedMemoryCellState( object ):
         Provide a string containing the start and end time of the history and
         a table with the first and last population value for each specie.
 
-        Return:
-            string with first and last times and a
-            tab-separated matrix of rows with species name, first, last population values
+        Returns:
+            srt: the start and end time of he history and a
+            tab-separated matrix of rows with species id, first, last population values.
 
         Raises:
-            ValueError if the history was not recorded
+            ValueError if the history was not recorded.
         '''
         if self._recording_history():
             lines = []
@@ -217,12 +228,12 @@ class SharedMemoryCellState( object ):
             raise ValueError( "Error: history not recorded" )
 
     def _check_species( self, time, species ):
-        '''Check whether the species are a list, and not known by this SharedMemoryCellState.
+        '''Check whether the species are a list, and not known by this LocalSpeciesPopulation.
 
         Raises:
-            ValueError: species are not a list
-            ValueError: adjustment attempts to change the population of a non-existent species
-            ValueError: if a specie in species is being accessed at a time earlier than a prior access
+            ValueError: species is not a list.
+            ValueError: adjustment attempts to change the population of a non-existent species.
+            ValueError: if a specie in species is being accessed at a time earlier than a prior access.
         '''
         if not isinstance( species, list ):
             raise ValueError( "Error: species '{}' must be a list".format( species ) )
@@ -238,33 +249,48 @@ class SharedMemoryCellState( object ):
         '''Check whether the species are being accessed in non-decreasing time order.
 
         Raises:
-            ValueError: if specie in species is being accessed at a time earlier than a prior access
+            ValueError: if specie in species is being accessed at a time earlier than a prior access.
         '''
-        early_accesses = filter( lambda s: time < self.last_access_time[s], species)
-        if any(early_accesses):
-            raise ValueError( "Error: earlier access of specie(s): {}".format( early_accesses ))
+        early_accesses = list(filter( lambda s: time < self.last_access_time[s], species))
+        if early_accesses:
+            raise ValueError( "Error: earlier access of specie(s): {}".format(early_accesses))
 
     def __update_access_times( self, time, species ):
-        for specie_name in species:
-            self.last_access_time[specie_name] = time
+        for specie_id in species:
+            self.last_access_time[specie_id] = time
 
-    # TODO(Arthur): IMPORTANT; create read_one (or read_list) to avoid cumbersome reading
-    # of one specie
-    # TODO(Arthur): IMPORTANT; add optional use_interpolation, so we can compare with and wo
-    # interpolation
+    # TODO(Arthur): use read_one() wherever the count of only one specie is obtained
+    def read_one(self, time, specie_id):
+        '''Read the predicted population of a specie at a particular time.
+
+        Args:
+            time (float): the time at which the population should be estimated.
+            specie_id (list): identifiers of the species to read.
+
+        Returns:
+            float: the predicted copy number of `specie_id` at `time`.
+
+        Raises:
+            ValueError: if the population of unknown specie(s) were requested.
+        '''
+        self._check_species(time, [specie_id])
+        self.time = time
+        self.__update_access_times(time, [specie_id])
+        return self._population[specie_id].get_population(time)
+
     def read( self, time, species ):
         '''Read the predicted population of a list of species at a particular time.
 
         Args:
-            time: float; the time at which the population should be read
-            species: list; identifiers of the species to read
+            time (float): the time at which the population should be estimated.
+            species (list): identifiers of the species to read.
 
         Returns:
             species counts: dict: species_id -> copy_number; the predicted copy number of each
-            requested species at time
+            requested species at `time`.
 
         Raises:
-            ValueError: the population of unknown specie(s) were requested
+            ValueError: if the population of unknown specie(s) were requested.
         '''
         self._check_species( time, species )
         self.time = time
@@ -275,13 +301,13 @@ class SharedMemoryCellState( object ):
         '''A discrete model adjusts the population of a set of species at a particular time.
 
         Args:
-            time: float; the time at which the population is being adjusted
-            adjustments: dict: specie_ids -> population_adjustment; adjustments to be made to
-                some species populations
+            time (float): the time at which the population is being adjusted.
+            adjustments (:obj:`dict` of float): map: specie_ids -> population_adjustment; adjustments
+                to be made to some species populations.
 
         Raises:
-            ValueError: adjustment attempts to change the population of an unknown species
-            ValueError: if population goes negative
+            ValueError: if any adjustment attempts to change the population of an unknown species.
+            ValueError: if any population estimate would become negative.
         '''
         self._check_species( time, list( adjustments.keys() ) )
         self.time = time
@@ -297,13 +323,13 @@ class SharedMemoryCellState( object ):
         '''A continuous model adjusts the population of a set of species at a particular time.
 
         Args:
-            time: float; the time at which the population is being adjusted
-            adjustments: dict: specie_ids -> (population_adjustment, flux); adjustments to be made
-                to some species populations
+            time (float): the time at which the population is being adjusted.
+            adjustments (:obj:`dict` of float): map: specie_ids -> (population_adjustment, flux);
+                adjustments to be made to some species populations.
 
         Raises:
-            ValueError: adjustment attempts to change the population of a non-existent species
-            ValueError: if population goes negative
+            ValueError: if any adjustment attempts to change the population of an unknown species.
+            ValueError: if any population estimate would become negative.
         '''
         self._check_species( time, list( adjustments.keys() ) )
         self.time = time
@@ -332,8 +358,8 @@ class SharedMemoryCellState( object ):
         event message that adjusts the population.
 
         Args:
-            event_type: string; description of the event's type
-            specie: Specie object; the object whose adjustment is being logged
+            event_type (str): description of the event's type.
+            specie (:obj:`Specie`): the object whose adjustment is being logged.
         '''
         try:
             flux = specie.continuous_flux

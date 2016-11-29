@@ -11,14 +11,13 @@ WcModelingTutorial.
 SSA and FBA are simulation objects. 
 
 SSA and FBA could directly exchange species population data. But the cell's state
-(SharedMemoryCellState) is included so other sub-models can be added and access the state information.
+(LocalSpeciesPopulation) is included so other sub-models can be added and access the state information.
 For parallelization, we'll partition the cell state as described in our PADS 2016 paper.
 
 Both SSA and FBA are self-clocking.
 """
 
 # TODO(Arthur): provide 'returns' documentation for all return operations
-# TODO(Arthur): rename Seq_DES_WC_simulator
 
 import sys
 import argparse
@@ -35,8 +34,8 @@ from wc_sim.multialgorithm.cell_state import CellState
 from wc_sim.multialgorithm.submodels.ssa import SsaSubmodel
 from wc_sim.multialgorithm.submodels.fba import FbaSubmodel
 from wc_sim.multialgorithm.debug_logs import logs as debug_logs
-from wc_sim.multialgorithm.shared_memory_cell_state import SharedMemoryCellState
-from wc_sim.multialgorithm.extended_model import ExtendedModel
+from wc_sim.multialgorithm.local_species_population import LocalSpeciesPopulation
+from wc_sim.multialgorithm.executable_model import ExecutableModel
 from wc_utils.config.core import ConfigManager
 from wc_utils.util.rand import RandomStateManager
 
@@ -115,7 +114,7 @@ class MultiAlgorithm(object):
             LogAtTimeZero.debug(model.summary())
 
             '''Prepare submodels for computation'''
-            ExtendedModel.set_up_simulation(model)
+            ExecutableModel.set_up_simulation(model)
 
         # 1. create and configure simulation submodels, including initial events
         algs_to_run = 'FBA SSA'.split()     # todo: take this from config

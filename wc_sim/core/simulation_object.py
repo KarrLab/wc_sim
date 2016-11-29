@@ -61,7 +61,7 @@ class EventQueue(object):
     def next_event_time( self ):
         """Get the time of the next event.
         
-        Return:
+        Returns:
             The time of the next event. Return infinity if there is no next event.
         """
         if not self.event_heap:
@@ -79,7 +79,7 @@ class EventQueue(object):
         (In a Time Warp simulation, the list would need to be ordered by some deterministic
         criteria based on its contents.)
 
-        Return:
+        Returns:
             A list of next event(s), which is empty if no events are available.
         """
         # TODO(Arthur): in a Time Warp simulation, order the list by some deterministic criteria

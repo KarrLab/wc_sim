@@ -124,7 +124,7 @@ class SimulationEngine(object):
         Args:
             end_time: number; the time of the end of the simulation
 
-        Return:
+        Returns:
             The number of times a simulation object executes handle_event(). This may be larger than the number
             of events sent, because simultaneous events are handled together.
         """

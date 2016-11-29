@@ -19,7 +19,7 @@ import re
 from scipy.constants import Avogadro
 from wc_sim.core.simulation_object import SimulationObject
 from wc_sim.multialgorithm.utils import species_compartment_name
-from wc_sim.multialgorithm.shared_memory_cell_state import SharedMemoryCellState
+from wc_sim.multialgorithm.local_species_population import LocalSpeciesPopulation
 from wc_sim.multialgorithm.debug_logs import logs as debug_logs
 
 class Submodel(SimulationObject):
@@ -32,7 +32,7 @@ class Submodel(SimulationObject):
     # TODO(Arthur): start using private_cell_state
 
     '''
-    
+
     def __init__(self, model, name, id, private_cell_state, shared_cell_state, reactions, species,
         parameters ):
         '''Initialize a submodel.
@@ -41,9 +41,9 @@ class Submodel(SimulationObject):
             model (`Model`): the model to which this submodel belongs
             name (str): the name of this submodel / simulation object
             id (type): unique identifier for this submodel
-            private_cell_state (`SharedMemoryCellState`): a SharedMemoryCellState that stores the
+            private_cell_state (`LocalSpeciesPopulation`): a LocalSpeciesPopulation that stores the
                 copy numbers of the species that are modeled only by this submodel.
-            shared_cell_state (`SharedMemoryCellState`): a SharedMemoryCellState that stores the
+            shared_cell_state (`LocalSpeciesPopulation`): a LocalSpeciesPopulation that stores the
                 copy numbers of species that are collectively modeled by this and other submodels.
             reactions (list): the reactions modeled by this submodel.
             species (list): the species that participate in the reactions modeled by this submodel.
@@ -61,8 +61,8 @@ class Submodel(SimulationObject):
 
     def get_specie_counts(self):
         '''Get a dictionary of current species counts for this submodel.
-        
-        Return:
+
+        Returns:
             Current species count, in a dict: species_id -> count
         '''
         ids = [s.id for s in self.species]
@@ -70,75 +70,101 @@ class Submodel(SimulationObject):
 
     def get_specie_concentrations(self):
         '''Get a dictionary of current species concentrations for this submodel.
-        
-        Return:
+
+        Returns:
             Current species concentrations, in a dict: species_id -> concentration
         '''
         counts = self.get_specie_counts()
         ids = [ s.id for s in self.species ]
         return { specie_id:(counts[specie_id] / self.model.volume) / Avogadro for specie_id in ids }
 
-    # TODO(Arthur): make this an instance method, and drop the arguments
     @staticmethod
-    def calcReactionRates(reactions, speciesConcentrations):
+    def calc_reaction_rates(reactions, species_concentrations):
         '''Calculate the rates for a submodel's reactions.
-        
+
         Rates computed by eval'ing reactions provided in the model definition,
-        with species concentrations obtained by lookup from the dict 
-        speciesConcentrations.
+        with species concentrations obtained by lookup from the dict
+        `species_concentrations`.
 
         Args:
-            reactions: list; reactions modeled by a calling submodel
-            speciesConcentrations: dict: species_id -> Species() object; current 
+            reactions (list): reactions modeled by a calling submodel
+            species_concentrations (dict): `species_id` -> `Species()` object; current
                 concentration of species participating in reactions
-            
+
         Returns:
             A numpy array of reaction rates, indexed by reaction index.
         '''
         rates = np.full(len(reactions), np.nan)
-        for iRxn, rxn in enumerate(reactions):          
+        for iRxn, rxn in enumerate(reactions):
             if rxn.rate_law:
-                try:
-                    rates[iRxn] = eval(rxn.rate_law.transcoded, {}, 
-                        {'speciesConcentrations': speciesConcentrations, \
-                        'Vmax': rxn.vmax, 'Km': rxn.km})
-                except SyntaxError as error:
-                    raise ValueError( "Error: reaction '{}' has syntax error in rate law '{}'.".format(
-                        rxn.id, rxn.rate_law.law ) )
-                except NameError as error:
-                    raise NameError( "Error: NameError in rate law '{}' of reaction '{}': '{}'".format(
-                        rxn.rate_law.law, rxn.id, error) )
-
+                rates[iRxn] = Submodel.eval_rate_law(rxn, species_concentrations)
         return rates
-               
+
+    @staticmethod
+    def eval_rate_law(reaction, species_concentrations):
+        '''Evaluate a reaction's rate law with respect to the given species concentrations.
+
+        Args:
+            reaction (:obj:`Reaction`): A Reaction instance.
+            species_concentrations (:obj:`dict` of :obj:`species_id` -> :obj:`Species`):
+                A dictionary of species concentrations.
+
+        Returns:
+            float: The reaction's rate for the given species concentrations.
+
+        Raises:
+            AttributeError: If the reaction's rate law has not been transcoded.
+            ValueError: If the reaction's rate law has a syntax error.
+            NameError: If the rate law references a specie whose concentration is not provided in
+                `species_concentrations`.
+        '''
+        rate_law = reaction.rate_law
+        try:
+            transcoded_reaction = rate_law.transcoded
+        except AttributeError as error:
+            raise AttributeError("Error: reaction '{}' must have rate law '{}' transcoded.".format(
+                reaction.id, reaction.rate_law.law ))
+        try:
+            # the empty '__builtins__' reduces security risks; see "Eval really is dangerous"
+            # return eval(transcoded_reaction, {'__builtins__': {}},
+            return eval(transcoded_reaction, {},
+                {'species_concentrations': species_concentrations,
+                'Vmax': reaction.vmax, 'Km': reaction.km})
+        except SyntaxError as error:
+            raise ValueError( "Error: reaction '{}' has syntax error in rate law '{}'.".format(
+                reaction.id, reaction.rate_law.law ) )
+        except NameError as error:
+            raise NameError( "Error: NameError in rate law '{}' of reaction '{}': '{}'".format(
+                reaction.rate_law.law, reaction.id, error) )
+
     def enabled_reaction(self, reaction):
         '''Determine whether the cell state has adequate specie counts to run a reaction.
-        
+
         Args:
-            reaction: a reaction object; the reaction to evaluate
-            
+            reaction (:obj:`Reaction`): The reaction to evaluate.
+
         Returns:
             True if reaction is stoichiometrically enabled
         '''
         for participant in reaction.participants:
             species_id = species_compartment_name( participant.species, participant.compartment )
-            count = self.model.shared_memory_cell_state.read( self.time, [species_id] )[species_id]
+            count = self.model.local_species_population.read( self.time, [species_id] )[species_id]
             # 'participant.coefficient < 0' constrains the test to reactants
             if participant.coefficient < 0 and count < -participant.coefficient:
                 return False
         return True
-        
+
     def identify_enabled_reactions(self, propensities):
         '''Determine reactions in a propensity array which have adequate specie counts to run.
-        
-        A reaction's mass action kinetics, as computed by calcReactionRates()
-        may be positive when insufficient species are available to execute the reaction. 
-        identify reactions with inadequate specie counts. Ignore ignore species with 
+
+        A reaction's mass action kinetics, as computed by calc_reaction_rates()
+        may be positive when insufficient species are available to execute the reaction.
+        identify reactions with inadequate specie counts. Ignore ignore species with
         propensities that are already 0.
-        
+
         Args:
             propensities: np array; the current propensities for these reactions
-            
+
         Returns:
             A numpy array with 0 indicating reactions without adequate species counts
                 and 1 indicating those with adequate counts, indexed by reaction index.
@@ -146,7 +172,7 @@ class Submodel(SimulationObject):
         enabled = np.full(len(self.reactions), 1)
         counts = self.get_specie_counts()
         for iRxn, rxn in enumerate(self.reactions):
-            # compare each reaction with its stoichiometry, 
+            # compare each reaction with its stoichiometry,
             # reaction disabled if the specie count of any lhs participant is less than its coefficient
             if propensities[iRxn] <= 0:
                 enabled[iRxn] = 0
@@ -156,31 +182,31 @@ class Submodel(SimulationObject):
                 enabled[iRxn] = 0
 
                 log = debug_logs.get_log( 'wc.debug.file' )
-                log.debug( 
+                log.debug(
                     "reaction: {} of {}: insufficient counts".format( iRxn, len(self.reactions) ),
                     sim_time=self.time )
 
         return enabled
-               
-    def executeReaction(self, shared_memory_cell_state, reaction):
+
+    def execute_reaction(self, local_species_population, reaction):
         '''Update species counts based on a single reaction.
-        
+
         Typically called by an SSA submodel.
-        
+
         Args:
-            speciesCounts: a SharedMemoryCellState object; the state storing 
+            speciesCounts: a LocalSpeciesPopulation object; the state storing
                 the reaction's participant species
             reaction: a Reaction object; the reaction being executed
-            
+
         '''
         # TODO(Arthur): move to SsaSubmodel.py, unless other submodels would use
         adjustments={}
         for participant in reaction.participants:
             adjustments[participant.id] = participant.coefficient
         try:
-            shared_memory_cell_state.adjust_discretely( self.time, adjustments )
+            local_species_population.adjust_discretely( self.time, adjustments )
         except ValueError as e:
-            raise ValueError( "{:7.1f}: submodel {}: reaction: {}: {}".format(self.time, self.name, 
+            raise ValueError( "{:7.1f}: submodel {}: reaction: {}: {}".format(self.time, self.name,
                 reaction.id, e) )
 
     def get_component_by_id(self, id, component_type=''):
@@ -204,4 +230,4 @@ class Submodel(SimulationObject):
 
         # find component
         return next((component for component in components if component.id == id), None)
-        
+

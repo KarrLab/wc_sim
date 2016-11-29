@@ -31,7 +31,8 @@ from wc_sim.multialgorithm.config import paths as config_paths_multialgorithm
 from wc_sim.multialgorithm.submodels.submodel import Submodel
 
 config_core = ConfigManager(config_paths_core.core).get_config()['wc_sim']['core']
-config_multialgorithm = ConfigManager(config_paths_multialgorithm.core).get_config()['wc_sim']['multialgorithm']
+config_multialgorithm = \
+    ConfigManager(config_paths_multialgorithm.core).get_config()['wc_sim']['multialgorithm']
 
 
 class SsaSubmodel( Submodel ):
@@ -111,7 +112,7 @@ class SsaSubmodel( Submodel ):
     MessageTypesRegistry.set_receiver_priorities( 'SsaSubmodel', MESSAGE_TYPES_BY_PRIORITY )
 
     def __init__( self, model, name, id, private_cell_state, shared_cell_states,
-        reactions, species, parameters, default_center_of_mass=config_core['default_center_of_mass']):
+        reactions, species, parameters, default_center_of_mass=None):
         """Initialize an SSA submodel object.
 
         Args:
@@ -126,8 +127,11 @@ class SsaSubmodel( Submodel ):
         self.num_SsaWaits=0
         # INITIAL_SSA_WAIT_EMA should be positive, as otherwise an infinite loop of SsaWait messages
         # will form at the start of a simulation if no reactions are enabled
-        self.ema_of_inter_event_time=ExponentialMovingAverage(config_multialgorithm['initial_ssa_wait_ema'],
-            center_of_mass=default_center_of_mass )
+        if default_center_of_mass is None:
+            default_center_of_mass=config_core['default_center_of_mass']
+        self.ema_of_inter_event_time=ExponentialMovingAverage(
+            config_multialgorithm['initial_ssa_wait_ema'],
+            center_of_mass=default_center_of_mass)
         self.random_state = RandomStateManager.instance()
 
         self.log_with_time( "init: name: {}".format( name ) )
@@ -161,7 +165,7 @@ class SsaSubmodel( Submodel ):
         # but wasteful to divide by volume & Avogadro and then multiply by them; stop doing this
         # TODO(Arthur): optimization: only calculate new reaction rates for species whose
         # speciesConcentrations (counts) have changed
-        propensities = np.maximum(0, Submodel.calcReactionRates(self.reactions, self.get_specie_concentrations())
+        propensities = np.maximum(0, Submodel.calc_reaction_rates(self.reactions, self.get_specie_concentrations())
             * self.model.volume * Avogadro)
         # avoid reactions with inadequate specie counts
         enabled_reactions = self.identify_enabled_reactions( propensities )
@@ -223,7 +227,7 @@ class SsaSubmodel( Submodel ):
         """
         self.log_with_time( "submodel: {} "
             "executing reaction {}".format( self.name, self.reactions[reaction_index].id ) )
-        self.executeReaction( self.model.shared_memory_cell_state, self.reactions[reaction_index] )
+        self.execute_reaction( self.model.local_species_population, self.reactions[reaction_index] )
 
     def handle_event( self, event_list ):
         """Handle a SsaSubmodel simulation event.

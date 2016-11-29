@@ -53,7 +53,7 @@ class Event( object ):
         To generate the returned string, it is assumed that sending_object and receiving_object
         contain a name attribute.
 
-        Return:
+        Returns:
             String representation of the Event's generic fields.
 
         """
@@ -67,7 +67,7 @@ class Event( object ):
     def header( ):
         """Return a header for an Event table.
 
-        Return:
+        Returns:
             String Event table header.
 
         """

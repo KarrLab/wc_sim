@@ -27,8 +27,8 @@ class TestMultiAlgorithm(unittest.TestCase):
             model_filename=self.MODEL_FILENAME,
             output_directory=config['default_output_directory'],
             seed=123)
-        history1 = MultiAlgorithm.main( args ).shared_memory_cell_state.report_history()
-        history2 = MultiAlgorithm.main( args ).shared_memory_cell_state.report_history()
+        history1 = MultiAlgorithm.main( args ).local_species_population.report_history()
+        history2 = MultiAlgorithm.main( args ).local_species_population.report_history()
         self.assertEqual( history1, history2 )
 
     @unittest.skip("skip while negative population predictions are being fixed")
@@ -40,8 +40,8 @@ class TestMultiAlgorithm(unittest.TestCase):
             model_filename=self.MODEL_FILENAME,
             output_directory=config['default_output_directory'],
             seed=None)
-        history1 = MultiAlgorithm.main( args ).shared_memory_cell_state.report_history()
-        history2 = MultiAlgorithm.main( args ).shared_memory_cell_state.report_history()
+        history1 = MultiAlgorithm.main( args ).local_species_population.report_history()
+        history2 = MultiAlgorithm.main( args ).local_species_population.report_history()
         self.assertNotEqual( history1, history2 )
     
     def test_loads_model_and_initialize_simulation(self):
@@ -58,5 +58,5 @@ class TestMultiAlgorithm(unittest.TestCase):
                          output_directory=config['default_output_directory'],
                          seed=123)
         with self.assertRaises(AttributeError) as context:
-            # throws an AttributeError in calcReactionRates at wc_sim/multialgorithm/submodels/submodel.py:103
+            # throws an AttributeError in calc_reaction_rates at wc_sim/multialgorithm/submodels/submodel.py:103
             MultiAlgorithm.initialize_simulation(args)

@@ -68,7 +68,7 @@ class PlotPopulationDynamics(object):
         Arguments:
             file: string; the log file
 
-        Return:
+        Returns:
             list of logged events
         """
         events = []
@@ -99,7 +99,7 @@ class PlotPopulationDynamics(object):
 
                 line segment: ( time_cur, pop ) - ( time_next, pop + (time_next - time_cur )*flux )
 
-            Return:
+            Returns:
                 Return ((x_start, x_end), (y_start, y_end) ), as used by matplotlib
         """
         flux = start_event.flux

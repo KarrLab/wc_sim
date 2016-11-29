@@ -212,6 +212,7 @@ class Specie(object):
                 raise ValueError("get_population(): time < self.continuous_time: {:.2f} < {:.2f}\n".format(
                     time, self.continuous_time))
             interpolation=0
+            # TODO(Arthur): compare with and wo interpolation
             if config['interpolate']:
                 interpolation = (time - self.continuous_time) * self.continuous_flux
             if self.last_population + interpolation < 0:

@@ -6,7 +6,7 @@
 :License: MIT
 '''
 from scipy.constants import Avogadro
-from wc_sim.multialgorithm.shared_memory_cell_state import SharedMemoryCellState
+from wc_sim.multialgorithm.local_species_population import LocalSpeciesPopulation
 from wc_sim.multialgorithm.utils import species_compartment_name
 import numpy as np
 
@@ -42,7 +42,7 @@ class Model(object):
         """Set up the initial conditions for a simulation. 
 
         Prepare data that has been loaded into a model.
-        The primary simulation data are species counts, stored in a SharedMemoryCellState().
+        The primary simulation data are species counts, stored in a LocalSpeciesPopulation().
         """
         cellComp = self.get_component_by_id('c', 'compartments')
         extrComp = self.get_component_by_id('e', 'compartments')
@@ -52,13 +52,13 @@ class Model(object):
         self.extracellular_volume = extrComp.initial_volume
 
         # species counts
-        self.shared_memory_cell_state = SharedMemoryCellState(self, "CellState", {},
+        self.local_species_population = LocalSpeciesPopulation(self, "CellState", {},
                                                                retain_history=True)
         for species in self.species:
             for conc in species.concentrations:
                 # initializing all fluxes to 0 so that continuous adjustments can be made
                 # TODO(Arthur): just initialize species that participate in continuous models
-                self.shared_memory_cell_state.init_cell_state_specie(
+                self.local_species_population.init_cell_state_specie(
                     species_compartment_name(species, conc.compartment),
                     conc.value * conc.compartment.initial_volume * Avogadro,
                     initial_flux_given=0)
@@ -78,7 +78,7 @@ class Model(object):
         Args:
             time: float; the current time
 
-        Return:
+        Returns:
             numpy array, #species x # compartments, containing count of specie in compartment
         """
         # TODO(Arthur): avoid wastefully converting between dictionary and array representations of copy numbers
@@ -87,7 +87,7 @@ class Model(object):
             for i_compartment, compartment in enumerate(self.compartments):
                 specie_name = species_compartment_name(species, compartment)
                 speciesCounts[ i_species, i_compartment ] = \
-                    self.shared_memory_cell_state.read(time, [specie_name])[specie_name]
+                    self.local_species_population.read(time, [specie_name])[specie_name]
         return speciesCounts
 
     def calc_mass(self, time):

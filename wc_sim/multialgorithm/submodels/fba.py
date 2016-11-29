@@ -20,7 +20,7 @@ from scipy.constants import Avogadro
 from wc_sim.core.simulation_object import EventQueue, SimulationObject
 from wc_sim.core.simulation_engine import MessageTypesRegistry
 from wc_sim.multialgorithm import message_types
-from wc_sim.multialgorithm.extended_model import ExchangedSpecies
+from wc_sim.multialgorithm.executable_model import ExchangedSpecies
 from wc_sim.multialgorithm.submodels.submodel import Submodel
 from wc_utils.util.misc import isclass_by_name
 
@@ -239,7 +239,7 @@ class FbaSubmodel(Submodel):
             adjustments[exSpecies.id] = (self.reactionFluxes[exSpecies.fba_reaction_index] * self.time_step,
                 self.reactionFluxes[exSpecies.fba_reaction_index])
         
-        self.model.shared_memory_cell_state.adjust_continuously( self.time, adjustments )
+        self.model.local_species_population.adjust_continuously( self.time, adjustments )
         
         
     def calcReactionBounds(self):
@@ -252,7 +252,7 @@ class FbaSubmodel(Submodel):
         # rate laws
         upperBounds[0:len(self.reactions)] = np.fmin(
             upperBounds[0:len(self.reactions)], 
-            Submodel.calcReactionRates(self.reactions, self.get_specie_concentrations()) 
+            Submodel.calc_reaction_rates(self.reactions, self.get_specie_concentrations()) 
                 * self.model.volume * Avogadro )
         
         # external nutrients availability
