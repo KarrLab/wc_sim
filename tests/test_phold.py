@@ -13,14 +13,17 @@ class TestMultiAlgorithm(unittest.TestCase):
     def setUp(self):
         warnings.simplefilter("ignore")        
 
-    def run_phold(self):
-        seed=123
-        args = Namespace(end_time=3.0, frac_self_events=0.3, num_phold_procs=3, seed=seed)
+    def run_phold(self, seed, end_time):
+        args = Namespace(end_time=end_time, frac_self_events=0.3, num_phold_procs=10, seed=seed)
         random.seed(seed)
         SimulationEngine.reset()
         return(RunPhold.main(args))
 
-    def test_phold(self):
-        num_events1=self.run_phold()
-        num_events2=self.run_phold()
+    def test_phold_reproducibility(self):
+    
+        num_events1=self.run_phold(123, 10)
+        num_events2=self.run_phold(123, 10)
         self.assertEqual(num_events1, num_events2)
+    
+        num_events2=self.run_phold(173, 10)
+        self.assertNotEqual(num_events1, num_events2)
