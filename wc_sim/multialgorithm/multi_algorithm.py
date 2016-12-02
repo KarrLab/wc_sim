@@ -30,7 +30,6 @@ from wc_sim.core.config import paths as config_paths_core
 from wc_sim.core.simulation_object import EventQueue
 from wc_sim.core.simulation_engine import SimulationEngine, MessageTypesRegistry
 from wc_sim.multialgorithm.config import paths as config_paths_multialgorithm
-from wc_sim.multialgorithm.cell_state import CellState
 from wc_sim.multialgorithm.submodels.ssa import SsaSubmodel
 from wc_sim.multialgorithm.submodels.fba import FbaSubmodel
 from wc_sim.multialgorithm.debug_logs import logs as debug_logs

@@ -25,9 +25,9 @@ from wc_sim.multialgorithm.debug_logs import logs as debug_logs
 class Submodel(SimulationObject):
     '''
     Attributes:
-        private_cell_state: a CellState that stores the copy numbers of the species involved in reactions
+        private_cell_state: a LocalSpeciesPopulation that stores the copy numbers of the species involved in reactions
             that are modeled only by this SsaSubmodel instance.
-        shared_cell_state: a list of CellStates that store the copy numbers of
+        shared_cell_state: a list of LocalSpeciesPopulation that store the copy numbers of
             the species that are modeled by this Submodel AND other Submodel instances.
     # TODO(Arthur): start using private_cell_state
 
@@ -65,8 +65,8 @@ class Submodel(SimulationObject):
         Returns:
             Current species count, in a dict: species_id -> count
         '''
-        ids = [s.id for s in self.species]
-        return self.shared_cell_state.read(self.time, ids)
+        species_ids = set([s.id for s in self.species])
+        return self.shared_cell_state.read(self.time, species_ids)
 
     def get_specie_concentrations(self):
         '''Get a dictionary of current species concentrations for this submodel.
@@ -148,7 +148,7 @@ class Submodel(SimulationObject):
         '''
         for participant in reaction.participants:
             species_id = species_compartment_name( participant.species, participant.compartment )
-            count = self.model.local_species_population.read( self.time, [species_id] )[species_id]
+            count = self.model.local_species_population.read_one( self.time, species_id)
             # 'participant.coefficient < 0' constrains the test to reactants
             if participant.coefficient < 0 and count < -participant.coefficient:
                 return False

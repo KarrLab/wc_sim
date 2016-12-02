@@ -38,7 +38,7 @@ class TestExecutableModel(unittest.TestCase):
         reaction_dict = {rxn.id:rxn for rxn in self.model.reactions}
         self.assertAlmostEqual(1.0,
             Submodel.eval_rate_law(reaction_dict['reaction_2'],
-            ExecutableModel.get_initial_specie_concentrations(self.model)), 4)
+            ExecutableModel.get_initial_specie_concentrations(self.model)), 3)
 
     def test_erroneous_set_up_simulation(self):
         pass

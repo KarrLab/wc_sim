@@ -52,7 +52,7 @@ class Model(object):
         self.extracellular_volume = extrComp.initial_volume
 
         # species counts
-        self.local_species_population = LocalSpeciesPopulation(self, "CellState", {},
+        self.local_species_population = LocalSpeciesPopulation(self, "LocalSpeciesPopulation", {},
                                                                retain_history=True)
         for species in self.species:
             for conc in species.concentrations:
@@ -87,7 +87,7 @@ class Model(object):
             for i_compartment, compartment in enumerate(self.compartments):
                 specie_name = species_compartment_name(species, compartment)
                 speciesCounts[ i_species, i_compartment ] = \
-                    self.local_species_population.read(time, [specie_name])[specie_name]
+                    self.local_species_population.read_one(time, specie_name)
         return speciesCounts
 
     def calc_mass(self, time):

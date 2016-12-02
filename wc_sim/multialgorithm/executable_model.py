@@ -37,7 +37,8 @@ class ExecutableModel(object):
         model.extracellular_volume = extracellular_compartment.initial_volume
 
         #species counts
-        model.cell_state = LocalSpeciesPopulation( model, "CellState", {}, retain_history=True )
+        model.cell_state = LocalSpeciesPopulation( model, "LocalSpeciesPopulation", {},
+            retain_history=True )
         for species in model.species:
             for conc in species.concentrations:
                 # TODO(Arthur): just init species that have positive concentrations; have state dynamically
@@ -72,7 +73,7 @@ class ExecutableModel(object):
         '''
         model.mass = 2
         model.dry_weight = 1
-        # ..todo: Need to activate
+        # TODO(Arthur): IMPORTANT: activate
         print('Need to activate.')
         pass
         
@@ -103,7 +104,7 @@ class ExecutableModel(object):
             for compartment in model.compartments:
                 specie_name = species_compartment_name(species, compartment)
                 species_counts[ species.index, compartment.index ] = \
-                    model.local_species_population.read( now, [specie_name] )[specie_name]
+                    model.local_species_population.read_one( now, specie_name )
         return species_counts
 
     @staticmethod
@@ -198,8 +199,7 @@ class ExecutableModel(object):
         Returns:
             Current species count, in a dict: species_id -> count
         '''
-        ids = [s for s in ExecutableModel.all_species(model)]
-        return model.cell_state.read(0, ids)
+        return model.cell_state.read(0, set(ExecutableModel.all_species(model)))
 
     @staticmethod
     def get_initial_specie_concentrations(model):

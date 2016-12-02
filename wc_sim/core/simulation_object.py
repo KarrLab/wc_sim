@@ -18,9 +18,9 @@ from wc_sim.core.simulation_engine import SimulationEngine, MessageTypesRegistry
 
 class EventQueue(object):
     """A simulation object's event queue.
-    
-    Stores a heap of an object's events, with each event in a tuple (time, event). The heap's a 'min heap', with the
-        event with the smallest time at the root.
+
+        Stores a heap of an object's events, with each event in a tuple (time, event). The heap is
+        a 'min heap', with the event with the smallest time at the root.
 
     Attributes:
         event_heap: The object's heap of events, sorted by event time; has O(nlogn) get earliest and insert event.

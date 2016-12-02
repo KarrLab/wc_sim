@@ -51,8 +51,7 @@ class PlotPopulationDynamics(object):
     def parse_cli_args():
         parser = argparse.ArgumentParser( description="Plot a specie population's dynamics. "
             "Inputs logging log." )
-        parser.add_argument( 'log_file', type=str, help="A log of species population adjustments, "
-            "written by CellState.log_event()" )
+        parser.add_argument( 'log_file', type=str, help="A log of species population adjustments")
         parser.add_argument( '--pdf_file', '-p', type=str, help='The output pdf file.' )
         args = parser.parse_args()
         return args
@@ -61,9 +60,7 @@ class PlotPopulationDynamics(object):
     def parse_log( file ):
         """Parse a specie logging log.
 
-        The log is written by CellState.log_event() and its format is determined by
-        the plot handlers in .cfg files.
-
+        The log's format is determined by the plot handlers in .cfg files.
 
         Arguments:
             file: string; the log file
