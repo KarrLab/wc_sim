@@ -28,23 +28,23 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
 
         with self.assertRaises(ValueError) as context:
             the_SM_CellState._check_species( 0, 2 )
-        self.assertIn( "must be a list", str(context.exception) )
+        self.assertIn( "must be a set", str(context.exception) )
 
         with self.assertRaises(ValueError) as context:
-            the_SM_CellState._check_species( 0, ['x'] )
+            the_SM_CellState._check_species( 0, {'x'} )
         self.assertIn( "Error: request for population of unknown specie(s):", str(context.exception) )
 
-        self.assertEqual( the_SM_CellState.read( 0, self.species ), self.init_populations )
+        self.assertEqual( the_SM_CellState.read( 0, set(self.species) ), self.init_populations )
         first_specie = self.species[0]
         the_SM_CellState.adjust_discretely( 0, { first_specie: 3 } )
-        self.assertEqual( the_SM_CellState.read( 0, [first_specie] ),  {first_specie: 4} )
+        self.assertEqual( the_SM_CellState.read( 0, {first_specie} ),  {first_specie: 4} )
 
         if flux:
             # counts: 1 initialization + 3 discrete adjustment + 2*flux:
-            self.assertEqual( the_SM_CellState.read( 2, [first_specie] ),  {first_specie: 4+2*flux} )
+            self.assertEqual( the_SM_CellState.read( 2, {first_specie} ),  {first_specie: 4+2*flux} )
             the_SM_CellState.adjust_continuously( 2, {first_specie:( 9, 0) } )
             # counts: 1 initialization + 3 discrete adjustment + 9 continuous adjustment + 0 flux = 13:
-            self.assertEqual( the_SM_CellState.read( 2, [first_specie] ),  {first_specie: 13} )
+            self.assertEqual( the_SM_CellState.read( 2, {first_specie} ),  {first_specie: 13} )
 
     def test_read_one(self):
         self.assertEqual(self.cell_state.read_one(1,'specie_3'), 4)
@@ -63,7 +63,7 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
     def test_init(self):
         a_SM_CellState = LocalSpeciesPopulation( None, 'test', {}, retain_history=False )
         a_SM_CellState.init_cell_state_specie( 's1', 2 )
-        self.assertEqual( a_SM_CellState.read( 0, ['s1'] ),  {'s1': 2} )
+        self.assertEqual( a_SM_CellState.read( 0, {'s1'} ),  {'s1': 2} )
         with self.assertRaises(ValueError) as context:
             a_SM_CellState.init_cell_state_specie( 's1', 2 )
         self.assertIn( "Error: specie_id 's1' already stored by this LocalSpeciesPopulation", str(context.exception) )
@@ -90,7 +90,7 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         self.assertTrue( a_SM_CellState_recording_history._recording_history() )
         next_time = 1
         first_specie = self.species[0]
-        a_SM_CellState_recording_history.read( next_time, [first_specie])
+        a_SM_CellState_recording_history.read( next_time, {first_specie})
         a_SM_CellState_recording_history._record_history()
         with self.assertRaises(ValueError) as context:
             a_SM_CellState_recording_history._record_history()

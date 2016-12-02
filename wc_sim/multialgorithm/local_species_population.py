@@ -19,15 +19,15 @@ from wc_sim.multialgorithm.utils import species_compartment_name
 from wc_sim.multialgorithm.specie import Specie
 
 class LocalSpeciesPopulation(object):
-    '''Maintain the population of a set of species, while supporting thread-safe access.
+    '''Maintain the population of a set of species.
 
     LocalSpeciesPopulation tracks the population of a set of species. Population values (copy numbers)
     can be read or written. To enable multi-algorithmic modeling, it supports writes to a specie's
     population by both discrete and continuous models.
 
-    All accesses to this object must provide a simulation time, which supports simple synchronization
-    of interactions between sub-models in a sequential simulator: reads access the previous writes
-    (called adjustments).
+    All accesses to this object must provide a simulation time, which can detect errors in shared
+    access by sub-models in a sequential simulator: reads access the previous writes (called
+    adjustments).
 
     For any given specie, all operations must occur in non-decreasing simulation time order.
     Record history operations must also occur in time order.
@@ -116,6 +116,149 @@ class LocalSpeciesPopulation(object):
         self.last_access_time[specie_id] = self.time
         self._add_to_history(specie_id)
 
+    def _check_species( self, time, species ):
+        '''Check whether the species are a set, and not known by this LocalSpeciesPopulation.
+
+        Raises:
+            ValueError: species is not a set.
+            ValueError: adjustment attempts to change the population of a non-existent species.
+            ValueError: if a specie in species is being accessed at a time earlier than a prior access.
+        '''
+        if not isinstance( species, set ):
+            raise ValueError( "Error: species '{}' must be a set".format( species ) )
+        unknown_species = species - set( list(self._population.keys()) )
+        if unknown_species:
+            # raise exception if some species are non-existent
+            raise ValueError( "Error: request for population of unknown specie(s): {}".format(
+                ', '.join(map( lambda x: "'{}'".format( str(x) ), unknown_species ) ) ) )
+        self.__check_access_time( time, species )
+
+    def __check_access_time( self, time, species ):
+        '''Check whether the species are being accessed in non-decreasing time order.
+
+        Raises:
+            ValueError: if specie in species is being accessed at a time earlier than a prior access.
+        '''
+        early_accesses = list(filter( lambda s: time < self.last_access_time[s], species))
+        if early_accesses:
+            raise ValueError( "Error: earlier access of specie(s): {}".format(early_accesses))
+
+    def __update_access_times( self, time, species ):
+        for specie_id in species:
+            self.last_access_time[specie_id] = time
+
+    # TODO(Arthur): use read_one() wherever the count of only one specie is obtained
+    def read_one(self, time, specie_id):
+        '''Read the predicted population of a specie at a particular time.
+
+        Args:
+            time (float): the time at which the population should be estimated.
+            specie_id (list): identifiers of the species to read.
+
+        Returns:
+            float: the predicted copy number of `specie_id` at `time`.
+
+        Raises:
+            ValueError: if the population of unknown specie(s) were requested.
+        '''
+        specie_id_in_set = {specie_id}
+        self._check_species(time, specie_id_in_set)
+        self.time = time
+        self.__update_access_times(time, specie_id_in_set)
+        return self._population[specie_id].get_population(time)
+
+    def read( self, time, species ):
+        '''Read the predicted population of a list of species at a particular time.
+
+        Args:
+            time (float): the time at which the population should be estimated.
+            species (set): identifiers of the species to read.
+
+        Returns:
+            species counts: dict: species_id -> copy_number; the predicted copy number of each
+            requested species at `time`.
+
+        Raises:
+            ValueError: if the population of unknown specie(s) were requested.
+        '''
+        self._check_species( time, species )
+        self.time = time
+        self.__update_access_times( time, species )
+        return { specie:self._population[specie].get_population(time) for specie in species }
+
+    def adjust_discretely( self, time, adjustments ):
+        '''A discrete model adjusts the population of a set of species at a particular time.
+
+        Args:
+            time (float): the time at which the population is being adjusted.
+            adjustments (:obj:`dict` of float): map: specie_ids -> population_adjustment; adjustments
+                to be made to some species populations.
+
+        Raises:
+            ValueError: if any adjustment attempts to change the population of an unknown species.
+            ValueError: if any population estimate would become negative.
+        '''
+        self._check_species( time, set( adjustments.keys() ) )
+        self.time = time
+        for specie in adjustments:
+            try:
+                self._population[specie].discrete_adjustment( adjustments[specie], self.time )
+                self.__update_access_times( time, {specie} )
+            except ValueError as e:
+                raise ValueError( "Error: on specie {}: {}".format( specie, e ) )
+            self.log_event( 'discrete_adjustment', self._population[specie] )
+
+    def adjust_continuously( self, time, adjustments ):
+        '''A continuous model adjusts the population of a set of species at a particular time.
+
+        Args:
+            time (float): the time at which the population is being adjusted.
+            adjustments (:obj:`dict` of float): map: specie_ids -> (population_adjustment, flux);
+                adjustments to be made to some species populations.
+
+        Raises:
+            ValueError: if any adjustment attempts to change the population of an unknown species.
+            ValueError: if any population estimate would become negative.
+        '''
+        self._check_species( time, set( adjustments.keys() ) )
+        self.time = time
+
+        # record simulation state history
+        # TODO(Arthur): may want to also do it in adjust_discretely()
+        if self._recording_history(): self._record_history()
+        for specie,(adjustment,flux) in adjustments.items():
+            try:
+                self._population[specie].continuous_adjustment( adjustment, time, flux )
+                self.__update_access_times( time, [specie] )
+            except ValueError as e:
+                # TODO(Arthur): IMPORTANT; return to raising exceptions with negative population
+                # when initial values get debugged
+                # raise ValueError( "Error: on specie {}: {}".format( specie, e ) )
+                e = str(e).strip()
+                debug_log.error( "Error: on specie {}: {}".format( specie, e ),
+                    sim_time=self.time )
+
+            self.log_event( 'continuous_adjustment', self._population[specie] )
+
+    def log_event( self, event_type, specie ):
+        '''Log simulation events that modify a specie's population.
+
+        Log the simulation time, event type, specie population, and current flux for each simulation
+        event message that adjusts the population.
+
+        Args:
+            event_type (str): description of the event's type.
+            specie (:obj:`Specie`): the object whose adjustment is being logged.
+        '''
+        try:
+            flux = specie.continuous_flux
+        except AttributeError:
+            flux = None
+        values = [ event_type, specie.last_population, flux ]
+        values = map( lambda x: str(x), values )
+        # log Sim_time Adjustment_type New_population New_flux
+        debug_log.debug( '\t'.join( values ), local_call_depth=1, sim_time=self.time )
+
     def _initialize_history(self):
         '''Initialize the population history with current population.'''
         self._history = {}
@@ -131,7 +274,7 @@ class LocalSpeciesPopulation(object):
             specie_id (str): a unique specie identifier.
         '''
         if self._recording_history():
-            population = self.read( self.time, [specie_id] )[specie_id]
+            population = self.read_one( self.time, specie_id )
             self._history['population'][specie_id] = [population]
 
     def _recording_history(self):
@@ -156,7 +299,7 @@ class LocalSpeciesPopulation(object):
             raise ValueError( "time of previous _record_history() ({}) not less than current time ({})".format(
                 self._history['time'][-1], self.time ) )
         self._history['time'].append( self.time )
-        for specie_id, population in self.read( self.time, list(self._population.keys()) ).items():
+        for specie_id, population in self.read( self.time, set(self._population.keys()) ).items():
             self._history['population'][specie_id].append( population )
 
     # TODO(Arthur): unit test this with numpy_format=True
@@ -220,145 +363,3 @@ class LocalSpeciesPopulation(object):
             return '\n'.join( lines )
         else:
             raise ValueError( "Error: history not recorded" )
-
-    def _check_species( self, time, species ):
-        '''Check whether the species are a list, and not known by this LocalSpeciesPopulation.
-
-        Raises:
-            ValueError: species is not a list.
-            ValueError: adjustment attempts to change the population of a non-existent species.
-            ValueError: if a specie in species is being accessed at a time earlier than a prior access.
-        '''
-        if not isinstance( species, list ):
-            raise ValueError( "Error: species '{}' must be a list".format( species ) )
-        unknown_species = set( species ) - set( list(self._population.keys()) )
-        if unknown_species:
-            # raise exeception if some species are non-existent
-            raise ValueError( "Error: request for population of unknown specie(s): {}".format(
-                ', '.join(map( lambda x: "'{}'".format( str(x) ), unknown_species ) ) ) )
-        self.__check_access_time( time, species )
-
-    def __check_access_time( self, time, species ):
-        '''Check whether the species are being accessed in non-decreasing time order.
-
-        Raises:
-            ValueError: if specie in species is being accessed at a time earlier than a prior access.
-        '''
-        early_accesses = list(filter( lambda s: time < self.last_access_time[s], species))
-        if early_accesses:
-            raise ValueError( "Error: earlier access of specie(s): {}".format(early_accesses))
-
-    def __update_access_times( self, time, species ):
-        for specie_id in species:
-            self.last_access_time[specie_id] = time
-
-    # TODO(Arthur): use read_one() wherever the count of only one specie is obtained
-    def read_one(self, time, specie_id):
-        '''Read the predicted population of a specie at a particular time.
-
-        Args:
-            time (float): the time at which the population should be estimated.
-            specie_id (list): identifiers of the species to read.
-
-        Returns:
-            float: the predicted copy number of `specie_id` at `time`.
-
-        Raises:
-            ValueError: if the population of unknown specie(s) were requested.
-        '''
-        self._check_species(time, [specie_id])
-        self.time = time
-        self.__update_access_times(time, [specie_id])
-        return self._population[specie_id].get_population(time)
-
-    def read( self, time, species ):
-        '''Read the predicted population of a list of species at a particular time.
-
-        Args:
-            time (float): the time at which the population should be estimated.
-            species (list): identifiers of the species to read.
-
-        Returns:
-            species counts: dict: species_id -> copy_number; the predicted copy number of each
-            requested species at `time`.
-
-        Raises:
-            ValueError: if the population of unknown specie(s) were requested.
-        '''
-        self._check_species( time, species )
-        self.time = time
-        self.__update_access_times( time, species )
-        return { specie:self._population[specie].get_population(time) for specie in species }
-
-    def adjust_discretely( self, time, adjustments ):
-        '''A discrete model adjusts the population of a set of species at a particular time.
-
-        Args:
-            time (float): the time at which the population is being adjusted.
-            adjustments (:obj:`dict` of float): map: specie_ids -> population_adjustment; adjustments
-                to be made to some species populations.
-
-        Raises:
-            ValueError: if any adjustment attempts to change the population of an unknown species.
-            ValueError: if any population estimate would become negative.
-        '''
-        self._check_species( time, list( adjustments.keys() ) )
-        self.time = time
-        for specie in adjustments:
-            try:
-                self._population[specie].discrete_adjustment( adjustments[specie], self.time )
-                self.__update_access_times( time, [specie] )
-            except ValueError as e:
-                raise ValueError( "Error: on specie {}: {}".format( specie, e ) )
-            self.log_event( 'discrete_adjustment', self._population[specie] )
-
-    def adjust_continuously( self, time, adjustments ):
-        '''A continuous model adjusts the population of a set of species at a particular time.
-
-        Args:
-            time (float): the time at which the population is being adjusted.
-            adjustments (:obj:`dict` of float): map: specie_ids -> (population_adjustment, flux);
-                adjustments to be made to some species populations.
-
-        Raises:
-            ValueError: if any adjustment attempts to change the population of an unknown species.
-            ValueError: if any population estimate would become negative.
-        '''
-        self._check_species( time, list( adjustments.keys() ) )
-        self.time = time
-
-        # record simulation state history
-        # TODO(Arthur): may want to also do it in adjust_discretely()
-        if self._recording_history(): self._record_history()
-        for specie,(adjustment,flux) in adjustments.items():
-            try:
-                self._population[specie].continuous_adjustment( adjustment, time, flux )
-                self.__update_access_times( time, [specie] )
-            except ValueError as e:
-                # TODO(Arthur): IMPORTANT; return to raising exceptions with negative population
-                # when initial values get debugged
-                # raise ValueError( "Error: on specie {}: {}".format( specie, e ) )
-                e = str(e).strip()
-                debug_log.error( "Error: on specie {}: {}".format( specie, e ),
-                    sim_time=self.time )
-
-            self.log_event( 'continuous_adjustment', self._population[specie] )
-
-    def log_event( self, event_type, specie ):
-        '''Log simulation events that modify a specie's population.
-
-        Log the simulation time, event type, specie population, and current flux for each simulation
-        event message that adjusts the population.
-
-        Args:
-            event_type (str): description of the event's type.
-            specie (:obj:`Specie`): the object whose adjustment is being logged.
-        '''
-        try:
-            flux = specie.continuous_flux
-        except AttributeError:
-            flux = None
-        values = [ event_type, specie.last_population, flux ]
-        values = map( lambda x: str(x), values )
-        # log Sim_time Adjustment_type New_population New_flux
-        debug_log.debug( '\t'.join( values ), local_call_depth=1, sim_time=self.time )
