@@ -17,8 +17,9 @@ debug_log = debug_logs.get_log( 'wc.debug.file' )
 
 from wc_sim.multialgorithm.utils import species_compartment_name
 from wc_sim.multialgorithm.specie import Specie
+from wc_sim.multialgorithm.abc_for_species_pop_access import AccessSpeciesPopulationInterface
 
-class LocalSpeciesPopulation(object):
+class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
     '''Maintain the population of a set of species.
 
     LocalSpeciesPopulation tracks the population of a set of species. Population values (copy numbers)
@@ -147,7 +148,6 @@ class LocalSpeciesPopulation(object):
         for specie_id in species:
             self.last_access_time[specie_id] = time
 
-    # TODO(Arthur): use read_one() wherever the count of only one specie is obtained
     def read_one(self, time, specie_id):
         '''Read the predicted population of a specie at a particular time.
 
@@ -213,7 +213,7 @@ class LocalSpeciesPopulation(object):
 
         Args:
             time (float): the time at which the population is being adjusted.
-            adjustments (:obj:`dict` of float): map: specie_ids -> (population_adjustment, flux);
+            adjustments (:obj:`dict` of `tuple`): map: specie_ids -> (population_adjustment, flux);
                 adjustments to be made to some species populations.
 
         Raises:
