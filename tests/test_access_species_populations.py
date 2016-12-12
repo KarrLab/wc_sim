@@ -36,11 +36,14 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
     MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures',
         'test_model_for_access_species_populations.xlsx')
 
+    MODEL_FILENAME_STEADY_STATE = os.path.join(os.path.dirname(__file__), 'fixtures',
+        'test_model_for_access_species_populations_2.xlsx')
+
     def setUp(self):
         self.an_ASP = ASP(None, remote_pop_stores)
         SimulationEngine.reset()
 
-    def set_up_simulation(self):
+    def set_up_simulation(self, model_file):
         '''Set up a simulation from a test model.
 
         Create two SkeletonSubmodels, a LocalSpeciesPopulation for each, and
@@ -48,7 +51,7 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
         '''
 
         # make a model
-        self.model = Excel.read(self.MODEL_FILENAME)
+        self.model = Excel.read(model_file)
         # make SpeciesPopSimObjects
         self.private_species = ExecutableModel.find_private_species(self.model)
         self.shared_species = ExecutableModel.find_shared_species(self.model)
@@ -62,6 +65,7 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
         self.shared_pop_sim_obj = {}
         self.shared_pop_sim_obj['shared_store_1'] = SpeciesPopSimObject('shared_store_1',
             {specie_id:self.init_populations[specie_id] for specie_id in self.shared_species})
+        print(self.shared_pop_sim_obj['shared_store_1'])
 
         # make submodels and their parts
         self.submodels={}
@@ -73,6 +77,8 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
                 {specie_id:self.init_populations[specie_id] for specie_id in
                     self.private_species[submodel.id]},
                 initial_fluxes={specie_id:0 for specie_id in self.private_species[submodel.id]})
+
+            print(local_species_population)
 
             # make AccessSpeciesPopulations objects
             # TODO(Arthur): stop giving all SpeciesPopSimObjects to each AccessSpeciesPopulations
@@ -171,10 +177,8 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
 
         self.assertEqual(theASP.prefetch(1, ['specie_1[c]', 'specie_2[c]']), ['shared_store_1'])
 
-    def test_simulation(self):
-        '''Test a short simulation.'''
-
-        self.set_up_simulation()
+    def initialize_simulation(self, model_file):
+        self.set_up_simulation(model_file)
         delay_to_first_event = 1.0/len(self.submodels)
         for name,submodel in iteritems(self.submodels):
 
@@ -189,9 +193,25 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
 
             delay_to_first_event += 1/len(self.submodels)
 
+    def verify_simulation(self, expected_final_pops, sim_end):
+        '''Verify the final simulatin populations.'''
+        for specie_id in self.shared_species:
+            pop = self.shared_pop_sim_obj['shared_store_1'].read_one(sim_end, specie_id)
+            self.assertEqual(expected_final_pops[specie_id], pop)
+
+        for submodel in self.submodels.values():
+            for specie_id in self.private_species[submodel.name]:
+                pop = submodel.access_species_population.read_one(sim_end, specie_id)
+                self.assertEqual(expected_final_pops[specie_id], pop)
+
+    def test_simulation(self):
+        '''Test a short simulation.'''
+
+        self.initialize_simulation(self.MODEL_FILENAME)
+
         # run the simulation
-        end=3
-        SimulationEngine.simulate(end)
+        sim_end=3
+        SimulationEngine.simulate(sim_end)
 
         # test final populations
         # Expected changes, based on the reactions executed
@@ -203,19 +223,24 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
         specie_4	0	-1
         specie_5	0	1'''
 
-        exp_final_pops = copy.deepcopy(self.init_populations)
+        expected_final_pops = copy.deepcopy(self.init_populations)
         for row in expected_changes.split('\n')[2:]:
             (specie, c, e) = row.strip().split()
             for com in 'c e'.split():
                 id = '{}[{}]'.format(specie, com)
-                exp_final_pops[id] += float(eval(com))
+                expected_final_pops[id] += float(eval(com))
 
-        for specie_id in self.shared_species:
-            pop = self.shared_pop_sim_obj['shared_store_1'].read_one(end, specie_id)
-            self.assertEqual(exp_final_pops[specie_id], pop)
+        self.verify_simulation(expected_final_pops, sim_end)
 
-        for submodel in self.submodels.values():
-            for specie_id in self.private_species[submodel.name]:
-                pop = submodel.access_species_population.read_one(end, specie_id)
-                self.assertEqual(exp_final_pops[specie_id], pop)
+    def test_stable_simulation(self):
+        '''Test a steady state simulation.
 
+        MODEL_FILENAME_STEADY_STATE contains a model with no net population change every 2 sec.
+        '''
+        self.initialize_simulation(self.MODEL_FILENAME_STEADY_STATE)
+
+        # run the simulation
+        sim_end=100
+        SimulationEngine.simulate(sim_end)
+        expected_final_pops = self.init_populations
+        self.verify_simulation(expected_final_pops, sim_end)
