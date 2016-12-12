@@ -222,8 +222,26 @@ class Specie(object):
             return self.random_state.round( float_copy_number )
 
     def __str__(self):
-        return "specie_name:{}; last_population:{}; continuous_time:{}; continuous_flux:{}".format(
-            self.specie_name, self.last_population, self.continuous_time, self.continuous_flux)
+        if self.continuous_submodel:
+            return "specie_name: {}; last_population: {}; continuous_time: {}; continuous_flux: {}".format(
+                self.specie_name, self.last_population, self.continuous_time, self.continuous_flux)
+        else:
+            return "specie_name: {}; last_population: {}".format(
+                self.specie_name, self.last_population)
+
+    @staticmethod
+    def heading():
+        '''Return a heading for a tab-separated table of species data.'''
+        return '\t'.join('specie_name last_population continuous_time continuous_flux'.split())
+
+    def row(self):
+        '''Return a row for a tab-separated table of species data.'''
+        if self.continuous_submodel:
+            return "{}\t{:.2f}\t{:.2f}\t{:.2f}".format(self.specie_name, self.last_population, self.continuous_time, self.continuous_flux)
+            '\t'.join([])
+        else:
+            return "{}\t{:.2f}".format(self.specie_name, self.last_population)
+            '\t'.join([])
 
 class Error(Exception):
     '''Base class for exceptions in specie.'''

@@ -1,3 +1,9 @@
+'''
+:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Date: 2016-12-01
+:Copyright: 2016, Karr Lab
+:License: MIT
+'''
 import os
 import unittest
 import warnings
@@ -57,6 +63,4 @@ class TestMultiAlgorithm(unittest.TestCase):
                          model_filename=self.MODEL_FILENAME,
                          output_directory=config['default_output_directory'],
                          seed=123)
-        with self.assertRaises(AttributeError) as context:
-            # throws an AttributeError in calc_reaction_rates at wc_sim/multialgorithm/submodels/submodel.py:103
-            MultiAlgorithm.initialize_simulation(args)
+        MultiAlgorithm.initialize_simulation(args)

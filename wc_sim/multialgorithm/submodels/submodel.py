@@ -6,58 +6,54 @@
 :Copyright: 2016, Karr Lab
 :License: MIT
 '''
-#Represents a submodel
 # TODO(Arthur): IMPORTANT: unittest all these methods
 # TODO(Arthur): IMPORTANT: document with Sphinx
 
 from itertools import chain
-
 import math
 import numpy as np
 import re
-
 from scipy.constants import Avogadro
+
 from wc_sim.core.simulation_object import SimulationObject
 from wc_sim.multialgorithm.utils import species_compartment_name
 from wc_sim.multialgorithm.local_species_population import LocalSpeciesPopulation
 from wc_sim.multialgorithm.debug_logs import logs as debug_logs
 
 class Submodel(SimulationObject):
-    '''
-    Attributes:
-        private_cell_state: a LocalSpeciesPopulation that stores the copy numbers of the species involved in reactions
-            that are modeled only by this SsaSubmodel instance.
-        shared_cell_state: a list of LocalSpeciesPopulation that store the copy numbers of
-            the species that are modeled by this Submodel AND other Submodel instances.
-    # TODO(Arthur): start using private_cell_state
+    '''A generic submodel - multiple submodel are combined into a multi-algorithmic model.
 
-    '''
+        TBD ...
 
-    def __init__(self, model, name, id, private_cell_state, shared_cell_state, reactions, species,
-        parameters ):
-        '''Initialize a submodel.
-
-        Args:
+        Attributes:
             model (`Model`): the model to which this submodel belongs
-            name (str): the name of this submodel / simulation object
-            id (type): unique identifier for this submodel
-            private_cell_state (`LocalSpeciesPopulation`): a LocalSpeciesPopulation that stores the
-                copy numbers of the species that are modeled only by this submodel.
-            shared_cell_state (`LocalSpeciesPopulation`): a LocalSpeciesPopulation that stores the
-                copy numbers of species that are collectively modeled by this and other submodels.
+            id (str): unique id of this submodel / simulation object
+            access_species_pop (:obj:`AccessSpeciesPopulations`): an interface to the stores
+                of all the species populations used by this submodel.
             reactions (list): the reactions modeled by this submodel.
             species (list): the species that participate in the reactions modeled by this submodel.
             parameters (list): the model's parameters
+    '''
+
+    def __init__(self, model, id, access_species_pop, reactions, species, parameters):
+        '''Initialize a submodel.
+
         '''
-        self.model = model  # the model which this Submodel belongs to
-        self.name = name
+        self.model = model
         self.id = id
-        self.private_cell_state = private_cell_state
-        self.shared_cell_state = shared_cell_state
+        self.access_species_pop = access_species_pop
         self.reactions = reactions
         self.species = species
         self.parameters = parameters
-        SimulationObject.__init__( self, name )
+        SimulationObject.__init__(self, id)
+
+    def get_species_ids(self):
+        '''Get ids of species used by this model.
+
+        Returns:
+            list: list of ids of species used by this model
+        '''
+        return [s.id for s in self.species]
 
     def get_specie_counts(self):
         '''Get a dictionary of current species counts for this submodel.
@@ -65,8 +61,8 @@ class Submodel(SimulationObject):
         Returns:
             Current species count, in a dict: species_id -> count
         '''
-        species_ids = set([s.id for s in self.species])
-        return self.shared_cell_state.read(self.time, species_ids)
+        species_ids = set(self.get_species_ids())
+        return self.access_species_pop.read(self.time, species_ids)
 
     def get_specie_concentrations(self):
         '''Get a dictionary of current species concentrations for this submodel.
@@ -75,7 +71,7 @@ class Submodel(SimulationObject):
             Current species concentrations, in a dict: species_id -> concentration
         '''
         counts = self.get_specie_counts()
-        ids = [ s.id for s in self.species ]
+        ids = self.get_species_ids()
         return { specie_id:(counts[specie_id] / self.model.volume) / Avogadro for specie_id in ids }
 
     @staticmethod
@@ -123,7 +119,7 @@ class Submodel(SimulationObject):
             transcoded_reaction = rate_law.transcoded
         except AttributeError as error:
             raise AttributeError("Error: reaction '{}' must have rate law '{}' transcoded.".format(
-                reaction.id, reaction.rate_law.law ))
+                reaction.id, reaction.rate_law.law))
         try:
             # the empty '__builtins__' reduces security risks; see "Eval really is dangerous"
             # return eval(transcoded_reaction, {'__builtins__': {}},
@@ -131,11 +127,11 @@ class Submodel(SimulationObject):
                 {'species_concentrations': species_concentrations,
                 'Vmax': reaction.vmax, 'Km': reaction.km})
         except SyntaxError as error:
-            raise ValueError( "Error: reaction '{}' has syntax error in rate law '{}'.".format(
-                reaction.id, reaction.rate_law.law ) )
+            raise ValueError("Error: reaction '{}' has syntax error in rate law '{}'.".format(
+                reaction.id, reaction.rate_law.law))
         except NameError as error:
-            raise NameError( "Error: NameError in rate law '{}' of reaction '{}': '{}'".format(
-                reaction.rate_law.law, reaction.id, error) )
+            raise NameError("Error: NameError in rate law '{}' of reaction '{}': '{}'".format(
+                reaction.rate_law.law, reaction.id, error))
 
     def enabled_reaction(self, reaction):
         '''Determine whether the cell state has adequate specie counts to run a reaction.
@@ -147,13 +143,14 @@ class Submodel(SimulationObject):
             True if reaction is stoichiometrically enabled
         '''
         for participant in reaction.participants:
-            species_id = species_compartment_name( participant.species, participant.compartment )
-            count = self.model.local_species_population.read_one( self.time, species_id)
+            species_id = species_compartment_name(participant.species, participant.compartment)
+            count = self.access_species_pop.read_one(self.time, species_id)
             # 'participant.coefficient < 0' constrains the test to reactants
             if participant.coefficient < 0 and count < -participant.coefficient:
                 return False
         return True
 
+    # TODO(Arthur): does identify_enabled_reactions() belong in Submodel, or is it specific to just SSA?
     def identify_enabled_reactions(self, propensities):
         '''Determine reactions in a propensity array which have adequate specie counts to run.
 
@@ -181,33 +178,31 @@ class Submodel(SimulationObject):
             if not self.enabled_reaction(rxn):
                 enabled[iRxn] = 0
 
-                log = debug_logs.get_log( 'wc.debug.file' )
+                log = debug_logs.get_log('wc.debug.file')
                 log.debug(
-                    "reaction: {} of {}: insufficient counts".format( iRxn, len(self.reactions) ),
-                    sim_time=self.time )
+                    "reaction: {} of {}: insufficient counts".format(iRxn, len(self.reactions)),
+                    sim_time=self.time)
 
         return enabled
 
-    def execute_reaction(self, local_species_population, reaction):
+    # TODO(Arthur): move to SsaSubmodel.py, unless other submodels would use
+    def execute_reaction(self, species_populations, reaction):
         '''Update species counts based on a single reaction.
 
         Typically called by an SSA submodel.
 
         Args:
-            speciesCounts: a LocalSpeciesPopulation object; the state storing
-                the reaction's participant species
             reaction: a Reaction object; the reaction being executed
 
         '''
-        # TODO(Arthur): move to SsaSubmodel.py, unless other submodels would use
         adjustments={}
         for participant in reaction.participants:
             adjustments[participant.id] = participant.coefficient
         try:
-            local_species_population.adjust_discretely( self.time, adjustments )
+            species_populations.adjust_discretely(self.time, adjustments)
         except ValueError as e:
-            raise ValueError( "{:7.1f}: submodel {}: reaction: {}: {}".format(self.time, self.name,
-                reaction.id, e) )
+            raise ValueError("{:7.1f}: submodel {}: reaction: {}: {}".format(self.time, self.id,
+                reaction.id, e))
 
     def get_component_by_id(self, id, component_type=''):
         ''' Find model component with id.

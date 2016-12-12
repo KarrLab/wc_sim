@@ -58,7 +58,6 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         Initialize a LocalSpeciesPopulation object. Establish its initial population, and set debugging booleans.
 
         Args:
-            model (:obj:`Model`): the `Model` containing this LocalSpeciesPopulation.
             initial_population (:obj:`dict` of float): initial population for some species;
                 dict: specie_id -> initial_population.
             initial_fluxes (:obj:`dict` of float, optional): map: specie_id -> initial_flux;
@@ -153,13 +152,13 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
 
         Args:
             time (float): the time at which the population should be estimated.
-            specie_id (list): identifiers of the species to read.
+            specie_id (str): identifier of the specie to read.
 
         Returns:
-            float: the predicted copy number of `specie_id` at `time`.
+            float: the predicted population of `specie_id` at time `time`.
 
         Raises:
-            ValueError: if the population of unknown specie(s) were requested.
+            ValueError: if the population of an unknown specie was requested.
         '''
         specie_id_in_set = {specie_id}
         self._check_species(time, specie_id_in_set)
@@ -233,7 +232,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             except ValueError as e:
                 # TODO(Arthur): IMPORTANT; return to raising exceptions with negative population
                 # when initial values get debugged
-                # raise ValueError( "Error: on specie {}: {}".format( specie, e ) )
+                raise ValueError( "Error: on specie {}: {}".format( specie, e ) )
                 e = str(e).strip()
                 debug_log.error( "Error: on specie {}: {}".format( specie, e ),
                     sim_time=self.time )
@@ -363,3 +362,16 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             return '\n'.join( lines )
         else:
             raise ValueError( "Error: history not recorded" )
+
+    def __str__(self):
+        '''Provide readable LocalSpeciesPopulation state.
+
+        TBD
+        '''
+        state=[]
+        state.append('name: {}'.format(self.name))
+        state.append('time: {}'.format(str(self.time)))
+        state.append(Specie.heading())
+        for specie_id in sorted(self._population.keys()):
+            state.append(self._population[specie_id].row())
+        return '\n'.join(state)

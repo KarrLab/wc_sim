@@ -34,6 +34,9 @@ It is enforced by checking class names against message body types.
 
 '''
 
+# TODO(Arthur): put more message sending semantics into messages; derive from a Message base class,
+# minimize the code needed to create or read event messages, etc.
+
 from collections import namedtuple
 
 class AdjustPopulationByDiscreteModel(object):
@@ -194,10 +197,13 @@ class RunFba(object):
     pass
 
 ALL_MESSAGE_TYPES = [
-    AdjustPopulationByDiscreteModel,
-    AdjustPopulationByContinuousModel,
-    GetPopulation,
-    GivePopulation,
-    ExecuteSsaReaction,
-    SsaWait,
-    RunFba]
+    AdjustPopulationByDiscreteModel,    # A discrete model changes the population.
+    AdjustPopulationByContinuousModel,  # A continuous model changes the population.
+    GetPopulation,                      # A submodel requests populations from a
+                                        # species population simulation object.
+    GivePopulation,                     # A species population simulation object provides
+                                        # populations to a submodel.
+    ExecuteSsaReaction,                 # An SSA submodel schedules its next reaction.
+    SsaWait,                            # An SSA submodel with 0 total propensity schedules
+                                        # a future effort to schedule a reaction.
+    RunFba]                             # An FBA submodel schedules its next computation.

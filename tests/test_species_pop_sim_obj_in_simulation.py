@@ -22,9 +22,6 @@ from wc_sim.multialgorithm.species_pop_sim_object import SpeciesPopSimObject
 
 class MockSimulationObject(SimulationObject):
 
-    MessageTypesRegistry.set_sent_message_types('MockSimulationObject', ALL_MESSAGE_TYPES)
-    MessageTypesRegistry.set_receiver_priorities('MockSimulationObject', ALL_MESSAGE_TYPES)
-
     def __init__(self, name, test_case, specie_id, expected_value):
         '''Init a MockSimulationObject that can unittest a specie's population.
 
@@ -80,6 +77,7 @@ class TestSpeciesPopSimObjectWithAnotherSimObject(unittest.TestCase):
         self.assertEqual(SimulationEngine.simulate(get_pop_time+1), 3)
 
     def test_message_types(self):
+        '''Test both discrete and continuous updates, with a range of population & flux values'''
         s_id = 's'
         update_adjustment = +5
         get_pop_time = 4
@@ -112,3 +110,6 @@ class TestSpeciesPopSimObjectWithAnotherSimObject(unittest.TestCase):
                             update_time, get_pop_time,
                             s_init_pop + update_adjustment +
                                 (get_pop_time-update_time)*updated_flux)
+
+MessageTypesRegistry.set_sent_message_types(MockSimulationObject, ALL_MESSAGE_TYPES)
+MessageTypesRegistry.set_receiver_priorities(MockSimulationObject, ALL_MESSAGE_TYPES)

@@ -1,4 +1,4 @@
-'''Test test_access_species_populations.py.
+'''Test access_species_populations.py.
 
 :Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
 :Date: 2016-12-04
@@ -6,9 +6,21 @@
 :License: MIT
 '''
 
-import os, unittest
+import os, unittest, copy
 import string
+from scipy.constants import Avogadro
+from six import iteritems
+
+from wc_lang.io import Excel
+from wc_sim.core.simulation_engine import SimulationEngine
+from wc_sim.multialgorithm import message_types
+from wc_sim.multialgorithm.executable_model import ExecutableModel
 from wc_sim.multialgorithm.access_species_populations import AccessSpeciesPopulations as ASP
+from wc_sim.multialgorithm.access_species_populations import LOCAL_POP_STORE
+from wc_sim.multialgorithm.local_species_population import LocalSpeciesPopulation
+from wc_sim.multialgorithm.species_population_cache import SpeciesPopulationCache
+from wc_sim.multialgorithm.species_pop_sim_object import SpeciesPopSimObject
+from wc_sim.multialgorithm.submodels.skeleton_submodel import SkeletonSubmodel
 
 def store_i(i):
     return "store_{}".format(i)
@@ -21,22 +33,69 @@ species_ids = [specie_l(l) for l in list(string.ascii_lowercase)[0:5]]
 
 class TestAccessSpeciesPopulations(unittest.TestCase):
 
+    MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures',
+        'test_model_for_access_species_populations.xlsx')
+
     def setUp(self):
-        self.an_ASP = ASP(remote_pop_stores)
+        self.an_ASP = ASP(None, remote_pop_stores)
+        SimulationEngine.reset()
 
-    def test_dict_filtering(self):
-        d={'a':1, 'b':2, 'c':3}
-        self.assertEqual(ASP.filtered_dict(d, []), {})
-        self.assertEqual(ASP.filtered_dict(d, ['a']), {'a':1})
-        self.assertEqual(ASP.filtered_dict(d, ['a','d','a','b','c']), d)
+    def set_up_simulation(self):
+        '''Set up a simulation from a test model.
 
-        self.assertEqual({(k,v) for k,v in ASP.filtered_iteritems(d, ['a','b','d'])},
-            {('a', 1), ('b', 2)})
+        Create two SkeletonSubmodels, a LocalSpeciesPopulation for each, and
+        a SpeciesPopSimObject that they share.
+        '''
+
+        # make a model
+        self.model = Excel.read(self.MODEL_FILENAME)
+        # make SpeciesPopSimObjects
+        self.private_species = ExecutableModel.find_private_species(self.model)
+        self.shared_species = ExecutableModel.find_shared_species(self.model)
+
+        self.init_populations={}
+        for s in self.model.species:
+            for c in s.concentrations:
+                sc_id = '{}[{}]'.format(s.id, c.compartment.id)
+                self.init_populations[sc_id]=int(c.value * c.compartment.initial_volume * Avogadro)
+
+        self.shared_pop_sim_obj = {}
+        self.shared_pop_sim_obj['shared_store_1'] = SpeciesPopSimObject('shared_store_1',
+            {specie_id:self.init_populations[specie_id] for specie_id in self.shared_species})
+
+        # make submodels and their parts
+        self.submodels={}
+        for submodel in self.model.submodels:
+
+            # make LocalSpeciesPopulations
+            local_species_population = LocalSpeciesPopulation(self.model,
+                submodel.id.replace('_', '_lsp_'),
+                {specie_id:self.init_populations[specie_id] for specie_id in
+                    self.private_species[submodel.id]},
+                initial_fluxes={specie_id:0 for specie_id in self.private_species[submodel.id]})
+
+            # make AccessSpeciesPopulations objects
+            # TODO(Arthur): stop giving all SpeciesPopSimObjects to each AccessSpeciesPopulations
+            access_species_population = ASP(local_species_population, self.shared_pop_sim_obj)
+
+            # make SkeletonSubmodels
+            behavior = {'INTER_REACTION_TIME':1}
+            self.submodels[submodel.id] = SkeletonSubmodel(behavior, self.model, submodel.id,
+                access_species_population, submodel.reactions, submodel.species, submodel.parameters)
+            # connect AccessSpeciesPopulations object to its affiliated SkeletonSubmodels
+            access_species_population.set_submodel(self.submodels[submodel.id])
+
+            species_population_cache = SpeciesPopulationCache(access_species_population)
+            access_species_population.set_species_population_cache(species_population_cache)
+
+            # make access_species_population.species_locations
+            access_species_population.add_species_locations(LOCAL_POP_STORE,
+                self.private_species[submodel.id])
+            access_species_population.add_species_locations('shared_store_1', self.shared_species)
 
     def test_species_locations(self):
 
         self.an_ASP.add_species_locations(store_i(1), species_ids[:2])
-        map = dict(zip(species_ids[:2], [store_i(1)]*2))
         map = dict.fromkeys(species_ids[:2], store_i(1))
         self.assertEqual(self.an_ASP.species_locations, map)
 
@@ -59,19 +118,104 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
             self.an_ASP.add_species_locations('no_such_store', species_ids[:2])
         self.assertIn("'no_such_store' not a known population store", str(cm.exception))
 
-        with self.assertRaises(ValueError) as cm:
-            self.an_ASP.add_species_locations('no_such_store', species_ids[:2])
-        self.assertIn("'no_such_store' not a known population store", str(cm.exception))
-
         self.an_ASP.add_species_locations(store_i(1), species_ids[:2])
         with self.assertRaises(ValueError) as cm:
             self.an_ASP.add_species_locations(store_i(1), species_ids[:2])
-        self.assertIn("species ['specie_a', 'specie_b'] already have assigned locations.", str(cm.exception))
+        self.assertIn("species ['specie_a', 'specie_b'] already have assigned locations.",
+            str(cm.exception))
 
         with self.assertRaises(ValueError) as cm:
             self.an_ASP.del_species_locations([specie_l('d'), specie_l('c')])
-        self.assertIn("species ['specie_c', 'specie_d'] are not in the location map", str(cm.exception))
+        self.assertIn("species ['specie_c', 'specie_d'] are not in the location map",
+            str(cm.exception))
 
         with self.assertRaises(ValueError) as cm:
             self.an_ASP.locate_species([specie_l('d'), specie_l('c')])
-        self.assertIn("species ['specie_c', 'specie_d'] are not in the location map", str(cm.exception))
+        self.assertIn("species ['specie_c', 'specie_d'] are not in the location map",
+            str(cm.exception))
+
+    @unittest.skip("skip while debugging")
+    def test_population_changes(self):
+        '''Test population changes that occur without using event messages.'''
+        self.set_up_simulation()
+        theASP = self.submodels['submodel_1'].access_species_population
+        init_val=100
+        self.assertEqual(theASP.read_one(0, 'specie_1[c]'), init_val)
+        self.assertEqual(theASP.read(0, set(['specie_1[c]'])), {'specie_1[c]': init_val})
+
+        with self.assertRaises(ValueError) as cm:
+            theASP.read(0, set(['specie_2[c]']))
+        self.assertIn("read_one: species ['specie_2[c]'] not in cache.", str(cm.exception))
+
+        adjustment=-10
+        self.assertEqual(theASP.adjust_discretely(0, {'specie_1[c]':adjustment}),
+            ['LOCAL_POP_STORE'])
+        self.assertEqual(theASP.read_one(0, 'specie_1[c]'), init_val+adjustment)
+
+        with self.assertRaises(ValueError) as cm:
+            theASP.read_one(0, 'specie_none')
+        self.assertIn("read_one: specie 'specie_none' not in the location map.", str(cm.exception))
+
+        self.assertEqual(sorted(theASP.adjust_discretely(0,
+            {'specie_1[c]': adjustment, 'specie_2[c]': adjustment})),
+                sorted(['shared_store_1', 'LOCAL_POP_STORE']))
+        self.assertEqual(theASP.read_one(0, 'specie_1[c]'), init_val + 2*adjustment)
+
+        self.assertEqual(theASP.adjust_continuously(1, {'specie_1[c]':(adjustment, 0)}),
+            ['LOCAL_POP_STORE'])
+        self.assertEqual(theASP.read_one(1, 'specie_1[c]'), init_val + 3*adjustment)
+
+        with self.assertRaises(ValueError) as cm:
+            theASP.prefetch(0, ['specie_1[c]', 'specie_2[c]'])
+        self.assertIn("prefetch: 0 provided, but delay must be non-negative", str(cm.exception))
+
+        self.assertEqual(theASP.prefetch(1, ['specie_1[c]', 'specie_2[c]']), ['shared_store_1'])
+
+    def test_simulation(self):
+        '''Test a short simulation.'''
+
+        self.set_up_simulation()
+        delay_to_first_event = 1.0/len(self.submodels)
+        for name,submodel in iteritems(self.submodels):
+
+            # prefetch into caches
+            submodel.access_species_population.prefetch(delay_to_first_event,
+                submodel.get_species_ids())
+
+            # send initial event messages
+            msg_body = message_types.ExecuteSsaReaction.Body(0)
+            submodel.send_event(delay_to_first_event, submodel, message_types.ExecuteSsaReaction,
+                msg_body)
+
+            delay_to_first_event += 1/len(self.submodels)
+
+        # run the simulation
+        end=3
+        SimulationEngine.simulate(end)
+
+        # test final populations
+        # Expected changes, based on the reactions executed
+        expected_changes='''
+        specie	c	e
+        specie_1	-2	0
+        specie_2	-2	0
+        specie_3	3	-2
+        specie_4	0	-1
+        specie_5	0	1'''
+
+        exp_final_pops = copy.deepcopy(self.init_populations)
+        for row in expected_changes.split('\n')[2:]:
+            (specie, c, e) = row.strip().split()
+            for com in 'c e'.split():
+                id = '{}[{}]'.format(specie, com)
+                exp_final_pops[id] += float(eval(com))
+
+        for specie_id in self.shared_species:
+            pop = self.shared_pop_sim_obj['shared_store_1'].read_one(end, specie_id)
+            self.assertEqual(exp_final_pops[specie_id], pop)
+
+        for submodel in self.submodels.values():
+            for specie_id in self.private_species[submodel.name]:
+                pop = submodel.access_species_population.read_one(end, specie_id)
+                self.assertEqual(exp_final_pops[specie_id], pop)
+

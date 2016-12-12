@@ -6,6 +6,8 @@
 :License: MIT
 """
 
+from wc_utils.util.misc import round_direct
+
 class Event( object ):
     """An object that holds a discrete event simulation (DES) event.
 
@@ -60,7 +62,7 @@ class Event( object ):
         # TODO(Arthur): allow formatting of the returned string, e.g. formatting the precision of time values
         # TODO(Arthur): optionally, output the event_body, first checking that it supports str()
 
-        return '\t'.join( [ '{:8.3f}'.format( self.creation_time ), '{:8.3f}'.format( self.event_time ),
+        return '\t'.join( [ round_direct(self.creation_time), round_direct(self.event_time),
             self.sending_object.name, self.receiving_object.name, self.event_type ] )
 
     @staticmethod

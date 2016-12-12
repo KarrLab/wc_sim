@@ -6,6 +6,9 @@
 :License: MIT
 '''
 
+import numpy
+import sys
+
 from wc_utils.util.misc import isclass_by_name as check_class
 from wc_sim.core.simulation_object import SimulationObject
 from wc_sim.core.simulation_engine import MessageTypesRegistry
@@ -24,22 +27,6 @@ class SpeciesPopSimObject(LocalSpeciesPopulation,SimulationObject):
     functionality by wrapping a LocalSpeciesPopulation as a DES object accessed only by
     simulation event messages.
     '''
-
-    # register sent message types
-    # '__qualname__' was introduced in Python 3.3, but six doesn't have a backward patch
-    if '__qualname__' in locals():
-        class_name=locals()['__qualname__']
-    else:
-        class_name='SpeciesPopSimObject'
-    SENT_MESSAGE_TYPES = [ message_types.GivePopulation ]
-    MessageTypesRegistry.set_sent_message_types( class_name, SENT_MESSAGE_TYPES )
-
-    # At any time instant, process messages in this order
-    MESSAGE_TYPES_BY_PRIORITY = [
-        message_types.AdjustPopulationByDiscreteModel,
-        message_types.AdjustPopulationByContinuousModel,
-        message_types.GetPopulation ]
-    MessageTypesRegistry.set_receiver_priorities( class_name, MESSAGE_TYPES_BY_PRIORITY )
 
     def __init__(self, name, initial_population, initial_fluxes=None, retain_history=True ):
         '''Initialize a SpeciesPopSimObject object.
@@ -89,3 +76,14 @@ class SpeciesPopSimObject(LocalSpeciesPopulation,SimulationObject):
             else:
                 assert False, "Shouldn't get here - {} should be covered"\
                     " in the if statement above".format(event_message.event_type)
+
+# Register sent message types
+SENT_MESSAGE_TYPES = [ message_types.GivePopulation ]
+MessageTypesRegistry.set_sent_message_types(SpeciesPopSimObject, SENT_MESSAGE_TYPES)
+
+# At any time instant, process messages in this order
+MESSAGE_TYPES_BY_PRIORITY = [
+    message_types.AdjustPopulationByDiscreteModel,
+    message_types.AdjustPopulationByContinuousModel,
+    message_types.GetPopulation ]
+MessageTypesRegistry.set_receiver_priorities(SpeciesPopSimObject, MESSAGE_TYPES_BY_PRIORITY)

@@ -10,9 +10,10 @@ import unittest
 import sys
 import re
 from scipy.stats import binom
+import six
 
 from wc_sim.core.simulation_object import EventQueue, SimulationObject
-from wc_sim.core.simulation_engine import SimulationEngine, MessageTypesRegistry
+from wc_sim.core.simulation_engine import SimulationEngine
 from wc_sim.multialgorithm.specie import Specie, NegativePopulationError
 from wc_utils.util.rand import RandomStateManager
 
@@ -34,7 +35,17 @@ class TestSpecie(unittest.TestCase):
         self.assertEqual( s1.discrete_adjustment( 3, 4 ), 9 )
 
         s1 = Specie( 'specie', 10, initial_flux=0 )
-        self.assertEqual( 'specie_name:specie; last_population:10; continuous_time:0; continuous_flux:0', str(s1) )
+        self.assertEqual( "specie_name: specie; last_population: 10; continuous_time: 0; "
+            "continuous_flux: 0", str(s1) )
+
+        if six.PY3:
+            self.assertRegex(s1.row(), 'specie\t10\..*\t0\..*\t0\..*')
+            s2 = Specie('specie2', 10, initial_flux=2.1)
+            self.assertRegex(s2.row(), 'specie2\t10\..*\t0\..*\t2\.1.*')
+        else:
+            self.assertRegexpMatches(s1.row(), 'specie\t10\..*\t0\..*\t0\..*')
+            s2 = Specie('specie2', 10, initial_flux=2.1)
+            self.assertRegexpMatches(s2.row(), 'specie2\t10\..*\t0\..*\t2\.1.*')
 
         with self.assertRaises(ValueError) as context:
             s1.continuous_adjustment( 2, -23, 1 )

@@ -8,7 +8,7 @@
 Model descriptions are read from Excel spreadsheets and instantiated using the model module from
 WcModelingTutorial.
 
-SSA and FBA are simulation objects. 
+SSA and FBA are simulation objects.
 
 SSA and FBA could directly exchange species population data. But the cell's state
 (LocalSpeciesPopulation) is included so other sub-models can be added and access the state information.
@@ -28,7 +28,7 @@ from wc_analysis import exercise
 from wc_lang.io import Excel
 from wc_sim.core.config import paths as config_paths_core
 from wc_sim.core.simulation_object import EventQueue
-from wc_sim.core.simulation_engine import SimulationEngine, MessageTypesRegistry
+from wc_sim.core.simulation_engine import SimulationEngine
 from wc_sim.multialgorithm.config import paths as config_paths_multialgorithm
 from wc_sim.multialgorithm.submodels.ssa import SsaSubmodel
 from wc_sim.multialgorithm.submodels.fba import FbaSubmodel
@@ -84,7 +84,7 @@ class MultiAlgorithm(object):
     @staticmethod
     def initialize_simulation(args):
         '''Initialize a WC simulation.
-            
+
         Steps:
         0. read model description
         1. create and configure simulation objects, including their initial events
@@ -93,7 +93,7 @@ class MultiAlgorithm(object):
             args (`Namespace`): command line arguments obtained by argparse.
 
         Raises:
-            
+
         '''
 
         SimulationEngine.reset()
@@ -117,15 +117,13 @@ class MultiAlgorithm(object):
 
         # 1. create and configure simulation submodels, including initial events
         algs_to_run = 'FBA SSA'.split()     # todo: take this from config
-        shared_cell_state = model.cell_state
         for submodel_spec in model.submodels:
             if submodel_spec.algorithm == 'SSA':
                 if submodel_spec.algorithm in algs_to_run:
                     LogAtTimeZero.info("create SSA submodel: {} {}".format(submodel_spec.name,
                         submodel_spec.algorithm))
                     submodel_spec.the_submodel = SsaSubmodel(model, submodel_spec.name,
-                                                                     submodel_spec.id, None, 
-                                                                     shared_cell_state, 
+                                                                     model.cell_state,
                                                                      submodel_spec.reactions,
                                                                      submodel_spec.species,
                                                                      submodel_spec.parameters)
@@ -134,8 +132,7 @@ class MultiAlgorithm(object):
                     LogAtTimeZero.info("create FBA submodel: {} {}".format(submodel_spec.name,
                         submodel_spec.algorithm))
                     submodel_spec.the_submodel = FbaSubmodel(model, submodel_spec.name,
-                                                             submodel_spec.id, None, 
-                                                             shared_cell_state, 
+                                                             model.cell_state,
                                                              submodel_spec.reactions,
                                                              submodel_spec.species,
                                                              submodel_spec.parameters,

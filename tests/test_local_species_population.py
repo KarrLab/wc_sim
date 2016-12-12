@@ -1,3 +1,9 @@
+'''
+:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Date: 2016-12-01
+:Copyright: 2016, Karr Lab
+:License: MIT
+'''
 import unittest
 import sys
 import re
@@ -67,7 +73,8 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         self.assertEqual( an_LSP.read( 0, {'s1'} ),  {'s1': 2} )
         with self.assertRaises(ValueError) as context:
             an_LSP.init_cell_state_specie( 's1', 2 )
-        self.assertIn( "Error: specie_id 's1' already stored by this LocalSpeciesPopulation", str(context.exception) )
+        self.assertIn( "Error: specie_id 's1' already stored by this LocalSpeciesPopulation",
+            str(context.exception) )
         with self.assertRaises(ValueError) as context:
             an_LSP.report_history()
         self.assertIn( "Error: history not recorded", str(context.exception) )

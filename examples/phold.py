@@ -41,10 +41,6 @@ class InitMsg(object):
 
 class PholdSimulationObject(SimulationObject):
 
-    MESSAGE_TYPES = [ MessageSentToSelf, MessageSentToOtherObject, InitMsg ]
-    MessageTypesRegistry.set_sent_message_types( 'PholdSimulationObject', MESSAGE_TYPES )
-    MessageTypesRegistry.set_receiver_priorities( 'PholdSimulationObject', MESSAGE_TYPES )
-
     def __init__( self, name, args ):
         self.args = args
         super(PholdSimulationObject, self).__init__( name )
@@ -72,16 +68,18 @@ class PholdSimulationObject(SimulationObject):
                     obj_name( index ) ))
 
             if receiver == self:
-                recipient = 'self'
-                event_type = 'MessageSentToSelf'
+                event_type = MessageSentToSelf
             else:
-                recipient = 'other'
-                event_type = 'MessageSentToOtherObject'
+                event_type = MessageSentToOtherObject
             self.send_event( exp_delay(), receiver, event_type )
 
     def log_debug_msg(self, msg):
         log = debug_logs.get_log( 'wc.debug.console' )
         log.debug( msg, sim_time=self.time, local_call_depth=1 )
+
+MESSAGE_TYPES = [ MessageSentToSelf, MessageSentToOtherObject, InitMsg ]
+MessageTypesRegistry.set_sent_message_types( PholdSimulationObject, MESSAGE_TYPES )
+MessageTypesRegistry.set_receiver_priorities( PholdSimulationObject, MESSAGE_TYPES )
 
 class RunPhold(object):
 
@@ -118,7 +116,7 @@ class RunPhold(object):
         # send initial event messages, to self
         for obj_id in range( args.num_phold_procs ):
             obj = SimulationEngine.simulation_objects[ obj_name( obj_id ) ]
-            obj.send_event( exp_delay(), obj, 'InitMsg' )
+            obj.send_event( exp_delay(), obj, InitMsg )
 
         # run the simulation
         event_num = SimulationEngine.simulate( args.end_time )

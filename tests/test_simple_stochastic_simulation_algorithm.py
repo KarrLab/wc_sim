@@ -1,10 +1,16 @@
+'''
+:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Date: 2016-10-01
+:Copyright: 2016, Karr Lab
+:License: MIT
+'''
 import unittest
 
 import os
 
 from wc_lang.io import Excel
 from wc_sim.core.simulation_object import EventQueue, SimulationObject
-from wc_sim.core.simulation_engine import SimulationEngine, MessageTypesRegistry
+from wc_sim.core.simulation_engine import SimulationEngine
 from wc_sim.multialgorithm.submodels.ssa import SsaSubmodel
 from wc_sim.multialgorithm.message_types import GivePopulation, ExecuteSsaReaction
 from tests.universal_sender_receiver_simulation_object import UniversalSenderReceiverSimulationObject
@@ -47,8 +53,6 @@ class TestSsaSubmodel(unittest.TestCase):
                     print( obj_2_str(e))
                 '''
                 ssa1 = SsaSubmodel(self.model, submodel_spec.name,
-                    submodel_spec.id,
-                    None,
                     self.model.cell_state,
                     submodel_spec.reactions,
                     submodel_spec.species,
