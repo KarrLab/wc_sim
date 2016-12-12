@@ -19,6 +19,7 @@ from wc_sim.core.simulation_object import SimulationObject
 from wc_sim.multialgorithm import message_types
 from wc_sim.multialgorithm.message_types import ALL_MESSAGE_TYPES
 from wc_sim.multialgorithm.species_pop_sim_object import SpeciesPopSimObject
+from wc_sim.multialgorithm.multialgorithm_errors import SpeciesPopulationError
 
 class MockSimulationObject(SimulationObject):
 
@@ -45,7 +46,7 @@ class MockSimulationObject(SimulationObject):
                                 event_message.event_time, self.specie_id,
                                 self.expected_value, populations[self.specie_id]))
         else:
-            raise ValueError("Error: event_message.event_type '{}' should "\
+            raise SpeciesPopulationError("Error: event_message.event_type '{}' should "\
             "be covered in the if statement above".format(event_message.event_type))
 
 
@@ -66,7 +67,7 @@ class TestSpeciesPopSimObjectWithAnotherSimObject(unittest.TestCase):
             Mock obj receives GivePopulation and checks value
         '''
         if get_pop_time<=update_time:
-            raise ValueError('get_pop_time<=update_time')
+            raise SpeciesPopulationError('get_pop_time<=update_time')
         SimulationEngine.reset()
         species_pop_sim_obj = SpeciesPopSimObject('test_name',
             {specie_id:init_pop}, initial_fluxes={specie_id:init_flux})

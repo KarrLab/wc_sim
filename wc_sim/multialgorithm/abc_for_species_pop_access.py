@@ -12,19 +12,19 @@ import abc, six
 class AccessSpeciesPopulationInterface():
     '''An abstract base class defining the interface between a submodel and its species population stores.
     
-    A submodel in a parallel WC simulation will interact with multiple components that store the
-    population of species it accesses. All these stores should implement this interface which
-    defines read and write operations on the species in a store.
+    A submodel in a WC simulation will interact with multiple components that store the population
+    of species it accesses. This architecture is needed for parallelism. All these stores should
+    implement this interface which defines read and write operations on the species in a store.
     '''
     
     @abc.abstractmethod
     def read_one(self, time, specie_id):
-        '''Read the predicted population of a specie at a particular time.'''
+        '''Obtain the predicted population of a specie at a particular time.'''
         pass
 
     @abc.abstractmethod
     def read( self, time, species ):
-        '''Read the predicted population of a list of species at a particular time.'''
+        '''Obtain the predicted population of a list of species at a particular time.'''
         pass
 
     @abc.abstractmethod

@@ -6,7 +6,6 @@
 :License: MIT
 '''
 
-import numpy
 import sys
 
 from wc_utils.util.misc import isclass_by_name as check_class
@@ -14,6 +13,7 @@ from wc_sim.core.simulation_object import SimulationObject
 from wc_sim.core.simulation_engine import MessageTypesRegistry
 from wc_sim.multialgorithm import message_types
 from wc_sim.multialgorithm.local_species_population import LocalSpeciesPopulation
+from wc_sim.multialgorithm.multialgorithm_errors import SpeciesPopulationError
 
 # logging
 from wc_sim.multialgorithm.debug_logs import logs as debug_logs
@@ -52,8 +52,10 @@ class SpeciesPopSimObject(LocalSpeciesPopulation,SimulationObject):
             event_list (:obj:`list` of :obj:`wc_sim.core.Event`): list of Events to process.
 
         Raises:
-            ValueError: if a GetPopulation message requests the population of an unknown species.
-            ValueError: if an AdjustPopulationByContinuousModel event acts on a non-existent species.
+            SpeciesPopulationError: if a GetPopulation message requests the population of an
+                unknown species.
+            SpeciesPopulationError: if an AdjustPopulationByContinuousModel event acts on a
+                non-existent species.
         '''
         # call handle_event() in class SimulationObject to perform generic tasks on the event list
         super(SpeciesPopSimObject, self).handle_event(event_list)

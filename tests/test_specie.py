@@ -14,7 +14,8 @@ import six
 
 from wc_sim.core.simulation_object import EventQueue, SimulationObject
 from wc_sim.core.simulation_engine import SimulationEngine
-from wc_sim.multialgorithm.specie import Specie, NegativePopulationError
+from wc_sim.multialgorithm.specie import Specie
+from wc_sim.multialgorithm.multialgorithm_errors import NegativePopulationError
 from wc_utils.util.rand import RandomStateManager
 
 class TestSpecie(unittest.TestCase):

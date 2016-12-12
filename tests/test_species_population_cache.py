@@ -10,6 +10,7 @@ from wc_sim.multialgorithm.local_species_population import LocalSpeciesPopulatio
 from wc_sim.multialgorithm.species_population_cache import SpeciesPopulationCache
 from wc_sim.multialgorithm.access_species_populations import AccessSpeciesPopulations as ASP
 from wc_sim.multialgorithm.access_species_populations import LOCAL_POP_STORE
+from wc_sim.multialgorithm.multialgorithm_errors import SpeciesPopulationError
 
 def store_i(i):
     return "store_{}".format(i)
@@ -39,33 +40,33 @@ class TestSpeciesPopulationCache(unittest.TestCase):
             population_dict)
 
     def test_species_population_cache_exceptions(self):
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SpeciesPopulationError) as context:
             self.species_population_cache.cache_population(1, {"specie_0": 3})
         self.assertIn("some species are stored in the AccessSpeciesPopulations's local store: "
             "['specie_0'].", str(context.exception) )
 
         self.species_population_cache.cache_population(0, {"specie_1": 3})
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SpeciesPopulationError) as context:
             self.species_population_cache.cache_population(-1, {"specie_1": 3})
         self.assertIn( "cache_population: caching an earlier population: specie_id: specie_1; "
             "current time: -1 <= previous time 0.", str(context.exception) )
 
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SpeciesPopulationError) as context:
             self.species_population_cache.read_one(1, 'specie_none')
         self.assertIn( "SpeciesPopulationCache.read_one: specie 'specie_none' not in cache.",
             str(context.exception) )
     
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SpeciesPopulationError) as context:
             self.species_population_cache.read_one(1, 'specie_1')
         self.assertIn( "cache age of 1 too big for read at time 1 of specie 'specie_1'",
             str(context.exception) )
     
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SpeciesPopulationError) as context:
             self.species_population_cache.read(0, ['specie_none'])
         self.assertIn( "SpeciesPopulationCache.read: species ['specie_none'] not in cache.",
             str(context.exception) )
 
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SpeciesPopulationError) as context:
             self.species_population_cache.read(1, ['specie_1'])
         self.assertIn( ".read: species ['specie_1'] not reading recently cached value(s)",
             str(context.exception) )

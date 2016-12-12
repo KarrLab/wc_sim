@@ -12,7 +12,7 @@ from argparse import Namespace
 
 from wc_sim.multialgorithm.config import paths as config_paths
 from wc_sim.multialgorithm.multi_algorithm import MultiAlgorithm
-from wc_sim.multialgorithm.specie import NegativePopulationError
+from wc_sim.multialgorithm.multialgorithm_errors import NegativePopulationError
 from wc_utils.config.core import ConfigManager
 
 config = ConfigManager(config_paths.core).get_config()['wc_sim']['multialgorithm']

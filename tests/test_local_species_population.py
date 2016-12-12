@@ -12,6 +12,7 @@ from wc_utils.util.rand import RandomStateManager
 
 from wc_sim.multialgorithm.specie import Specie
 from wc_sim.multialgorithm.local_species_population import LocalSpeciesPopulation
+from wc_sim.multialgorithm.multialgorithm_errors import SpeciesPopulationError
 
 class TestLocalSpeciesPopulation(unittest.TestCase):
 
@@ -27,16 +28,17 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         self.init_fluxes = init_fluxes
         self.local_species_pop = LocalSpeciesPopulation( None, 'test', self.init_populations,
             initial_fluxes=init_fluxes )
-        self.local_species_pop_no_init_flux = LocalSpeciesPopulation( None, 'test', self.init_populations )
+        self.local_species_pop_no_init_flux = LocalSpeciesPopulation( 
+            None, 'test', self.init_populations )
 
     def reusable_assertions(self, the_local_species_pop, flux ):
         # test both discrete and hybrid species
 
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SpeciesPopulationError) as context:
             the_local_species_pop._check_species( 0, 2 )
         self.assertIn( "must be a set", str(context.exception) )
 
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SpeciesPopulationError) as context:
             the_local_species_pop._check_species( 0, {'x'} )
         self.assertIn( "Error: request for population of unknown specie(s):", str(context.exception) )
 
@@ -54,10 +56,10 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
 
     def test_read_one(self):
         self.assertEqual(self.local_species_pop.read_one(1,'specie_3'), 4)
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SpeciesPopulationError) as context:
             self.local_species_pop.read_one(2, 's1')
         self.assertIn( "request for population of unknown specie(s): 's1'", str(context.exception) )
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SpeciesPopulationError) as context:
             self.local_species_pop.read_one(0, 'specie_3')
         self.assertIn( "earlier access of specie(s): ['specie_3']", str(context.exception) )
 
@@ -71,14 +73,15 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         an_LSP = LocalSpeciesPopulation( None, 'test', {}, retain_history=False )
         an_LSP.init_cell_state_specie( 's1', 2 )
         self.assertEqual( an_LSP.read( 0, {'s1'} ),  {'s1': 2} )
-        with self.assertRaises(ValueError) as context:
+
+        with self.assertRaises(SpeciesPopulationError) as context:
             an_LSP.init_cell_state_specie( 's1', 2 )
         self.assertIn( "Error: specie_id 's1' already stored by this LocalSpeciesPopulation",
             str(context.exception) )
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SpeciesPopulationError) as context:
             an_LSP.report_history()
         self.assertIn( "Error: history not recorded", str(context.exception) )
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SpeciesPopulationError) as context:
             an_LSP.history_debug()
         self.assertIn( "Error: history not recorded", str(context.exception) )
 
@@ -86,10 +89,10 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         """Test population history."""
         an_LSP_recording_history = LocalSpeciesPopulation( None, 'test',
             self.init_populations, None, retain_history=False )
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SpeciesPopulationError) as context:
             an_LSP_recording_history.report_history()
         self.assertIn("Error: history not recorded", str(context.exception))
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SpeciesPopulationError) as context:
             an_LSP_recording_history.history_debug()
         self.assertIn("Error: history not recorded", str(context.exception))
 
@@ -100,7 +103,7 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         first_specie = self.species[0]
         an_LSP_recording_history.read( next_time, {first_specie})
         an_LSP_recording_history._record_history()
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SpeciesPopulationError) as context:
             an_LSP_recording_history._record_history()
         self.assertIn( "time of previous _record_history() (1) not less than current time",
             str(context.exception) )

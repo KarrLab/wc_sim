@@ -21,6 +21,7 @@ from wc_sim.multialgorithm.local_species_population import LocalSpeciesPopulatio
 from wc_sim.multialgorithm.species_population_cache import SpeciesPopulationCache
 from wc_sim.multialgorithm.species_pop_sim_object import SpeciesPopSimObject
 from wc_sim.multialgorithm.submodels.skeleton_submodel import SkeletonSubmodel
+from wc_sim.multialgorithm.multialgorithm_errors import SpeciesPopulationError
 
 def store_i(i):
     return "store_{}".format(i)
@@ -120,45 +121,50 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
         self.assertEqual(self.an_ASP.species_locations, {})
 
     def test_species_locations_exceptions(self):
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaises(SpeciesPopulationError) as cm:
             self.an_ASP.add_species_locations('no_such_store', species_ids[:2])
         self.assertIn("'no_such_store' not a known population store", str(cm.exception))
 
         self.an_ASP.add_species_locations(store_i(1), species_ids[:2])
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaises(SpeciesPopulationError) as cm:
             self.an_ASP.add_species_locations(store_i(1), species_ids[:2])
         self.assertIn("species ['specie_a', 'specie_b'] already have assigned locations.",
             str(cm.exception))
 
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaises(SpeciesPopulationError) as cm:
             self.an_ASP.del_species_locations([specie_l('d'), specie_l('c')])
         self.assertIn("species ['specie_c', 'specie_d'] are not in the location map",
             str(cm.exception))
 
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaises(SpeciesPopulationError) as cm:
             self.an_ASP.locate_species([specie_l('d'), specie_l('c')])
         self.assertIn("species ['specie_c', 'specie_d'] are not in the location map",
             str(cm.exception))
 
-    @unittest.skip("skip while debugging")
+    def test_other_exceptions(self):
+        with self.assertRaises(SpeciesPopulationError) as cm:
+            ASP(None, {'a':None, LOCAL_POP_STORE:None})
+        self.assertIn("{} not a valid remote_pop_store name".format(LOCAL_POP_STORE),
+            str(cm.exception))
+
     def test_population_changes(self):
         '''Test population changes that occur without using event messages.'''
-        self.set_up_simulation()
+        self.set_up_simulation(self.MODEL_FILENAME)
         theASP = self.submodels['submodel_1'].access_species_population
         init_val=100
         self.assertEqual(theASP.read_one(0, 'specie_1[c]'), init_val)
         self.assertEqual(theASP.read(0, set(['specie_1[c]'])), {'specie_1[c]': init_val})
 
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaises(SpeciesPopulationError) as cm:
             theASP.read(0, set(['specie_2[c]']))
-        self.assertIn("read_one: species ['specie_2[c]'] not in cache.", str(cm.exception))
+        self.assertIn("read: species ['specie_2[c]'] not in cache.", str(cm.exception))
 
         adjustment=-10
         self.assertEqual(theASP.adjust_discretely(0, {'specie_1[c]':adjustment}),
             ['LOCAL_POP_STORE'])
         self.assertEqual(theASP.read_one(0, 'specie_1[c]'), init_val+adjustment)
 
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaises(SpeciesPopulationError) as cm:
             theASP.read_one(0, 'specie_none')
         self.assertIn("read_one: specie 'specie_none' not in the location map.", str(cm.exception))
 
@@ -171,7 +177,15 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
             ['LOCAL_POP_STORE'])
         self.assertEqual(theASP.read_one(1, 'specie_1[c]'), init_val + 3*adjustment)
 
-        with self.assertRaises(ValueError) as cm:
+        flux=1
+        time=2
+        delay=3
+        self.assertEqual(theASP.adjust_continuously(time, {'specie_1[c]':(adjustment, flux)}),
+            ['LOCAL_POP_STORE'])
+        self.assertEqual(theASP.read_one(time+delay, 'specie_1[c]'),
+            init_val + 4*adjustment + delay*flux)
+
+        with self.assertRaises(SpeciesPopulationError) as cm:
             theASP.prefetch(0, ['specie_1[c]', 'specie_2[c]'])
         self.assertIn("prefetch: 0 provided, but delay must be non-negative", str(cm.exception))
 
@@ -244,3 +258,23 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
         SimulationEngine.simulate(sim_end)
         expected_final_pops = self.init_populations
         self.verify_simulation(expected_final_pops, sim_end)
+
+    # TODO(Arthur): test multiple SpeciesPopSimObjects
+    # TODO(Arthur): test adjust_continuously of remote_pop_stores
+    # TODO(Arthur): remove evaluate coverage
+    # TODO(Arthur): take care of the convert print() to log message todos
+    '''
+    TODO(Arthur): create a factory object that assembles a submodel with its
+    AccessSpeciesPopulations, LocalSpeciesPopulation, set of SpeciesPopSimObjects and
+    SpeciesPopulationCache; this will ease setting up the connections between them.
+    Steps:
+        1. Determine specie placements (partition)
+        2. Create the SpeciesPopSimObjects
+        3. For each submodel
+            a. Create its LocalSpeciesPopulation
+            b. Create its AccessSpeciesPopulations
+            c. Create its SpeciesPopulationCache
+            d. Create the submodel
+            e. Connect everything
+            f. Send initial messages to the submodel
+    '''
