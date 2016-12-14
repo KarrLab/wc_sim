@@ -10,14 +10,14 @@ import os, unittest
 from wc_sim.multialgorithm.executable_model import ExecutableModel
 from wc_sim.multialgorithm.submodels.submodel import Submodel
 from wc_lang.core import Model
-from wc_lang.io import Excel
+from wc_lang.io import Reader
 
 class TestExecutableModel(unittest.TestCase):
     MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_model.xlsx')
 
     def setUp(self):
         # make a model
-        self.model = Excel.read(self.MODEL_FILENAME)
+        self.model = Reader().run(self.MODEL_FILENAME)
 
     def test_find_private_species(self):
         private_species = ExecutableModel.find_private_species(self.model)

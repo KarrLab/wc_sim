@@ -25,7 +25,7 @@ import warnings
 import errno
 
 from wc_analysis import exercise
-from wc_lang.io import Excel
+from wc_lang.io import Reader
 from wc_sim.core.config import paths as config_paths_core
 from wc_sim.core.simulation_object import EventQueue
 from wc_sim.core.simulation_engine import SimulationEngine
@@ -109,7 +109,7 @@ class MultiAlgorithm(object):
             warnings.simplefilter("ignore")
             # 0. read model description
             LogAtTimeZero.info("Reading model from '{}'".format(args.model_filename))
-            model = Excel.read(args.model_filename)
+            model = Reader().run(args.model_filename)
             LogAtTimeZero.debug(model.summary())
 
             '''Prepare submodels for computation'''

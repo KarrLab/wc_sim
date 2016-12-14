@@ -6,7 +6,6 @@
 :License: MIT
 '''
 
-from wc_lang.io import Excel
 from wc_sim.multialgorithm.local_species_population import LocalSpeciesPopulation
 from wc_sim.multialgorithm.submodels.submodel import Submodel
 from wc_sim.multialgorithm.utils import species_compartment_name

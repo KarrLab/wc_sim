@@ -8,7 +8,7 @@ import unittest
 
 import os
 
-from wc_lang.io import Excel
+from wc_lang.io import Reader
 from wc_sim.core.simulation_object import EventQueue, SimulationObject
 from wc_sim.core.simulation_engine import SimulationEngine
 from wc_sim.multialgorithm.submodels.ssa import SsaSubmodel
@@ -30,7 +30,7 @@ class TestSsaSubmodel(unittest.TestCase):
         SimulationEngine.reset()
         self.MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_model.xlsx')
         # make a model
-        self.model = Excel.read(self.MODEL_FILENAME)
+        self.model = Reader().run(self.MODEL_FILENAME)
         ExecutableModel.set_up_simulation(self.model)
 
     def test_SSA_submodel_predictions(self):
