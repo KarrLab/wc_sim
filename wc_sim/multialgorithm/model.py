@@ -1,8 +1,16 @@
+'''An in-memory representation of a WC model.
+
+:Author: Jonathan Karr, karr@mssm.edu
+:Date: 2016-10-10
+:Copyright: 2016, Karr Lab
+:License: MIT
+'''
 from scipy.constants import Avogadro
-from wc_sim.multialgorithm.shared_memory_cell_state import SharedMemoryCellState
+from wc_sim.multialgorithm.local_species_population import LocalSpeciesPopulation
 from wc_sim.multialgorithm.utils import species_compartment_name
 import numpy as np
 
+no_longer_used
 
 class Model(object):
 
@@ -34,23 +42,23 @@ class Model(object):
         """Set up the initial conditions for a simulation. 
 
         Prepare data that has been loaded into a model.
-        The primary simulation data are species counts, stored in a SharedMemoryCellState().
+        The primary simulation data are species counts, stored in a LocalSpeciesPopulation().
         """
         cellComp = self.get_component_by_id('c', 'compartments')
         extrComp = self.get_component_by_id('e', 'compartments')
 
         # volume
         self.volume = cellComp.initial_volume
-        self.extracellularVolume = extrComp.initial_volume
+        self.extracellular_volume = extrComp.initial_volume
 
         # species counts
-        self.the_SharedMemoryCellState = SharedMemoryCellState(self, "CellState", {},
+        self.local_species_population = LocalSpeciesPopulation(self, "LocalSpeciesPopulation", {},
                                                                retain_history=True)
         for species in self.species:
             for conc in species.concentrations:
                 # initializing all fluxes to 0 so that continuous adjustments can be made
                 # TODO(Arthur): just initialize species that participate in continuous models
-                self.the_SharedMemoryCellState.init_cell_state_specie(
+                self.local_species_population.init_cell_state_specie(
                     species_compartment_name(species, conc.compartment),
                     conc.value * conc.compartment.initial_volume * Avogadro,
                     initial_flux_given=0)
@@ -70,7 +78,7 @@ class Model(object):
         Args:
             time: float; the current time
 
-        Return:
+        Returns:
             numpy array, #species x # compartments, containing count of specie in compartment
         """
         # TODO(Arthur): avoid wastefully converting between dictionary and array representations of copy numbers
@@ -79,7 +87,7 @@ class Model(object):
             for i_compartment, compartment in enumerate(self.compartments):
                 specie_name = species_compartment_name(species, compartment)
                 speciesCounts[ i_species, i_compartment ] = \
-                    self.the_SharedMemoryCellState.read(time, [specie_name])[specie_name]
+                    self.local_species_population.read_one(time, specie_name)
         return speciesCounts
 
     def calc_mass(self, time):

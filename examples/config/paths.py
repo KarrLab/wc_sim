@@ -7,8 +7,22 @@
 """
 
 from pkg_resources import resource_filename
+from wc_utils.config.core import ConfigPaths
 from wc_utils.debug_logs.config import paths as debug_logs_default_paths
 import os
 
+core = ConfigPaths(
+    default=resource_filename('examples', 'config/debug.default.cfg'),
+    schema=resource_filename('wc_sim', 'core/config/core.schema.cfg'),
+    user=(
+        'wc_sim.core.core.cfg',
+        os.path.expanduser('~/.wc/wc_sim.core.core.cfg'),
+    ),
+)
+
 debug_logs = debug_logs_default_paths.deepcopy()
-debug_logs.default = resource_filename('wc_sim', 'examples/config/debug.default.cfg')
+debug_logs.default = resource_filename('examples', 'config/debug.default.cfg')
+debug_logs.user = (
+    'wc_sim.core.debug.cfg',
+    os.path.expanduser('~/.wc/wc_sim.core.debug.cfg'),
+)

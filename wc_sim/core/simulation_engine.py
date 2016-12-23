@@ -17,6 +17,8 @@ is prepared to be parallelized.
 import datetime
 
 from wc_sim.core.event import Event
+from wc_utils.util.misc import most_qual_cls_name
+from wc_utils.util.misc import round_direct
 
 # configure logging
 from .debug_logs import logs as debug_logs
@@ -30,18 +32,34 @@ class MessageTypesRegistry( object ):
     receiver_priorities = {}
 
     @staticmethod
-    def set_sent_message_types( sim_obj_name, message_types ):
-        """Register message types that sim_obj_name will send.
+    def set_sent_message_types( sim_obj, message_types ):
+        '''Register message types that sim_obj will send.
 
-        Store the types as strings, because they are also used in event messages, which
+        Store the message types as strings, because they are also used in event messages, which
             should not contain references.
-        """
-        MessageTypesRegistry.senders[ sim_obj_name ] = tuple( [ x.__name__ for x in message_types ] )
+
+        Args:
+            sim_obj (object or class): an instance of the class of a `SimulationObject`.
+            message_types (list of class): the classes of messages send by sim_obj.
+        '''
+        MessageTypesRegistry.senders[ most_qual_cls_name(sim_obj) ] = \
+            [ most_qual_cls_name(x) for x in message_types ]
 
     @staticmethod
-    def set_receiver_priorities( sim_obj_name, message_priorities ):
-        MessageTypesRegistry.receiver_priorities[ sim_obj_name ] = \
-            tuple( [ x.__name__ for x in message_priorities ] )
+    def set_receiver_priorities( sim_obj, message_priorities ):
+        '''Set the priority order for messages sent by SimulationObjects in the class sim_obj.
+
+        Store the message types as strings, because they are also used in event messages, which
+            should not contain references.
+
+        Args:
+            sim_obj (object or class): an instance of the class of a `SimulationObject`.
+            message_priorities (list of class): the classes of messages received by sim_obj,
+                in decreasing priority order. At any given simulation time, higher priority messages
+                are processed earlier.
+        '''
+        MessageTypesRegistry.receiver_priorities[ most_qual_cls_name(sim_obj) ] = \
+            [ most_qual_cls_name(x) for x in message_priorities ]
 
 class SimulationEngine(object):
     """A simulation's static engine.
@@ -124,7 +142,7 @@ class SimulationEngine(object):
         Args:
             end_time: number; the time of the end of the simulation
 
-        Return:
+        Returns:
             The number of times a simulation object executes handle_event(). This may be larger than the number
             of events sent, because simultaneous events are handled together.
         """
@@ -142,6 +160,8 @@ class SimulationEngine(object):
 
             # get the earliest next event in the simulation
             next_time = float('inf')
+            # TODO(Arthur): convert print statements to log msgs
+            # print('\nSimulation Engine launching next object'.format())
             for sim_obj in SimulationEngine.simulation_objects.values():
 
                 if sim_obj.event_queue.next_event_time() < next_time:
@@ -156,19 +176,21 @@ class SimulationEngine(object):
                 SimulationEngine.log_with_time( " End time exceeded" )
                 break
 
+            # print('launching {} at {}\n'.format(next_sim_obj.name, round_direct(next_time)))
+
             handle_event_invocations += 1
             SimulationEngine.log_with_time( "Next event: {:6.2f}\t{}\t{}".format( next_time,
                 next_sim_obj.__class__.__name__, next_sim_obj.name ) )
 
-            # TODO(Arthur): IMPORTANT: test situation when multiple objects have events at minimum simulation time
-            # dispatch object that's ready to execute next event
+            # TODO(Arthur): IMPORTANT: test situation when multiple objects have events at minimum
+            # simulation time dispatch object that's ready to execute next event
             SimulationEngine.time = next_time
             # This assertion cannot be violoated unless init message sent to negative time or objects decrease their time
             assert next_sim_obj.time <= next_time, ("Dispatching '{}', but find object time "
                 "{} > event time {}.".format( next_sim_obj.name, next_sim_obj.time, next_time ) )
 
             next_sim_obj.time = next_time
-            next_sim_obj.handle_event( next_sim_obj.event_queue.next_events() )
+            next_sim_obj.handle_event(next_sim_obj.event_queue.next_events(next_sim_obj))
 
         return handle_event_invocations
 

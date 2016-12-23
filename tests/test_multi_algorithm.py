@@ -1,3 +1,9 @@
+'''
+:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Date: 2016-12-01
+:Copyright: 2016, Karr Lab
+:License: MIT
+'''
 import os
 import unittest
 import warnings
@@ -6,7 +12,7 @@ from argparse import Namespace
 
 from wc_sim.multialgorithm.config import paths as config_paths
 from wc_sim.multialgorithm.multi_algorithm import MultiAlgorithm
-from wc_sim.multialgorithm.specie import NegativePopulationError
+from wc_sim.multialgorithm.multialgorithm_errors import NegativePopulationError
 from wc_utils.config.core import ConfigManager
 
 config = ConfigManager(config_paths.core).get_config()['wc_sim']['multialgorithm']
@@ -27,8 +33,8 @@ class TestMultiAlgorithm(unittest.TestCase):
             model_filename=self.MODEL_FILENAME,
             output_directory=config['default_output_directory'],
             seed=123)
-        history1 = MultiAlgorithm.main( args ).the_SharedMemoryCellState.report_history()
-        history2 = MultiAlgorithm.main( args ).the_SharedMemoryCellState.report_history()
+        history1 = MultiAlgorithm.main( args ).local_species_population.report_history()
+        history2 = MultiAlgorithm.main( args ).local_species_population.report_history()
         self.assertEqual( history1, history2 )
 
     @unittest.skip("skip while negative population predictions are being fixed")
@@ -40,17 +46,15 @@ class TestMultiAlgorithm(unittest.TestCase):
             model_filename=self.MODEL_FILENAME,
             output_directory=config['default_output_directory'],
             seed=None)
-        history1 = MultiAlgorithm.main( args ).the_SharedMemoryCellState.report_history()
-        history2 = MultiAlgorithm.main( args ).the_SharedMemoryCellState.report_history()
+        history1 = MultiAlgorithm.main( args ).local_species_population.report_history()
+        history2 = MultiAlgorithm.main( args ).local_species_population.report_history()
         self.assertNotEqual( history1, history2 )
     
     def test_loads_model_and_initialize_simulation(self):
         """ Test model loading and simulation
         
-        This is a trivial test, but useful temporarily to prevent regression beyond this
-        while refactoring the language
+        Not a test; just try to load and initialize the simulation, while refactoring the language
         """
-        
         #TODO: delete this test once above tests are working
 
         num_fba_time_steps = 1
@@ -59,4 +63,4 @@ class TestMultiAlgorithm(unittest.TestCase):
                          model_filename=self.MODEL_FILENAME,
                          output_directory=config['default_output_directory'],
                          seed=123)
-        self.assertRaises(NegativePopulationError, MultiAlgorithm.main, args)
+        MultiAlgorithm.initialize_simulation(args)

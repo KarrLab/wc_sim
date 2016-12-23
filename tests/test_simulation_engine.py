@@ -4,13 +4,10 @@ import unittest
 from wc_sim.core.simulation_object import EventQueue, SimulationObject
 from wc_sim.core.event import Event
 from wc_sim.core.simulation_engine import SimulationEngine, MessageTypesRegistry
-from tests.some_message_types import InitMsg
+from tests.some_message_types import InitMsg, Test1
+from wc_utils.util.misc import most_qual_cls_name
 
 class ExampleSimulationObject(SimulationObject):
-
-    ALL_MESSAGE_TYPES = [InitMsg]
-    MessageTypesRegistry.set_sent_message_types( 'ExampleSimulationObject', ALL_MESSAGE_TYPES )
-    MessageTypesRegistry.set_receiver_priorities( 'ExampleSimulationObject', ALL_MESSAGE_TYPES )
 
     def __init__( self, name, debug=False):
         self.debug = debug
@@ -18,13 +15,14 @@ class ExampleSimulationObject(SimulationObject):
 
     def handle_event( self, event_list ):
         # schedule event
-        self.send_event( 2.0, self, 'InitMsg' )
+        self.send_event( 2.0, self, InitMsg )
+
+ALL_MESSAGE_TYPES = [InitMsg, Test1]
+MessageTypesRegistry.set_sent_message_types( ExampleSimulationObject, ALL_MESSAGE_TYPES )
+MessageTypesRegistry.set_receiver_priorities( ExampleSimulationObject, ALL_MESSAGE_TYPES )
 
 class InteractingSimulationObject(SimulationObject):
 
-    ALL_MESSAGE_TYPES = [InitMsg]
-    MessageTypesRegistry.set_sent_message_types( 'InteractingSimulationObject', ALL_MESSAGE_TYPES )
-    MessageTypesRegistry.set_receiver_priorities( 'InteractingSimulationObject', ALL_MESSAGE_TYPES )
 
     def __init__( self, name, debug=False):
         self.debug = debug
@@ -34,8 +32,10 @@ class InteractingSimulationObject(SimulationObject):
         # schedule events
         # send an event to each InteractingSimulationObject
         for obj in SimulationEngine.simulation_objects.values():
-            self.send_event( 2.0, obj, 'InitMsg'.format( self.name, obj.name, self.time ) )
+            self.send_event( 2.0, obj, InitMsg )
 
+MessageTypesRegistry.set_sent_message_types( InteractingSimulationObject, ALL_MESSAGE_TYPES )
+MessageTypesRegistry.set_receiver_priorities( InteractingSimulationObject, ALL_MESSAGE_TYPES )
 
 NAME_PREFIX = 'sim_obj'
 
@@ -51,8 +51,8 @@ class TestSimulationEngine(unittest.TestCase):
     
         # initial event
         obj = ExampleSimulationObject(  obj_name( 1 ) )
-        obj.send_event( 1.0, obj, 'InitMsg' )
-        obj.send_event( 2.0, obj, 'InitMsg' )
+        obj.send_event( 1.0, obj, InitMsg )
+        obj.send_event( 2.0, obj, InitMsg )
         self.assertEqual( SimulationEngine.simulate( 5.0 ), 5 )
 
     def test_simulation_engine_exception(self):
@@ -60,7 +60,7 @@ class TestSimulationEngine(unittest.TestCase):
         # initial event
         obj = ExampleSimulationObject(  obj_name( 1 ) )
         event_queue = obj.event_queue
-        event_queue.schedule_event( -1, -1, obj, obj, 'InitMsg' )
+        event_queue.schedule_event( -1, -1, obj, obj, most_qual_cls_name(InitMsg) )
         with self.assertRaises(AssertionError) as context:
             SimulationEngine.simulate( 5.0 )
         self.assertIn( 'find object time', str(context.exception) )
@@ -71,8 +71,8 @@ class TestSimulationEngine(unittest.TestCase):
         # initial events
         for i in range( 1, 4):
             obj = ExampleSimulationObject(  obj_name( i ) )
-            obj.send_event( 1.0, obj, 'InitMsg' )
-            obj.send_event( 2.0, obj, 'InitMsg' )
+            obj.send_event( 1.0, obj, InitMsg )
+            obj.send_event( 2.0, obj, InitMsg )
         self.assertEqual( SimulationEngine.simulate( 5.0 ), 15 )
 
     def test_multi_interacting_object_simulation(self):
@@ -80,6 +80,6 @@ class TestSimulationEngine(unittest.TestCase):
         # initial events
         for i in range( 1, 4):
             obj = InteractingSimulationObject(  obj_name( i ) )
-            obj.send_event( 1.0, obj, 'InitMsg' )
-            obj.send_event( 2.0, obj, 'InitMsg' )
+            obj.send_event( 1.0, obj, InitMsg )
+            obj.send_event( 2.0, obj, InitMsg )
         self.assertEqual( SimulationEngine.simulate( 5.0 ), 15 )

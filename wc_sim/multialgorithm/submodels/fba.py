@@ -1,12 +1,12 @@
-"""
+'''A Flux Balance Analysis (FBA) sub-model that represents a set of reactions.
 
-@author Jonathan Karr, karr@mssm.edu
-Created 2016/07/14, built FBA use of Cobra
-@author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
-built DES simulation, and converted FBA for DES
+:Author: Jonathan Karr, karr@mssm.edu
+:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Date: 2016-07-14
+:Copyright: 2016, Karr Lab
+:License: MIT
+'''
 
-"""
-    
 import sys
 import numpy as np
 import warnings
@@ -20,16 +20,16 @@ from scipy.constants import Avogadro
 from wc_sim.core.simulation_object import EventQueue, SimulationObject
 from wc_sim.core.simulation_engine import MessageTypesRegistry
 from wc_sim.multialgorithm import message_types
-from wc_sim.multialgorithm.model import ExchangedSpecies
+from wc_sim.multialgorithm.executable_model import ExchangedSpecies
 from wc_sim.multialgorithm.submodels.submodel import Submodel
 from wc_utils.util.misc import isclass_by_name
 
 class FbaSubmodel(Submodel):
-    """
-    FbaSubmodel employs Flus Balance Analysis to predict the reaction fluxes of 
+    '''
+    FbaSubmodel employs Flus Balance Analysis to predict the reaction fluxes of
     a set of chemical species in a 'well-mixed' container constrained by maximizing
-    biomass increase. 
-    
+    biomass increase.
+
     # TODO(Arthur): expand description
     # TODO(Arthur): change variable names to lower_with_under style
 
@@ -50,77 +50,59 @@ class FbaSubmodel(Submodel):
         AdjustPopulationByContinuousModel
         GetPopulation
         GivePopulation
-    """
+    '''
 
-    SENT_MESSAGE_TYPES = [ 
-        message_types.RunFba, 
-        message_types.AdjustPopulationByContinuousModel, 
-        message_types.GetPopulation,
-        ]
-
-    MessageTypesRegistry.set_sent_message_types( 'FbaSubmodel', SENT_MESSAGE_TYPES )
-
-    # at any time instant, process messages in this order
-    MESSAGE_TYPES_BY_PRIORITY = [ 
-        message_types.GivePopulation, 
-        message_types.RunFba,
-        ]
-
-    MessageTypesRegistry.set_receiver_priorities( 'FbaSubmodel', MESSAGE_TYPES_BY_PRIORITY )
-
-
-    def __init__(self, model, name, id, private_cell_state, shared_cell_states, 
+    def __init__(self, model, name, access_species_population,
         reactions, species, parameters, time_step ):
-        """Initialize a FbaSubmodel object.
-        
+        '''Initialize an FBA submodel.
+
         # TODO(Arthur): expand description
-        
+
         Args:
             See pydocs of super classes.
             time_step: float; time between FBA executions
-        """
-        Submodel.__init__( self, model, name, id, private_cell_state, shared_cell_states,
-            reactions, species, parameters )
+        '''
+        Submodel.__init__( self, model, name, access_species_population, reactions, species,
+            parameters )
 
         self.algorithm = 'FBA'
         self.time_step = time_step
 
         # log initialization data
         self.log_with_time( "init: name: {}".format( name ) )
-        self.log_with_time( "init: id: {}".format( id ) )
         self.log_with_time( "init: species: {}".format( str([s.name for s in species]) ) )
         self.log_with_time( "init: time_step: {}".format( str(time_step) ) )
-        
-        self.metabolismProductionReaction = None 
+
+        self.metabolismProductionReaction = None
         self.exchangedSpecies = None
-        
+
         self.cobraModel = None
         self.thermodynamicBounds = None
         self.exchangeRateBounds = None
-        
+
         self.defaultFbaBound = 1e15
         self.reactionFluxes = np.zeros(0)
 
         self.set_up_fba_submodel()
-        
-    def set_up_fba_submodel( self ):
-        """Set up this FBA submodel for simulation.
-        
-        Setup species fluxes, reaction participant, enzyme counts matrices. 
-        Create initial event for this FBA submodel.
-        """
 
-        cobraModel = CobraModel(self.id)
+    def set_up_fba_submodel( self ):
+        '''Set up this FBA submodel for simulation.
+
+        Setup species fluxes, reaction participant, enzyme counts matrices.
+        Create initial event for this FBA submodel.
+        '''
+
+        cobraModel = CobraModel(self.name)
         self.cobraModel = cobraModel
-            
+
         # setup metabolites
         cbMets = []
         for species in self.species:
             cbMets.append(CobraMetabolite(id = species.id, name = species.name))
         cobraModel.add_metabolites(cbMets)
-        
+
         # setup reactions
-        for rxn in self.reactions:            
+        for rxn in self.reactions:
             cbRxn = CobraReaction(
                 id = rxn.id,
                 name = rxn.name,
@@ -133,29 +115,27 @@ class FbaSubmodel(Submodel):
             cbMets = {}
             for part in rxn.participants:
                 cbMets[part.id] = part.coefficient
-            cbRxn.add_metabolites(cbMets)            
-        
+            cbRxn.add_metabolites(cbMets)
+
         # add external exchange reactions
         self.exchangedSpecies = []
         for i_species, species in enumerate(self.species):
-            if species.compartment.id == 'e':                
+            if species.compartment.id == 'e':
                 cbRxn = CobraReaction(
                     id = '{}Ex'.format(species.species.id),
                     name = '{} exchange'.format(species.species.name),
                     lower_bound = -self.defaultFbaBound,
                     upper_bound =  self.defaultFbaBound,
-                    objective_coefficient = 0,
-                    )
+                    objective_coefficient = 0)
                 cobraModel.add_reaction(cbRxn)
                 cbRxn.add_metabolites({species.id: 1})
-                
+
                 self.exchangedSpecies.append(ExchangedSpecies(
-                    id = species.id, 
+                    id = species.id,
                     species_index = i_species,
                     fba_reaction_index = cobraModel.reactions.index(cbRxn),
-                    is_carbon_containing = species.species.is_carbon_containing(),
-                    ))
-        
+                    is_carbon_containing = species.species.is_carbon_containing()))
+
         # add biomass exchange reaction
         cbRxn = CobraReaction(
             id = 'BiomassEx',
@@ -166,15 +146,15 @@ class FbaSubmodel(Submodel):
             )
         cobraModel.add_reaction(cbRxn)
         cbRxn.add_metabolites({'Biomass[c]': -1})
-        
+
         '''Bounds'''
-        # thermodynamic       
+        # thermodynamic
         arrayCobraModel = cobraModel.to_array_based_model()
         self.thermodynamicBounds = {
             'lower': np.array(arrayCobraModel.lower_bounds.tolist()),
             'upper': np.array(arrayCobraModel.upper_bounds.tolist()),
             }
-        
+
         # exchange reactions
         carbonExRate = self.get_component_by_id('carbonExchangeRate', 'parameters').value
         nonCarbonExRate = self.get_component_by_id('nonCarbonExchangeRate', 'parameters').value
@@ -190,7 +170,7 @@ class FbaSubmodel(Submodel):
             else:
                 self.exchangeRateBounds['lower'][exSpecies.fba_reaction_index] = -nonCarbonExRate
                 self.exchangeRateBounds['upper'][exSpecies.fba_reaction_index] =  nonCarbonExRate
-            
+
         '''Setup reactions'''
         self.metabolismProductionReaction = {
             'index': cobraModel.reactions.index(cobraModel.reactions.get_by_id('MetabolismProduction')),
@@ -198,18 +178,18 @@ class FbaSubmodel(Submodel):
             }
 
         self.schedule_next_FBA_analysis()
-        
+
     def schedule_next_FBA_analysis(self):
-        """Schedule the next analysis by this FBA submodel.
-        """
+        '''Schedule the next analysis by this FBA submodel.
+        '''
         self.send_event( self.time_step, self, message_types.RunFba )
 
     def calcReactionFluxes(self):
-        """calculate growth rate.
-        """
+        '''calculate growth rate.
+        '''
 
         '''
-        assertion because 
+        assertion because
             arrCbModel = self.cobraModel.to_array_based_model()
             arrCbModel.lower_bounds = lowerBounds
             arrCbModel.upper_bounds = upperBounds
@@ -221,10 +201,10 @@ class FbaSubmodel(Submodel):
         self.cobraModel.optimize()
         self.reactionFluxes = self.cobraModel.solution.x
         self.model.growth = self.reactionFluxes[self.metabolismProductionReaction['index']] #fraction cell/s
-        
+
     def updateMetabolites(self):
-        """Update species (metabolite) counts and fluxes.
-        """
+        '''Update species (metabolite) counts and fluxes.
+        '''
         # biomass production
         adjustments={}
         local_fluxes={}
@@ -232,56 +212,56 @@ class FbaSubmodel(Submodel):
             # was: self.speciesCounts[part.id] -= self.model.growth * part.coefficient * timeStep
             adjustments[participant.id] = (-self.model.growth * participant.coefficient * self.time_step,
                 -self.model.growth * participant.coefficient )
-        
+
         # external nutrients
         for exSpecies in self.exchangedSpecies:
             # was: self.speciesCounts[exSpecies.id] += self.reactionFluxes[exSpecies.fba_reaction_index] * timeStep
             adjustments[exSpecies.id] = (self.reactionFluxes[exSpecies.fba_reaction_index] * self.time_step,
                 self.reactionFluxes[exSpecies.fba_reaction_index])
-        
-        self.model.the_SharedMemoryCellState.adjust_continuously( self.time, adjustments )
-        
-        
+
+        self.model.local_species_population.adjust_continuously( self.time, adjustments )
+
+
     def calcReactionBounds(self):
-        """Compute FBA reaction bounds.
-        """
+        '''Compute FBA reaction bounds.
+        '''
         # thermodynamics
         lowerBounds = self.thermodynamicBounds['lower'].copy()
         upperBounds = self.thermodynamicBounds['upper'].copy()
-        
+
         # rate laws
         upperBounds[0:len(self.reactions)] = np.fmin(
-            upperBounds[0:len(self.reactions)], 
-            Submodel.calcReactionRates(self.reactions, self.get_specie_concentrations()) 
+            upperBounds[0:len(self.reactions)],
+            Submodel.calc_reaction_rates(self.reactions, self.get_specie_concentrations())
                 * self.model.volume * Avogadro )
-        
+
         # external nutrients availability
         specie_counts = self.get_specie_counts()
         for exSpecies in self.exchangedSpecies:
-            upperBounds[exSpecies.fba_reaction_index] = max(0, 
-                np.minimum(upperBounds[exSpecies.fba_reaction_index], specie_counts[exSpecies.id]) 
+            upperBounds[exSpecies.fba_reaction_index] = max(0,
+                np.minimum(upperBounds[exSpecies.fba_reaction_index], specie_counts[exSpecies.id])
                 / self.time_step)
-        
+
         # exchange bounds
-        lowerBounds = np.fmin(lowerBounds, self.model.dryWeight / 3600 * Avogadro 
+        lowerBounds = np.fmin(lowerBounds, self.model.dryWeight / 3600 * Avogadro
             * 1e-3 * self.exchangeRateBounds['lower'])
-        upperBounds = np.fmin(upperBounds, self.model.dryWeight / 3600 * Avogadro 
+        upperBounds = np.fmin(upperBounds, self.model.dryWeight / 3600 * Avogadro
             * 1e-3 * self.exchangeRateBounds['upper'])
-        
+
         for i_rxn, rxn in enumerate(self.cobraModel.reactions):
             rxn.lower_bound = lowerBounds[i_rxn]
             rxn.upper_bound = upperBounds[i_rxn]
 
 
     def handle_event( self, event_list ):
-        """Handle a FbaSubmodel simulation event.
-        
+        '''Handle a FbaSubmodel simulation event.
+
         In this shared-memory FBA, the only event is RunFba, and event_list should
         always contain one event.
-        
+
         Args:
             event_list: list of event messages to process
-        """
+        '''
         # call handle_event() in class SimulationObject which performs generic tasks on the event list
         SimulationObject.handle_event( self, event_list )
         if not self.num_events % 100:
@@ -289,7 +269,7 @@ class FbaSubmodel(Submodel):
 
         for event_message in event_list:
             if isclass_by_name( event_message.event_type, message_types.GivePopulation ):
-                
+
                 pass
                 # TODO(Arthur): add this functionality; currently, handling RunFba accesses memory directly
 
@@ -298,9 +278,9 @@ class FbaSubmodel(Submodel):
 
                 self.log_with_time( "GivePopulation: {}".format( str(event_message.event_body) ) )
                 # store population_values in some local cache ...
-                    
+
             elif isclass_by_name( event_message.event_type, message_types.RunFba ):
-            
+
                 self.log_with_time( "submodel '{}' executing".format( self.name ) )
 
                 # run the FBA analysis
@@ -312,4 +292,20 @@ class FbaSubmodel(Submodel):
             else:
                 assert False, "Error: the 'if' statement should handle "\
                 "event_message.event_type '{}'".format(event_message.event_type)
-        
+
+
+SENT_MESSAGE_TYPES = [
+    message_types.RunFba,
+    message_types.AdjustPopulationByContinuousModel,
+    message_types.GetPopulation,
+    ]
+
+MessageTypesRegistry.set_sent_message_types( FbaSubmodel, SENT_MESSAGE_TYPES )
+
+# at any time instant, process messages in this order
+MESSAGE_TYPES_BY_PRIORITY = [
+    message_types.GivePopulation,
+    message_types.RunFba,
+    ]
+
+MessageTypesRegistry.set_receiver_priorities( FbaSubmodel, MESSAGE_TYPES_BY_PRIORITY )
