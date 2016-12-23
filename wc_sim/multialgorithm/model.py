@@ -238,16 +238,16 @@ class ExchangedSpecies(object):
         is_carbon_containing(:obj:`bool`): indicates if exchanged species contains carbon
     """
 
-    def __init__(self, id, species_index, fba_reaction_index, is_carbon_containing):
+    def __init__(self, id, species_type_index, fba_reaction_index, is_carbon_containing):
         """ Construct an object to represent an exchanged species and its exchange reaction
 
         Args:
             id (:obj:`str`): id
-            species_index (:obj:`int`): index of exchanged species within list of species
+            species_type_index (:obj:`int`): index of exchanged species within list of species
             fba_reaction_index (:obj:`int`): index of species' exchange reaction within list of cobra model reactions
             is_carbon_containing(:obj:`bool`): indicates if exchanged species contains carbon
         """
         self.id = id
-        self.species_index = species_index
+        self.species_type_index = species_type_index
         self.fba_reaction_index = fba_reaction_index
         self.is_carbon_containing = is_carbon_containing
