@@ -10,8 +10,6 @@ from wc_sim.multialgorithm.local_species_population import LocalSpeciesPopulatio
 from wc_sim.multialgorithm.utils import species_compartment_name
 import numpy as np
 
-no_longer_used
-
 class Model(object):
 
     def __init__(self, model_def):
