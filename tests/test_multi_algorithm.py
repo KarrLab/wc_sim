@@ -50,10 +50,11 @@ class TestMultiAlgorithm(unittest.TestCase):
         history2 = MultiAlgorithm.main( args ).local_species_population.report_history()
         self.assertNotEqual( history1, history2 )
     
+    @unittest.skip("skip while refactoring")
     def test_loads_model_and_initialize_simulation(self):
         """ Test model loading and simulation
         
-        Not a test; just try to load and initialize the simulation, while refactoring the language
+        Not a test; just try to load and initialize the simulation, while refactoring
         """
         #TODO: delete this test once above tests are working
 

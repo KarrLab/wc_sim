@@ -47,10 +47,10 @@ class AccessSpeciesPopulations(AccessSpeciesPopulationInterface):
         species_locations (:obj:`dict` of `str`): a map indicating the store for each specie used
             by the submodel using this object, that is, the local submodel.
         local_pop_store (:obj:`LocalSpeciesPopulation`): a store of local species.
-        remote_pop_stores (:obj:`dict` of `SpeciesPopSimObject`): a map from store name to a system
-            identifier for the remote population store(s) that the local submodel uses. For a shared
-            memory implementation system identifiers can be object references; for a distributed
-            implementation they must be network object identifiers.
+        remote_pop_stores (:obj:`dict` of identifiers of`SpeciesPopSimObject`): a map from store name
+            to a system identifier for the remote population store(s) that the local submodel uses. 
+            For a shared memory implementation system identifiers can be object references; for a 
+            distributed implementation they must be network object identifiers.
         species_population_cache (:obj:`SpeciesPopulationCache`): a cache of populations for species
             that are stored remotely in the SpeciesPopSimObjects in remote_pop_stores; values for
             remote populations are pre-fetched at the right simulation time (via GetPopulation and

@@ -6,15 +6,18 @@
 :License: MIT
 '''
 
+import numpy as np
 from wc_sim.multialgorithm.local_species_population import LocalSpeciesPopulation
 from wc_sim.multialgorithm.submodels.submodel import Submodel
 from wc_sim.multialgorithm.utils import species_compartment_name
 from scipy.constants import Avogadro
 from collections import defaultdict
-import numpy as np
+from wc_lang.core import (Submodel, Reaction, SpeciesType, SpeciesTypeType, Species, Compartment,
+                          ReactionParticipant)
+from wc_utils.schema import utils
 
 class ExecutableModel(object):
-    '''A set of methods that modify a Model so it can be used is a multi-algorithmic simulation.'''
+    '''A set of methods that modify a Model so it can be used in a multi-algorithmic simulation.'''
 
     @staticmethod
     def set_up_simulation(model):
@@ -27,15 +30,26 @@ class ExecutableModel(object):
             model (:obj:`wc_lang.core.Model`): The `Model` instance.
         '''
 
-        model.fraction_dry_weight = model.get_component_by_id('fractionDryWeight', 'parameters').value
-        cellular_compartment = model.get_component_by_id('c', 'compartments')
-        extracellular_compartment = model.get_component_by_id('e', 'compartments')
+        model.fraction_dry_weight = utils.get_component_by_id(model.get_parameters(),
+            'fractionDryWeight').value
+        cellular_compartment = utils.get_component_by_id(model.get_compartments(), 'c')
+        extracellular_compartment = utils.get_component_by_id(model.get_compartments(), 'e')
 
-        #volume
+        # volume
         model.volume = cellular_compartment.initial_volume
         model.extracellular_volume = extracellular_compartment.initial_volume
 
-        #species counts
+        '''
+        Initialize and start the simulation
+            Partition into Submodels and Cell State:
+                1a. Determine shared & private species
+                1b. Determine partition
+                2. Create shared species object(s)
+                3. Create submodels that contain private species and access shared species
+            Start the simulation
+        '''
+        
+        # species counts
         model.cell_state = LocalSpeciesPopulation( model, "LocalSpeciesPopulation", {},
             retain_history=True )
         for species in model.species:
@@ -52,30 +66,20 @@ class ExecutableModel(object):
         # transcoded rate laws
         ExecutableModel.transcode_rate_laws(model)
 
-        #cell mass
+        # cell mass
         ExecutableModel.calc_mass(model, 0)     # initial conditions
 
-        #density
+        # density
         model.density = model.mass / model.volume
 
-        #growth
+        # growth
         model.growth = np.nan
 
     @staticmethod
-    def calc_mass(model, now):
+    def calc_mass(model):
         '''Calculate the mass of a model, and store it in dry_weight.
 
         Sum over all species in the model's cytoplasm.
-
-        Args:
-            now (float): the current simulation time
-        '''
-        model.mass = 2
-        model.dry_weight = 1
-        # TODO(Arthur): IMPORTANT: activate
-        print('Need to activate.')
-        pass
-        
         '''
         mass = 0.
         for submodel in model.submodels:
@@ -84,7 +88,6 @@ class ExecutableModel(object):
         mass /= Avogadro
         model.mass = mass
         model.dry_weight = model.fraction_dry_weight * mass
-        '''
 
     @staticmethod
     def get_species_count_array(model, now):
@@ -107,59 +110,65 @@ class ExecutableModel(object):
         return species_counts
 
     @staticmethod
-    def find_private_species(model):
+    def find_private_species(model, return_ids=False):
         '''Identify the model's species that are private to a submodel.
 
-        Find the species in a model that are modeled by only one submodel.
+        Find the species in a model that are modeled privately by a single submodel. This analysis
+        relies on the observation that a submodel can only access species that participate in
+        reactions that occurs in the submodel. (It might not access some of these species too,
+        if they're initialized with concentration=0 and the reactions in which they participate
+        never fire. However, that cannot be determined statically.)
 
         Args:
             model (:obj:`wc_lang.core.Model`): a `Model` instance
+            return_ids (:obj:`boolean`, optional): if set, return object ids rather than references
 
         Returns:
-            dict: a dict that maps each submodel id to a set containing the ids of species that are
+            dict: a dict that maps each submodel to a set containing the species
                 modeled by only the submodel.
         '''
         species_to_submodels = defaultdict(set)
-        for submodel in model.submodels:
-            for specie in submodel.species:
-                species_to_submodels[specie.id].add(submodel.id)
+        for submodel in model.get_submodels():
+            for specie in submodel.get_species():
+                species_to_submodels[specie].add(submodel)
 
         private_species = dict()
-        for submodel in model.submodels:
-            private_species[submodel.id] = set()
-        for specie_id,submodels in species_to_submodels.items():
-            if 1==len(species_to_submodels[specie_id]):
-                submodel_id = species_to_submodels[specie_id].pop()
-                private_species[submodel_id].add(specie_id)
+        for submodel in model.get_submodels():
+            private_species[submodel] = set()
+        for specie,submodels in species_to_submodels.items():
+            if 1==len(species_to_submodels[specie]):
+                submodel = species_to_submodels[specie].pop()
+                private_species[submodel].add(specie)
+        if return_ids:
+            tmp_dict = {}
+            for submodel,species in private_species.items():
+                tmp_dict[submodel.get_primary_attribute()] = set([specie.serialize() for specie in species])
+            return tmp_dict
         return private_species
 
     @staticmethod
-    def find_shared_species(model):
+    def find_shared_species(model, return_ids=False):
         '''Identify the model's species that are shared by multiple submodels.
 
         Find the species in a model that are modeled by multiple submodels.
 
         Args:
             model (:obj:`wc_lang.core.Model`): a `Model` instance
+            return_ids (:obj:`boolean`, optional): if set, return object ids rather than references
 
         Returns:
-            set: a set containing the ids of shared species.
+            set: a set containing the shared species.
         '''
-        all_species = set()
-        for submodel in model.submodels:
-            all_species |= set([s.id for s in submodel.species])
+        all_species = model.get_species()
 
-        private_species = ExecutableModel.find_private_species(model)
-        shared_species = set()
-        for p in private_species.values():
-            shared_species |= p
-        shared_species_ids = all_species - shared_species
-        return(shared_species_ids)
-
-
-        for species in model.species:
-            for conc in species.concentrations:
-                    species_compartment_name( species, conc.compartment ),
+        private_species_dict = ExecutableModel.find_private_species(model)
+        private_species = set()
+        for p in private_species_dict.values():
+            private_species |= p
+        shared_species = all_species - private_species
+        if return_ids:
+            return set([shared_specie.serialize() for shared_specie in shared_species])
+        return(shared_species)
 
     @staticmethod
     def transcode(rate_law, species, compartments):
@@ -210,13 +219,6 @@ class ExecutableModel(object):
         counts = ExecutableModel.get_initial_specie_counts(model)
         ids = [s for s in ExecutableModel.all_species(model)]
         return { specie_id:(counts[specie_id] / model.volume) / Avogadro for specie_id in ids }
-
-    @staticmethod
-    def all_species(model):
-        '''Generator function that provides all species names.'''
-        for species in model.species:
-            for conc in species.concentrations:
-                yield species_compartment_name(species, conc.compartment)
 
     @staticmethod
     def transcode_rate_laws(model):

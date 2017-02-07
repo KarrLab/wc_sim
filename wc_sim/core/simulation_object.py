@@ -229,7 +229,7 @@ class SimulationObject(object):
         self.num_events += 1
 
         # check for messages with invalid types
-        # TODO(Arthur): do this checking at send time, probably in SimulationObject.send_event()
+        # TODO(Arthur): IMPORTANT: do this checking at send time, probably in SimulationObject.send_event()
         invalid_types = (set([x.event_type for x in event_list])  -
             set(MessageTypesRegistry.receiver_priorities[most_qual_cls_name(self)]))
         if len(invalid_types):

@@ -22,6 +22,7 @@ from wc_sim.multialgorithm.species_population_cache import SpeciesPopulationCach
 from wc_sim.multialgorithm.species_pop_sim_object import SpeciesPopSimObject
 from wc_sim.multialgorithm.submodels.skeleton_submodel import SkeletonSubmodel
 from wc_sim.multialgorithm.multialgorithm_errors import SpeciesPopulationError
+import sys
 
 def store_i(i):
     return "store_{}".format(i)
@@ -37,8 +38,9 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
     MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures',
         'test_model_for_access_species_populations.xlsx')
 
+    # MODEL_FILENAME_STEADY_STATE contains a model with no net population change every 2 sec.
     MODEL_FILENAME_STEADY_STATE = os.path.join(os.path.dirname(__file__), 'fixtures',
-        'test_model_for_access_species_populations_2.xlsx')
+        'test_model_for_access_species_populations_steady_state.xlsx')
 
     def setUp(self):
         self.an_ASP = ASP(None, remote_pop_stores)
@@ -53,7 +55,7 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
 
         # make a model
         self.model = Reader().run(model_file)
-        return
+
         # make SpeciesPopSimObjects
         self.private_species = ExecutableModel.find_private_species(self.model)
         self.shared_species = ExecutableModel.find_shared_species(self.model)
@@ -195,7 +197,6 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
 
     def initialize_simulation(self, model_file):
         self.set_up_simulation(model_file)
-        return
         delay_to_first_event = 1.0/len(self.submodels)
         for name,submodel in iteritems(self.submodels):
 
@@ -221,11 +222,11 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
                 pop = submodel.access_species_population.read_one(sim_end, specie_id)
                 self.assertEqual(expected_final_pops[specie_id], pop)
 
+    @unittest.skip("skip until ExecutableModel is refactored")
     def test_simulation(self):
         '''Test a short simulation.'''
 
         self.initialize_simulation(self.MODEL_FILENAME)
-        return
 
         # run the simulation
         sim_end=3

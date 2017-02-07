@@ -121,13 +121,13 @@ class SsaSubmodel(Submodel):
         # Submodel.set_up_submodel(self)
         self.schedule_next_event()
 
-    # TODO(Arthur): IMPORTANT: handle reversible reactions
     def determine_reaction_propensities(self):
         """Determine the current reaction propensities for this submodel.
 
         Method:
         1. calculate concentrations
-        # TODO(Arthur): optimization: simply use counts to calculate propensities
+        # TODO(Arthur): IMPORTANT: optimization: simply use counts to calculate propensities
+        # TODO(Arthur): IMPORTANT: create benchmark & profile data to evaluate possible optimizations
         2. calculate propensities for this submodel
         3. avoid reactions with inadequate specie counts
 
@@ -257,7 +257,7 @@ class SsaSubmodel(Submodel):
 
             elif isclass_by_name(event_message.event_type, message_types.SsaWait):
 
-                # TODO(Arthur): generate error(s) if SsaWaits are numerous, or a high fraction of events
+                # TODO(Arthur): generate WARNING(s) if SsaWaits are numerous, or a high fraction of events
                 # no reaction to execute
                 self.schedule_next_event()
 

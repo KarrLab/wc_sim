@@ -33,6 +33,7 @@ class TestSsaSubmodel(unittest.TestCase):
         self.model = Reader().run(self.MODEL_FILENAME)
         ExecutableModel.set_up_simulation(self.model)
 
+    @unittest.skip("skip")
     def test_SSA_submodel_predictions(self):
         pass
     '''

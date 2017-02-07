@@ -24,8 +24,8 @@ from wc_utils.util.misc import round_direct
 from .debug_logs import logs as debug_logs
 
 class MessageTypesRegistry( object ):
-    """A registry of message types, which is used to check that objects are sending and receiving
-    the right types of messages.
+    """A registry of message types, which is used to 1) check that objects are sending and receiving
+    the right types of event messages, and 2) manage the execution priorities of event messages.
     """
 
     senders = {}
@@ -146,7 +146,7 @@ class SimulationEngine(object):
             The number of times a simulation object executes handle_event(). This may be larger than the number
             of events sent, because simultaneous events are handled together.
         """
-        # TODO(Arthur): IMPORTANT: add optional logical termation condition(s)
+        # TODO(Arthur): add optional logical termation condition(s)
 
         # write header to a plot log
         # plot logging is controlled by configuration files pointed to by config_constants and by env vars

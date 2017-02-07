@@ -105,6 +105,7 @@ class MultiAlgorithm(object):
             seed = config_core['reproducible_seed']
         RandomStateManager.instance().seed(seed)
 
+        # TODO(Arthur): IMPORTANT: create backward reactions for reversible reactions
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             # 0. read model description

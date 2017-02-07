@@ -60,7 +60,7 @@ class Event( object ):
 
         """
         # TODO(Arthur): allow formatting of the returned string, e.g. formatting the precision of time values
-        # TODO(Arthur): optionally, output the event_body, first checking that it supports str()
+        # TODO(Arthur): output the event_body, first checking that it supports str()
 
         return '\t'.join( [ round_direct(self.creation_time), round_direct(self.event_time),
             self.sending_object.name, self.receiving_object.name, self.event_type ] )
