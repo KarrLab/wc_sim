@@ -17,7 +17,7 @@ from scipy.constants import Avogadro
 
 from wc_sim.core.simulation_object import SimulationObject
 from wc_sim.multialgorithm.utils import species_compartment_name
-from wc_sim.multialgorithm.local_species_population import LocalSpeciesPopulation
+from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation
 from wc_sim.multialgorithm.debug_logs import logs as debug_logs
 
 class Submodel(SimulationObject):

@@ -6,7 +6,7 @@
 :License: MIT
 '''
 from scipy.constants import Avogadro
-from wc_sim.multialgorithm.local_species_population import LocalSpeciesPopulation
+from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation
 from wc_sim.multialgorithm.utils import species_compartment_name
 import numpy as np
 

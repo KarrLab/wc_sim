@@ -10,7 +10,7 @@ from wc_utils.util.misc import isclass_by_name
 from wc_sim.core.simulation_engine import MessageTypesRegistry
 from wc_sim.core.simulation_object import SimulationObject, EventQueue
 from wc_sim.multialgorithm import message_types
-from wc_sim.multialgorithm.access_species_populations import AccessSpeciesPopulations
+from wc_sim.multialgorithm.species_populations import AccessSpeciesPopulations
 from wc_sim.multialgorithm.submodels.submodel import Submodel
 from wc_sim.multialgorithm.message_types import ALL_MESSAGE_TYPES
 

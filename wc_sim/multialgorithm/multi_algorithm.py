@@ -33,7 +33,7 @@ from wc_sim.multialgorithm.config import paths as config_paths_multialgorithm
 from wc_sim.multialgorithm.submodels.ssa import SsaSubmodel
 from wc_sim.multialgorithm.submodels.fba import FbaSubmodel
 from wc_sim.multialgorithm.debug_logs import logs as debug_logs
-from wc_sim.multialgorithm.local_species_population import LocalSpeciesPopulation
+from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation
 from wc_sim.multialgorithm.executable_model import ExecutableModel
 from wc_utils.config.core import ConfigManager
 from wc_utils.util.rand import RandomStateManager
