@@ -15,7 +15,7 @@ dependencies:
       fi
     - ~/miniconda2/bin/conda install -y lxml matplotlib openpyxl numpy scipy
     - ~/miniconda2/bin/conda update -y lxml matplotlib openpyxl numpy scipy
-    - ~/miniconda2/bin/pip install -U -e git+https://github.com/KarrLab/Karr-Lab-build-utils.git#egg=Karr-Lab-build-utils
+    - ~/miniconda2/bin/pip install -U --ignore-installed -e git+https://github.com/KarrLab/Karr-Lab-build-utils.git#egg=Karr-Lab-build-utils
     - ~/miniconda2/bin/karr-lab-build-utils install-requirements
     - ~/miniconda2/bin/pip install -e .
     
@@ -26,7 +26,7 @@ dependencies:
       fi
     - ~/miniconda3/bin/conda install -y lxml matplotlib openpyxl numpy scipy
     - ~/miniconda3/bin/conda update -y lxml matplotlib openpyxl numpy scipy
-    - ~/miniconda3/bin/pip install -U -e git+https://github.com/KarrLab/Karr-Lab-build-utils.git#egg=Karr-Lab-build-utils
+    - ~/miniconda3/bin/pip install -U --ignore-installed -e git+https://github.com/KarrLab/Karr-Lab-build-utils.git#egg=Karr-Lab-build-utils
     - ~/miniconda3/bin/karr-lab-build-utils install-requirements
     - ~/miniconda3/bin/pip install -e .    
 test:
