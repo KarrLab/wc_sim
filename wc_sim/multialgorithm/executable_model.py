@@ -159,7 +159,7 @@ class ExecutableModel(object):
         Returns:
             set: a set containing the shared species.
         '''
-        all_species = model.get_species()
+        all_species = set(model.get_species())
 
         private_species_dict = ExecutableModel.find_private_species(model)
         private_species = set()
