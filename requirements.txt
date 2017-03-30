@@ -3,6 +3,7 @@ future
 lxml
 matplotlib
 numpy
+git+https://github.com/KarrLab/obj_model.git#egg=obj_model
 openpyxl
 python-libsbml
 recordtype
