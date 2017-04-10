@@ -8,6 +8,7 @@
 import unittest, os, sys, sysconfig
 import time, importlib
 from distutils.command.clean import clean
+import shutil
 
 import wc_sim
 from wc_sim.on_ROSS.try_c_and_python import setup_python_call_c, setup_python_with_c_callback
@@ -22,15 +23,16 @@ def distutils_dir_name(dname):
 class TestTryCandPython(unittest.TestCase):
 
     def setUp(self):
-        self.build_dir = os.path.join(os.path.dirname(wc_sim.__file__), '..', 'build', distutils_dir_name('lib')) 
+        self.build_dir = os.path.join(os.path.dirname(wc_sim.__file__), '..', 'build')
+        self.lib_dir = os.path.join(self.build_dir, distutils_dir_name('lib'))
 
     # test the Python extensions
     def test_python_call_c(self):
         # build the example Python extension
-        setup_python_call_c.call_setup()
+        self.distro = setup_python_call_c.call_setup()
         # sleep because it appears that setup returns before the commands it launches finishes
         time.sleep(2)
-        sys.path.append(self.build_dir)
+        sys.path.append(self.lib_dir)
         spam = importlib.import_module('spam')
 
         self.assertEqual(spam.system('date'), 0)
@@ -44,7 +46,7 @@ class TestTryCandPython(unittest.TestCase):
         # build the example Python extension
         setup_python_with_c_callback.call_setup()
         time.sleep(2)
-        sys.path.append(self.build_dir)
+        sys.path.append(self.lib_dir)
         callbacks = importlib.import_module('callbacks')
 
         def f1():
@@ -78,5 +80,5 @@ class TestTryCandPython(unittest.TestCase):
         self.assertIn('an integer is required', str(context.exception))
 
     def tearDown(self):
+        # todo: if the self.build_dir could be controlled, then remove it
         pass
-        # clean().run()

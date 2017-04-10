@@ -11,10 +11,16 @@ import os
 DIR = os.path.dirname(__file__)
 
 def call_setup():
+    '''
+    Build an extension module.
+
+    Returns:
+        A Distribution instance 
+    '''
     module1 = Extension('spam',
         sources = [os.path.join(DIR, 'spammodule.c')])
 
-    setup(
+    return setup(
         script_name = 'setup.py',
         script_args = ['build'],
         name = 'PackageName',

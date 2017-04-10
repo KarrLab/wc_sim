@@ -8,6 +8,8 @@
 *.o
 *.so
 __pycache__/
+# build directory for testing extensions
+build/
 
 # Packages #
 ############
