@@ -59,6 +59,7 @@ class TestTryCandPython(unittest.TestCase):
         a = 3
         # test Python return of Integer, parsed by PyArg_Parse
         def f2(n):
+            # test that Python receives the right argument from C
             self.assertEqual(n, a)
             return 1+n
         callbacks.set_callback(f2)
@@ -66,6 +67,7 @@ class TestTryCandPython(unittest.TestCase):
 
         # test Python return of a tuple, parsed by PyArg_ParseTuple
         def f3(n):
+            # test that Python receives the right argument from C
             self.assertEqual(n, a)
             return (1+n,)
         callbacks.set_callback(f3)
