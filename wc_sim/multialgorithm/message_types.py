@@ -8,23 +8,28 @@
 Declare
     1. For each message type which has an event_body, a class that represents the body
 
+Event message types, bodies and reply message:
+
+    AdjustPopulationByDiscreteModel
+        a discrete (stochastic) model increases or decreases some species copy numbers: data: dict: 
+        species_name -> population_change; no reply message
+
+    AdjustPopulationByContinuousModel    
+        a continuous model integrated by a time-step simulation increases or decreases some species 
+        copy numbers: data: dict: species_name -> (population_change, population_flux); no reply message
+
+    GetPopulation    
+        set of species whose population is needed; data: set: species_name(s)
+    
+    GivePopulation
+        response to GetPopulation; dict: species_name -> population
+
+For sequential simulator, store message bodies as a copy of or reference to sender's data structure
+
 Attributes:
     These are global attributes, since MessageTypes is static.
     senders: dict: SimulationObject type -> list of messages it sends
     receiver_priorities: dict: SimulationObject type -> list of messages it receives, in priority order
-
-Event message types, bodies and reply message:
-    AdjustPopulationByDiscreteModel: a discrete (stochastic) model increases or decreases some species copy
-        numbers: data: dict: species_name -> population_change; no reply message
-    AdjustPopulationByContinuousModel: a continuous model integrated by a time-step simulation increases or
-        decreases some species copy numbers:
-        data: dict: species_name -> (population_change, population_flux); no reply message
-    GetPopulation: set of species whose population is needed; data: set: species_name(s)
-    GivePopulation: response to GetPopulation; dict: species_name -> population
-
-    For sequential simulator, store message bodies as a copy of or reference to sender's data structure
-    # TODO(Arthur): for parallel simulation, use Pickle to serialize and deserialize message bodies
-
 '''
 
 '''
@@ -33,9 +38,10 @@ These classes should be used by all message senders and receivers.
 It is enforced by checking class names against message body types.
 
 '''
-
+# TODO(Arthur): for parallel simulation, use Pickle to serialize and deserialize message bodies
 # TODO(Arthur): put more message sending semantics into messages; derive from a Message base class,
-# minimize the code needed to create or read event messages, etc.
+#   minimize the code needed to create or read event messages, etc.
+
 
 from collections import namedtuple
 
