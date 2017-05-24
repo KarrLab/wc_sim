@@ -1,23 +1,14 @@
-.. Sequential WC simulator documentation master file, created by
-   sphinx-quickstart on Mon Aug  1 17:36:58 2016.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+`wc_sim` documentation
+======================
 
-Welcome to Sequential WC simulator's documentation!
-===================================================
+Whole-cell model simulator
 
-Contents:
+Contents
+--------
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
 
-   source/modules.rst
-   
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
+   installation.rst
+   API documentation <source/modules.rst>
+   about.rst
