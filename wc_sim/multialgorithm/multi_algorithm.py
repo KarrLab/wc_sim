@@ -17,6 +17,8 @@ For parallelization, we'll partition the cell state as described in our PADS 201
 Both SSA and FBA are self-clocking.
 """
 
+print('to be rewritten')
+exit()
 # TODO(Arthur): provide 'returns' documentation for all return operations
 
 import sys
@@ -34,7 +36,7 @@ from wc_sim.multialgorithm.submodels.ssa import SsaSubmodel
 from wc_sim.multialgorithm.submodels.fba import FbaSubmodel
 from wc_sim.multialgorithm.debug_logs import logs as debug_logs
 from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation
-from wc_sim.multialgorithm.executable_model import ExecutableModel
+from wc_sim.multialgorithm.dynamic_model import ExecutableModel
 from wc_utils.config.core import ConfigManager
 from wc_utils.util.rand import RandomStateManager
 
