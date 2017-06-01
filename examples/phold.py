@@ -6,7 +6,7 @@
 :License: MIT
 '''
 
-# TODO(Arthur): IMPORTANT: replace python random with RandomStateManager
+# TODO(Arthur): replace python random with RandomStateManager
 # from wc_utils.util.rand import RandomStateManager
 
 import random
@@ -14,113 +14,116 @@ import sys
 import argparse
 import datetime
 
-from wc_sim.core.simulation_object import EventQueue, SimulationObject
-from wc_sim.core.simulation_engine import SimulationEngine, MessageTypesRegistry
+from wc_sim.core.simulation_message import SimulationMsgUtils
+from wc_sim.core.simulation_object import EventQueue, SimulationObject, SimulationObjectInterface
+from wc_sim.core.simulation_engine import SimulationEngine
 from examples.debug_logs import logs as debug_logs
 
-def obj_name( obj_num ):
+def obj_name(obj_num):
     # create object name from index
-    return 'obj_{}'.format( obj_num )
+    return 'obj_{}'.format(obj_num)
 
-def obj_index( obj_name ):
-    # get object from name
+def obj_index(obj_name):
+    # get object index from name
     return int(obj_name.split('_')[1])
 
-def exp_delay( ):
-    return random.expovariate( 1.0 )
+def exp_delay():
+    return random.expovariate(1.0)
 
-class MessageSentToSelf(object):
-    '''A MessageSentToSelf message.'''
-    pass
+MessageSentToSelf = SimulationMsgUtils.create('MessageSentToSelf', "A message that's sent to self")
+MessageSentToOtherObject = SimulationMsgUtils.create('MessageSentToOtherObject',
+    "A message that's sent to another PHold simulation object")
+InitMsg = SimulationMsgUtils.create('InitMsg', 'initialization message')
+MESSAGE_TYPES = [MessageSentToSelf, MessageSentToOtherObject, InitMsg]
 
-class MessageSentToOtherObject(object):
-    pass
+class PholdSimulationObject(SimulationObject, SimulationObjectInterface):
 
-class InitMsg(object):
-    pass
-
-class PholdSimulationObject(SimulationObject):
-
-    def __init__( self, name, args ):
+    def __init__(self, name, args):
         self.args = args
-        super(PholdSimulationObject, self).__init__( name )
+        super(PholdSimulationObject, self).__init__(name)
 
-    def handle_event( self, event_list ):
-        '''Handle a simulation event.'''
-        # call handle_event() in class SimulationObject which might produce plotting output or do other things
-        super(PholdSimulationObject, self).handle_event( event_list )
+    def send_initial_events(self):
+        self.send_event(exp_delay(), self, InitMsg)
 
-        # Although P[receiving multiple messages simultaneously] = 0 because wait times are
-        # exponentially distributed, we handle each event in event_list separately
-        for i in range( len( event_list ) ):
-            # schedule event
-            if random.random() < self.args.frac_self_events or self.args.num_phold_procs == 1:
-                receiver = self
-                self.log_debug_msg( "{:8.3f}: {} sending to self".format( self.time, self.name ) )
+    def handle_simulation_event(self, event):
+        '''Handle a single simulation event.'''
+        # schedule event
+        if random.random() < self.args.frac_self_events or self.args.num_phold_procs == 1:
+            receiver = self
+            self.log_debug_msg("{:8.3f}: {} sending to self".format(self.time, self.name))
 
-            else:
-                # send to another process; pick process index in [0,num_phold-2], and increment if self
-                index = random.randrange(self.args.num_phold_procs-1)
-                if index == obj_index( self.name ):
-                    index += 1
-                receiver = SimulationEngine.simulation_objects[ obj_name( index ) ]
-                self.log_debug_msg( "{:8.3f}: {} sending to {}".format( self.time, self.name,
-                    obj_name( index ) ))
+        else:
+            # send to another process; pick process index in [0,num_phold-2], and increment if self
+            index = random.randrange(self.args.num_phold_procs-1)
+            if index == obj_index(self.name):
+                index += 1
+            receiver = self.simulator.simulation_objects[obj_name(index)]
+            self.log_debug_msg("{:8.3f}: {} sending to {}".format(self.time, self.name,
+                obj_name(index)))
 
-            if receiver == self:
-                event_type = MessageSentToSelf
-            else:
-                event_type = MessageSentToOtherObject
-            self.send_event( exp_delay(), receiver, event_type )
+        if receiver == self:
+            event_type = MessageSentToSelf
+        else:
+            event_type = MessageSentToOtherObject
+        self.send_event(exp_delay(), receiver, event_type)
 
     def log_debug_msg(self, msg):
-        log = debug_logs.get_log( 'wc.debug.console' )
-        log.debug( msg, sim_time=self.time, local_call_depth=1 )
+        log = debug_logs.get_log('wc.debug.console')
+        log.debug(msg, sim_time=self.time, local_call_depth=1)
 
-MESSAGE_TYPES = [ MessageSentToSelf, MessageSentToOtherObject, InitMsg ]
-MessageTypesRegistry.set_sent_message_types( PholdSimulationObject, MESSAGE_TYPES )
-MessageTypesRegistry.set_receiver_priorities( PholdSimulationObject, MESSAGE_TYPES )
+    @classmethod
+    def register_subclass_handlers(this_class):
+        SimulationObject.register_handlers(this_class,
+            [(sim_msg_type, this_class.handle_simulation_event) for sim_msg_type in MESSAGE_TYPES])
+
+    @classmethod
+    def register_subclass_sent_messages(this_class):
+        SimulationObject.register_sent_messages(this_class, MESSAGE_TYPES)
+
 
 class RunPhold(object):
 
     @staticmethod
     def parse_args():
-        parser = argparse.ArgumentParser( description="Run PHOLD simulation. "
+        parser = argparse.ArgumentParser(description="Run PHOLD simulation. "
             "Each PHOLD event either schedules an event for 'self' or for some other randomly selected LP, "
             "in either case with an exponentially-distributed time-stamp increment having mean of 1.0. "
             "See R. M. Fujimoto, Performance of Time Warp Under Synthetic Workloads, 1990 Distributed Simulation Conference, pp. 23-28, January 1990 and "
             "Barnes PD, Carothers CD, Jefferson DR, Lapre JM. Warp Speed: Executing Time Warp on 1,966,080 Cores. "
-            "SIGSIM-PADS '13. Montreal: Association for Computing Machinery; 2013. p. 327-36. " )
-        parser.add_argument( 'num_phold_procs', type=int, help="Number of PHOLD processes to run" )
-        parser.add_argument( 'frac_self_events', type=float, help="Fraction of events sent to self" )
-        parser.add_argument( 'end_time', type=float, help="End time for the simulation" )
-        parser.add_argument( '--seed', '-s', type=int, help='Random number seed' )
+            "SIGSIM-PADS '13. Montreal: Association for Computing Machinery; 2013. p. 327-36. ")
+        parser.add_argument('num_phold_procs', type=int, help="Number of PHOLD processes to run")
+        parser.add_argument('frac_self_events', type=float, help="Fraction of events sent to self")
+        parser.add_argument('end_time', type=float, help="End time for the simulation")
+        parser.add_argument('--seed', '-s', type=int, help='Random number seed')
         args = parser.parse_args()
         if args.num_phold_procs < 1:
-            parser.error( "Must create at least 1 PHOLD process." )
+            parser.error("Must create at least 1 PHOLD process.")
         if args.frac_self_events < 0:
-            parser.error( "Fraction of events sent to self ({}) should be >= 0.".format( args.frac_self_events ) )
+            parser.error("Fraction of events sent to self ({}) should be >= 0.".format(args.frac_self_events))
         if 1 < args.frac_self_events:
-            parser.error( "Fraction of events sent to self ({}) should be <= 1.".format( args.frac_self_events ) )
+            parser.error("Fraction of events sent to self ({}) should be <= 1.".format(args.frac_self_events))
         if args.seed:
-            random.seed( args.seed )
+            random.seed(args.seed)
         return args
 
     @staticmethod
     def main(args):
 
-        # create simulation objects
-        for obj_id in range( args.num_phold_procs ):
-            PholdSimulationObject( obj_name( obj_id ), args )
-
-        # send initial event messages, to self
-        for obj_id in range( args.num_phold_procs ):
-            obj = SimulationEngine.simulation_objects[ obj_name( obj_id ) ]
-            obj.send_event( exp_delay(), obj, InitMsg )
+        # create a simulator
+        simulator = SimulationEngine()
+        
+        # register the object type
+        simulator.register_object_types([PholdSimulationObject])
+        
+        # create simulation objects, and send each one an initial event message to self
+        for obj_id in range(args.num_phold_procs):
+            phold_obj = PholdSimulationObject(obj_name(obj_id), args)
+            simulator.add_object(phold_obj)
 
         # run the simulation
-        event_num = SimulationEngine.simulate( args.end_time )
-        sys.stderr.write( "Executed {} events.\n".format( event_num ) )
+        simulator.initialize()
+        event_num = simulator.simulate(args.end_time)
+        sys.stderr.write("Executed {} events.\n".format(event_num))
         return(event_num)
 
 if __name__ == '__main__':
