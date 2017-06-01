@@ -1,74 +1,31 @@
-'''A multialgorithmic whole-cell simulation's static set of message types and their content.
+'''A static set of message types and their content for multialgorithmic whole-cell simulations.
 
 :Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
 :Date: 2016-06-10
 :Copyright: 2016, Karr Lab
 :License: MIT
 
-Declare
-    1. For each message type which has an event_body, a class that represents the body
+Simulation message types are subclasses of `SimulationMessage`, defined by `SimulationMsgUtils.create()`.
+Every simulation event message contains a typed `SimulationMessage`.
 
-Attributes:
-    These are global attributes, since MessageTypes is static.
-    senders: dict: SimulationObject type -> list of messages it sends
-    receiver_priorities: dict: SimulationObject type -> list of messages it receives, in priority order
-
-Event message types, bodies and reply message:
-    AdjustPopulationByDiscreteModel: a discrete (stochastic) model increases or decreases some species copy
-        numbers: data: dict: species_name -> population_change; no reply message
-    AdjustPopulationByContinuousModel: a continuous model integrated by a time-step simulation increases or
-        decreases some species copy numbers:
-        data: dict: species_name -> (population_change, population_flux); no reply message
-    GetPopulation: set of species whose population is needed; data: set: species_name(s)
-    GivePopulation: response to GetPopulation; dict: species_name -> population
-
-    For sequential simulator, store message bodies as a copy of or reference to sender's data structure
-    # TODO(Arthur): for parallel simulation, use Pickle to serialize and deserialize message bodies
-
+For this sequential simulator, simulation messages are stores as a copy of or reference to sender's data structure
+# TODO(Arthur): for parallel simulation, serialize and deserialize message bodies, perhaps with Pickle
 '''
 
-'''
-Define a class that stores the body of each message type. This avoids confusing the structure of a message body.
-These classes should be used by all message senders and receivers.
-It is enforced by checking class names against message body types.
-
-'''
-
-# TODO(Arthur): put more message sending semantics into messages; derive from a Message base class,
-# minimize the code needed to create or read event messages, etc.
-
+from wc_sim.core.simulation_message import SimulationMsgUtils
 from collections import namedtuple
 
-class AdjustPopulationByDiscreteModel(object):
+AdjustPopulationByDiscreteSubmodel = SimulationMsgUtils.create('AdjustPopulationByDiscreteSubmodel',
     '''A WC simulator message sent by a discrete time submodel to adjust species counts.
 
         Attributes:
             population_change (:obj:`dict` of `float`): map: species_id -> population_change;
-            changes in the population of the identified species.
-    '''
-
-    class Body(object):
-        '''The content of an AdjustPopulationByDiscreteModel message.'''
-
-        __slots__ = ["population_change"]
-        def __init__(self, population_change):
-            self.population_change = population_change
-
-        def add(self, specie, adjustment):
-            self.population_change[specie] = adjustment
-
-        def __str__(self):
-            '''Return string representation of an AdjustPopulationByDiscreteModel message body.
-
-                Has the form: specie:change: <name1>:<change1>, <name2>:<change2>, ...
-            '''
-            l = ["{}:{:.1f}".format(x, self.population_change[x]) for x in \
-                sorted(self.population_change.keys())]
-            return "specie:change: {}".format(', '.join(l))
+            changes in the population of the identified species.''',
+    ["population_change"])
 
 ContinuousChange_namedtuple = namedtuple('ContinuousChange_namedtuple', 'change, flux')
 class ContinuousChange(ContinuousChange_namedtuple):
-    '''A namedtuple to be used in the body of an AdjustPopulationByContinuousModel message.'''
+    '''A namedtuple to be used in the body of an AdjustPopulationByContinuousSubmodel message.'''
 
     def type_check(self):
         '''Check that the fields in ContinuousChange are numbers.
@@ -94,111 +51,104 @@ class ContinuousChange(ContinuousChange_namedtuple):
         self.type_check()
         return self
 
-
-class AdjustPopulationByContinuousModel(object):
+AdjustPopulationByContinuousSubmodel = SimulationMsgUtils.create('AdjustPopulationByContinuousSubmodel',
     '''A WC simulator message sent by a continuous submodel to adjust species counts.
 
-        Continuous submodels model species populations as continuous variables. They're usually
-        simulated by time-stepped methods. Common examples include ODEs and dynamic FBA.
+    Continuous submodels model species populations as continuous variables. They're usually
+    simulated by time-stepped methods. Common examples include ODEs and dynamic FBA.
 
-        Attributes:
-            population_change (:obj:`dict` of :obj:`ContinuousChange`):
-                map: species_id -> ContinuousChange namedtuple; changes in the population of the
-                identified species, and the predicted future flux of the species (which may be
-                simply the historic flux).
-    '''
+    Attributes:
+        population_change (:obj:`dict` of :obj:`ContinuousChange`):
+            map: species_id -> ContinuousChange namedtuple; changes in the population of the
+            identified species, and the predicted future flux of the species (which may be
+            simply the historic flux).''',
+    ['population_change'])
 
-    class Body(object):
-        __slots__ = ["population_change"]
-
-        def __init__(self, population_change):
-            self.population_change = population_change
-
-        def add(self, specie_id, cont_change):
-            '''
-                Args:
-                    specie_id (str): a unique specie identifier.
-                    cont_change (:obj:`ContinuousChange`): the continuous change for the named tuple.
-            '''
-            self.population_change[specie] = cont_change
-
-        def __str__(self):
-            '''Return string representation of an AdjustPopulationByContinuousModel message body.
-
-                Has the form: specie:(change,flux): <name1>:(<change1>,<flux1>),
-                <name2>:(<change2>,<flux2>), ...
-            '''
-            l = ["{}:({:.1f},{:.1f})".format(
-                x, self.population_change[x].change, self.population_change[x].flux) \
-                for x in sorted(self.population_change.keys())]
-            return "specie:(change,flux): {}".format(', '.join(l))
-
-class GetPopulation(object):
+GetPopulation = SimulationMsgUtils.create('GetPopulation',
     '''A WC simulator message sent by a submodel to obtain some current specie populations.
 
-        Attributes:
-            species (:obj:`set` of `str`): set of species_ids; the species whose populations are
-            requested.
-    '''
+    Attributes:
+        species (:obj:`set` of `str`): set of species_ids; the species whose populations are
+        requested.
+    ''',
+    ['species'])
 
-    class Body(object):
-        __slots__ = ["species"]
-        def __init__(self, species):
-            self.species = species
-
-        def __str__(self):
-            '''Return string representation of a GetPopulation message body.
-
-                Has the form: species: <name1>, <name2>, ...
-            '''
-            return "species: {}".format(', '.join(sorted(list(self.species))))
-
-class GivePopulation(object):
+GivePopulation = SimulationMsgUtils.create('GivePopulation',
     '''A WC simulator message sent by a species pop object to report some current specie populations.
 
         Attributes:
             population (:obj:`dict` of `str`): species_id -> population; the populations of some species.
-    '''
-
-    class Body(object):
-        __slots__ = ["population"]
-        def __init__(self, population):
-            self.population = population
-
-        def __str__(self):
-            '''Return string representation of a GivePopulation message body.
-
-                Has the form: specie:population: <name1>:<pop1>, <name2>:<pop2>, ...
-            '''
-            l = ["{}:{:.1f}".format(x, self.population[x]) \
-                for x in sorted(self.population.keys())]
-            return "specie:population: {}".format(', '.join(l))
+    ''',
+    ['population'])
 
 # TODO(Arthur): make a pair of messages that Get and Give the population of one specie
 
-class ExecuteSsaReaction(object):
+AggregateProperty = SimulationMsgUtils.create('AggregateProperty',
+    '''A WC simulator message sent to aggregate a property
+
+        Attributes:
+            property_name (:obj:`str`): the name of the requested property
+    ''',
+    ['property_name'])
+
+'''
+We support two different types of get-property messages, GetCurrentProperty and GetHistoricalProperty,
+with these semantics:
+* GetCurrentProperty: get the value of a property at the simulation time of the event containing this
+    message
+* GetHistoricalProperty: get the value of a property at a time <= the simulation time of the event
+Thus, a GetHistoricalProperty should be sent to a module that can provide the property's history,
+at least over some time period. Handling it generates an error if the property is not available
+at the requested time.
+'''
+
+GetHistoricalProperty = SimulationMsgUtils.create('GetHistoricalProperty',
+    '''A WC simulator message sent to obtain a property at a time that's not in the future
+
+        Attributes:
+            property_name (:obj:`str`): the name of the requested property
+            time (`float`): the time at which the property should be measured
+    ''',
+    ['property_name', 'time'])
+
+GetCurrentProperty = SimulationMsgUtils.create('GetCurrentProperty',
+    '''A WC simulator message sent to obtain a property at the receiver's current time
+
+        Attributes:
+            property_name (:obj:`str`): the name of the requested property
+    ''',
+    ['property_name'])
+
+GiveProperty = SimulationMsgUtils.create('GiveProperty',
+    '''A WC simulator message sent by a simulation object to report a property
+
+        Attributes:
+            property_name (:obj:`str`): the name of the reported property
+            time (`float`): the time at which the property was measured
+            value (:obj:`object`): the value of the property at `time`
+    ''',
+    ['property_name', 'time', 'value'])
+
+ExecuteSsaReaction = SimulationMsgUtils.create('ExecuteSsaReaction',
     '''A WC simulator message sent by a SsaSubmodel to itself to schedule an SSA reaction execution.
 
         Attributes:
             reaction_index (int): the index of the selected reaction in `SsaSubmodel.reactions`.
-    '''
+    ''',
+    ['reaction_index'])
 
-    class Body(object):
-        __slots__ = ["reaction_index"]
-        def __init__(self, reaction_index):
-            self.reaction_index = reaction_index
+SsaWait = SimulationMsgUtils.create('SsaWait',
+    '''A WC simulator message sent by a SsaSubmodel to itself to temporarily suspend activity
+        because no reactions are runnable.
+    ''')
 
-class SsaWait(object):
-    '''A SsaWait message.'''
-    pass
-
-class RunFba(object):
-    '''A RunFba message.'''
-    pass
+RunFba = SimulationMsgUtils.create('RunFba',
+    '''A WC simulator message sent by a DfbaSubmodel to itself to schedule the next FBA execution.
+    ''')
 
 ALL_MESSAGE_TYPES = [
-    AdjustPopulationByDiscreteModel,    # A discrete model changes the population.
-    AdjustPopulationByContinuousModel,  # A continuous model changes the population.
+    AdjustPopulationByDiscreteSubmodel,    # A discrete model changes the population.
+    AdjustPopulationByContinuousSubmodel,  # A continuous model changes the population.
     GetPopulation,                      # A submodel requests populations from a
                                         # species population simulation object.
     GivePopulation,                     # A species population simulation object provides
@@ -206,4 +156,8 @@ ALL_MESSAGE_TYPES = [
     ExecuteSsaReaction,                 # An SSA submodel schedules its next reaction.
     SsaWait,                            # An SSA submodel with 0 total propensity schedules
                                         # a future effort to schedule a reaction.
-    RunFba]                             # An FBA submodel schedules its next computation.
+    RunFba,                             # An FBA submodel schedules its next computation.
+    AggregateProperty,                  # Aggregate a property
+    GetCurrentProperty,                 # get the value of a property at the current simulation time
+    GetHistoricalProperty,              # get a property's value at a time <= the current simulation time
+    GiveProperty]                       # Provide a property to a requestor
