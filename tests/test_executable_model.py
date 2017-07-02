@@ -7,11 +7,11 @@
 '''
 
 import os, unittest
+from obj_model import utils
 from wc_sim.multialgorithm.executable_model import ExecutableModel
 from wc_sim.multialgorithm.submodels.submodel import Submodel
 from wc_lang.core import Model
 from wc_lang.io import Reader
-from wc_utils.schema import utils
 
 class TestExecutableModel(unittest.TestCase):
     MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_model.xlsx')

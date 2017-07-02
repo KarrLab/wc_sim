@@ -16,7 +16,7 @@ class TestExponentialMovingAverage(unittest.TestCase):
             self.assertEqual( x, ema.add_value(x) )
         with self.assertRaises(ValueError) as context:
             ExponentialMovingAverage( x )
-        self.assertIn( 'alpha or center_of_mass must be provided', str(context.exception) )
+        self.assertIn('`alpha` or `center_of_mass` must be provided', str(context.exception) )
         with self.assertRaises(ValueError) as context:
             ExponentialMovingAverage( x, alpha=2 )
-        self.assertIn( 'alpha should satisfy 0<alpha<1: but alpha=2', str(context.exception) )
+        self.assertIn('`alpha` must satisfy 0 <= `alpha` <= 1: but `alpha`=2', str(context.exception) )

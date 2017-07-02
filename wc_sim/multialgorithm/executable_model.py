@@ -7,6 +7,7 @@
 '''
 
 import numpy as np
+from obj_model import utils
 from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation
 from wc_sim.multialgorithm.submodels.submodel import Submodel
 from wc_sim.multialgorithm.utils import species_compartment_name
@@ -14,7 +15,6 @@ from scipy.constants import Avogadro
 from collections import defaultdict
 from wc_lang.core import (Submodel, Reaction, SpeciesType, SpeciesTypeType, Species, Compartment,
                           ReactionParticipant)
-from wc_utils.schema import utils
 
 class ExecutableModel(object):
     '''A set of methods that modify a Model so it can be used in a multi-algorithmic simulation.'''
@@ -159,7 +159,7 @@ class ExecutableModel(object):
         Returns:
             set: a set containing the shared species.
         '''
-        all_species = model.get_species()
+        all_species = set(model.get_species())
 
         private_species_dict = ExecutableModel.find_private_species(model)
         private_species = set()

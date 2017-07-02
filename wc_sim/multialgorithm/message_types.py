@@ -8,7 +8,30 @@
 Simulation message types are subclasses of `SimulationMessage`, defined by `SimulationMsgUtils.create()`.
 Every simulation event message contains a typed `SimulationMessage`.
 
-For this sequential simulator, simulation messages are stores as a copy of or reference to sender's data structure
+Declare
+    1. For each message type which has an event_body, a class that represents the body
+
+Event message types, bodies and reply message:
+
+    AdjustPopulationByDiscreteSubmodel
+        a discrete (stochastic) model increases or decreases some species copy numbers: data: dict: 
+        species_name -> population_change; no reply message
+
+    AdjustPopulationByContinuousSubmodel
+        a continuous model integrated by a time-step simulation increases or decreases some species 
+        copy numbers: data: dict: species_name -> (population_change, population_flux); no reply message
+
+    GetPopulation    
+        set of species whose population is needed; data: set: species_name(s)
+    
+    GivePopulation
+        response to GetPopulation; dict: species_name -> population
+
+Define a class that stores the body of each message type. This avoids confusing the structure of a message body.
+These classes should be used by all message senders and receivers.
+It is enforced by checking class names against message body types.
+
+For this sequential simulator, simulation messages are stored as a copy of or reference to sender's data structure
 # TODO(Arthur): for parallel simulation, serialize and deserialize message bodies, perhaps with Pickle
 '''
 
