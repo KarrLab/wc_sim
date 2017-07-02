@@ -8,7 +8,7 @@
 
 from wc_utils.util.misc import round_direct
 
-class Event( object ):
+class Event(object):
     """An object that holds a discrete event simulation (DES) event.
 
     Each DES event is scheduled by an Event instance. To reduce interface errors event_type and
@@ -27,7 +27,7 @@ class Event( object ):
     # TODO(Arthur): for performance, perhaps pre-allocate and reuse events
     # use __slots__ to save space
     __slots__ = "creation_time event_time sending_object receiving_object event_type event_body".split()
-    def __init__( self, creation_time, event_time, sending_object, receiving_object, event_type,
+    def __init__(self, creation_time, event_time, sending_object, receiving_object, event_type,
         event_body=None):
         self.creation_time = creation_time
         self.event_time = event_time
@@ -37,19 +37,18 @@ class Event( object ):
         self.event_body = event_body
 
     def __lt__(self, other):
-        self.event_time < other.event_time
+        return self.event_time < other.event_time
 
     def __le__(self, other):
-        self.event_time <= other.event_time
+        return self.event_time <= other.event_time
 
     def __gt__(self, other):
-        self.event_time > other.event_time
+        return self.event_time > other.event_time
 
     def __ge__(self, other):
-        self.event_time >= other.event_time
+        return self.event_time >= other.event_time
 
-
-    def __str__( self ):
+    def __str__(self):
         """Return an Event as a string.
 
         To generate the returned string, it is assumed that sending_object and receiving_object
@@ -61,17 +60,15 @@ class Event( object ):
         """
         # TODO(Arthur): allow formatting of the returned string, e.g. formatting the precision of time values
         # TODO(Arthur): output the event_body, first checking that it supports str()
-
-        return '\t'.join( [ round_direct(self.creation_time), round_direct(self.event_time),
-            self.sending_object.name, self.receiving_object.name, self.event_type ] )
+        return '\t'.join([round_direct(self.creation_time), round_direct(self.event_time),
+            self.sending_object.name, self.receiving_object.name, self.event_type])
 
     @staticmethod
-    def header( ):
+    def header():
         """Return a header for an Event table.
 
         Returns:
             String Event table header.
 
         """
-        return '\t'.join( 'creation_time event_time sending_object receiving_object event_type'.split() )
-
+        return '\t'.join('creation_time event_time sending_object receiving_object event_type'.split())
