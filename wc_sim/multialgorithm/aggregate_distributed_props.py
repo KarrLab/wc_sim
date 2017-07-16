@@ -7,7 +7,6 @@
 '''
 
 from scipy.constants import Avogadro
-import six
 from collections import defaultdict
 import bisect
 import builtins, math, sys

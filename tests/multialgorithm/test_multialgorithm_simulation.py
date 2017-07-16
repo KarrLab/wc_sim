@@ -7,7 +7,7 @@
 
 import os, unittest
 from argparse import Namespace
-from six import iteritems
+import six
 
 from wc_sim.multialgorithm.multialgorithm_simulation import (DynamicModel, MultialgorithmSimulation,
     CheckModel)
@@ -54,7 +54,7 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         self.multialgorithm_simulation.initialize()
         self.simulation_engine = self.multialgorithm_simulation.build_simulation()
         self.assertEqual(len(self.simulation_engine.simulation_objects.keys()), 3)
-        for name,simulation_obj in iteritems(self.simulation_engine.simulation_objects):
+        for name,simulation_obj in six.iteritems(self.simulation_engine.simulation_objects):
             print("\n{}: {} event queue:".format(simulation_obj.__class__.__name__, name))
             print(simulation_obj.event_queue_to_str())
         # self.simulation_engine.simulate(10)
@@ -123,4 +123,4 @@ class TestCheckModel(unittest.TestCase):
             [".*reaction_1 uses specie specie_1 in another compartment: e",
                 ".*reaction_1 uses specie specie_2 in another compartment: e",
                 ".*'submodel_2' must contain a compartment attribute"]):
-            self.assertRegex(actual, expected)
+            six.assertRegex(self, actual, expected)

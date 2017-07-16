@@ -10,7 +10,6 @@ import numpy as np
 import os, unittest, copy
 import re
 import six
-from six import iteritems
 import string
 import sys
 import unittest
@@ -207,7 +206,7 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
     def initialize_simulation(self, model_file):
         self.set_up_simulation(model_file)
         delay_to_first_event = 1.0/len(self.submodels)
-        for name,submodel in iteritems(self.submodels):
+        for name,submodel in six.iteritems(self.submodels):
 
             # prefetch into caches
             submodel.access_species_population.prefetch(delay_to_first_event,
@@ -490,13 +489,13 @@ class TestSpecie(unittest.TestCase):
             "continuous_flux: 0", str(s1))
 
         if six.PY3:
-            self.assertRegex(s1.row(), 'specie\t10\..*\t0\..*\t0\..*')
+            six.assertRegex(self, s1.row(), 'specie\t10\..*\t0\..*\t0\..*')
             s2 = Specie('specie2', 10, initial_flux=2.1)
-            self.assertRegex(s2.row(), 'specie2\t10\..*\t0\..*\t2\.1.*')
+            six.assertRegex(self, s2.row(), 'specie2\t10\..*\t0\..*\t2\.1.*')
         else:
-            self.assertRegexpMatches(s1.row(), 'specie\t10\..*\t0\..*\t0\..*')
+            six.assertRegex(self, s1.row(), 'specie\t10\..*\t0\..*\t0\..*')
             s2 = Specie('specie2', 10, initial_flux=2.1)
-            self.assertRegexpMatches(s2.row(), 'specie2\t10\..*\t0\..*\t2\.1.*')
+            six.assertRegex(self, s2.row(), 'specie2\t10\..*\t0\..*\t2\.1.*')
 
         with self.assertRaises(ValueError) as context:
             s1.continuous_adjustment(2, -23, 1)

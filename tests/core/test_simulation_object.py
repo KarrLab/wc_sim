@@ -7,6 +7,7 @@
 
 import unittest
 import random
+import six
 
 from wc_sim.core.simulation_object import EventQueue, SimulationObject, SimulationObjectInterface
 from wc_sim.core.simulation_engine import SimulationEngine
@@ -105,7 +106,7 @@ class TestSimulationObject(unittest.TestCase):
         event_time = -1
         with self.assertRaises(ValueError) as context:
             self.o1.send_event_absolute(event_time, self.o2, Eg1)
-        self.assertRegexpMatches(str(context.exception),
+        six.assertRegex(self, str(context.exception),
             "event_time \(-1.*\) < current time \(0.*\) in send_event_absolute\(\)")
 
         eq = EventQueue()
