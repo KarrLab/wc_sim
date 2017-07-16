@@ -17,16 +17,14 @@ with warnings.catch_warnings():
     from cobra import Reaction as CobraReaction
 
 from scipy.constants import Avogadro
-from wc_sim.core.simulation_object import EventQueue, SimulationObject
-from wc_sim.core.simulation_engine import MessageTypesRegistry
+from wc_sim.core.simulation_object import SimulationObject
 from wc_sim.multialgorithm import message_types
-from wc_sim.multialgorithm.executable_model import ExchangedSpecies
 from wc_sim.multialgorithm.submodels.submodel import Submodel
 from wc_utils.util.misc import isclass_by_name
 
 class FbaSubmodel(Submodel):
     '''
-    FbaSubmodel employs Flus Balance Analysis to predict the reaction fluxes of
+    FbaSubmodel employs Flux Balance Analysis to predict the reaction fluxes of
     a set of chemical species in a 'well-mixed' container constrained by maximizing
     biomass increase.
 
@@ -47,10 +45,23 @@ class FbaSubmodel(Submodel):
     Event messages:
         RunFba
         # messages after future enhancement
-        AdjustPopulationByContinuousModel
+        AdjustPopulationByContinuousSubmodel
         GetPopulation
         GivePopulation
     '''
+
+    # message types sent by FbaSubmodel
+    SENT_MESSAGE_TYPES = [
+        message_types.RunFba,
+        message_types.AdjustPopulationByContinuousSubmodel,
+        message_types.GetPopulation,
+        ]
+
+    # at any time instant, process messages in this order
+    MESSAGE_TYPES_BY_PRIORITY = [
+        message_types.GivePopulation,
+        message_types.RunFba,
+        ]
 
     def __init__(self, model, name, access_species_population,
         reactions, species, parameters, time_step ):
@@ -70,7 +81,7 @@ class FbaSubmodel(Submodel):
 
         # log initialization data
         self.log_with_time( "init: name: {}".format( name ) )
-        self.log_with_time( "init: species: {}".format( str([s.name for s in species]) ) )
+        self.log_with_time( "init: species: {}".format( str([s.serialize() for s in species]) ) )
         self.log_with_time( "init: time_step: {}".format( str(time_step) ) )
 
         self.metabolismProductionReaction = None
@@ -98,7 +109,7 @@ class FbaSubmodel(Submodel):
         # setup metabolites
         cbMets = []
         for species in self.species:
-            cbMets.append(CobraMetabolite(id = species.id, name = species.name))
+            cbMets.append(CobraMetabolite(id = species.serialize(), name = species.species_type.name))
         cobraModel.add_metabolites(cbMets)
 
         # setup reactions
@@ -114,7 +125,7 @@ class FbaSubmodel(Submodel):
 
             cbMets = {}
             for part in rxn.participants:
-                cbMets[part.id] = part.coefficient
+                cbMets[part.species.serialize()] = part.coefficient
             cbRxn.add_metabolites(cbMets)
 
         # add external exchange reactions
@@ -122,19 +133,19 @@ class FbaSubmodel(Submodel):
         for i_species, species in enumerate(self.species):
             if species.compartment.id == 'e':
                 cbRxn = CobraReaction(
-                    id = '{}Ex'.format(species.species.id),
-                    name = '{} exchange'.format(species.species.name),
+                    id = '{}Ex'.format(species.serialize()),
+                    name = '{} exchange'.format(species.serialize()),
                     lower_bound = -self.defaultFbaBound,
                     upper_bound =  self.defaultFbaBound,
                     objective_coefficient = 0)
                 cobraModel.add_reaction(cbRxn)
-                cbRxn.add_metabolites({species.id: 1})
+                cbRxn.add_metabolites({species.serialize(): 1})
 
                 self.exchangedSpecies.append(ExchangedSpecies(
-                    id = species.id,
+                    id = species.serialize(),
                     species_index = i_species,
                     fba_reaction_index = cobraModel.reactions.index(cbRxn),
-                    is_carbon_containing = species.species.is_carbon_containing()))
+                    is_carbon_containing = species.species_type.is_carbon_containing()))
 
         # add biomass exchange reaction
         cbRxn = CobraReaction(
@@ -145,7 +156,9 @@ class FbaSubmodel(Submodel):
             objective_coefficient = 0,
             )
         cobraModel.add_reaction(cbRxn)
-        cbRxn.add_metabolites({'Biomass[c]': -1})
+        # TODO(Arthur): generalize this: the biomass reaction may not be named 'Biomass', and may
+        # model compartments other than 'c'
+        cbRxn.add_metabolites({'biomass[c]': -1})
 
         '''Bounds'''
         # thermodynamic
@@ -253,6 +266,7 @@ class FbaSubmodel(Submodel):
             rxn.upper_bound = upperBounds[i_rxn]
 
 
+    # todo: restructure
     def handle_event( self, event_list ):
         '''Handle a FbaSubmodel simulation event.
 
@@ -294,18 +308,26 @@ class FbaSubmodel(Submodel):
                 "event_message.event_type '{}'".format(event_message.event_type)
 
 
-SENT_MESSAGE_TYPES = [
-    message_types.RunFba,
-    message_types.AdjustPopulationByContinuousModel,
-    message_types.GetPopulation,
-    ]
+class ExchangedSpecies(object):
+    ''' Represents an exchanged species and its exchange reaction
 
-MessageTypesRegistry.set_sent_message_types( FbaSubmodel, SENT_MESSAGE_TYPES )
+    Attributes:
+        id (:obj:`str`): id
+        species_index (:obj:`int`): index of exchanged species within list of species
+        fba_reaction_index (:obj:`int`): index of species' exchange reaction within list of cobra model reactions
+        is_carbon_containing(:obj:`bool`): indicates if exchanged species contains carbon
+    '''
 
-# at any time instant, process messages in this order
-MESSAGE_TYPES_BY_PRIORITY = [
-    message_types.GivePopulation,
-    message_types.RunFba,
-    ]
+    def __init__(self, id, species_index, fba_reaction_index, is_carbon_containing):
+        ''' Construct an object to represent an exchanged species and its exchange reaction
 
-MessageTypesRegistry.set_receiver_priorities( FbaSubmodel, MESSAGE_TYPES_BY_PRIORITY )
+        Args:
+            id (:obj:`str`): id
+            species_index (:obj:`int`): index of exchanged species within list of species
+            fba_reaction_index (:obj:`int`): index of species' exchange reaction within list of cobra model reactions
+            is_carbon_containing(:obj:`bool`): indicates if exchanged species contains carbon
+        '''
+        self.id = id
+        self.species_index = species_index
+        self.fba_reaction_index = fba_reaction_index
+        self.is_carbon_containing = is_carbon_containing

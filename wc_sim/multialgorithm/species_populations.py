@@ -10,15 +10,17 @@ import numpy as np
 import sys
 from collections import defaultdict
 from six import iteritems
+from scipy.constants import Avogadro
 
-from wc_sim.core.simulation_engine import MessageTypesRegistry
-from wc_sim.core.simulation_object import SimulationObject
+from wc_sim.core.simulation_object import SimulationObject, SimulationObjectInterface
 from wc_sim.multialgorithm import message_types
 
 from wc_sim.multialgorithm.config import paths as config_paths_multialgorithm
 from wc_sim.multialgorithm.debug_logs import logs as debug_logs
+from wc_sim.multialgorithm.model_utilities import ModelUtilities
 from wc_sim.multialgorithm.multialgorithm_errors import NegativePopulationError, SpeciesPopulationError
 from wc_sim.multialgorithm.utils import species_compartment_name
+from wc_sim.multialgorithm import distributed_properties
 from wc_utils.config.core import ConfigManager
 from wc_utils.util.dict import DictUtil
 from wc_utils.util.misc import isclass_by_name as check_class
@@ -39,17 +41,17 @@ class AccessSpeciesPopulationInterface():
         pass
 
     @abc.abstractmethod
-    def read( self, time, species ):
+    def read(self, time, species):
         '''Obtain the predicted population of a list of species at a particular time.'''
         pass
 
     @abc.abstractmethod
-    def adjust_discretely( self, time, adjustments ):
+    def adjust_discretely(self, time, adjustments):
         '''A discrete model adjusts the population of a set of species at a particular time.'''
         pass
 
     @abc.abstractmethod
-    def adjust_continuously( self, time, adjustments ):
+    def adjust_continuously(self, time, adjustments):
         '''A continuous model adjusts the population of a set of species at a particular time.'''
         pass
 
@@ -82,7 +84,7 @@ class AccessSpeciesPopulations(AccessSpeciesPopulationInterface):
         species_locations (:obj:`dict` of `str`): a map indicating the store for each specie used
             by the submodel using this object, that is, the local submodel.
         local_pop_store (:obj:`LocalSpeciesPopulation`): a store of local species.
-        remote_pop_stores (:obj:`dict` of identifiers of`SpeciesPopSimObject`): a map from store name
+        remote_pop_stores (:obj:`dict` of identifiers of `SpeciesPopSimObject`): a map from store name
             to a system identifier for the remote population store(s) that the local submodel uses.
             For a shared memory implementation system identifiers can be object references; for a
             distributed implementation they must be network object identifiers.
@@ -91,14 +93,12 @@ class AccessSpeciesPopulations(AccessSpeciesPopulationInterface):
             remote populations are pre-fetched at the right simulation time (via GetPopulation and
             GivePopulation messages) into this cache and then read from it when needed.
     '''
-
     def __init__(self, local_pop_store, remote_pop_stores):
         '''Initialize an AccessSpeciesPopulations object.
 
-        The attributes submodel and species_population_cache both reference objects that also
-        must reference this AccessSpeciesPopulations instance. This object must be
-        instantiated first; then these other objects are created and they set their references
-        with the set_*() methods below.
+        The submodel object referenced in the attribute submodel must reference this
+        AccessSpeciesPopulations instance. This object must be instantiated first; then the submodel
+        can be created and set its reference with the set_*() method below.
 
         Raises:
             SpeciesPopulationError: if the remote_pop_stores contains a store named
@@ -110,14 +110,11 @@ class AccessSpeciesPopulations(AccessSpeciesPopulationInterface):
                 "remote_pop_store name".format(LOCAL_POP_STORE))
         self.remote_pop_stores = remote_pop_stores
         self.species_locations = {}
+        self.species_population_cache = SpeciesPopulationCache(self)
 
     def set_submodel(self, submodel):
         '''Set the submodel that uses this AccessSpeciesPopulations.'''
         self.submodel = submodel
-
-    def set_species_population_cache(self, species_population_cache):
-        '''Set the SpeciesPopulationCache used by this AccessSpeciesPopulations.'''
-        self.species_population_cache = species_population_cache
 
     def add_species_locations(self, store_name, specie_ids, replace=False):
         '''Add species locations to the species location map.
@@ -127,7 +124,8 @@ class AccessSpeciesPopulations(AccessSpeciesPopulationInterface):
         exception, set `replace` to True.
 
         Args:
-            store_name (str): the globally unique name of a species population store.
+            store_name (str): the globally unique name of a species population store. `LOCAL_POP_STORE`
+                is a special name that identifies the local population store for private species
             specie_ids (:obj:`list` of `str`): a list of species ids.
 
         Raises:
@@ -157,6 +155,8 @@ class AccessSpeciesPopulations(AccessSpeciesPopulationInterface):
 
         Args:
             specie_ids (:obj:`list` of specie_ids): a list of species ids.
+            force (:obj:`boolean`, optional): if set, do not raise an exception if a specie_id in
+                `specie_ids` is not found in the species location map.
 
         Raises:
             SpeciesPopulationError: if `force` is False and any specie_id in `specie_ids` is not in the
@@ -272,7 +272,7 @@ class AccessSpeciesPopulations(AccessSpeciesPopulationInterface):
 
         Distribute the adjustments among the population stores managed by this object.
         Iterate through the components that store the population of species listed in `adjustments`.
-        Update the local population store immediately and send AdjustPopulationByDiscreteModel
+        Update the local population store immediately and send AdjustPopulationByDiscreteSubmodel
         messages to the remote stores. Since these messages are asynchronous, this method returns
         as soon as they are sent.
 
@@ -293,8 +293,8 @@ class AccessSpeciesPopulations(AccessSpeciesPopulationInterface):
             else:
                 self.submodel.send_event(time-self.submodel.time,
                     self.remote_pop_stores[store],
-                    message_types.AdjustPopulationByDiscreteModel,
-                    event_body=message_types.AdjustPopulationByDiscreteModel.Body(store_adjustments))
+                    message_types.AdjustPopulationByDiscreteSubmodel,
+                    event_body=message_types.AdjustPopulationByDiscreteSubmodel(store_adjustments))
         return stores
 
     def adjust_continuously(self, time, adjustments):
@@ -319,8 +319,8 @@ class AccessSpeciesPopulations(AccessSpeciesPopulationInterface):
             else:
                 self.submodel.send_event(time-self.submodel.time,
                     self.remote_pop_stores[store],
-                    message_types.AdjustPopulationByContinuousModel,
-                    event_body=message_types.AdjustPopulationByContinuousModel.Body(store_adjustments))
+                    message_types.AdjustPopulationByContinuousSubmodel,
+                    event_body=message_types.AdjustPopulationByContinuousSubmodel(store_adjustments))
         return stores
 
     def prefetch(self, delay, species_ids):
@@ -341,6 +341,13 @@ class AccessSpeciesPopulations(AccessSpeciesPopulationInterface):
         Returns:
             list: the names of the stores for the species whose populations are adjusted.
         '''
+        # TODO(Arthur): IMPORTANT optimizations: reduce rate of prefetch
+        # 1: store most species locally
+        # 2: instead of sending GetPopulation messages to retrieve populations may be unchanged,
+        #   make write-through caches which push population updates from reaction executions
+        # 3: draw reaction partition boundaries over species (edges) that rarely update
+        # TODO(Arthur): IMPORTANT: consider whether a better mechanism is available for ordering
+        #   concurrent events than time shifting by miniscule amounts, as done with epsilon here
         if delay<=0:
             raise SpeciesPopulationError("prefetch: {} provided, but delay must "
                 "be non-negative.".format(delay))
@@ -354,7 +361,7 @@ class AccessSpeciesPopulations(AccessSpeciesPopulationInterface):
                 self.submodel.send_event(delay - epsilon*0.5,
                     self.remote_pop_stores[store],
                     message_types.GetPopulation,
-                    event_body=message_types.GetPopulation.Body(set(species_ids)))
+                    event_body=message_types.GetPopulation(set(species_ids)))
         return stores
 
     def __str__(self):
@@ -478,7 +485,7 @@ class SpeciesPopulationCache(object):
 
 
 # logging
-debug_log = debug_logs.get_log( 'wc.debug.file' )
+debug_log = debug_logs.get_log('wc.debug.file')
 
 class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
     '''Maintain the population of a set of species.
@@ -503,6 +510,8 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         time (float): the time of the current operation.
         _population (:obj:`dict` of :obj:`Specie`): map: specie_id -> Specie(); the species whose
             counts are stored, represented by Specie objects.
+        _molecular_weights (:obj:`dict` of `float`): map: specie_id -> molecular_weight; the
+            molecular weight of each specie
         last_access_time (:obj:`dict` of `float`): map: species_name -> last_time; the last time at
             which the specie was accessed.
         history (:obj:`dict`) nested dict; an optional history of the species' state. The population
@@ -513,7 +522,8 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
     # in the simulation
     # TODO(Arthur): report error if a Specie instance is updated by multiple continuous sub-models
 
-    def __init__( self, model, name, initial_population, initial_fluxes=None, retain_history=True ):
+    def __init__(self, model, name, initial_population, molecular_weights, initial_fluxes=None,
+        retain_history=True):
         '''Initialize a LocalSpeciesPopulation object.
 
         Initialize a LocalSpeciesPopulation object. Establish its initial population, and initialize
@@ -521,11 +531,13 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
 
         Args:
             initial_population (:obj:`dict` of float): initial population for some species;
-                dict: specie_id -> initial_population.
+                dict: specie_id -> initial_population
+            molecular_weights (:obj:`dict` of float): map: specie_id -> molecular_weight;
+                provided for computing the total mass of a `LocalSpeciesPopulation`
             initial_fluxes (:obj:`dict` of float, optional): map: specie_id -> initial_flux;
                 initial fluxes for all species whose populations are estimated by a continuous
-                model. Fluxes are ignored for species not specified in initial_population.
-            retain_history (bool): whether to retain species population history.
+                model. Fluxes are ignored for species not specified in initial_population
+            retain_history (:obj:`bool`, optional): whether to retain species population history
 
         Raises:
             SpeciesPopulationError: if the population cannot be initialized.
@@ -544,21 +556,28 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         try:
             if initial_fluxes is not None:
                 for specie_id in initial_population:
-                    self.init_cell_state_specie( specie_id, initial_population[specie_id],
-                        initial_fluxes[specie_id] )
+                    self.init_cell_state_specie(specie_id, initial_population[specie_id],
+                        initial_fluxes[specie_id])
             else:
                 for specie_id in initial_population:
-                    self.init_cell_state_specie( specie_id, initial_population[specie_id] )
+                    self.init_cell_state_specie(specie_id, initial_population[specie_id])
         except AssertionError as e:
-            sys.stderr.write( "Cannot initialize LocalSpeciesPopulation: {}.\n".format( e.message ) )
+            sys.stderr.write("Cannot initialize LocalSpeciesPopulation: {}.\n".format(e.message))
+
+        unknown_weights = set(initial_population.keys()) - set(molecular_weights.keys())
+        if unknown_weights:
+            # raise exception if any species are missing weights
+            raise SpeciesPopulationError("Error: species missing molecular weights: {}".format(
+                ', '.join(map(lambda x: "'{}'".format(str(x)), unknown_weights))))
+        self._molecular_weights = molecular_weights
 
         # write initialization data
-        debug_log.debug( "initial_population: {}".format( DictUtil.to_string_sorted_by_key(
-            initial_population) ), sim_time=self.time )
-        debug_log.debug( "initial_fluxes: {}".format( DictUtil.to_string_sorted_by_key(initial_fluxes) ),
-            sim_time=self.time )
+        debug_log.debug("initial_population: {}".format(DictUtil.to_string_sorted_by_key(
+            initial_population)), sim_time=self.time)
+        debug_log.debug("initial_fluxes: {}".format(DictUtil.to_string_sorted_by_key(initial_fluxes)),
+            sim_time=self.time)
 
-    def init_cell_state_specie( self, specie_id, population, initial_flux_given=None ):
+    def init_cell_state_specie(self, specie_id, population, initial_flux_given=None):
         '''Initialize a specie with the given population and flux.
 
         Add a specie to the cell state. The specie's population is set at the current time.
@@ -572,13 +591,13 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             SpeciesPopulationError: if the specie is already stored by this LocalSpeciesPopulation.
         '''
         if specie_id in self._population:
-            raise SpeciesPopulationError( "Error: specie_id '{}' already stored by this "
-                "LocalSpeciesPopulation".format( specie_id ) )
-        self._population[specie_id] = Specie( specie_id, population, initial_flux=initial_flux_given )
+            raise SpeciesPopulationError("Error: specie_id '{}' already stored by this "
+                "LocalSpeciesPopulation".format(specie_id))
+        self._population[specie_id] = Specie(specie_id, population, initial_flux=initial_flux_given)
         self.last_access_time[specie_id] = self.time
         self._add_to_history(specie_id)
 
-    def _check_species( self, time, species ):
+    def _check_species(self, time, species):
         '''Check whether the species are a set, or not known by this LocalSpeciesPopulation.
 
         Also checks whether the species are being accessed in time order.
@@ -593,19 +612,19 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             SpeciesPopulationError: if a specie in `species` is being accessed at a time earlier
                 than a prior access.
         '''
-        if not isinstance( species, set ):
-            raise SpeciesPopulationError( "Error: species '{}' must be a set".format( species ) )
-        unknown_species = species - set( list(self._population.keys()) )
+        if not isinstance(species, set):
+            raise SpeciesPopulationError("Error: species '{}' must be a set".format(species))
+        unknown_species = species - set(list(self._population.keys()))
         if unknown_species:
             # raise exception if some species are non-existent
-            raise SpeciesPopulationError( "Error: request for population of unknown specie(s): {}".format(
-                ', '.join(map( lambda x: "'{}'".format( str(x) ), unknown_species ) ) ) )
-        early_accesses = list(filter( lambda s: time < self.last_access_time[s], species))
+            raise SpeciesPopulationError("Error: request for population of unknown specie(s): {}".format(
+                ', '.join(map(lambda x: "'{}'".format(str(x)), unknown_species))))
+        early_accesses = list(filter(lambda s: time < self.last_access_time[s], species))
         if early_accesses:
-            raise SpeciesPopulationError( "Error: earlier access of specie(s): {}".format(
+            raise SpeciesPopulationError("Error: earlier access of specie(s): {}".format(
                 early_accesses))
 
-    def __update_access_times( self, time, species ):
+    def __update_access_times(self, time, species):
         '''Update the access time to `time` for all species_ids in `species`.
 
         Args:
@@ -634,7 +653,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self.__update_access_times(time, specie_id_in_set)
         return self._population[specie_id].get_population(time)
 
-    def read( self, time, species ):
+    def read(self, time, species):
         '''Read the predicted population of a list of species at time `time`.
 
         Args:
@@ -648,12 +667,12 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         Raises:
             SpeciesPopulationError: if the population of unknown specie(s) are requested.
         '''
-        self._check_species( time, species )
+        self._check_species(time, species)
         self.time = time
-        self.__update_access_times( time, species )
-        return { specie:self._population[specie].get_population(time) for specie in species }
+        self.__update_access_times(time, species)
+        return {specie:self._population[specie].get_population(time) for specie in species}
 
-    def adjust_discretely( self, time, adjustments ):
+    def adjust_discretely(self, time, adjustments):
         '''A discrete model adjusts the population of a set of species at time `time`.
 
         Args:
@@ -666,17 +685,17 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
                 unknown species.
             SpeciesPopulationError: if any population estimate would become negative.
         '''
-        self._check_species( time, set( adjustments.keys() ) )
+        self._check_species(time, set(adjustments.keys()))
         self.time = time
         for specie in adjustments:
             try:
-                self._population[specie].discrete_adjustment( adjustments[specie], self.time )
-                self.__update_access_times( time, {specie} )
+                self._population[specie].discrete_adjustment(adjustments[specie], self.time)
+                self.__update_access_times(time, {specie})
             except SpeciesPopulationError as e:
-                raise SpeciesPopulationError( "Error: on specie {}: {}".format( specie, e ) )
-            self.log_event( 'discrete_adjustment', self._population[specie] )
+                raise SpeciesPopulationError("Error: on specie {}: {}".format(specie, e))
+            self.log_event('discrete_adjustment', self._population[specie])
 
-    def adjust_continuously( self, time, adjustments ):
+    def adjust_continuously(self, time, adjustments):
         '''A continuous model adjusts the population of a set of species at time `time`.
 
         Args:
@@ -689,7 +708,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
                 unknown species.
             SpeciesPopulationError: if any population estimate would become negative.
         '''
-        self._check_species( time, set( adjustments.keys() ) )
+        self._check_species(time, set(adjustments.keys()))
         self.time = time
 
         # record simulation state history
@@ -697,19 +716,39 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         if self._recording_history(): self._record_history()
         for specie,(adjustment,flux) in adjustments.items():
             try:
-                self._population[specie].continuous_adjustment( adjustment, time, flux )
-                self.__update_access_times( time, [specie] )
+                self._population[specie].continuous_adjustment(adjustment, time, flux)
+                self.__update_access_times(time, [specie])
             except SpeciesPopulationError as e:
                 # TODO(Arthur): IMPORTANT; return to raising exceptions with negative population
                 # when initial values get debugged
-                raise SpeciesPopulationError( "Error: on specie {}: {}".format( specie, e ) )
+                raise SpeciesPopulationError("Error: on specie {}: {}".format(specie, e))
                 e = str(e).strip()
-                debug_log.error( "Error: on specie {}: {}".format( specie, e ),
-                    sim_time=self.time )
+                debug_log.error("Error: on specie {}: {}".format(specie, e),
+                    sim_time=self.time)
 
-            self.log_event( 'continuous_adjustment', self._population[specie] )
+            self.log_event('continuous_adjustment', self._population[specie])
 
-    def log_event( self, event_type, specie ):
+    def mass(self):
+        '''Compute the mass of this `LocalSpeciesPopulation`.
+
+        Sum the mass over all species.
+
+        Returns:
+            float: the current total mass (grams) of all species in this `LocalSpeciesPopulation`
+
+        Raises:
+            SpeciesPopulationError: if a specie's molecular weight is unavailable
+        '''
+        mass = 0
+        for specie_id in self._population.keys():
+            try:
+                mass += (self._molecular_weights[specie_id]*self.read_one(self.time, specie_id))/Avogadro
+            except KeyError as e:
+                raise SpeciesPopulationError("Error: molecular weight not available for '{}'".format(
+                    specie_id))
+        return mass
+
+    def log_event(self, event_type, specie):
         '''Log an event that modifies a specie's population.
 
         Log the event's simulation time, event type, specie population, and current flux (if
@@ -724,9 +763,9 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         except AttributeError:
             flux = None
         values = [ event_type, specie.last_population, flux ]
-        values = map( lambda x: str(x), values )
+        values = map(lambda x: str(x), values)
         # log Sim_time Adjustment_type New_population New_flux
-        debug_log.debug( '\t'.join( values ), local_call_depth=1, sim_time=self.time )
+        debug_log.debug('\t'.join(values), local_call_depth=1, sim_time=self.time)
 
     def _initialize_history(self):
         '''Initialize the population history with current population.'''
@@ -734,7 +773,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self._history['time'] = [self.time]  # a list of times at which population is recorded
         # the value of self._history['population'][specie_id] is a list of
         # the population of specie_id at the times history is recorded
-        self._history['population'] = { }
+        self._history['population'] = {}
 
     def _add_to_history(self, specie_id):
         '''Add a specie to the history.
@@ -743,7 +782,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             specie_id (str): a unique specie identifier.
         '''
         if self._recording_history():
-            population = self.read_one( self.time, specie_id )
+            population = self.read_one(self.time, specie_id)
             self._history['population'][specie_id] = [population]
 
     def _recording_history(self):
@@ -765,14 +804,14 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             history was recorded.
         '''
         if not self._history['time'][-1] < self.time:
-            raise SpeciesPopulationError( "time of previous _record_history() ({}) not less than current time ({})".format(
-                self._history['time'][-1], self.time ) )
-        self._history['time'].append( self.time )
-        for specie_id, population in self.read( self.time, set(self._population.keys()) ).items():
-            self._history['population'][specie_id].append( population )
+            raise SpeciesPopulationError("time of previous _record_history() ({}) not less than current time ({})".format(
+                self._history['time'][-1], self.time))
+        self._history['time'].append(self.time)
+        for specie_id, population in self.read(self.time, set(self._population.keys())).items():
+            self._history['population'][specie_id].append(population)
 
     # TODO(Arthur): unit test this with numpy_format=True
-    def report_history(self, numpy_format=False ):
+    def report_history(self, numpy_format=False):
         '''Provide the time and species count history.
 
         Args:
@@ -791,7 +830,8 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             if numpy_format:
                 # TODO(Arthur): IMPORTANT: stop using model, as it may not be in this address space
                 # instead, don't provide the history in 'numpy_format'
-                timeHist = np.asarray( self._history['time'] )
+                timeHist = np.asarray(self._history['time'])
+                # TODO(Arthur): IMPORTANT: stop using model, which might not be in the same address space as this object
                 speciesCountsHist = np.zeros((len(self.model.species), len(self.model.compartments),
                     len(self._history['time'])))
                 for specie_index,specie in list(enumerate(self.model.species)):
@@ -805,7 +845,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             else:
                 return self._history
         else:
-            raise SpeciesPopulationError( "Error: history not recorded" )
+            raise SpeciesPopulationError("Error: history not recorded")
 
     def history_debug(self):
         '''Provide some of the history in a string.
@@ -822,16 +862,16 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         '''
         if self._recording_history():
             lines = []
-            lines.append( "#times\tfirst\tlast" )
-            lines.append( "{}\t{}\t{}".format( len(self._history['time']), self._history['time'][0],
-                self._history['time'][-1] ) )
-            lines.append(  "Specie\t#values\tfirst\tlast" )
+            lines.append("#times\tfirst\tlast")
+            lines.append("{}\t{}\t{}".format(len(self._history['time']), self._history['time'][0],
+                self._history['time'][-1]))
+            lines.append("Specie\t#values\tfirst\tlast")
             for s in self._history['population'].keys():
-                lines.append( "{}\t{}\t{:.1f}\t{:.1f}".format( s, len(self._history['population'][s]),
-                    self._history['population'][s][0], self._history['population'][s][-1] ) )
-            return '\n'.join( lines )
+                lines.append("{}\t{}\t{:.1f}\t{:.1f}".format(s, len(self._history['population'][s]),
+                    self._history['population'][s][0], self._history['population'][s][-1]))
+            return '\n'.join(lines)
         else:
-            raise SpeciesPopulationError( "Error: history not recorded" )
+            raise SpeciesPopulationError("Error: history not recorded")
 
     def __str__(self):
         '''Provide readable LocalSpeciesPopulation state.
@@ -851,16 +891,19 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         return '\n'.join(state)
 
 
-class SpeciesPopSimObject(LocalSpeciesPopulation,SimulationObject):
+class SpeciesPopSimObject(LocalSpeciesPopulation, SimulationObject, SimulationObjectInterface):
     '''Maintain the population of a set of species in a simulation object that can be parallelized.
 
     A whole-cell PDES must run multiple submodels in parallel. These share cell state, such as
     species populations, by accessing shared simulation objects. A SpeciesPopSimObject provides that
-    functionality by wrapping a LocalSpeciesPopulation as a DES object accessed only by
-    simulation event messages.
+    functionality by wrapping a LocalSpeciesPopulation in a `SimulationObject`.
     '''
 
-    def __init__(self, name, initial_population, initial_fluxes=None, retain_history=True ):
+    def send_initial_events(self): pass
+    '''No initial events to send'''
+
+    def __init__(self, name, initial_population, molecular_weights, initial_fluxes=None,
+        retain_history=True):
         '''Initialize a SpeciesPopSimObject object.
 
         Initialize a SpeciesPopSimObject object. Initialize its base classes.
@@ -873,54 +916,78 @@ class SpeciesPopSimObject(LocalSpeciesPopulation,SimulationObject):
         (Perhaps Sphinx can automate this, but the documentation is unclear.)
         '''
         SimulationObject.__init__(self, name)
-        LocalSpeciesPopulation.__init__(self, None, name, initial_population, initial_fluxes)
+        LocalSpeciesPopulation.__init__(self, None, name, initial_population, molecular_weights,
+            initial_fluxes)
 
-    def handle_event(self, event_list):
-        '''Handle a SpeciesPopSimObject simulation event.
-
-        Process event messages for this SpeciesPopSimObject.
+    def handle_adjust_discretely_event(self, event):
+        '''Handle a simulation event.
 
         Args:
-            event_list (:obj:`list` of :obj:`wc_sim.core.Event`): list of Events to process.
+            event (:obj:`wc_sim.core.Event`): an `Event` to process
+        '''
+        population_change = event.event_body.population_change
+        self.adjust_discretely(self.time, population_change)
+
+    def handle_adjust_continuously_event(self, event):
+        '''Handle a simulation event.
+
+        Args:
+            event (:obj:`wc_sim.core.Event`): an `Event` to process
 
         Raises:
-            SpeciesPopulationError: if a GetPopulation message requests the population of an
-                unknown species.
-            SpeciesPopulationError: if an AdjustPopulationByContinuousModel event acts on a
+            SpeciesPopulationError: if an `AdjustPopulationByContinuousSubmodel` event acts on a
                 non-existent species.
         '''
-        # call handle_event() in class SimulationObject to perform generic tasks on the event list
-        super(SpeciesPopSimObject, self).handle_event(event_list)
-        for event_message in event_list:
+        population_change = event.event_body.population_change
+        self.adjust_continuously(self.time, population_change)
 
-            # switch/case on event message type
-            if check_class(event_message.event_type, message_types.AdjustPopulationByDiscreteModel):
-                population_change = event_message.event_body.population_change
-                self.adjust_discretely( self.time, population_change )
+    def handle_get_population_event(self, event):
+        '''Handle a simulation event.
 
-            elif check_class(event_message.event_type, message_types.AdjustPopulationByContinuousModel):
-                population_change = event_message.event_body.population_change
-                self.adjust_continuously( self.time, population_change )
+        Args:
+            event (:obj:`wc_sim.core.Event`): an `Event` to process
 
-            elif check_class(event_message.event_type, message_types.GetPopulation):
-                species = event_message.event_body.species
-                self.send_event( 0, event_message.sending_object, message_types.GivePopulation,
-                    event_body=self.read( self.time, species) )
+        Raises:
+            SpeciesPopulationError: if a `GetPopulation` message requests the population of an
+                unknown species.
+        '''
+        species = event.event_body.species
+        self.send_event(0, event.sending_object, message_types.GivePopulation,
+            event_body=self.read(self.time, species))
 
-            else:
-                assert False, "Shouldn't get here - {} should be covered"\
-                    " in the if statement above".format(event_message.event_type)
+    def handle_get_current_property_event(self, event):
+        '''Handle a simulation event.
 
-# Register sent message types
-SENT_MESSAGE_TYPES = [ message_types.GivePopulation ]
-MessageTypesRegistry.set_sent_message_types(SpeciesPopSimObject, SENT_MESSAGE_TYPES)
+        Args:
+            event (:obj:`wc_sim.core.Event`): an `Event` to process
 
-# At any time instant, process messages in this order
-MESSAGE_TYPES_BY_PRIORITY = [
-    message_types.AdjustPopulationByDiscreteModel,
-    message_types.AdjustPopulationByContinuousModel,
-    message_types.GetPopulation ]
-MessageTypesRegistry.set_receiver_priorities(SpeciesPopSimObject, MESSAGE_TYPES_BY_PRIORITY)
+        Raises:
+            SpeciesPopulationError: if an `GetCurrentProperty` message requests an unknown
+                property.
+        '''
+        property_name = event.event_body.property_name
+        if property_name == distributed_properties.MASS:
+            self.send_event(0, event.sending_object, message_types.GiveProperty,
+                event_body = message_types.GiveProperty(property_name, self.time, self.mass()))
+        else:
+            raise SpeciesPopulationError("Error: unknown property_name: '{}'".format(
+                property_name))
+
+    @classmethod
+    def register_subclass_handlers(this_class):
+        SimulationObject.register_handlers(this_class, [
+            # At any time instant, messages are processed in this order
+            (message_types.AdjustPopulationByDiscreteSubmodel, this_class.handle_adjust_discretely_event),
+            (message_types.AdjustPopulationByContinuousSubmodel, this_class.handle_adjust_continuously_event),
+            (message_types.GetPopulation, this_class.handle_get_population_event),
+            (message_types.GetCurrentProperty, this_class.handle_get_current_property_event)
+        ])
+
+    @classmethod
+    def register_subclass_sent_messages(this_class):
+        SimulationObject.register_sent_messages(this_class,
+            [message_types.GivePopulation, message_types.GiveProperty])
+
 
 class Specie(object):
     '''Specie tracks the population of a single specie in a multi-algorithmic model.
@@ -947,8 +1014,8 @@ class Specie(object):
     `discrete_adjustment()` and `continuous_adjustment()`, respectively. These adjustments take the
     following forms,
 
-    * `discrete_adjustment( population_change, time )`
-    * `continuous_adjustment( population_change, time, flux )`
+    * `discrete_adjustment(population_change, time)`
+    * `continuous_adjustment(population_change, time, flux)`
 
     where `population_change` is the increase or decrease in the specie's population, `time` is the
     time at which that change takes place, and `flux` is the predicted future rate of change of the
@@ -1112,7 +1179,7 @@ class Specie(object):
             NegativePopulationError: if interpolation predicts a negative population
         '''
         if not self.continuous_submodel:
-            return self.random_state.round( self.last_population )
+            return self.random_state.round(self.last_population)
         else:
             if time is None:
                 raise ValueError("get_population(): time needed because "
@@ -1128,7 +1195,7 @@ class Specie(object):
                 raise NegativePopulationError('get_population', self.specie_name,
                     self.last_population, interpolation, time - self.continuous_time)
             float_copy_number = self.last_population + interpolation
-            return self.random_state.round( float_copy_number )
+            return self.random_state.round(float_copy_number)
 
     def __str__(self):
         if self.continuous_submodel:
@@ -1146,8 +1213,7 @@ class Specie(object):
     def row(self):
         '''Return a row for a tab-separated table of species data.'''
         if self.continuous_submodel:
-            return "{}\t{:.2f}\t{:.2f}\t{:.2f}".format(self.specie_name, self.last_population, self.continuous_time, self.continuous_flux)
-            '\t'.join([])
+            return "{}\t{:.2f}\t{:.2f}\t{:.2f}".format(self.specie_name, self.last_population,
+                self.continuous_time, self.continuous_flux)
         else:
             return "{}\t{:.2f}".format(self.specie_name, self.last_population)
-            '\t'.join([])

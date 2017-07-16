@@ -7,6 +7,7 @@
 '''
 
 import sys
+import math
 import numpy as np
 from scipy.constants import Avogadro as N_AVOGADRO
 
@@ -17,8 +18,7 @@ from wc_utils.util.misc import isclass_by_name
 from wc_utils.util.stats import ExponentialMovingAverage
 
 from wc_sim.core.config import paths as config_paths_core
-from wc_sim.core.simulation_object import EventQueue, SimulationObject
-from wc_sim.core.simulation_engine import MessageTypesRegistry
+from wc_sim.core.simulation_object import SimulationObject
 from wc_sim.multialgorithm import message_types
 from wc_sim.multialgorithm.config import paths as config_paths_multialgorithm
 from wc_sim.multialgorithm.submodels.submodel import Submodel
@@ -30,10 +30,16 @@ config_multialgorithm = \
 
 class SsaSubmodel(Submodel):
     """
-    SsaSubmodel employs Gillespie's Stochastic Simulation Algorithm
-    to predict the dynamics of a set of chemical species in a 'well-mixed' container.
+    SsaSubmodel employs Gillespie's Stochastic Simulation Algorithm to predict the dynamics of a set
+    of chemical species in a 'well-mixed' container.
 
-    algorithm:::
+    This implementation supports a partition of the species populations into private, locally stored
+    populations and shared, remotely stored populations. These are accessed through the ADT provided
+    by the `Submodel`'s `AccessSpeciesPopulations`. Appropriate optimizations are made if no
+    populations are stored remotely.
+
+    # TODO(Arthur): update the rest of this doc string
+    Algorithm:
 
         implement the 'direct' method, except under unusual circumstances.
 
@@ -81,10 +87,23 @@ class SsaSubmodel(Submodel):
         ExecuteSsaReaction
         SsaWait
         # messages after future enhancement
-        AdjustPopulationByDiscreteModel
+        AdjustPopulationByDiscreteSubmodel
         GetPopulation
         GivePopulation
     """
+
+    # message types sent by SsaSubmodel
+    SENT_MESSAGE_TYPES = [
+        message_types.AdjustPopulationByDiscreteSubmodel,
+        message_types.ExecuteSsaReaction,
+        message_types.GetPopulation,
+        message_types.SsaWait]
+
+    # at any time instant, process messages in this order
+    MESSAGE_TYPES_BY_PRIORITY = [
+        message_types.SsaWait,
+        message_types.GivePopulation,
+        message_types.ExecuteSsaReaction]
 
     def __init__(self, model, name, access_species_population,
         reactions, species, parameters, default_center_of_mass=None):
@@ -99,27 +118,25 @@ class SsaSubmodel(Submodel):
             parameters)
 
         self.num_SsaWaits=0
-        # INITIAL_SSA_WAIT_EMA should be positive, as otherwise an infinite loop of SsaWait messages
-        # will form at the start of a simulation if no reactions are enabled
+        # The 'initial_ssa_wait_ema' must be positive, as otherwise an infinite sequence of SsaWait
+        # messages will be executed at the start of a simulation if no reactions are enabled
         if default_center_of_mass is None:
-            default_center_of_mass=config_core['default_center_of_mass']
+            default_center_of_mass = config_core['default_center_of_mass']
+        if config_multialgorithm['initial_ssa_wait_ema'] <= 0:
+            raise ValueError("'initial_ssa_wait_ema' must be positive to avoid infinite sequence of "
+            "SsaWait messages, but it is {}".format(config_multialgorithm['initial_ssa_wait_ema']))
         self.ema_of_inter_event_time=ExponentialMovingAverage(
             config_multialgorithm['initial_ssa_wait_ema'],
             center_of_mass=default_center_of_mass)
         self.random_state = RandomStateManager.instance()
 
         self.log_with_time("init: name: {}".format(name))
-        self.log_with_time("init: species: {}".format(str([s.name for s in species])))
+        self.log_with_time("init: species: {}".format(str([s.serialize() for s in species])))
 
-        self.set_up_ssa_submodel()
-
-    def set_up_ssa_submodel(self):
-        """Set up this SSA submodel for simulation.
-
-        Creates initial event(s) for this SSA submodel.
+    def send_initial_events(self):
+        """Send this SSA submodel's initial events
         """
-        # Submodel.set_up_submodel(self)
-        self.schedule_next_event()
+        self.schedule_next_events()
 
     def determine_reaction_propensities(self):
         """Determine the current reaction propensities for this submodel.
@@ -135,13 +152,14 @@ class SsaSubmodel(Submodel):
             reaction (propensities, total_propensities)
         """
 
-        # TODO(Arthur): optimization: I understand physicality of concentrations and propensities,
-        # but wasteful to divide by volume & Avogadro and then multiply by them; stop doing this
         # TODO(Arthur): optimization: only calculate new reaction rates for species whose
         # speciesConcentrations (counts) have changed
-        propensities = np.maximum(0, Submodel.calc_reaction_rates(self.reactions, self.get_specie_concentrations())
-            * self.model.volume * Avogadro)
+        # TODO(Arthur): IMPORTANT: provide volume for model; probably via get_volume(self.model)
+        propensities = self.model.volume * Avogadro * np.maximum(0,
+            Submodel.calc_reaction_rates(self.reactions, self.get_specie_concentrations()))
+
         # avoid reactions with inadequate specie counts
+        # todo: incorporate generalization in the COPASI paper
         enabled_reactions = self.identify_enabled_reactions(propensities)
         propensities = enabled_reactions * propensities
         total_propensities = np.sum(propensities)
@@ -152,42 +170,42 @@ class SsaSubmodel(Submodel):
         """
         self.send_event(self.ema_of_inter_event_time.get_value(), self, message_types.SsaWait)
         self.num_SsaWaits += 1
-        # TODO(Arthur): IMPORTANT: avoid possible infinite loop / infinitely slow progress
-        # arises when 1) no reactions are enabled & 2) EMA of the time between ExecuteSsaReaction events
-        # is very small (initializing to 0 may be bad)
+        # TODO(Arthur): IMPORTANT: avoid arbitrarily slow progress which arises when 1) no reactions
+        # are enabled & 2) EMA of the time between ExecuteSsaReaction events is arbitrarily small
+        # solution: a) if sequence of SsaWait occurs, increase EMA delay
 
     def schedule_ExecuteSsaReaction(self, dt, reaction_index):
         """Schedule an ExecuteSsaReaction.
         """
         self.send_event(dt, self,
-            message_types.ExecuteSsaReaction, message_types.ExecuteSsaReaction.Body(reaction_index))
+            message_types.ExecuteSsaReaction, message_types.ExecuteSsaReaction(reaction_index))
 
         # maintain EMA of the time between ExecuteSsaReaction events
         self.ema_of_inter_event_time.add_value(dt)
 
-    def schedule_next_event(self):
-        """Schedule the next event for this SSA submodel.
+    def schedule_next_SSA_reaction(self):
+        """Schedule the next SSA reaction for this SSA submodel.
 
-        If the sum of propensities is positive, schedule a reaction, otherwise schedule
-        a wait. The delay until the next reaction is an exponential sample with mean 1/sum(propensities).
+        If the sum of propensities is positive, schedule a reaction, otherwise schedule a wait. The
+        delay until the next reaction is an exponential sample with mean 1/sum(propensities).
 
         Method:
 
         1. calculate propensities
         2. if total propensity == 0:
-
-               | schedule a wait equal to the weighted mean inter reaction time
-               | return
-
+               schedule a wait equal to the weighted mean inter reaction time
+               return
         3. select time of next reaction
         4. select next reaction
         5. schedule the next reaction
-        """
 
+        Returns:
+            float: the delay until the next SSA reaction, or NaN if no reaction is scheduled
+        """
         (propensities, total_propensities) = self.determine_reaction_propensities()
         if total_propensities <= 0:
             self.schedule_SsaWait()
-            return
+            return float('NaN')
 
         # Select time to next reaction from exponential distribution
         dt = self.random_state.exponential(1/total_propensities)
@@ -195,19 +213,28 @@ class SsaSubmodel(Submodel):
         # schedule next reaction
         reaction_index = self.random_state.choice(len(propensities), p = propensities/total_propensities)
         self.schedule_ExecuteSsaReaction(dt, reaction_index)
+        return dt
+
+    def schedule_next_events(self):
+        """Schedule the next events for this submodel"""
+
+        # schedule next SSA reaction, or a SSA wait if no reaction is ready to fire
+        time_to_next_reaction = self.schedule_next_SSA_reaction()
+
+        # prefetch into cache
+        if not (math.isnan(time_to_next_reaction) or self.access_species_pop is None):
+            self.access_species_pop.prefetch(time_to_next_reaction, self.get_species_ids())
 
     def execute_SSA_reaction(self, reaction_index):
         """Execute a reaction now.
         """
         self.log_with_time("submodel: {} "
             "executing reaction {}".format(self.name, self.reactions[reaction_index].id))
-        self.execute_reaction(self.model.local_species_population, self.reactions[reaction_index])
+        self.execute_reaction(self.reactions[reaction_index])
 
+    # todo: restructure
     def handle_event(self, event_list):
         """Handle a SsaSubmodel simulation event.
-
-        In this shared-memory SSA, the only event is ExecuteSsaReaction, and event_list should
-        always contain one event.
 
         Args:
             event_list: list of event messages to process
@@ -221,14 +248,13 @@ class SsaSubmodel(Submodel):
         for event_message in event_list:
             if isclass_by_name(event_message.event_type, message_types.GivePopulation):
 
-                continue
-                # TODO(Arthur): add this functionality; currently, handling accessing memory directly
-
                 # population_values is a GivePopulation body attribute
                 population_values = event_message.event_body.population
+                # store population_values in the AccessSpeciesPopulations cache
+                self.access_species_pop.species_population_cache.cache_population(self.now,
+                    population_values)
 
                 self.log_with_time("GivePopulation: {}".format(str(event_message.event_body)))
-                # store population_values in some cache ...
 
             elif isclass_by_name(event_message.event_type, message_types.ExecuteSsaReaction):
 
@@ -247,19 +273,18 @@ class SsaSubmodel(Submodel):
                         continue
 
                     else:
-
                         # select a reaction
                         reaction_index = self.random_state.choice(len(propensities),
                             p = propensities/total_propensities)
                         self.execute_SSA_reaction(reaction_index)
 
-                self.schedule_next_event()
+                self.schedule_next_events()
 
             elif isclass_by_name(event_message.event_type, message_types.SsaWait):
 
                 # TODO(Arthur): generate WARNING(s) if SsaWaits are numerous, or a high fraction of events
                 # no reaction to execute
-                self.schedule_next_event()
+                self.schedule_next_events()
 
             else:
                 assert False, "Error: the 'if' statement should handle " \
@@ -268,17 +293,3 @@ class SsaSubmodel(Submodel):
         self.log_with_time("EMA of inter event time: "
             "{:3.2f}; num_events: {}; num_SsaWaits: {}".format(
                 self.ema_of_inter_event_time.get_value(), self.num_events, self.num_SsaWaits))
-
-SENT_MESSAGE_TYPES = [
-    message_types.AdjustPopulationByDiscreteModel,
-    message_types.ExecuteSsaReaction,
-    message_types.GetPopulation,
-    message_types.SsaWait]
-MessageTypesRegistry.set_sent_message_types(SsaSubmodel, SENT_MESSAGE_TYPES)
-
-# at any time instant, process messages in this order
-MESSAGE_TYPES_BY_PRIORITY = [
-    message_types.SsaWait,
-    message_types.GivePopulation,
-    message_types.ExecuteSsaReaction]
-MessageTypesRegistry.set_receiver_priorities(SsaSubmodel, MESSAGE_TYPES_BY_PRIORITY)

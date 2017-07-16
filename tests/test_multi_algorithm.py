@@ -8,6 +8,9 @@ import os
 import unittest
 import warnings
 
+import pytest
+'''
+OLD code; to be discarded:
 from argparse import Namespace
 
 from wc_sim.multialgorithm.config import paths as config_paths
@@ -16,8 +19,9 @@ from wc_sim.multialgorithm.multialgorithm_errors import NegativePopulationError
 from wc_utils.config.core import ConfigManager
 
 config = ConfigManager(config_paths.core).get_config()['wc_sim']['multialgorithm']
+'''
 
-
+@pytest.mark.skip(reason="no longer works")
 class TestMultiAlgorithm(unittest.TestCase):
     MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', 'Mycoplasma pneumoniae.xlsx')
 
