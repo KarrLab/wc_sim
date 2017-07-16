@@ -446,7 +446,7 @@ class CheckModel(object):
         self.errors.extend(self.verify_biomass_reaction())
         self.errors.extend(self.test_rate_laws())
         if self.errors:
-            raise ValueError('\n'.join(errors))
+            raise ValueError('\n'.join(self.errors))
 
     def verify_biomass_reaction(self):
         '''DFBA submodels must contain a biomass reaction
@@ -489,49 +489,6 @@ class CheckModel(object):
                 rates = ModelUtilities.eval_rate_laws(reaction, species_concentrations)
             except Exception as error:
                 errors.append(str(error))
-        return errors
-
-    def infer_submodel_compartments(model, verbose=False):
-        '''Infer the compartment which each submodel models
-
-        As a side-effect, if no errors are detected, set the `compartment` attribute for each submodel.
-
-        Returns:
-            `list`: errors
-        '''
-        errors = []
-        submodel_compartments = {}
-        for reaction in model.get_reactions():
-            for participant in reaction.participants:
-                if participant.coefficient < 0:     # select reactants
-                    compartment = participant.species.compartment
-                    if reaction.submodel not in submodel_compartments:
-                        submodel_compartments[reaction.submodel] = compartment
-                    else:
-                        if compartment != submodel_compartments[reaction.submodel]:
-                            error = "reactants for submodel '{}' in multiple compartments: "\
-                                "'{}' and '{}'".format(reaction.submodel.id,
-                                compartment.id, submodel_compartments[reaction.submodel].id)
-                            errors.append(error)
-
-        for lang_submodel in model.get_submodels():
-            if lang_submodel not in submodel_compartments:
-                error = "compartment cannot be inferred for submodel '{}'".format(lang_submodel.id)
-                errors.append(error)
-
-        for lang_compartment in model.get_compartments():
-            if lang_compartment not in submodel_compartments.values():
-                error = "compartment '{}' not modeled by any submodel".format(lang_compartment.id)
-                errors.append(error)
-
-        if not errors:
-            for submodel,modeled_compartment in submodel_compartments.items():
-                submodel.compartment = modeled_compartment
-
-                if verbose:
-                    print("submodel '{}' models compartment '{}'".format(submodel.id,
-                        modeled_compartment.id))
-
         return errors
 
     def verify_reactant_compartments(self):
