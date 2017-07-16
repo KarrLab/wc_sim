@@ -106,7 +106,7 @@ class ModelUtilities(object):
             '''
             if len(tokens) < 4:
                 return False
-            toknums = [token[0] for token in tokens]
+            toknums = [token_tmp[0] for token_tmp in tokens]
             specie_id_pattern = [token.NAME, token.OP, token.NAME, token.OP]
             if toknums == specie_id_pattern:
                 tokvals = [token[1] for token in tokens]
@@ -129,7 +129,7 @@ class ModelUtilities(object):
             Raises:
                 ValueError: if `tokens` does not represent a specie in `species_ids`
             '''
-            tokvals = [token[1] for token in tokens]
+            tokvals = [token_tmp[1] for token_tmp in tokens]
             parsed_id = "{}[{}]".format(tokvals[0], tokvals[2])
             if parsed_id in species_ids:
                 return " concentrations['{}']".format(parsed_id)
