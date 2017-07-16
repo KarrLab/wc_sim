@@ -186,8 +186,9 @@ class ModelUtilities(object):
         toknums = [token_tmp[0] for token_tmp in tokens]
         specie_id_pattern = [token.NAME, token.OP, token.NAME, token.OP]
         if toknums == specie_id_pattern:
-            tokvals = [token[1] for token in tokens]
+            tokvals = [token_tmp[1] for token_tmp in tokens]
             return tokvals[1] == '[' and tokvals[3] == ']'
+        return False
 
     @staticmethod
     def convert_specie_name(tokens, species_ids, rate_law_expression):
