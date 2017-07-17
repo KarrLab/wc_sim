@@ -95,6 +95,48 @@ class ModelUtilities(object):
             ValueError: If `rate_law` contains `__`, which increases its security risk, or
             if `rate_law` refers to species not in `species`
         '''
+        def possible_specie_id(tokens):
+            '''Determine whether `tokens` contains a specie id of the form 'string[string]'
+
+            Args:
+                tokens (:obj:`list` of (token_num, token_val)): a list of Python tokens
+
+            Returns:
+                True if `tokens` might contain a specie id
+            '''
+            if len(tokens) < 4:
+                return False
+            toknums = [token_tmp[0] for token_tmp in tokens]
+            specie_id_pattern = [token.NAME, token.OP, token.NAME, token.OP]
+            if toknums == specie_id_pattern:
+                tokvals = [token_tmp[1] for token_tmp in tokens]
+                return tokvals[1] == '[' and tokvals[3] == ']'
+            return False
+
+        def convert_specie_name(tokens, species_ids, rate_law_expression):
+            '''Translate `tokens` into a python expression that can be evaluated
+            during a simulation
+
+            Args:
+                tokens (:obj:`list` of (token_num, token_val)): a list of 4 Python tokens that
+                    should comprise a specie id
+                species_ids (:obj:`set`): ids of the species used by the rate law expression
+                rate_law_expression (:obj:`string`): the rate law expression being transcoded
+
+            Returns:
+                (:obj:`string`): a Python expression, transcoded to look up the specie concentration
+                    in `concentrations[]`
+
+            Raises:
+                ValueError: if `tokens` does not represent a specie in `species_ids`
+            '''
+            tokvals = [token_tmp[1] for token_tmp in tokens]
+            parsed_id = "{}[{}]".format(tokvals[0], tokvals[2])
+            if parsed_id in species_ids:
+                return " concentrations['{}']".format(parsed_id)
+            else:
+                raise ValueError("'{}' not a known specie in rate law".format(
+                    parsed_id, rate_law_expression))
 
         if getattr(rate_law, 'equation', None) is None:
             return
@@ -116,9 +158,9 @@ class ModelUtilities(object):
         result = []
         idx = 0
         while idx < len(tokens):
-            if ModelUtilities.possible_specie_id(tokens[idx:idx+4]):
+            if possible_specie_id(tokens[idx:idx+4]):
                 result.append(
-                    (token.NAME, ModelUtilities.convert_specie_name(tokens[idx:], species_ids,
+                    (token.NAME, convert_specie_name(tokens[idx:], species_ids,
                         rate_law_expression)))
                 idx += 4
             else:
@@ -170,51 +212,6 @@ class ModelUtilities(object):
                 raise Exception("Error: error in transcoded rate law '{}' of reaction '{}': '{}'".format(
                     transcoded_reaction, reaction.id, error))
         return rates
-
-    @staticmethod
-    def possible_specie_id(tokens):
-        '''Determine whether `tokens` contains a specie id of the form 'string[string]'
-
-        Args:
-            tokens (:obj:`list` of (token_num, token_val)): a list of Python tokens
-
-        Returns:
-            True if `tokens` might contain a specie id
-        '''
-        if len(tokens) < 4:
-            return False
-        toknums = [token_tmp[0] for token_tmp in tokens]
-        specie_id_pattern = [token.NAME, token.OP, token.NAME, token.OP]
-        if toknums == specie_id_pattern:
-            tokvals = [token_tmp[1] for token_tmp in tokens]
-            return tokvals[1] == '[' and tokvals[3] == ']'
-        return False
-
-    @staticmethod
-    def convert_specie_name(tokens, species_ids, rate_law_expression):
-        '''Translate a `tokens` into a python expression that can be evaluated
-        during a simulation
-
-        Args:
-            tokens (:obj:`list` of (token_num, token_val)): a list of 4 Python tokens that
-                should comprise a specie id
-            species_ids (:obj:`set`): ids of the species used by the rate law expression
-            rate_law_expression (:obj:`string`): the rate law expression being transcoded
-
-        Returns:
-            (:obj:`string`): a Python expression, transcoded to look up the specie concentration
-                in `concentrations[]`
-
-        Raises:
-            ValueError: if `tokens` does not represent a specie in `species_ids`
-        '''
-        tokvals = [token_tmp[1] for token_tmp in tokens]
-        parsed_id = "{}[{}]".format(tokvals[0], tokvals[2])
-        if parsed_id in species_ids:
-            return " concentrations['{}']".format(parsed_id)
-        else:
-            raise ValueError("'{}' not a known specie in rate law".format(
-                parsed_id, rate_law_expression))
 
     @staticmethod
     def initial_specie_concentrations(model):
