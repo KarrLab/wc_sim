@@ -377,8 +377,6 @@ class MultialgorithmSimulation(object):
             # make the simulation's submodels
             # todo: add a DynamicModel to each lang_submodel
             if lang_submodel.algorithm == SubmodelAlgorithm.dfba:
-                # TODO REMOVE: TESTING: SKIP DFBA
-                continue
                 simulation_submodels[lang_submodel.id] = FbaSubmodel(self.model,
                     lang_submodel.id,
                     access_species_population,
@@ -443,36 +441,90 @@ class CheckModel(object):
 
     def run(self):
         self.errors = []
-        self.errors.extend(self.verify_biomass_reaction())
-        self.errors.extend(self.test_rate_laws())
+        for submodel in self.model.get_submodels():
+            if submodel.algorithm == SubmodelAlgorithm.dfba:
+                self.errors.extend(self.check_dfba_submodel(submodel))
+            if submodel.algorithm in [SubmodelAlgorithm.ssa, SubmodelAlgorithm.ode]:
+                self.errors.extend(self.check_dynamic_submodel(submodel))
+        self.errors.extend(self.check_rate_law_equations())
         if self.errors:
             raise ValueError('\n'.join(self.errors))
 
-    def verify_biomass_reaction(self):
-        '''DFBA submodels must contain a biomass reaction
+    def check_dfba_submodel(self, submodel):
+        '''Check the inputs to a DFBA submodel
+
+        Ensure that:
+            * All reactions have min flux and max flux
+            * The DFBA submodel contains an objective function, aka biomass reaction
+            * Transfer reactions between the extracellular compartment to the cytoplasm are present for all species types in both
+
+        Args:
+            submodel (`LangSubmodel`): a DFBA submodel
 
         Returns:
-            `list`: errors
+            :obj:`list` of `str`: if no errors, returns an empty `list`, otherwise a `list` of
+                error messages
         '''
         errors = []
-        p = re.compile('biomass', flags=re.IGNORECASE)
-        for submodel in self.model.get_submodels():
-            if submodel.algorithm == SubmodelAlgorithm.dfba:
-                if not list(filter(lambda r: p.match(r.id), submodel.reactions)):
-                    errors.append("biomass reaction required in dfba submodels, "
-                        "but not found in '{}'".format(submodel.name))
+        for reaction in submodel.reactions:
+            for rate_law in reaction.rate_laws:
+                for attr in ['min_flux', 'max_flux']:
+                    if not hasattr(rate_law, attr) or isnan(getattr(rate_law, attr)):
+                        errors.append("Error: no {} for {} direction of reaction '{}' in submodel '{}'".format(
+                            attr, rate_law.direction.name, reaction.name, submodel.name))
+
+        # DFBA submodels must contain an objective function, traditionally a 'biomass' reaction
+        # wc_lang supports a linear combination of reactions as the objective function
+        sum_objective_proportion = sum([reaction.objective_proportion
+            for reaction in submodel.reactions])
+        if sum_objective_proportion <= 0:
+            errors.append("No reactions participating in objective function; set "
+                "'objective_proportion' for submodel '{}'".format(submodel.name))
         return errors
 
-    def test_rate_laws(self):
-        '''Transcode and evaluate all rate laws in a model
+    def check_dynamic_submodel(self, submodel):
+        '''Check the inputs to a dynamic submodel
 
-        Ensure that all rate laws can be transcoded and evaluated. This also ensures that all
-        species used in rate laws are also participants in reaction(s).
+        Ensure that:
+            * All reactions have rate laws for the appropriate directions
+
+        Args:
+            submodel (`LangSubmodel`): a dynamic (SSA or ODE) submodel
+
+        Returns:
+            :obj:`list` of :obj:`str` if no errors, returns an empty `list`, otherwise a `list` of
+                error messages
+        '''
+        errors = []
+        for reaction in submodel.reactions:
+            direction_types = set()
+            for rate_law in reaction.rate_laws:
+                direction_types.add(rate_law.direction.name)
+            if not direction_types:
+                errors.append("Error: reaction '{}' in submodel '{}' has no "
+                    "rate law specified".format(reaction.name, submodel.name))
+            if reaction.reversible:     # reversible is redundant with a reaction's rate laws
+                if direction_types.symmetric_difference(set(('forward', 'backward'))):
+                    errors.append("Error: reaction '{}' in submodel '{}' is reversible but has only "
+                        "a '{}' rate law specified".format(reaction.name, submodel.name,
+                        direction_types.pop()))
+            else:
+                if direction_types.symmetric_difference(set(('forward',))):
+                    errors.append("Error: reaction '{}' in submodel '{}' is not reversible but has "
+                        "a 'backward' rate law specified".format(reaction.name, submodel.name))
+        return errors
+
+    def check_rate_law_equations(self):
+        '''Transcode and evaluate all rate law equations in a model
+
+        Ensure that all rate law equations can be transcoded and evaluated. This also ensures that all
+        species used in a rate law equation are also participants in the rate law's reaction.
         This method is deliberately redundant with `MultialgorithmSimulation.transcode_rate_laws()`,
         which does not report errors.
 
         Returns:
-            `list`: errors
+            :obj:`list` of `str`: if no errors, returns an empty `list`, otherwise a `list` of
+                error messages
         '''
         errors = []
         species = self.model.get_species()
@@ -495,7 +547,8 @@ class CheckModel(object):
         '''Verify that all reactants in each submodel's reactions are in the submodel's compartment
 
         Returns:
-            `list`: errors
+            :obj:`list` of `str`: if no errors, returns an empty `list`, otherwise a `list` of
+                error messages
         '''
         errors = []
         for lang_submodel in self.model.get_submodels():

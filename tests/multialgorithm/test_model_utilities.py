@@ -9,7 +9,7 @@ import unittest, os
 from argparse import Namespace
 
 from wc_lang.io import Reader
-from wc_lang.core import RateLawEquation, RateLaw, Reaction
+from wc_lang.core import RateLawEquation, RateLaw, Reaction, Submodel
 from obj_model import utils
 from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.multialgorithm.model_utilities import ModelUtilities
@@ -17,8 +17,8 @@ from wc_sim.multialgorithm.model_utilities import ModelUtilities
 
 class TestModelUtilities(unittest.TestCase):
 
-    def get_submodel(self, id):
-        return utils.get_component_by_id(self.model.submodels, id)
+    def get_submodel(self, id_val):
+        return Submodel.objects.get(id=id_val)[0]
 
     def get_specie(self, id):
         for specie in self.model.get_species():
@@ -30,6 +30,7 @@ class TestModelUtilities(unittest.TestCase):
 
     def setUp(self):
         # read a model
+        Submodel.objects.reset()
         self.model = Reader().run(self.MODEL_FILENAME)
 
     def test_find_private_species(self):
@@ -46,7 +47,8 @@ class TestModelUtilities(unittest.TestCase):
         private_species = ModelUtilities.find_private_species(self.model, return_ids=True)
         self.assertEqual(set(private_species['submodel_1']), set(['specie_1[c]', 'specie_1[e]',
             'specie_2[e]', 'biomass[c]']))
-        self.assertEqual(set(private_species['submodel_2']), set(['specie_4[c]', 'specie_5[c]', 'specie_6[c]']))
+        self.assertEqual(set(private_species['submodel_2']), set(['specie_4[c]', 'specie_5[c]',
+            'specie_6[c]']))
 
     def test_find_shared_species(self):
         self.assertEqual(set(ModelUtilities.find_shared_species(self.model)),

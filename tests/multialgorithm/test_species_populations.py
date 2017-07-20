@@ -160,7 +160,7 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
     def test_population_changes(self):
         '''Test population changes that occur without using event messages.'''
         self.set_up_simulation(self.MODEL_FILENAME)
-        theASP = self.submodels['submodel_1'].access_species_population
+        theASP = self.submodels['dfba_submodel'].access_species_population
         init_val=100
         self.assertEqual(theASP.read_one(0, 'specie_1[c]'), init_val)
         self.assertEqual(theASP.read(0, set(['specie_1[c]'])), {'specie_1[c]': init_val})

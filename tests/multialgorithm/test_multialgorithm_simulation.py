@@ -8,13 +8,15 @@
 import os, unittest
 from argparse import Namespace
 import six
+import math
 
 from wc_sim.multialgorithm.multialgorithm_simulation import (DynamicModel, MultialgorithmSimulation,
     CheckModel)
 from wc_sim.multialgorithm.model_utilities import ModelUtilities
 from obj_model import utils
 from wc_lang.io import Reader
-from wc_lang.core import Reaction, RateLaw, RateLawEquation
+from wc_lang.core import (Reaction, RateLaw, RateLawEquation, Submodel, SubmodelAlgorithm,
+    RateLawDirection)
 
 
 class TestDynamicModel(unittest.TestCase):
@@ -73,19 +75,57 @@ class TestCheckModel(unittest.TestCase):
 
     def setUp(self):
         # read a model
+        Submodel.objects.reset()
+        Reaction.objects.reset()
         self.model = Reader().run(self.MODEL_FILENAME)
         self.check_model = CheckModel(self.model)
 
-    def test_verify_biomass_reaction(self):
-        self.assertEqual(self.check_model.verify_biomass_reaction(), [])
+    def test_check_dfba_submodel(self):
+        dfba_submodel = Submodel.objects.get(id='dfba_submodel')[0]
+        self.assertEqual(self.check_model.check_dfba_submodel(dfba_submodel), [])
+
+        # delete a min_flux
+        reaction_2 = Reaction.objects.get(id='reaction_2')[0]
+        reaction_2.rate_laws[0].min_flux = math.nan
+        errors = self.check_model.check_dfba_submodel(dfba_submodel)
+        self.assertIn("Error: no min_flux for forward direction of reaction", errors[0])
+        
         # remove all the reactions
         for submodel in self.model.get_submodels():
-            submodel.reactions = set()
-        self.assertIn("biomass reaction required", self.check_model.verify_biomass_reaction()[0])
+            submodel.reactions = []
+        errors = self.check_model.check_dfba_submodel(dfba_submodel)
+        self.assertIn("No reactions participating in objective function", errors[0])
 
-    def test_test_rate_laws(self):
+    def test_check_dynamic_submodel(self):
+        ssa_submodel = Submodel.objects.get(id='ssa_submodel')[0]
+        self.assertEqual(self.check_model.check_dynamic_submodel(ssa_submodel), [])
+
+        reaction_4 = Reaction.objects.get(id='reaction_4')[0]
+        # add reaction_4 backward ratelaw -> not reversible but has backward error
+        reaction_4_ratelaw = reaction_4.rate_laws[0]
+        reaction_4.rate_laws[0].direction = RateLawDirection.backward
+        errors = self.check_model.check_dynamic_submodel(ssa_submodel)
+        self.assertIn("is not reversible but has a 'backward' rate law specified", errors[0])
+
+        # remove reaction_4 forward ratelaw -> no rate law error
+        reaction_4.rate_laws = []
+        errors = self.check_model.check_dynamic_submodel(ssa_submodel)
+        self.assertIn("has no rate law specified", errors[0])
+
+        # put back the good rate law for reaction_4
+        reaction_4_ratelaw.direction = RateLawDirection.forward
+        reaction_4.rate_laws = [reaction_4_ratelaw]
+        self.assertEqual(self.check_model.check_dynamic_submodel(ssa_submodel), [])
+
+        # remove reaction_3 backward ratelaw -> reversible but only forward error
+        reaction_3 = Reaction.objects.get(id='reaction_3')[0]
+        del reaction_3.rate_laws[1:]
+        errors = self.check_model.check_dynamic_submodel(ssa_submodel)
+        self.assertIn("is reversible but has only a 'forward' rate law specified", errors[0])
+
+    def test_check_rate_law_equations(self):
         # good laws
-        self.assertEqual(self.check_model.test_rate_laws(), [])
+        self.assertEqual(self.check_model.check_rate_law_equations(), [])
 
         # test errors
         # redefine one reaction
@@ -104,23 +144,23 @@ class TestCheckModel(unittest.TestCase):
 
         # rate laws that fail transcoding
         rate_law_equation.expression='__ 0'
-        self.assertIn("Security risk: rate law expression '__", self.check_model.test_rate_laws()[0])
+        self.assertIn("Security risk: rate law expression '__", self.check_model.check_rate_law_equations()[0])
         rate_law_equation.expression='not_a_specie[e]'
-        self.assertIn("'not_a_specie[e]' not a known specie", self.check_model.test_rate_laws()[0])
+        self.assertIn("'not_a_specie[e]' not a known specie", self.check_model.check_rate_law_equations()[0])
         
         # rate laws that fail evaluation
         rate_law_equation.expression='foo foo'
         self.assertIn("reaction '{}' has syntax error".format(TEST_ID),
-            self.check_model.test_rate_laws()[0])
+            self.check_model.check_rate_law_equations()[0])
         rate_law_equation.expression='cos(0)'
         self.assertIn("name 'cos' is not defined".format(TEST_ID),
-            self.check_model.test_rate_laws()[0])
+            self.check_model.check_rate_law_equations()[0])
         rate_law_equation.expression='{{{*'
-        self.assertIn("EOF in multi-line statement", self.check_model.test_rate_laws()[0])
+        self.assertIn("EOF in multi-line statement", self.check_model.check_rate_law_equations()[0])
         
     def test_verify_reactant_compartments(self):
         for actual,expected in zip(self.check_model.verify_reactant_compartments(), 
             [".*reaction_1 uses specie specie_1 in another compartment: e",
                 ".*reaction_1 uses specie specie_2 in another compartment: e",
-                ".*'submodel_2' must contain a compartment attribute"]):
+                ".*'ssa_submodel' must contain a compartment attribute"]):
             six.assertRegex(self, actual, expected)
