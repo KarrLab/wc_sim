@@ -16,7 +16,7 @@ from wc_sim.multialgorithm.model_utilities import ModelUtilities
 from obj_model import utils
 from wc_lang.io import Reader
 from wc_lang.core import (Reaction, RateLaw, RateLawEquation, Submodel, SubmodelAlgorithm,
-    RateLawDirection)
+    RateLawDirection, SpeciesType)
 
 
 class TestDynamicModel(unittest.TestCase):
@@ -24,6 +24,8 @@ class TestDynamicModel(unittest.TestCase):
     MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_model.xlsx')
 
     def setUp(self):
+        for model in [Submodel, Reaction, SpeciesType]:
+            model.objects.reset()
         # read and initialize a model
         self.model = Reader().run(self.MODEL_FILENAME)
         args = Namespace(FBA_time_step=1)
@@ -74,18 +76,18 @@ class TestCheckModel(unittest.TestCase):
     MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_check_model_model.xlsx')
 
     def setUp(self):
-        # read a model
-        Submodel.objects.reset()
-        Reaction.objects.reset()
+        for model in [Submodel, Reaction, SpeciesType]:
+            model.objects.reset()
+        # read a wc model
         self.model = Reader().run(self.MODEL_FILENAME)
         self.check_model = CheckModel(self.model)
 
     def test_check_dfba_submodel(self):
-        dfba_submodel = Submodel.objects.get(id='dfba_submodel')[0]
+        dfba_submodel = Submodel.objects.get_one(id='dfba_submodel')
         self.assertEqual(self.check_model.check_dfba_submodel(dfba_submodel), [])
 
         # delete a min_flux
-        reaction_2 = Reaction.objects.get(id='reaction_2')[0]
+        reaction_2 = Reaction.objects.get_one(id='reaction_2')
         reaction_2.rate_laws[0].min_flux = math.nan
         errors = self.check_model.check_dfba_submodel(dfba_submodel)
         self.assertIn("Error: no min_flux for forward direction of reaction", errors[0])
@@ -97,10 +99,10 @@ class TestCheckModel(unittest.TestCase):
         self.assertIn("No reactions participating in objective function", errors[0])
 
     def test_check_dynamic_submodel(self):
-        ssa_submodel = Submodel.objects.get(id='ssa_submodel')[0]
+        ssa_submodel = Submodel.objects.get_one(id='ssa_submodel')
         self.assertEqual(self.check_model.check_dynamic_submodel(ssa_submodel), [])
 
-        reaction_4 = Reaction.objects.get(id='reaction_4')[0]
+        reaction_4 = Reaction.objects.get_one(id='reaction_4')
         # add reaction_4 backward ratelaw -> not reversible but has backward error
         reaction_4_ratelaw = reaction_4.rate_laws[0]
         reaction_4.rate_laws[0].direction = RateLawDirection.backward
@@ -118,7 +120,7 @@ class TestCheckModel(unittest.TestCase):
         self.assertEqual(self.check_model.check_dynamic_submodel(ssa_submodel), [])
 
         # remove reaction_3 backward ratelaw -> reversible but only forward error
-        reaction_3 = Reaction.objects.get(id='reaction_3')[0]
+        reaction_3 = Reaction.objects.get_one(id='reaction_3')
         del reaction_3.rate_laws[1:]
         errors = self.check_model.check_dynamic_submodel(ssa_submodel)
         self.assertIn("is reversible but has only a 'forward' rate law specified", errors[0])

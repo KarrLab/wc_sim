@@ -11,7 +11,7 @@ import six
 from scipy.constants import Avogadro
 
 from wc_lang.io import Reader
-from wc_lang.core import Reaction
+from wc_lang.core import Reaction, SpeciesType
 from wc_sim.core.simulation_object import SimulationObject, SimulationObjectInterface
 from wc_sim.core.simulation_engine import SimulationEngine
 from wc_sim.multialgorithm.submodels.submodel import Submodel
@@ -59,6 +59,7 @@ class TestSubmodel(unittest.TestCase):
         'test_submodel_no_shared_species.xlsx')
 
     def setUp(self):
+        SpeciesType.objects.reset()
         self.model = Reader().run(self.MODEL_FILENAME)
         self.multialgorithm_simulation = MultialgorithmSimulation(self.model, None)
         self.multialgorithm_simulation.initialize()
@@ -96,7 +97,7 @@ class TestSubmodel(unittest.TestCase):
             for specie_id in submodel.get_species_ids():
                 (species_type_id, _) = get_species_and_compartment_from_name(specie_id)
                 mass += (self.multialgorithm_simulation.init_populations[specie_id]*
-                        self.multialgorithm_simulation.molecular_weights[species_type_id])/Avogadro
+                        SpeciesType.objects.get_one(id=species_type_id).molecular_weight)/Avogadro
             self.assertAlmostEqual(submodel.mass(), mass, places=30)
 
     def test_enabled_reaction(self):

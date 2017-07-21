@@ -22,6 +22,7 @@ def obj_2_str(obj):
     else:
         return str(obj)
 
+# todo: merge into test_ssa.py and delete
 @unittest.skip("skip until updated")
 class TestSsaSubmodel(unittest.TestCase):
 

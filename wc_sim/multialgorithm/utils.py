@@ -6,6 +6,7 @@
 :License: MIT
 """
 
+# todo: redundant; replace with deserialize from wc_lang.Specie.serialize()
 def species_compartment_name(specie, compartment):
     """Provide an identifier for a species in a compartment, formatted  species_id[compartment_it].
 

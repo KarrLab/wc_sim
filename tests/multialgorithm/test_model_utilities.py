@@ -18,7 +18,7 @@ from wc_sim.multialgorithm.model_utilities import ModelUtilities
 class TestModelUtilities(unittest.TestCase):
 
     def get_submodel(self, id_val):
-        return Submodel.objects.get(id=id_val)[0]
+        return Submodel.objects.get_one(id=id_val)
 
     def get_specie(self, id):
         for specie in self.model.get_species():

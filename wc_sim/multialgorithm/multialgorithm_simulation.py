@@ -163,14 +163,14 @@ class DynamicModel(object):
         '''
         # This assumes compartment volumes are in L and concentrations in mol/L
         # TODO(Arthur): Ensure that units are correct
-        molecular_weights = self.multialgorithm_simulation.molecular_weights_from_model()
         # sum over all initial concentrations
         total_mw = 0
         for concentration in self.model.get_concentrations():
             if concentration.species.compartment.id in extracellular_compartments:
                 continue
+            species_type = SpeciesType.objects.get_one(id=concentration.species.species_type.id)
             total_mw += concentration.value * \
-                molecular_weights[concentration.species.species_type.id] * \
+                species_type.molecular_weight * \
                 concentration.species.compartment.initial_volume
         return total_mw/Avogadro
 
@@ -231,7 +231,6 @@ class MultialgorithmSimulation(object):
         '''
         self.check_model()
         self.initialize_biological_state()
-        self.molecular_weights = self.molecular_weights_from_model()
         (self.private_species, self.shared_species) = self.partition_species()
         self.transcode_rate_laws()
         self.species_pop_objs = self.create_shared_species_pop_objs()
@@ -264,17 +263,6 @@ class MultialgorithmSimulation(object):
                 self.init_populations[species.serialize()] = \
                     int(species.concentration.value * species.compartment.initial_volume * Avogadro)
 
-    def molecular_weights_from_model(self):
-        '''Obtain molecular weights for all `SpeciesType`s
-
-        Returns:
-            `dict`: species_type.id -> species_type.molecular_weight
-        '''
-        # this would be unnecessary if all BaseModel classes in wc_lang.core maintained indices
-        # todo: index Models by unique ids: dict: id -> instance
-        return {species_type.id:species_type.molecular_weight
-            for species_type in self.model.get_species_types()}
-
     def molecular_weights_for_species(self, species):
         '''Obtain the molecular weights for specified species ids
 
@@ -287,7 +275,7 @@ class MultialgorithmSimulation(object):
         specie_weights = {}
         for specie_id in species:
             (specie_type_id, _) = ModelUtilities.parse_specie_id(specie_id)
-            specie_weights[specie_id] = self.molecular_weights[specie_type_id]
+            specie_weights[specie_id] = SpeciesType.objects.get_one(id=specie_type_id).molecular_weight
         return specie_weights
 
     def partition_species(self):
