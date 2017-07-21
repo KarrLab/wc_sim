@@ -162,7 +162,6 @@ class DynamicModel(object):
             `float`: the cell's initial mass (g)
         '''
         # This assumes compartment volumes are in L and concentrations in mol/L
-        # TODO(Arthur): Ensure that units are correct
         # sum over all initial concentrations
         total_mw = 0
         for concentration in self.model.get_concentrations():
@@ -421,7 +420,6 @@ class CheckModel(object):
             for the reactions participate in at least one reaction in the submodel
 
     # TODO: implement these, and expand the list of properties
-    # TODO: provide file locations of any errors
     '''
 
     def __init__(self, model):
@@ -453,6 +451,7 @@ class CheckModel(object):
             :obj:`list` of `str`: if no errors, returns an empty `list`, otherwise a `list` of
                 error messages
         '''
+        # todo: do not require flux bounds for objective function reactions
         errors = []
         for reaction in submodel.reactions:
             for rate_law in reaction.rate_laws:

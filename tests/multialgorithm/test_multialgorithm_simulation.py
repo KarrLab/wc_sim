@@ -88,7 +88,7 @@ class TestCheckModel(unittest.TestCase):
 
         # delete a min_flux
         reaction_2 = Reaction.objects.get_one(id='reaction_2')
-        reaction_2.rate_laws[0].min_flux = math.nan
+        reaction_2.rate_laws[0].min_flux = float('NaN')
         errors = self.check_model.check_dfba_submodel(dfba_submodel)
         self.assertIn("Error: no min_flux for forward direction of reaction", errors[0])
         
