@@ -82,9 +82,17 @@ class TestCheckModel(unittest.TestCase):
         self.model = Reader().run(self.MODEL_FILENAME)
         self.check_model = CheckModel(self.model)
 
-    def test_check_dfba_submodel(self):
+    def test_check_dfba_submodel_1(self):
         dfba_submodel = Submodel.objects.get_one(id='dfba_submodel')
         self.assertEqual(self.check_model.check_dfba_submodel(dfba_submodel), [])
+
+        # delete a reaction's rate laws
+        Reaction.objects.get_one(id='reaction_1').rate_laws = []
+        errors = self.check_model.check_dfba_submodel(dfba_submodel)
+        self.assertIn("Error: no rate law for reaction 'reaction_name_1' in submodel", errors[0])
+
+    def test_check_dfba_submodel_2(self):
+        dfba_submodel = Submodel.objects.get_one(id='dfba_submodel')
 
         # delete a min_flux
         reaction_2 = Reaction.objects.get_one(id='reaction_2')

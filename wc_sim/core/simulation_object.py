@@ -109,10 +109,10 @@ class EventQueue(object):
 
         if 1<len(events):
             # sort events by message type priority, so an object handles simultaneous messages
-            # in priority order; this scales O(n log(n)) in the number of message types
-            receiver_priorities = sim_obj.get_receiving_priorities()
+            # in priority order; this costs O(n log(n)) in the number of event messages in events
+            receiver_priority_dict = sim_obj.get_receiving_priorities_dict()
             events = sorted(events,
-                key=lambda event: receiver_priorities.index(event.event_type))
+                key=lambda event: receiver_priority_dict[event.event_type])
 
         for event in events:
             self.log_event(event)
@@ -170,8 +170,9 @@ class SimulationObject(object):
     Derived class attributes:
         event_handlers: dict: message_type -> event_handler; provides the event handler for each
             message type for a subclass of `SimulationObject`
-        event_handler_priorities: list: the message types received by a subclass of
-            `SimulationObject`, sorted in decreasing priority order
+        event_handler_priorities: `dict`: from message types handled by a `SimulationObject` subclass,
+            to message type priority. The highest priority is 0, and priority decreases with
+            increasing priority values.
         message_types_sent: set: the types of messages a subclass of `SimulationObject` has
             registered to send
 
@@ -241,7 +242,7 @@ class SimulationObject(object):
                 most_qual_cls_name(self), event_type_name))
 
         # check that the receiving simulation object type is registered to receive the message type
-        receiver_priorities = receiving_object.get_receiving_priorities()
+        receiver_priorities = receiving_object.get_receiving_priorities_dict()
         if event_type_name not in receiver_priorities:
             raise ValueError("'{}' simulation objects not registered to receive '{}' messages".format(
                 most_qual_cls_name(receiving_object), event_type_name))
@@ -300,7 +301,10 @@ class SimulationObject(object):
             if not callable(handler):
                 raise ValueError("handler '{}' must be callable".format(handler))
             subclass.event_handlers[most_qual_cls_name(message_type)] = handler
-        subclass.event_handler_priorities = [most_qual_cls_name(message_type) for message_type, _ in handlers]
+
+        subclass.event_handler_priorities = {}
+        for index,(message_type, _) in enumerate(handlers):
+            subclass.event_handler_priorities[most_qual_cls_name(message_type)] = index
 
     @staticmethod
     def register_sent_messages(subclass, sent_messages):
@@ -317,8 +321,10 @@ class SimulationObject(object):
         for sent_message_type in sent_messages:
             subclass.message_types_sent.add(most_qual_cls_name(sent_message_type))
 
-    def get_receiving_priorities(self):
-        '''Provide message types handled by a `SimulationObject` subclass, in priority order.
+    def get_receiving_priorities_dict(self):
+        '''Provide dict mapping from message types handled by a `SimulationObject` subclass,
+            to message type priority. The highest priority is 0, and priority decreases with
+            increasing priority values.
         '''
         if not hasattr(self.__class__, 'event_handler_priorities'):
             raise Exception("SimulationObject type '{}' must call register_handlers()".format(
@@ -337,7 +343,7 @@ class SimulationObject(object):
             ValueError: if some event message in event_list has an invalid type
         '''
         # todo: rationalize naming between simulation message, event, & event_list
-        # the field needs this
+        # the PDES field needs this
 
         self.num_events += 1
 

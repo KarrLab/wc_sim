@@ -349,6 +349,37 @@ class MultialgorithmSimulation(object):
             self.shared_species)
         return access_species_population
 
+    # TODO IMPT COMPLETE THIS
+    def create_dfba_submodel_exchange_rxns(self, submodel, extracellular, cytoplasm):
+        '''Generate extracellular exchange reactions for a dfba submodel
+
+        Ensure that a DFBA submodel has exchange reactions for all species that are in both the
+        extracellular compartment and the cytoplasm.
+
+        Args:
+            submodel (`LangSubmodel`): a DFBA submodel
+            extracellular (`Compartment`): the model's extracellular compartment
+            cytoplasm (`Compartment`): the model's cytoplasm compartment
+        '''
+        AUTOMATICALLY_CREATED_EXCHANGE_RXN_ID_PREFIX = '__generated_reaction_'
+        AUTOMATICALLY_CREATED_EXCHANGE_RXN_NAME_PREFIX = '__generated_reaction_name_'
+
+        reaction_id_num = 1
+        specie_types = 'test1 test2 test3'.split()
+        # for each specie make Reaction with Participants with Species with Concentration (of 0)
+        for specie_type in specie_types:
+            rxn_id = "{}_{}".format(AUTOMATICALLY_CREATED_EXCHANGE_RXN_ID_PREFIX, reaction_id_num)
+            rxn_name = "{}_{}".format(AUTOMATICALLY_CREATED_EXCHANGE_RXN_NAME_PREFIX, reaction_id_num)
+            reaction_id_num += 1
+            specie_extra = Specie(species_type=specie_type, compartment=extracellular)
+            concentration = Concentration(species=specie_extra, value=0)
+            specie_cyto = Specie(species_type=specie_type, compartment=cytoplasm)
+            part_extra = P
+            submodel.name
+            # direction = forward
+            participants = "".format()
+
+
     def create_submodels(self):
         '''Create submodels that contain private species and access shared species
 
@@ -364,6 +395,11 @@ class MultialgorithmSimulation(object):
             # make the simulation's submodels
             # todo: add a DynamicModel to each lang_submodel
             if lang_submodel.algorithm == SubmodelAlgorithm.dfba:
+
+                # todo: use a more general method for finding the extracellular & cytoplasm compartments
+                create_dfba_submodel_exchange_rxns(lang_submodel,
+                    self.model.get_component('compartment', 'e'),
+                    self.model.get_component('compartment', 'c'))
                 simulation_submodels[lang_submodel.id] = FbaSubmodel(self.model,
                     lang_submodel.id,
                     access_species_population,
@@ -440,9 +476,8 @@ class CheckModel(object):
         '''Check the inputs to a DFBA submodel
 
         Ensure that:
-            * All reactions have min flux and max flux
+            * All regular DFBA reactions have a rate law with min flux and max flux
             * The DFBA submodel contains an objective function, aka biomass reaction
-            * Transfer reactions between the extracellular compartment to the cytoplasm are present for all species types in both
 
         Args:
             submodel (`LangSubmodel`): a DFBA submodel
@@ -451,9 +486,14 @@ class CheckModel(object):
             :obj:`list` of `str`: if no errors, returns an empty `list`, otherwise a `list` of
                 error messages
         '''
-        # todo: do not require flux bounds for objective function reactions
         errors = []
         for reaction in submodel.reactions:
+            # rate laws and flux bounds are not required for objective function reactions
+            if 0 < reaction.objective_proportion:
+                continue
+            if not reaction.rate_laws:
+                errors.append("Error: no rate law for reaction '{}' in submodel '{}'".format(
+                    reaction.name, submodel.name))
             for rate_law in reaction.rate_laws:
                 for attr in ['min_flux', 'max_flux']:
                     if not hasattr(rate_law, attr) or isnan(getattr(rate_law, attr)):
@@ -467,6 +507,7 @@ class CheckModel(object):
         if sum_objective_proportion <= 0:
             errors.append("No reactions participating in objective function; set "
                 "'objective_proportion' for submodel '{}'".format(submodel.name))
+
         return errors
 
     def check_dynamic_submodel(self, submodel):
@@ -504,8 +545,7 @@ class CheckModel(object):
     def check_rate_law_equations(self):
         '''Transcode and evaluate all rate law equations in a model
 
-        Ensure that all rate law equations can be transcoded and evaluated. This also ensures that all
-        species used in a rate law equation are also participants in the rate law's reaction.
+        Ensure that all rate law equations can be transcoded and evaluated.
         This method is deliberately redundant with `MultialgorithmSimulation.transcode_rate_laws()`,
         which does not report errors.
 
