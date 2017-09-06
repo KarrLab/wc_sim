@@ -86,25 +86,43 @@ class TestCheckModel(unittest.TestCase):
         dfba_submodel = Submodel.objects.get_one(id='dfba_submodel')
         self.assertEqual(self.check_model.check_dfba_submodel(dfba_submodel), [])
 
-        # delete a reaction's rate laws
-        Reaction.objects.get_one(id='reaction_1').rate_laws = []
+        # delete a reaction's min flux
+        reaction1 = Reaction.objects.get_one(id='reaction_1')
+        reaction1.min_flux = float('NaN')
         errors = self.check_model.check_dfba_submodel(dfba_submodel)
-        self.assertIn("Error: no rate law for reaction 'reaction_name_1' in submodel", errors[0])
+        self.assertIn("Error: no min_flux for reaction 'reaction_name_1' in submodel", errors[0])
 
     def test_check_dfba_submodel_2(self):
         dfba_submodel = Submodel.objects.get_one(id='dfba_submodel')
 
-        # delete a min_flux
-        reaction_2 = Reaction.objects.get_one(id='reaction_2')
-        reaction_2.rate_laws[0].min_flux = float('NaN')
+        # violate reaction.min_flux <= reaction.max_flux
+        reaction1 = Reaction.objects.get_one(id='reaction_1')
+        reaction1.min_flux = reaction1.max_flux + 1
+
+        # violate reaction.reversible => reaction.min_flux <= 0
+        reaction2 = Reaction.objects.get_one(id='reaction_2')
+        reaction2.min_flux = 1
+
         errors = self.check_model.check_dfba_submodel(dfba_submodel)
-        self.assertIn("Error: no min_flux for forward direction of reaction", errors[0])
-        
-        # remove all the reactions
-        for submodel in self.model.get_submodels():
-            submodel.reactions = []
+        self.assertIn("Error: max_flux < min_flux ({} < {}) for reaction '{}' in submodel".format(
+            reaction1.max_flux, reaction1.min_flux, reaction1.name), errors[0])
+        self.assertIn("Error: 0 < min_flux ({}) for reversible reaction '{}' in submodel".format(
+            reaction2.min_flux, reaction2.name), errors[1])
+
+    def test_check_dfba_submodel_3(self):
+        dfba_submodel = Submodel.objects.get_one(id='dfba_submodel')
+
+        # remove all BiomassComponents from the BiomassReaction
+        dfba_submodel.biomass_reaction.biomass_components = []
         errors = self.check_model.check_dfba_submodel(dfba_submodel)
-        self.assertIn("No reactions participating in objective function", errors[0])
+        self.assertIn("Error: submodel '{}' uses dfba but lacks a biomass reaction".format(dfba_submodel.name),
+            errors[0])
+
+        # remove the BiomassReaction
+        delattr(dfba_submodel, 'biomass_reaction')
+        errors = self.check_model.check_dfba_submodel(dfba_submodel)
+        self.assertIn("Error: submodel '{}' uses dfba but lacks a biomass reaction".format(dfba_submodel.name),
+            errors[0])
 
     def test_check_dynamic_submodel(self):
         ssa_submodel = Submodel.objects.get_one(id='ssa_submodel')

@@ -444,7 +444,7 @@ class CheckModel(object):
     '''Statically check a model
 
     Checked properties:
-        DFBA submodels contain a biomass reaction
+        DFBA submodels contain a biomass reaction and an objective function
         Rate laws transcode and evaluate without error
         All reactants in each submodel's reactions are in the submodel's compartment
 
@@ -476,8 +476,9 @@ class CheckModel(object):
         '''Check the inputs to a DFBA submodel
 
         Ensure that:
-            * All regular DFBA reactions have a rate law with min flux and max flux
-            * The DFBA submodel contains an objective function, aka biomass reaction
+            * All regular DFBA reactions have min flux and max flux with appropriate values
+            * The DFBA submodel contains a biomass reaction
+            TODO * The DFBA submodel contains an objective function
 
         Args:
             submodel (`LangSubmodel`): a DFBA submodel
@@ -488,25 +489,22 @@ class CheckModel(object):
         '''
         errors = []
         for reaction in submodel.reactions:
-            # rate laws and flux bounds are not required for objective function reactions
-            if 0 < reaction.objective_proportion:
-                continue
-            if not reaction.rate_laws:
-                errors.append("Error: no rate law for reaction '{}' in submodel '{}'".format(
-                    reaction.name, submodel.name))
-            for rate_law in reaction.rate_laws:
-                for attr in ['min_flux', 'max_flux']:
-                    if not hasattr(rate_law, attr) or isnan(getattr(rate_law, attr)):
-                        errors.append("Error: no {} for {} direction of reaction '{}' in submodel '{}'".format(
-                            attr, rate_law.direction.name, reaction.name, submodel.name))
+            for attr in ['min_flux', 'max_flux']:
+                if not hasattr(reaction, attr) or isnan(getattr(reaction, attr)):
+                    errors.append("Error: no {} for reaction '{}' in submodel '{}'".format(
+                        attr, reaction.name, submodel.name))
+                    continue
 
-        # DFBA submodels must contain an objective function, traditionally a 'biomass' reaction
-        # wc_lang supports a linear combination of reactions as the objective function
-        sum_objective_proportion = sum([reaction.objective_proportion
-            for reaction in submodel.reactions])
-        if sum_objective_proportion <= 0:
-            errors.append("No reactions participating in objective function; set "
-                "'objective_proportion' for submodel '{}'".format(submodel.name))
+            if hasattr(reaction, 'min_flux') and hasattr(reaction, 'max_flux'):
+                if reaction.max_flux < reaction.min_flux:
+                    errors.append("Error: max_flux < min_flux ({} < {}) for reaction '{}' in submodel '{}'".format(
+                        reaction.max_flux, reaction.min_flux, reaction.name, submodel.name))
+                if reaction.reversible and 0 < reaction.min_flux:
+                    errors.append("Error: 0 < min_flux ({}) for reversible reaction '{}' in submodel '{}'".format(
+                        reaction.min_flux, reaction.name, submodel.name))
+
+        if not hasattr(submodel, 'biomass_reaction') or not submodel.biomass_reaction.biomass_components:
+            errors.append("Error: submodel '{}' uses dfba but lacks a biomass reaction".format(submodel.name))
 
         return errors
 

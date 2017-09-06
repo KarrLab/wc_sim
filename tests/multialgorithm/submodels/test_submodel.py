@@ -51,7 +51,6 @@ class MockSimulationObject(SimulationObject, SimulationObjectInterface):
         SimulationObject.register_sent_messages(this_class, [message_types.GetCurrentProperty])
 
 
-
 # todo: test submodels with shared species
 class TestSubmodel(unittest.TestCase):
 
