@@ -47,6 +47,7 @@ class TestMultialgorithmSimulation(unittest.TestCase):
     MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_model.xlsx')
 
     def setUp(self):
+        Submodel.objects.reset()
         # read and initialize a model
         self.model = Reader().run(self.MODEL_FILENAME)
         args = Namespace(FBA_time_step=1)
@@ -69,6 +70,28 @@ class TestMultialgorithmSimulation(unittest.TestCase):
             list(filter(lambda rl: hasattr(rl.equation, 'transcoded'), self.model.get_rate_laws())))
         self.assertEqual(num_transcoded_rate_law_equations, 5)
 
+    def test_confirm_dfba_submodel_obj_func(self):
+        dfba_submodel = Submodel.objects.get_one(id='submodel_1')
+
+        confirm_dfba_submodel_obj_func = self.multialgorithm_simulation.confirm_dfba_submodel_obj_func
+
+        dfba_submodel.algorithm = None
+        with self.assertRaises(ValueError) as context:
+            confirm_dfba_submodel_obj_func(dfba_submodel)
+        self.assertIn("not a dfba submodel", str(context.exception))
+        dfba_submodel.algorithm = SubmodelAlgorithm.dfba
+
+        self.assertEqual(confirm_dfba_submodel_obj_func(dfba_submodel), None)
+
+        dfba_submodel.objective_function = None
+        self.assertEqual(confirm_dfba_submodel_obj_func(dfba_submodel), None)
+        # dfba_submodel should be using its biomass reaction as its objective function
+        self.assertEqual(dfba_submodel.objective_function.expression, dfba_submodel.biomass_reaction.id)
+
+        dfba_submodel.objective_function = None
+        dfba_submodel.biomass_reaction.id = dfba_submodel.reactions[0].id
+        with self.assertRaises(ValueError) as context:
+            confirm_dfba_submodel_obj_func(dfba_submodel)
 
 
 class TestCheckModel(unittest.TestCase):
@@ -119,7 +142,7 @@ class TestCheckModel(unittest.TestCase):
             errors[0])
 
         # remove the BiomassReaction
-        delattr(dfba_submodel, 'biomass_reaction')
+        dfba_submodel.biomass_reaction = None
         errors = self.check_model.check_dfba_submodel(dfba_submodel)
         self.assertIn("Error: submodel '{}' uses dfba but lacks a biomass reaction".format(dfba_submodel.name),
             errors[0])

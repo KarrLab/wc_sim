@@ -9,7 +9,7 @@ import unittest, os
 from argparse import Namespace
 
 from wc_lang.io import Reader
-from wc_lang.core import RateLawEquation, RateLaw, Reaction, Submodel
+from wc_lang.core import RateLawEquation, RateLaw, Reaction, Submodel, Species
 from obj_model import utils
 from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.multialgorithm.model_utilities import ModelUtilities
@@ -39,14 +39,13 @@ class TestModelUtilities(unittest.TestCase):
         # code under different circumstances and ensuring identical output
         private_species = ModelUtilities.find_private_species(self.model)
         self.assertEqual(set(private_species[self.get_submodel('submodel_1')]),
-            set(map(lambda x: self.get_specie(x), ['specie_1[c]', 'specie_1[e]', 'specie_2[e]',
-            'biomass[c]'])))
+            set(map(lambda x: self.get_specie(x), ['specie_1[c]', 'specie_1[e]', 'specie_2[e]'])))
         self.assertEqual(set(private_species[self.get_submodel('submodel_2')]),
             set(map(lambda x: self.get_specie(x), ['specie_4[c]', 'specie_5[c]', 'specie_6[c]'])))
 
         private_species = ModelUtilities.find_private_species(self.model, return_ids=True)
         self.assertEqual(set(private_species['submodel_1']), set(['specie_1[c]', 'specie_1[e]',
-            'specie_2[e]', 'biomass[c]']))
+            'specie_2[e]']))
         self.assertEqual(set(private_species['submodel_2']), set(['specie_4[c]', 'specie_5[c]',
             'specie_6[c]']))
 
@@ -109,8 +108,7 @@ class TestModelUtilities(unittest.TestCase):
         initial_specie_concentrations = ModelUtilities.initial_specie_concentrations(self.model)
         some_specie_concentrations = {
             'specie_2[e]':2.0E-4,
-            'specie_2[c]':5.0E-4,
-            'biomass[c]':0. }
+            'specie_2[c]':5.0E-4 }
         for k in some_specie_concentrations.keys():
             self.assertEqual(initial_specie_concentrations[k], some_specie_concentrations[k])
 

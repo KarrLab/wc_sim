@@ -16,8 +16,8 @@ import tokenize, token
 
 from obj_model import utils
 from wc_utils.util.list import difference
-from wc_lang.core import (SubmodelAlgorithm, Model, SpeciesType, SpeciesTypeType,
-    Species, Compartment, Reaction, ReactionParticipant, RateLawEquation)
+from wc_lang.core import (SubmodelAlgorithm, Model, ObjectiveFunction, SpeciesType, SpeciesTypeType,
+    Species, Compartment, Reaction, ReactionParticipant, RateLawEquation, BiomassReaction)
 from wc_lang.core import Submodel as LangSubmodel
 from wc_sim.core.simulation_engine import SimulationEngine
 from wc_sim.multialgorithm import message_types
@@ -379,6 +379,38 @@ class MultialgorithmSimulation(object):
             # direction = forward
             participants = "".format()
 
+    def confirm_dfba_submodel_obj_func(self, submodel):
+        '''Ensure that a dFBA submodel has an objective function
+
+        If the submodel definition does not provide an objective function, then use the
+        biomass reaction.
+
+        Args:
+            submodel (`LangSubmodel`): a dFBA submodel
+
+        Raises:
+            ValueError: if `submodel` is not a dFBA submodel
+            ValueError: if `submodel` cannot use its biomass reaction '{}' as an objective function
+        '''
+        if submodel.algorithm != SubmodelAlgorithm.dfba:
+            raise ValueError("submodel '{}' not a dfba submodel".format(submodel.name))
+
+        if not submodel.objective_function is None:
+            return
+
+        # use the biomass reaction
+        obj_func_expression = submodel.biomass_reaction.id
+        # deserialize the expression
+        attr = ObjectiveFunction.Meta.attributes['expression']
+        # deserialize needs the biomass reaction and all the Reactions
+        objs = {}
+        objs[BiomassReaction] = {submodel.biomass_reaction.id:submodel.biomass_reaction}
+        objs[Reaction] = dict(zip([rxn.id for rxn in submodel.reactions], submodel.reactions))
+        (of, invalid_attribute) = ObjectiveFunction.deserialize(attr, obj_func_expression, objs)
+        if invalid_attribute:
+            raise ValueError("submodel '{}' cannot use biomass reaction '{}' as an objective function: "
+                "{}".format(submodel.name, submodel.biomass_reaction.id, invalid_attribute.messages[0]))
+        submodel.objective_function = of
 
     def create_submodels(self):
         '''Create submodels that contain private species and access shared species
@@ -503,7 +535,7 @@ class CheckModel(object):
                     errors.append("Error: 0 < min_flux ({}) for reversible reaction '{}' in submodel '{}'".format(
                         reaction.min_flux, reaction.name, submodel.name))
 
-        if not hasattr(submodel, 'biomass_reaction') or not submodel.biomass_reaction.biomass_components:
+        if submodel.biomass_reaction is None or not submodel.biomass_reaction.biomass_components:
             errors.append("Error: submodel '{}' uses dfba but lacks a biomass reaction".format(submodel.name))
 
         return errors
