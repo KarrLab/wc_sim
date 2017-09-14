@@ -9,6 +9,7 @@ import os, unittest
 from argparse import Namespace
 import six
 import math
+import numpy as np
 
 from wc_sim.multialgorithm.multialgorithm_simulation import (DynamicModel, MultialgorithmSimulation,
     CheckModel)
@@ -93,6 +94,26 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         with self.assertRaises(ValueError) as context:
             confirm_dfba_submodel_obj_func(dfba_submodel)
 
+    def test_default_dfba_submodel_flux_bounds(self):
+        dfba_submodel = Submodel.objects.get_one(id='submodel_1')
+        self.assertEqual(self.multialgorithm_simulation.default_dfba_submodel_flux_bounds(dfba_submodel),
+            (1,1))
+        test_non_rev = dfba_submodel.reactions.create(
+            id='__test_1',
+            reversible=False
+        )
+        test_rev = dfba_submodel.reactions.create(
+            id='__test_2',
+            reversible=True
+        )
+        self.assertEqual(self.multialgorithm_simulation.default_dfba_submodel_flux_bounds(dfba_submodel),
+            (2,2))
+        self.multialgorithm_simulation.default_dfba_submodel_flux_bounds(dfba_submodel)
+        self.assertEqual(test_non_rev.max_flux, test_rev.max_flux)
+        self.assertEqual(-test_rev.min_flux, test_rev.max_flux)
+        self.assertEqual(self.multialgorithm_simulation.default_dfba_submodel_flux_bounds(dfba_submodel),
+            (0,0))
+
 
 class TestCheckModel(unittest.TestCase):
 
@@ -111,7 +132,7 @@ class TestCheckModel(unittest.TestCase):
 
         # delete a reaction's min flux
         reaction1 = Reaction.objects.get_one(id='reaction_1')
-        reaction1.min_flux = float('NaN')
+        reaction1.min_flux = np.nan
         errors = self.check_model.check_dfba_submodel(dfba_submodel)
         self.assertIn("Error: no min_flux for reaction 'reaction_name_1' in submodel", errors[0])
 

@@ -28,6 +28,8 @@ from wc_sim.multialgorithm.submodels.ssa import SsaSubmodel
 from wc_sim.multialgorithm.submodels.fba import FbaSubmodel
 from wc_sim.multialgorithm.utils import species_compartment_name
 from wc_sim.multialgorithm.species_populations import LOCAL_POP_STORE, Specie, SpeciesPopSimObject
+from wc_utils.config.core import ConfigManager
+from wc_sim.multialgorithm.config import paths as config_paths_multialgorithm
 
 # TODO(Arthur): use lists instead of sets to ensure deterministic behavior
 
@@ -379,6 +381,7 @@ class MultialgorithmSimulation(object):
             # direction = forward
             participants = "".format()
 
+    # TODO: call this
     def confirm_dfba_submodel_obj_func(self, submodel):
         '''Ensure that a dFBA submodel has an objective function
 
@@ -411,6 +414,69 @@ class MultialgorithmSimulation(object):
             raise ValueError("submodel '{}' cannot use biomass reaction '{}' as an objective function: "
                 "{}".format(submodel.name, submodel.biomass_reaction.id, invalid_attribute.messages[0]))
         submodel.objective_function = of
+
+    # TODO: call this
+    # TODO: doublecheck Sphinx formatting
+    def default_dfba_submodel_flux_bounds(self, submodel):
+        ''' Apply default flux bounds to a dFBA submodel's reactions
+
+        The FBA optimizer needs min and max flux bounds for each dFBA submodel reaction.
+        If bounds are not provided in some reactions, and default bounds are provided in a config file,
+        then apply the defaults to the reactions.
+        Specifically, min and max default bounds are applied as follows:
+            reversible reactions:
+                min_flux = -default_max_flux_bound
+                max_flux = default_max_flux_bound
+            irreversible reactions:
+                min_flux = default_min_flux_bound
+                max_flux = default_max_flux_bound
+
+        Args:
+            submodel (`LangSubmodel`): a dFBA submodel
+
+        Raises:
+            ValueError: if `submodel` is not a dFBA submodel
+
+        Returns:
+            :obj:`tuple` of (`int`,`int`): counts of min and max flux bounds set
+        '''
+        if submodel.algorithm != SubmodelAlgorithm.dfba:
+            raise ValueError("submodel '{}' not a dfba submodel".format(submodel.name))
+
+        need_default_flux_bounds = False
+        for rxn in submodel.reactions:
+            need_default_flux_bounds = need_default_flux_bounds or isnan(rxn.min_flux) or isnan(rxn.max_flux)
+        if not need_default_flux_bounds:
+            # all reactions have flux bounds
+            return (0,0)
+
+        # Are default flux bounds available? They cannot be negative.
+        try:
+            config_multialgorithm = \
+                ConfigManager(config_paths_multialgorithm.core).get_config()['wc_sim']['multialgorithm']
+            default_min_flux_bound = config_multialgorithm['default_min_flux_bound']
+            default_max_flux_bound = config_multialgorithm['default_max_flux_bound']
+        except KeyError as e:
+            raise ValueError("cannot obtain default_min_flux_bound and default_max_flux_bound=")
+        if not 0 <= default_min_flux_bound <= default_max_flux_bound:
+            raise ValueError("default flux bounds violate 0 <= default_min_flux_bound <= default_max_flux_bound:\n"
+            "default_min_flux_bound={}; default_max_flux_bound={}".format(default_min_flux_bound,
+                default_max_flux_bound))
+
+        # Apply default flux bounds to reactions in submodel
+        num_default_min_flux_bounds = 0
+        num_default_max_flux_bounds = 0
+        for rxn in submodel.reactions:
+            if isnan(rxn.min_flux):
+                num_default_min_flux_bounds += 1
+                if rxn.reversible:
+                    rxn.min_flux = -default_max_flux_bound
+                else:
+                    rxn.min_flux = default_min_flux_bound
+            if isnan(rxn.max_flux):
+                num_default_max_flux_bounds += 1
+                rxn.max_flux = default_max_flux_bound
+        return (num_default_min_flux_bounds, num_default_max_flux_bounds)
 
     def create_submodels(self):
         '''Create submodels that contain private species and access shared species
