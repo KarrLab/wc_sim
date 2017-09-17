@@ -30,6 +30,8 @@ from wc_sim.multialgorithm.utils import species_compartment_name
 from wc_sim.multialgorithm.species_populations import LOCAL_POP_STORE, Specie, SpeciesPopSimObject
 from wc_utils.config.core import ConfigManager
 from wc_sim.multialgorithm.config import paths as config_paths_multialgorithm
+config_multialgorithm = \
+    ConfigManager(config_paths_multialgorithm.core).get_config()['wc_sim']['multialgorithm']
 
 # TODO(Arthur): use lists instead of sets to ensure deterministic behavior
 
@@ -351,35 +353,74 @@ class MultialgorithmSimulation(object):
             self.shared_species)
         return access_species_population
 
-    # TODO IMPT COMPLETE THIS
-    def create_dfba_submodel_exchange_rxns(self, submodel, extracellular, cytoplasm):
-        '''Generate extracellular exchange reactions for a dfba submodel
+    # TODO: call this before adding default flux bounds
+    def fill_dfba_submodel_reaction_gaps(self, submodel):
+        '''Create reactions to fill gaps in a submodel reaction network.
 
-        Ensure that a DFBA submodel has exchange reactions for all species that are in both the
-        extracellular compartment and the cytoplasm.
+        Considering only reactions used by this submodel, generate gap filling reactions
+        that consume species that are not consumed and produce species that are not produced. These
+        reactions enable an FBA solver to obtain a steady state solution.
 
         Args:
             submodel (`LangSubmodel`): a DFBA submodel
-            extracellular (`Compartment`): the model's extracellular compartment
-            cytoplasm (`Compartment`): the model's cytoplasm compartment
-        '''
-        AUTOMATICALLY_CREATED_EXCHANGE_RXN_ID_PREFIX = '__generated_reaction_'
-        AUTOMATICALLY_CREATED_EXCHANGE_RXN_NAME_PREFIX = '__generated_reaction_name_'
 
-        reaction_id_num = 1
-        specie_types = 'test1 test2 test3'.split()
-        # for each specie make Reaction with Participants with Species with Concentration (of 0)
-        for specie_type in specie_types:
-            rxn_id = "{}_{}".format(AUTOMATICALLY_CREATED_EXCHANGE_RXN_ID_PREFIX, reaction_id_num)
-            rxn_name = "{}_{}".format(AUTOMATICALLY_CREATED_EXCHANGE_RXN_NAME_PREFIX, reaction_id_num)
-            reaction_id_num += 1
-            specie_extra = Specie(species_type=specie_type, compartment=extracellular)
-            concentration = Concentration(species=specie_extra, value=0)
-            specie_cyto = Specie(species_type=specie_type, compartment=cytoplasm)
-            part_extra = P
-            submodel.name
-            # direction = forward
-            participants = "".format()
+        Raises:
+            ValueError: if `submodel` is not a dFBA submodel
+            ValueError: if some species in `submodel` are neither produced nor consumed
+
+        Returns:
+            (:obj:`int`): the number of reactions created
+        '''
+        '''
+        Algorithm:
+            S = the set of all species used by submodel
+            generate a "-> s" reaction for each s in S that is not produced by a reaction in submodel
+            generate an "s ->" reaction for each s in S that is not consumed by a reaction in submodel
+        '''
+        if submodel.algorithm != SubmodelAlgorithm.dfba:
+            raise ValueError("submodel '{}' not a dfba submodel".format(submodel.name))
+
+        reaction_number = 1
+
+        species = submodel.get_species()
+        species_not_produced = set(species)
+        species_not_consumed = set(species)
+        for rxn in submodel.reactions:
+            if rxn.reversible:
+                for part in rxn.participants:
+                    species_not_produced.discard(part.species)
+                    species_not_consumed.discard(part.species)
+            else:
+                for part in rxn.participants:
+                    if part.coefficient<0:
+                        species_not_consumed.discard(part.species)
+                    elif 0<part.coefficient:
+                        species_not_produced.discard(part.species)
+
+        if species_not_produced & species_not_consumed:
+            raise ValueError("some species in submodel '{}' are neither produced nor consumed: {}".format(
+                submodel.id,
+                sorted([s.id() for s in species_not_produced & species_not_consumed])))
+
+        GAP_FILLING_RXN_ID_PREFIX = config_multialgorithm['GAP_FILLING_RXN_ID_PREFIX']
+        GAP_FILLING_RXN_NAME_PREFIX = config_multialgorithm['GAP_FILLING_RXN_NAME_PREFIX']
+        for specie in species_not_produced:
+            # generate a "-> specie" reaction
+            new_rxn = submodel.reactions.create(
+                id = "{}_{}".format(GAP_FILLING_RXN_ID_PREFIX, reaction_number),
+                name = "{}_{}".format(GAP_FILLING_RXN_NAME_PREFIX, reaction_number))
+            reaction_number += 1
+            new_rxn.participants.create(species=specie, coefficient = 1)
+
+        for specie in species_not_consumed:
+            # generate a "specie ->" reaction
+            new_rxn = submodel.reactions.create(
+                id = "{}_{}".format(GAP_FILLING_RXN_ID_PREFIX, reaction_number),
+                name = "{}_{}".format(GAP_FILLING_RXN_NAME_PREFIX, reaction_number))
+            reaction_number += 1
+            new_rxn.participants.create(species=specie, coefficient = -1)
+
+        return reaction_number-1
 
     # TODO: call this
     def confirm_dfba_submodel_obj_func(self, submodel):
@@ -452,8 +493,6 @@ class MultialgorithmSimulation(object):
 
         # Are default flux bounds available? They cannot be negative.
         try:
-            config_multialgorithm = \
-                ConfigManager(config_paths_multialgorithm.core).get_config()['wc_sim']['multialgorithm']
             default_min_flux_bound = config_multialgorithm['default_min_flux_bound']
             default_max_flux_bound = config_multialgorithm['default_max_flux_bound']
         except KeyError as e:

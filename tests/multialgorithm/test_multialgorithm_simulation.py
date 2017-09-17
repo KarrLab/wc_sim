@@ -17,7 +17,11 @@ from wc_sim.multialgorithm.model_utilities import ModelUtilities
 from obj_model import utils
 from wc_lang.io import Reader
 from wc_lang.core import (Reaction, RateLaw, RateLawEquation, Submodel, SubmodelAlgorithm,
-    RateLawDirection, SpeciesType)
+    Species, RateLawDirection, SpeciesType)
+from wc_utils.config.core import ConfigManager
+from wc_sim.multialgorithm.config import paths as config_paths_multialgorithm
+config_multialgorithm = \
+    ConfigManager(config_paths_multialgorithm.core).get_config()['wc_sim']['multialgorithm']
 
 
 class TestDynamicModel(unittest.TestCase):
@@ -94,10 +98,32 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         with self.assertRaises(ValueError) as context:
             confirm_dfba_submodel_obj_func(dfba_submodel)
 
+    def test_fill_dfba_submodel_reaction_gaps(self):
+        dfba_submodel = Submodel.objects.get_one(id='submodel_1')
+        self.assertEqual(
+            self.multialgorithm_simulation.fill_dfba_submodel_reaction_gaps(dfba_submodel), 3)
+
+        produced = set()
+        consumed = set()
+        GAP_FILLING_RXN_ID_PREFIX = config_multialgorithm['GAP_FILLING_RXN_ID_PREFIX']
+        GAP_FILLING_RXN_NAME_PREFIX = config_multialgorithm['GAP_FILLING_RXN_NAME_PREFIX']
+        for rxn in dfba_submodel.reactions:
+            if rxn.id.startswith(GAP_FILLING_RXN_ID_PREFIX):
+                for part in rxn.participants:
+                    if part.coefficient<0:
+                        consumed.add(part.species)
+                    elif 0<part.coefficient:
+                        produced.add(part.species)
+
+        expected_produced = Species.get(['specie_1[e]', 'specie_2[e]'], dfba_submodel.get_species())
+        expected_consumed = Species.get(['specie_1[c]'], dfba_submodel.get_species())
+        self.assertEqual(produced, set(expected_produced))
+        self.assertEqual(consumed, set(expected_consumed))
+
     def test_default_dfba_submodel_flux_bounds(self):
         dfba_submodel = Submodel.objects.get_one(id='submodel_1')
-        self.assertEqual(self.multialgorithm_simulation.default_dfba_submodel_flux_bounds(dfba_submodel),
-            (1,1))
+        self.assertEqual(
+            self.multialgorithm_simulation.default_dfba_submodel_flux_bounds(dfba_submodel), (1,1))
         test_non_rev = dfba_submodel.reactions.create(
             id='__test_1',
             reversible=False

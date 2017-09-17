@@ -20,12 +20,6 @@ class TestModelUtilities(unittest.TestCase):
     def get_submodel(self, id_val):
         return Submodel.objects.get_one(id=id_val)
 
-    def get_specie(self, id):
-        for specie in self.model.get_species():
-            if specie.serialize() == id:
-                return specie
-        return None
-
     MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_model.xlsx')
 
     def setUp(self):
@@ -38,20 +32,24 @@ class TestModelUtilities(unittest.TestCase):
         # tested are deterministic and repeatable; repeatability should be tested by running the
         # code under different circumstances and ensuring identical output
         private_species = ModelUtilities.find_private_species(self.model)
+
+        mod1_expected_species_ids = ['specie_1[c]', 'specie_1[e]', 'specie_2[e]']
+        mod1_expected_species = Species.get(mod1_expected_species_ids, self.model.get_species())
         self.assertEqual(set(private_species[self.get_submodel('submodel_1')]),
-            set(map(lambda x: self.get_specie(x), ['specie_1[c]', 'specie_1[e]', 'specie_2[e]'])))
+            set(mod1_expected_species))
+
+        mod2_expected_species_ids = ['specie_4[c]', 'specie_5[c]', 'specie_6[c]']
+        mod2_expected_species = Species.get(mod2_expected_species_ids, self.model.get_species())
         self.assertEqual(set(private_species[self.get_submodel('submodel_2')]),
-            set(map(lambda x: self.get_specie(x), ['specie_4[c]', 'specie_5[c]', 'specie_6[c]'])))
+            set(mod2_expected_species))
 
         private_species = ModelUtilities.find_private_species(self.model, return_ids=True)
-        self.assertEqual(set(private_species['submodel_1']), set(['specie_1[c]', 'specie_1[e]',
-            'specie_2[e]']))
-        self.assertEqual(set(private_species['submodel_2']), set(['specie_4[c]', 'specie_5[c]',
-            'specie_6[c]']))
+        self.assertEqual(set(private_species['submodel_1']), set(mod1_expected_species_ids))
+        self.assertEqual(set(private_species['submodel_2']), set(mod2_expected_species_ids))
 
     def test_find_shared_species(self):
         self.assertEqual(set(ModelUtilities.find_shared_species(self.model)),
-            set(map(lambda x: self.get_specie(x), ['specie_2[c]', 'specie_3[c]'])))
+            set(Species.get(['specie_2[c]', 'specie_3[c]'], self.model.get_species())))
 
         self.assertEqual(set(ModelUtilities.find_shared_species(self.model, return_ids=True)),
             set(['specie_2[c]', 'specie_3[c]']))

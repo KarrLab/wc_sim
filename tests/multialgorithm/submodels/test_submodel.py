@@ -66,7 +66,6 @@ class TestSubmodel(unittest.TestCase):
         self.submodels = {}
         for lang_submodel in self.model.get_submodels():
             access_species_pop = self.multialgorithm_simulation.create_access_species_pop(lang_submodel)
-            print("Creating '{}' submodel.".format(lang_submodel.name))
             self.submodels[lang_submodel.id] = Submodel(None,
                     lang_submodel.name,
                     access_species_pop,
