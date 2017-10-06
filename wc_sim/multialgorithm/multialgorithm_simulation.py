@@ -589,6 +589,7 @@ class CheckModel(object):
         The model does not contain dead-end species which are only consumed or produced
         Reactions are balanced
         Reactions in dynamic submodels contain fully specified rate laws
+        All Species used in reactions have concentration values
         Consider the reactions modeled by a submodel -- all modifier species used by the rate laws
             for the reactions participate in at least one reaction in the submodel
 
