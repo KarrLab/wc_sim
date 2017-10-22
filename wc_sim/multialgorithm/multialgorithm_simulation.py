@@ -232,7 +232,6 @@ class MultialgorithmSimulation(object):
     def initialize(self):
         '''Initialize a simulation.
         '''
-        self.check_model()
         self.initialize_biological_state()
         (self.private_species, self.shared_species) = self.partition_species()
         self.transcode_rate_laws()
@@ -247,9 +246,6 @@ class MultialgorithmSimulation(object):
         self.sub_models = self.create_submodels()
         self.initialize_simulation()
         return self.simulation
-
-    def check_model(self):
-        CheckModel(self.model).run()
 
     def initialize_biological_state(self):
         '''Initialize the biological state of the simulation
@@ -576,156 +572,3 @@ class MultialgorithmSimulation(object):
 
         # have each simulation object send its initial event messages
         self.simulation.initialize()
-
-class CheckModel(object):
-    '''Statically check a model
-
-    Checked properties:
-        DFBA submodels contain a biomass reaction and an objective function
-        Rate laws transcode and evaluate without error
-        All reactants in each submodel's reactions are in the submodel's compartment
-
-    Other properties to check:
-        The model does not contain dead-end species which are only consumed or produced
-        Reactions are balanced
-        Reactions in dynamic submodels contain fully specified rate laws
-        All Species used in reactions have concentration values
-        Consider the reactions modeled by a submodel -- all modifier species used by the rate laws
-            for the reactions participate in at least one reaction in the submodel
-
-    # TODO: implement these, and expand the list of properties
-    '''
-
-    def __init__(self, model):
-        self.model = model
-
-    def run(self):
-        self.errors = []
-        for submodel in self.model.get_submodels():
-            if submodel.algorithm == SubmodelAlgorithm.dfba:
-                self.errors.extend(self.check_dfba_submodel(submodel))
-            if submodel.algorithm in [SubmodelAlgorithm.ssa, SubmodelAlgorithm.ode]:
-                self.errors.extend(self.check_dynamic_submodel(submodel))
-        self.errors.extend(self.check_rate_law_equations())
-        if self.errors:
-            raise ValueError('\n'.join(self.errors))
-
-    def check_dfba_submodel(self, submodel):
-        '''Check the inputs to a DFBA submodel
-
-        Ensure that:
-            * All regular DFBA reactions have min flux and max flux with appropriate values
-            * The DFBA submodel contains a biomass reaction
-            TODO * The DFBA submodel contains an objective function
-
-        Args:
-            submodel (`LangSubmodel`): a DFBA submodel
-
-        Returns:
-            :obj:`list` of `str`: if no errors, returns an empty `list`, otherwise a `list` of
-                error messages
-        '''
-        errors = []
-        for reaction in submodel.reactions:
-            for attr in ['min_flux', 'max_flux']:
-                if not hasattr(reaction, attr) or isnan(getattr(reaction, attr)):
-                    errors.append("Error: no {} for reaction '{}' in submodel '{}'".format(
-                        attr, reaction.name, submodel.name))
-                    continue
-
-            if hasattr(reaction, 'min_flux') and hasattr(reaction, 'max_flux'):
-                if reaction.max_flux < reaction.min_flux:
-                    errors.append("Error: max_flux < min_flux ({} < {}) for reaction '{}' in submodel '{}'".format(
-                        reaction.max_flux, reaction.min_flux, reaction.name, submodel.name))
-                if reaction.reversible and 0 < reaction.min_flux:
-                    errors.append("Error: 0 < min_flux ({}) for reversible reaction '{}' in submodel '{}'".format(
-                        reaction.min_flux, reaction.name, submodel.name))
-
-        if submodel.biomass_reaction is None or not submodel.biomass_reaction.biomass_components:
-            errors.append("Error: submodel '{}' uses dfba but lacks a biomass reaction".format(submodel.name))
-
-        return errors
-
-    def check_dynamic_submodel(self, submodel):
-        '''Check the inputs to a dynamic submodel
-
-        Ensure that:
-            * All reactions have rate laws for the appropriate directions
-
-        Args:
-            submodel (`LangSubmodel`): a dynamic (SSA or ODE) submodel
-
-        Returns:
-            :obj:`list` of :obj:`str` if no errors, returns an empty `list`, otherwise a `list` of
-                error messages
-        '''
-        errors = []
-        for reaction in submodel.reactions:
-            direction_types = set()
-            for rate_law in reaction.rate_laws:
-                direction_types.add(rate_law.direction.name)
-            if not direction_types:
-                errors.append("Error: reaction '{}' in submodel '{}' has no "
-                    "rate law specified".format(reaction.name, submodel.name))
-            if reaction.reversible:     # reversible is redundant with a reaction's rate laws
-                if direction_types.symmetric_difference(set(('forward', 'backward'))):
-                    errors.append("Error: reaction '{}' in submodel '{}' is reversible but has only "
-                        "a '{}' rate law specified".format(reaction.name, submodel.name,
-                        direction_types.pop()))
-            else:
-                if direction_types.symmetric_difference(set(('forward',))):
-                    errors.append("Error: reaction '{}' in submodel '{}' is not reversible but has "
-                        "a 'backward' rate law specified".format(reaction.name, submodel.name))
-        return errors
-
-    def check_rate_law_equations(self):
-        '''Transcode and evaluate all rate law equations in a model
-
-        Ensure that all rate law equations can be transcoded and evaluated.
-        This method is deliberately redundant with `MultialgorithmSimulation.transcode_rate_laws()`,
-        which does not report errors.
-
-        Returns:
-            :obj:`list` of `str`: if no errors, returns an empty `list`, otherwise a `list` of
-                error messages
-        '''
-        errors = []
-        species = self.model.get_species()
-        species_concentrations = ModelUtilities.initial_specie_concentrations(self.model)
-        for reaction in self.model.get_reactions():
-            for rate_law in reaction.rate_laws:
-                if getattr(rate_law, 'equation', None) is None:
-                    continue
-                try:
-                    rate_law.equation.transcoded = ModelUtilities.transcode(rate_law, species)
-                except Exception as error:
-                    errors.append(str(error))
-            try:
-                rates = ModelUtilities.eval_rate_laws(reaction, species_concentrations)
-            except Exception as error:
-                errors.append(str(error))
-        return errors
-
-    def verify_reactant_compartments(self):
-        '''Verify that all reactants in each submodel's reactions are in the submodel's compartment
-
-        Returns:
-            :obj:`list` of `str`: if no errors, returns an empty `list`, otherwise a `list` of
-                error messages
-        '''
-        errors = []
-        for lang_submodel in self.model.get_submodels():
-            compartment = lang_submodel.compartment
-            if compartment is None:
-                errors.append("submodel '{}' must contain a compartment attribute".format(lang_submodel.id))
-                continue
-            for reaction in lang_submodel.reactions:
-                for participant in reaction.participants:
-                    if participant.coefficient < 0:     # select reactants
-                        if participant.species.compartment != compartment:
-                            error = "submodel '{}' models compartment {}, but its reaction {} uses "\
-                            "specie {} in another compartment: {}".format(lang_submodel.id,
-                                compartment.id, reaction.id, participant.species.species_type.id,
-                                participant.species.compartment.id)
-                            errors.append(error)
-        return errors
