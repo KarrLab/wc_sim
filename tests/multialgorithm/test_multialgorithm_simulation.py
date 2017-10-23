@@ -66,10 +66,4 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         for name,simulation_obj in six.iteritems(self.simulation_engine.simulation_objects):
             print("\n{}: {} event queue:".format(simulation_obj.__class__.__name__, name))
             print(simulation_obj.event_queue_to_str())
-        # self.simulation_engine.simulate(10)
-
-    def test_transcode_rate_laws(self):
-        self.multialgorithm_simulation.transcode_rate_laws()
-        num_transcoded_rate_law_equations = len(
-            list(filter(lambda rl: hasattr(rl.equation, 'transcoded'), self.model.get_rate_laws())))
-        self.assertEqual(num_transcoded_rate_law_equations, 5)
+        self.simulation_engine.simulate(10)

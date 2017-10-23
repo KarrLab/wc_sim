@@ -19,6 +19,8 @@ from wc_utils.util.list import difference
 from wc_lang.core import (SubmodelAlgorithm, Model, ObjectiveFunction, SpeciesType, SpeciesTypeType,
     Species, Compartment, Reaction, ReactionParticipant, RateLawEquation, BiomassReaction)
 from wc_lang.core import Submodel as LangSubmodel
+from wc_lang.rate_law_utils import RateLawUtils
+
 from wc_sim.core.simulation_engine import SimulationEngine
 from wc_sim.multialgorithm import message_types
 from wc_sim.multialgorithm.model_utilities import ModelUtilities
@@ -28,6 +30,7 @@ from wc_sim.multialgorithm.submodels.ssa import SsaSubmodel
 from wc_sim.multialgorithm.submodels.fba import FbaSubmodel
 from wc_sim.multialgorithm.utils import species_compartment_name
 from wc_sim.multialgorithm.species_populations import LOCAL_POP_STORE, Specie, SpeciesPopSimObject
+
 from wc_utils.config.core import ConfigManager
 from wc_sim.multialgorithm.config import paths as config_paths_multialgorithm
 config_multialgorithm = \
@@ -234,7 +237,7 @@ class MultialgorithmSimulation(object):
         '''
         self.initialize_biological_state()
         (self.private_species, self.shared_species) = self.partition_species()
-        self.transcode_rate_laws()
+        RateLawUtils.transcode_rate_laws(self.model)
         self.species_pop_objs = self.create_shared_species_pop_objs()
 
     def build_simulation(self):
@@ -286,18 +289,6 @@ class MultialgorithmSimulation(object):
         '''
         return (ModelUtilities.find_private_species(self.model, return_ids=True),
             ModelUtilities.find_shared_species(self.model, return_ids=True))
-
-    def transcode_rate_laws(self):
-        '''Transcode all rate law expressions into Python expressions
-
-        Raises:
-            ValueError: If a rate law cannot be transcoded
-        '''
-        for lang_submodel in self.model.get_submodels():
-            for reaction in lang_submodel.reactions:
-                for rate_law in reaction.rate_laws:
-                    rate_law.equation.transcoded = ModelUtilities.transcode(rate_law,
-                        lang_submodel.get_species())
 
     def create_shared_species_pop_objs(self):
         '''Create the shared species object.
