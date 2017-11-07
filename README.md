@@ -1,4 +1,4 @@
-<!-- [![PyPI package](https://img.shields.io/pypi/v/wc_sim.svg)](https://pypi.python.org/pypi/Karr-Lab-build-utils) -->
+<!-- [![PyPI package](https://img.shields.io/pypi/v/wc_sim.svg)](https://pypi.python.org/pypi/wc_sim) -->
 [![Documentation](https://img.shields.io/badge/docs-latest-brightgreen.svg)](http://code.karrlab.org)
 [![Test results](https://circleci.com/gh/KarrLab/wc_sim.svg?style=shield&circle-token=5f0ee7e437b91cbcac19a9b8526a7ea320ee61c7)](https://circleci.com/gh/KarrLab/wc_sim)
 [![Test coverage](https://coveralls.io/repos/github/KarrLab/wc_sim/badge.svg?t=EUFJ40)](https://coveralls.io/github/KarrLab/wc_sim)
