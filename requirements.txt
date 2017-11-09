@@ -1,3 +1,4 @@
+callbacks; python_version >= '3.0'
 cobra
 future
 lxml
@@ -8,5 +9,6 @@ openpyxl
 python-libsbml
 recordtype
 scipy
+spam
 git+https://github.com/KarrLab/wc_lang.git#egg=wc_lang
 git+https://github.com/KarrLab/wc_utils.git#egg=wc_utils

@@ -28,15 +28,16 @@ class AggregateDistributedProps(SimulationObject, SimulationObjectInterface):
     Computing an aggregate distributed property is driven by the data in a DistributedProperty. The
     current mechanism determines each distributed property periodically,
     at an interval provided by the DistributedProperty. It is obtained by requesting values
-    from `SimulationObject`s that store parts of the property.
+    from `SimulationObject`'s that store parts of the property.
 
     A `AggregateDistributedProps` manages multiple distributed properties.
 
     Event messages used to obtain properties:
+
     * `AggregateProperty`: aggregate a property. Events sent by an `AggregateDistributedProps` to itself,
-        regulating a distributed property's periodicity. 
+       regulating a distributed property's periodicity. 
     * `GetHistoricalProperty`: request a property. A GetHistoricalProperty message sent to an `AggregateDistributedProps`
-        requests the aggregate property. One sent to another object requests the local property.
+       requests the aggregate property. One sent to another object requests the local property.
     * `GiveProperty`: a response to a `GetHistoricalProperty` message, containing the property's value.
 
     Attributes:
@@ -173,7 +174,7 @@ class DistributedProperty(object):
     '''A distributed property
     
     Maintain the state of an aggregate distributed property. The property is a single value,
-    collected periodically from a set of contributing `SimulationObject`s.
+    collected periodically from a set of contributing `SimulationObject`'s.
 
     Attributes:
         name (:obj:`str`): the property's name
@@ -181,7 +182,7 @@ class DistributedProperty(object):
         num_periods (:obj:`int`): the number of periods for which this property has been collected;
             used by `AggregateDistributedProps` to create event times that equal integral numbers
             of periods 
-        contributors (:obj:`list` of `SimulationObject`): `SimulationObject`s which must be queried
+        contributors (:obj:`list` of `SimulationObject`): `SimulationObject`'s which must be queried
             to establish this property
         value_history (:obj:`dict`): time -> `dict`: `SimulationObject` -> value; history of distributed
             values for this property

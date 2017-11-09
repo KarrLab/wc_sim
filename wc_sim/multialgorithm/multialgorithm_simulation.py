@@ -42,28 +42,36 @@ config_multialgorithm = \
 Design notes:
 
 Inputs:
-    Static model in a wc_lang.core.Model
-    Command line parameters, including:
-        Num shared cell state objects
-    Optionally, extra config
+
+    * Static model in a wc_lang.core.Model
+    * Command line parameters, including:
+
+        * Num shared cell state objects
+
+    * Optionally, extra config
 
 Output:
-    Simulation partitioned into submodels and cell state, including:
-        Initialized submodel and state simulation objects
-        Initial simulation messages
+    
+    * Simulation partitioned into submodels and cell state, including:
+
+        * Initialized submodel and state simulation objects
+        * Initial simulation messages
 
 DS:
-    language model
-    simulation objects
-    an initialized simulation
+
+    * language model
+    * simulation objects
+    * an initialized simulation
 
 Algs:
-    Partition into Submodels and Cell State:
-        1a. Determine shared & private species
-        1b. Determine partition
-        2. Create shared species object(s)
-        3. Create submodels that contain private species and access shared species
-        4. Have SimulationObjects send their initial messages
+
+    * Partition into Submodels and Cell State:
+    
+        #. Determine shared & private species
+        #. Determine partition
+        #. Create shared species object(s)
+        #. Create submodels that contain private species and access shared species
+        #. Have SimulationObjects send their initial messages
 
 todo: also need model generator
 '''
@@ -213,10 +221,10 @@ class MultialgorithmSimulation(object):
         simulation (:obj: `SimulationEngine`): the initialized simulation
         simulation_submodels (:obj: list of `SimSubmodel`): the simulation's submodels
         species_pop_objs (:obj: dict of id mapping to `SpeciesPopSimObject`): shared species
-            populations stored in `SimulationObject`s
+            populations stored in `SimulationObject`'s
         shared_specie_store_name (:obj:`str`): the name for the shared specie store
         dynamic_model (:obj: `DynamicModel`): the dynamic state of a model; aggregate
-            state not available in `Model` or a simulation's `SimulationObject`s
+            state not available in `Model` or a simulation's `SimulationObject`'s
         private_species (:obj: `dict` of `set`): map from submodel to a set of the species
                 modeled by only the submodel
         shared_species (:obj: `set`): the shared species

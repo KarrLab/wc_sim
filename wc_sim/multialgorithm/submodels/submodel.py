@@ -18,7 +18,7 @@ from wc_sim.multialgorithm.debug_logs import logs as debug_logs
 from wc_sim.multialgorithm import message_types, distributed_properties
 
 class Submodel(SimulationObject, SimulationObjectInterface):
-    '''A generic submodel - multiple `Submodel`s are combined into a multi-algorithmic model.
+    '''A generic submodel - multiple `Submodel`'s are combined into a multi-algorithmic model.
 
         todo: TBD ...
 

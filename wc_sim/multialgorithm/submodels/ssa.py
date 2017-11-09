@@ -39,7 +39,7 @@ class SsaSubmodel(Submodel):
     populations are stored remotely.
 
     # TODO(Arthur): update the rest of this doc string
-    Algorithm:
+    Algorithm::
 
         implement the 'direct' method, except under unusual circumstances.
 
