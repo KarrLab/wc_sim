@@ -1,4 +1,4 @@
-callbacks; python_version >= '3.0'
+callbacks
 cobra
 future
 lxml
