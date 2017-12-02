@@ -3,7 +3,18 @@ pip.main(['install', 'git+https://github.com/KarrLab/wc_utils.git#egg=wc_utils']
 
 from setuptools import setup, find_packages
 from wc_utils.util.install import parse_requirements, install_dependencies
-import wc_sim
+import os
+
+# get long description
+if os.path.isfile('README.rst'):
+    with open('README.rst', 'r') as file:
+        long_description = file.read()
+else:
+    long_description = ''
+
+# get version
+with open('wc_sim/VERSION', 'r') as file:
+    version = file.read().strip()
 
 # parse dependencies and links from requirements.txt files
 with open('requirements.txt', 'r') as file:
@@ -18,10 +29,11 @@ install_dependencies(dependency_links)
 # install package
 setup(
     name="wc_sim",
-    version=wc_sim.__version__,
+    version=version,
     description="Sequential whole-cell model simulator",
+    long_description=long_description,
     url="https://github.com/KarrLab/wc_sim",
-    download_url='https://github.com/KarrLab/wc_sim/tarball/{}'.format(wc_sim.__version__),
+    download_url='https://github.com/KarrLab/wc_sim',
     author="Arthur Goldberg",
     author_email="arthur.p.goldberg@mssm.edu",
     license="MIT",
@@ -29,13 +41,14 @@ setup(
     packages=find_packages(exclude=['tests', 'tests.*']),
     package_data={
         'wc_sim': [
+            'VERSION',
             'core/config/core.default.cfg',
             'core/config/core.schema.cfg',
             'core/config/debug.default.cfg',
             'multialgorithm/config/core.default.cfg',
             'multialgorithm/config/core.schema.cfg',
             'multialgorithm/config/debug.default.cfg',
-            'examples/config/debug.default.cfg',
+            'examples/config/debug.default.cfg',            
         ],
     },
     install_requires=install_requires,
