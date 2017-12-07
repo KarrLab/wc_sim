@@ -2,7 +2,7 @@
 [![Documentation](https://img.shields.io/badge/docs-latest-brightgreen.svg)](http://code.karrlab.org)
 [![Test results](https://circleci.com/gh/KarrLab/wc_sim.svg?style=shield&circle-token=5f0ee7e437b91cbcac19a9b8526a7ea320ee61c7)](https://circleci.com/gh/KarrLab/wc_sim)
 [![Test coverage](https://coveralls.io/repos/github/KarrLab/wc_sim/badge.svg?t=EUFJ40)](https://coveralls.io/github/KarrLab/wc_sim)
-[![Code analysis](https://codeclimate.com/repos/57ab5e097ba8854f41000799/badges/54b4deadccf7944d38f6/gpa.svg)](https://codeclimate.com/repos/57ab5e097ba8854f41000799)
+[![Code analysis](https://api.codeclimate.com/v1/badges/54b4deadccf7944d38f6/maintainability)](https://codeclimate.com/repos/57ab5e097ba8854f41000799)
 [![License](https://img.shields.io/github/license/KarrLab/wc_sim.svg)](LICENSE)
 ![Analytics](https://ga-beacon.appspot.com/UA-86759801-1/wc_sim/README.md?pixel)
 
