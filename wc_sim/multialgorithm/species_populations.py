@@ -23,7 +23,6 @@ from wc_sim.multialgorithm.utils import species_compartment_name
 from wc_sim.multialgorithm import distributed_properties
 from wc_utils.config.core import ConfigManager
 from wc_utils.util.dict import DictUtil
-from wc_utils.util.misc import isclass_by_name as check_class
 from wc_utils.util.rand import RandomStateManager
 
 @six.add_metaclass(abc.ABCMeta)

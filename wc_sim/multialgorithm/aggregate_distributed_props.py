@@ -11,7 +11,6 @@ from collections import defaultdict
 import bisect
 import builtins, math, sys
 
-from wc_utils.util.misc import isclass_by_name as check_class
 from wc_utils.config.core import ConfigManager
 from wc_sim.core.simulation_object import Event, SimulationObject, SimulationObjectInterface
 from wc_sim.multialgorithm.debug_logs import logs as debug_logs
