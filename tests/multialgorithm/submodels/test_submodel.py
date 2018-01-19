@@ -11,7 +11,7 @@ import six
 from scipy.constants import Avogadro
 
 from wc_lang.io import Reader
-from wc_lang.core import Reaction, SpeciesType
+from wc_lang.core import Reaction, SpeciesType, Species
 from wc_sim.core.simulation_object import SimulationObject, SimulationObjectInterface
 from wc_sim.core.simulation_engine import SimulationEngine
 from wc_sim.multialgorithm.submodels.submodel import Submodel
@@ -19,7 +19,7 @@ from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimula
 from wc_sim.multialgorithm.species_populations import (LOCAL_POP_STORE, LocalSpeciesPopulation,
     AccessSpeciesPopulations)
 from wc_sim.multialgorithm import message_types, distributed_properties
-from wc_sim.multialgorithm.utils import species_compartment_name, get_species_and_compartment_from_name
+from wc_sim.multialgorithm.utils import get_species_and_compartment_from_name
 
 # todo: MockSimulationObjects are handy for testing other objects; generalize and place in separate module
 class MockSimulationObject(SimulationObject, SimulationObjectInterface):
@@ -83,7 +83,7 @@ class TestSubmodel(unittest.TestCase):
         actual_concentrations = {}
         for conc in self.model.get_concentrations():
             actual_concentrations[
-                species_compartment_name(conc.species.species_type, conc.species.compartment)] = conc.value
+                Species.gen_id(conc.species.species_type, conc.species.compartment)] = conc.value
         for submodel in self.submodels.values():
             for k,v in submodel.get_specie_concentrations().items():
                 if k in actual_concentrations:

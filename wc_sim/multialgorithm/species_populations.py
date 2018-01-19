@@ -5,6 +5,7 @@
 :Copyright: 2016-2017, Karr Lab
 :License: MIT
 '''
+
 import abc, six
 import numpy as np
 import sys
@@ -12,6 +13,7 @@ from collections import defaultdict
 from six import iteritems
 from scipy.constants import Avogadro
 
+import wc_lang
 from wc_sim.core.simulation_object import SimulationObject, SimulationObjectInterface
 from wc_sim.multialgorithm import message_types
 
@@ -19,7 +21,6 @@ from wc_sim.multialgorithm.config import paths as config_paths_multialgorithm
 from wc_sim.multialgorithm.debug_logs import logs as debug_logs
 from wc_sim.multialgorithm.model_utilities import ModelUtilities
 from wc_sim.multialgorithm.multialgorithm_errors import NegativePopulationError, SpeciesPopulationError
-from wc_sim.multialgorithm.utils import species_compartment_name
 from wc_sim.multialgorithm import distributed_properties
 from wc_utils.config.core import ConfigManager
 from wc_utils.util.dict import DictUtil
@@ -38,22 +39,22 @@ class AccessSpeciesPopulationInterface():
     @abc.abstractmethod
     def read_one(self, time, specie_id):
         '''Obtain the predicted population of a specie at a particular time.'''
-        pass
+        pass    # pragma: no cover
 
     @abc.abstractmethod
     def read(self, time, species):
         '''Obtain the predicted population of a list of species at a particular time.'''
-        pass
+        pass    # pragma: no cover
 
     @abc.abstractmethod
     def adjust_discretely(self, time, adjustments):
         '''A discrete model adjusts the population of a set of species at a particular time.'''
-        pass
+        pass    # pragma: no cover
 
     @abc.abstractmethod
     def adjust_continuously(self, time, adjustments):
         '''A continuous model adjusts the population of a set of species at a particular time.'''
-        pass
+        pass    # pragma: no cover
 
 
 config_multialgorithm = \
@@ -184,7 +185,7 @@ class AccessSpeciesPopulations(AccessSpeciesPopulationInterface):
         species. It returns a dictionary that maps from store name to the ids of species whose
         populations are modeled by the store.
 
-        `LOCAL_POP_STORE` represents a special store, the local
+        The special name `LOCAL_POP_STORE` represents a special store, the local
         `wc_sim.multialgorithm.local_species_population.LocalSpeciesPopulation` instance. Each other
         store is identified by the name of a remote
         `from wc_sim.multialgorithm.species_pop_sim_object.SpeciesPopSimObject` instance.
@@ -831,15 +832,14 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
                 # TODO(Arthur): IMPORTANT: stop using model, as it may not be in this address space
                 # instead, don't provide the history in 'numpy_format'
                 timeHist = np.asarray(self._history['time'])
-                # TODO(Arthur): IMPORTANT: stop using model, which might not be in the same address space as this object
                 speciesCountsHist = np.zeros((len(self.model.species), len(self.model.compartments),
                     len(self._history['time'])))
                 for specie_index,specie in list(enumerate(self.model.species)):
                     for comp_index,compartment in list(enumerate(self.model.compartments)):
                         for time_index in range(len(self._history['time'])):
-                            specie_comp_id = species_compartment_name(specie, compartment)
+                            species_id = wc_lang.core.Species.gen_id(specie, compartment)
                             speciesCountsHist[specie_index,comp_index,time_index] = \
-                                self._history['population'][specie_comp_id][time_index]
+                                self._history['population'][species_id][time_index]
 
                 return (timeHist, speciesCountsHist)
             else:

@@ -6,40 +6,26 @@
 :License: MIT
 """
 
-# todo: redundant; replace with deserialize from wc_lang.Specie.serialize()
-def species_compartment_name(specie, compartment):
-    """Provide an identifier for a species in a compartment, formatted  species_id[compartment_it].
-
-    The inverse of `get_species_and_compartment_from_name()`.
-
-    Args:
-        specie: Species object
-        compartment: Compartment object
-
-    Returns:
-        A unique identifier for a species in a compartment.
-    """
-    return "{}[{}]".format(specie.id, compartment.id)
-
-def get_species_and_compartment_from_name(species_compartment_name):
+# todo: replace with a static method in Species
+def get_species_and_compartment_from_name(species_id):
     """Parse a species-compartment name in the form species_type[compartment] into (species_type, compartment)
 
-    The inverse of `species_compartment_name()`.
+    The inverse of `Species.gen_id()`.
 
     Args:
-        species_compartment_name: string; an identifier for a species in a compartment
+        species_id: string; an identifier for a species in a compartment
 
     Returns:
         `tuple(str, str)`: (species_type_id, compartment_id)
 
     Raises:
-        ValueError: if species_compartment_name is not of the form "species_id[compartment_id]".
+        ValueError: if species_id is not of the form "species_id[compartment_id]".
     """
     try:
-        (species, rest1) = species_compartment_name.split('[')
+        (species, rest1) = species_id.split('[')
         (compartment, rest2) = rest1.split(']')
     except ValueError as e:
-        raise ValueError("species_compartment_name must have the form species_id[compartment_id], "
-            "but is '{}'".format(species_compartment_name))
+        raise ValueError("species_id must have the form species_id[compartment_id], "
+            "but is '{}'".format(species_id))
     return (species, compartment)
 

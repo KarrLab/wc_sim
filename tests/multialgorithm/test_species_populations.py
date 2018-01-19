@@ -17,6 +17,7 @@ from scipy.constants import Avogadro
 from scipy.stats import binom
 
 from wc_lang.io import Reader
+import wc_lang
 from wc_sim.core.simulation_engine import SimulationEngine
 from wc_sim.core.simulation_object import EventQueue, SimulationObject, SimulationObjectInterface
 from wc_sim.multialgorithm import message_types
@@ -255,7 +256,7 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
         for row in expected_changes.split('\n')[2:]:
             (specie, c, e) = row.strip().split()
             for com in 'c e'.split():
-                id = '{}[{}]'.format(specie, com)
+                id = wc_lang.core.Species.gen_id(specie, com)
                 expected_final_pops[id] += float(eval(com))
 
         self.verify_simulation(expected_final_pops, sim_end)

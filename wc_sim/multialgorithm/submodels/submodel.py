@@ -12,8 +12,9 @@ from itertools import chain
 import numpy as np
 from scipy.constants import Avogadro
 
+import wc_lang
 from wc_sim.core.simulation_object import SimulationObject, SimulationObjectInterface
-from wc_sim.multialgorithm.utils import species_compartment_name, get_species_and_compartment_from_name
+from wc_sim.multialgorithm.utils import get_species_and_compartment_from_name
 from wc_sim.multialgorithm.debug_logs import logs as debug_logs
 from wc_sim.multialgorithm import message_types, distributed_properties
 
@@ -143,7 +144,7 @@ class Submodel(SimulationObject, SimulationObjectInterface):
             boolean: True if `reaction` is stoichiometrically enabled
         '''
         for participant in reaction.participants:
-            species_id = species_compartment_name(participant.species.species_type,
+            species_id = wc_lang.core.Species.gen_id(participant.species.species_type,
                 participant.species.compartment)
             count = self.access_species_pop.read_one(self.time, species_id)
             # 'participant.coefficient < 0' determines whether the participant is a reactant
@@ -185,16 +186,20 @@ class Submodel(SimulationObject, SimulationObjectInterface):
         return enabled
 
     def execute_reaction(self, reaction):
-        '''Update species counts to reflect the execution of a reaction.
+        """ Update species counts to reflect the execution of a reaction
 
-        Called by discrete submodels, like SSA.
+        Called by discrete submodels, like SSA. Counts are updated in the `AccessSpeciesPopulations`
+        that store them.
 
         Args:
-            reaction: a Reaction object; the reaction being executed
-        '''
+            reaction (:obj:`Reaction`): the reaction being executed
+
+        Raises:
+            :obj:`ValueError:` if the species population cannot be updated
+        """
         adjustments = {}
         for participant in reaction.participants:
-            species_id = species_compartment_name(participant.species.species_type,
+            species_id = wc_lang.core.Species.gen_id(participant.species.species_type,
                 participant.species.compartment)
             adjustments[species_id] = participant.coefficient
         try:

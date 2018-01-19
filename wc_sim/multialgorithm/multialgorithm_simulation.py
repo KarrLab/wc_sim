@@ -28,7 +28,6 @@ from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation, Ac
 from wc_sim.multialgorithm.submodels.submodel import Submodel as SimSubmodel
 from wc_sim.multialgorithm.submodels.ssa import SsaSubmodel
 from wc_sim.multialgorithm.submodels.fba import FbaSubmodel
-from wc_sim.multialgorithm.utils import species_compartment_name
 from wc_sim.multialgorithm.species_populations import LOCAL_POP_STORE, Specie, SpeciesPopSimObject
 
 from wc_utils.config.core import ConfigManager
@@ -193,9 +192,9 @@ class DynamicModel(object):
         species_counts = np.zeros((len(model.species), len(model.compartments)))
         for species in model.species:
             for compartment in model.compartments:
-                specie_name = species_compartment_name(species, compartment)
+                specie_id = Species.gen_id(species, compartment)
                 species_counts[ species.index, compartment.index ] = \
-                    model.local_species_population.read_one( now, specie_name )
+                    model.local_species_population.read_one(now, specie_id)
         return species_counts
 
 
