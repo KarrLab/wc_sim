@@ -5,14 +5,10 @@
 :Copyright: 2016-2017, Karr Lab
 :License: MIT
 '''
-import tokenize, token, re
-from collections import defaultdict
-from six.moves import cStringIO
-from math import isnan
 
-from wc_lang.core import RateLawEquation
 from wc_utils.util.list import difference
-
+import collections
+import re
 
 class ModelUtilities(object):
     '''A set of static methods that help prepare Models for simulation.'''
@@ -35,7 +31,7 @@ class ModelUtilities(object):
             dict: a dict that maps each submodel to a set containing the species
                 modeled by only the submodel.
         '''
-        species_to_submodels = defaultdict(list)
+        species_to_submodels = collections.defaultdict(list)
         for submodel in model.get_submodels():
             for specie in submodel.get_species():
                 species_to_submodels[specie].append(submodel)

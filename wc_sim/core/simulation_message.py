@@ -13,10 +13,10 @@ class SimulationMessage(object):
     '''An abstract base class for simulation messages
 
     Each simulation event contains a simulation message. All simulation messages are objects. This
-    class supports compact declaration of `SimulationMessage` types. For example,
+    class supports compact declaration of `SimulationMessage` types. For example::
 
-        `GivePopulation = SimulationMsgUtils.create('GivePopulation',
-            """A WC simulator message sent by a species pop object ... """, ['population'])`
+        GivePopulation = SimulationMsgUtils.create('GivePopulation',
+            """A WC simulator message sent by a species pop object ... """, ['population'])
 
     defines a `GivePopulation` message (with an elided docstring).
 

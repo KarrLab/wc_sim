@@ -6,7 +6,6 @@
 :License: MIT
 '''
 
-from wc_utils.util.misc import isclass_by_name
 from wc_sim.core.simulation_object import SimulationObject
 from wc_sim.multialgorithm import message_types
 from wc_sim.multialgorithm.species_populations import AccessSpeciesPopulations

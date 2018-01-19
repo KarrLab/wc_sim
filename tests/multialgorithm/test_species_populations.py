@@ -27,7 +27,6 @@ from wc_sim.multialgorithm.species_populations import (LOCAL_POP_STORE, Specie, 
 from wc_sim.multialgorithm.multialgorithm_errors import NegativePopulationError, SpeciesPopulationError
 from wc_sim.multialgorithm.submodels.skeleton_submodel import SkeletonSubmodel
 from wc_sim.multialgorithm import distributed_properties
-from wc_utils.util.misc import isclass_by_name
 from wc_utils.util.rand import RandomStateManager
 
 def store_i(i):

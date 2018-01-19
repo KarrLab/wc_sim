@@ -41,9 +41,10 @@ from collections import namedtuple
 AdjustPopulationByDiscreteSubmodel = SimulationMsgUtils.create('AdjustPopulationByDiscreteSubmodel',
     '''A WC simulator message sent by a discrete time submodel to adjust species counts.
 
-        Attributes:
-            population_change (:obj:`dict` of `float`): map: species_id -> population_change;
-            changes in the population of the identified species.''',
+    Attributes:
+        population_change (:obj:`dict` of `float`): map: species_id -> population_change;
+            changes in the population of the identified species.
+    ''',
     ["population_change"])
 
 ContinuousChange_namedtuple = namedtuple('ContinuousChange_namedtuple', 'change, flux')
@@ -84,7 +85,8 @@ AdjustPopulationByContinuousSubmodel = SimulationMsgUtils.create('AdjustPopulati
         population_change (:obj:`dict` of :obj:`ContinuousChange`):
             map: species_id -> ContinuousChange namedtuple; changes in the population of the
             identified species, and the predicted future flux of the species (which may be
-            simply the historic flux).''',
+            simply the historic flux).
+    ''',
     ['population_change'])
 
 GetPopulation = SimulationMsgUtils.create('GetPopulation',
@@ -99,8 +101,8 @@ GetPopulation = SimulationMsgUtils.create('GetPopulation',
 GivePopulation = SimulationMsgUtils.create('GivePopulation',
     '''A WC simulator message sent by a species pop object to report some current specie populations.
 
-        Attributes:
-            population (:obj:`dict` of `str`): species_id -> population; the populations of some species.
+    Attributes:
+        population (:obj:`dict` of `str`): species_id -> population; the populations of some species.
     ''',
     ['population'])
 
@@ -109,17 +111,19 @@ GivePopulation = SimulationMsgUtils.create('GivePopulation',
 AggregateProperty = SimulationMsgUtils.create('AggregateProperty',
     '''A WC simulator message sent to aggregate a property
 
-        Attributes:
-            property_name (:obj:`str`): the name of the requested property
+    Attributes:
+        property_name (:obj:`str`): the name of the requested property
     ''',
     ['property_name'])
 
 '''
 We support two different types of get-property messages, GetCurrentProperty and GetHistoricalProperty,
 with these semantics:
+
 * GetCurrentProperty: get the value of a property at the simulation time of the event containing this
-    message
+  message
 * GetHistoricalProperty: get the value of a property at a time <= the simulation time of the event
+
 Thus, a GetHistoricalProperty should be sent to a module that can provide the property's history,
 at least over some time period. Handling it generates an error if the property is not available
 at the requested time.
@@ -128,41 +132,41 @@ at the requested time.
 GetHistoricalProperty = SimulationMsgUtils.create('GetHistoricalProperty',
     '''A WC simulator message sent to obtain a property at a time that's not in the future
 
-        Attributes:
-            property_name (:obj:`str`): the name of the requested property
-            time (`float`): the time at which the property should be measured
+    Attributes:
+        property_name (:obj:`str`): the name of the requested property
+        time (`float`): the time at which the property should be measured
     ''',
     ['property_name', 'time'])
 
 GetCurrentProperty = SimulationMsgUtils.create('GetCurrentProperty',
     '''A WC simulator message sent to obtain a property at the receiver's current time
 
-        Attributes:
-            property_name (:obj:`str`): the name of the requested property
+    Attributes:
+        property_name (:obj:`str`): the name of the requested property
     ''',
     ['property_name'])
 
 GiveProperty = SimulationMsgUtils.create('GiveProperty',
     '''A WC simulator message sent by a simulation object to report a property
 
-        Attributes:
-            property_name (:obj:`str`): the name of the reported property
-            time (`float`): the time at which the property was measured
-            value (:obj:`object`): the value of the property at `time`
+    Attributes:
+        property_name (:obj:`str`): the name of the reported property
+        time (`float`): the time at which the property was measured
+        value (:obj:`object`): the value of the property at `time`
     ''',
     ['property_name', 'time', 'value'])
 
 ExecuteSsaReaction = SimulationMsgUtils.create('ExecuteSsaReaction',
     '''A WC simulator message sent by a SsaSubmodel to itself to schedule an SSA reaction execution.
 
-        Attributes:
-            reaction_index (int): the index of the selected reaction in `SsaSubmodel.reactions`.
+    Attributes:
+        reaction_index (int): the index of the selected reaction in `SsaSubmodel.reactions`.
     ''',
     ['reaction_index'])
 
 SsaWait = SimulationMsgUtils.create('SsaWait',
     '''A WC simulator message sent by a SsaSubmodel to itself to temporarily suspend activity
-        because no reactions are runnable.
+    because no reactions are runnable.
     ''')
 
 RunFba = SimulationMsgUtils.create('RunFba',

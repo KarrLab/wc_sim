@@ -1,46 +1,47 @@
-import pip
-pip.main(['install', 'git+https://github.com/KarrLab/wc_utils.git#egg=wc_utils'])
+import setuptools
+try:
+    import pkg_utils
+except ImportError:
+    import pip
+    pip.main(['install', '--process-dependency-links', 'git+https://github.com/KarrLab/pkg_utils.git#egg=pkg_utils'])
+    import pkg_utils
+import os
 
-from setuptools import setup, find_packages
-from wc_utils.util.install import parse_requirements, install_dependencies
-import wc_sim
+name = 'wc_sim'
+dirname = os.path.dirname(__file__)
 
-# parse dependencies and links from requirements.txt files
-with open('requirements.txt', 'r') as file:
-    install_requires, dependency_links_install = parse_requirements(file.readlines())
-with open('tests/requirements.txt', 'r') as file:
-    tests_require, dependency_links_tests = parse_requirements(file.readlines())
-dependency_links = list(set(dependency_links_install + dependency_links_tests))
-
-# install non-PyPI dependencies
-install_dependencies(dependency_links)
+# get package metadata
+md = pkg_utils.get_package_metadata(dirname, name)
 
 # install package
-setup(
-    name="wc_sim",
-    version=wc_sim.__version__,
+setuptools.setup(
+    name=name,
+    version=md.version,
     description="Sequential whole-cell model simulator",
-    url="https://github.com/KarrLab/wc_sim",
-    download_url='https://github.com/KarrLab/wc_sim/tarball/{}'.format(wc_sim.__version__),
+    long_description=md.long_description,
+    url="https://github.com/KarrLab/" + name,
+    download_url='https://github.com/KarrLab/' + name,
     author="Arthur Goldberg",
     author_email="arthur.p.goldberg@mssm.edu",
     license="MIT",
     keywords='whole-cell systems cell molecular biology',
-    packages=find_packages(exclude=['tests', 'tests.*']),
+    packages=setuptools.find_packages(exclude=['tests', 'tests.*']),
     package_data={
-        'wc_sim': [
+        name: [
+            'VERSION',
             'core/config/core.default.cfg',
             'core/config/core.schema.cfg',
             'core/config/debug.default.cfg',
             'multialgorithm/config/core.default.cfg',
             'multialgorithm/config/core.schema.cfg',
             'multialgorithm/config/debug.default.cfg',
-            'examples/config/debug.default.cfg',
+            'examples/config/debug.default.cfg',            
         ],
     },
-    install_requires=install_requires,
-    tests_require=tests_require,
-    dependency_links=dependency_links,
+    install_requires=md.install_requires,
+    extras_require=md.extras_require,
+    tests_require=md.tests_require,
+    dependency_links=md.dependency_links,
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Science/Research',

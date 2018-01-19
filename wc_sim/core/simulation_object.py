@@ -278,7 +278,7 @@ class SimulationObject(object):
 
     @staticmethod
     def register_handlers(subclass, handlers):
-        '''Register a `SimulationObject`s event handler methods.
+        '''Register a `SimulationObject`'s event handler methods.
 
         The priority of message execution in an event containing multiple messages
         is determined by the sequence of tuples in `handlers`.
@@ -314,7 +314,7 @@ class SimulationObject(object):
 
         Args:
             subclass: `SimulationObject`: a subclass of `SimulationObject`
-            sent_messages: list: list of `SimulationMessage`s which can be sent
+            sent_messages: list: list of `SimulationMessage`'s which can be sent
             by the calling `SimulationObject`
         '''
         subclass.message_types_sent = set()
@@ -390,7 +390,7 @@ class SimulationObjectInterface():
         '''Send the `SimulationObject`'s initial event messages.
 
         This method is distinct from initializing the `SimulationObject` with `__init__()`, because
-        it requires that communicating `SimulationObject`s exist. It may send no events.
+        it requires that communicating `SimulationObject`'s exist. It may send no events.
 
         Args:
             args: tuple: parameters needed to send the initial event messages
@@ -400,7 +400,7 @@ class SimulationObjectInterface():
     @classmethod
     @abc.abstractmethod
     def register_subclass_handlers(cls):
-        '''Register all of the `SimulationObject`s event handler methods.
+        '''Register all of the `SimulationObject`'s event handler methods.
         '''
         pass
 
