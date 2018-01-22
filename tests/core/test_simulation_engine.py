@@ -6,7 +6,6 @@
 '''
 
 import sys
-print('\n'.join(sys.path))
 import unittest
 
 from wc_sim.core.simulation_object import EventQueue, SimulationObject, SimulationObjectInterface
