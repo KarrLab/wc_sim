@@ -1,10 +1,10 @@
-''' Base class for simulation objects.
+""" Base class for simulation objects and their event queues
 
 :Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2016-06-01
 :Copyright: 2016-2018, Karr Lab
 :License: MIT
-'''
+"""
 
 from copy import deepcopy
 import heapq
@@ -12,35 +12,38 @@ import abc
 import six
 
 from wc_sim.core.event import Event
+from wc_sim.core.errors import SimulatorError
 from wc_utils.util.misc import most_qual_cls_name, round_direct
 
 # configure logging
 from .debug_logs import logs as debug_logs
 
-class EventQueue(object):
-    '''A simulation object's event queue.
 
-    Stores a heap of an object's events, with each event in a tuple (time, event). The heap is
-    a 'min heap', with the event with the smallest time at the root.
+class EventQueue(object):
+    """ A simulation object's event queue
+
+    Stores an object's events in a heap (also known as a priority queue),
+    with each event in a tuple (time, event). The heap is
+    a 'min heap', which keeps the event with the smallest time at the root in heap[0].
 
     Attributes:
-        event_heap: The object's heap of events, sorted by event time; has O(n logn) get earliest
-        and insert event.
-    '''
+        event_heap (:obj:`list`): The object's heap of events, sorted by event time;
+            the operations get earliest event and insert event cost O(log(n)) in the heap
+    """
 
     def __init__(self):
         self.event_heap = []
 
     def schedule_event(self, send_time, receive_time, sending_object, receiving_object, event_type,
         event_body=None):
-        '''Insert an event in this event queue, scheduled to execute at receive_time.
+        """ Insert an event in this event queue, scheduled to execute at `receive_time`
 
         Object X sends an event to object Y by invoking
-            Y.event_queue.send_event(send_time, receive_time, X, Y, event_type, <event_body=value>)
+            `Y.event_queue.send_event(send_time, receive_time, X, Y, event_type, <event_body=value>)`
 
         Args:
-            send_time: number; the simulation time at which the message was generated (sent)
-            receive_time: number; the simulation time at which the receiving_object will execute the event
+            send_time (:obj:`float`): the simulation time at which the message was generated (sent)
+            receive_time (:obj:`float`): the simulation time at which the receiving_object will execute the event
             sending_object: object; the object sending the event
             receiving_object: object; the object that will receive the event; when the simulation is
                 parallelized `sending_object` and `receiving_object` will need to be global
@@ -50,25 +53,25 @@ class EventQueue(object):
             event_body: object; an object containing the body of the event
 
         Raises:
-            ValueError: if receive_time < send_time
-        '''
+            SimulatorError: if receive_time < send_time
+        """
 
-        # ensure send_time <= receive_time
-        # send_time == receive_time can cause loops, but the application programmer is responsible
-        # for avoiding them
+        # ensure that send_time <= receive_time
+        # events with send_time == receive_time can cause loops, but the application programmer
+        # is responsible for avoiding them
         if receive_time < send_time:
-            raise ValueError("receive_time < send_time in schedule_event(): {} < {}".format(
+            raise SimulatorError("receive_time < send_time in schedule_event(): {} < {}".format(
                 str(receive_time), str(send_time)))
 
         event = Event(send_time, receive_time, sending_object, receiving_object, event_type, event_body)
         heapq.heappush(self.event_heap, (receive_time, event))
 
     def next_event_time(self):
-        '''Get the time of the next event.
+        """ Get the time of the next event
 
         Returns:
-            The time of the next event. Return infinity if there is no next event.
-        '''
+            :obj:`float`: the time of the next event; return infinity if no event is scheduled
+        """
         if not self.event_heap:
             return float('inf')
 
@@ -76,27 +79,28 @@ class EventQueue(object):
 
 
     def next_events(self, sim_obj):
-        '''Get the list of next event(s).
+        """ Get all events at the smallest event time
 
-        Events are provided in a list because multiple events may have the same simultion time,
-        and they must be provided to the simulation object as a unit.
+        Because multiple events may occur concurrently -- that is, have the same simulation time --
+        they must be provided as a collection to the simulation object that executes them.
 
+        # TODO(Arthur): take care of this
         Handle 'ties' properly. That is, since an object may receive multiple events
         with the same event_time (aka receive_time), pass them all to the object in a list.
         (In a Time Warp simulation, the list would need to be ordered by some deterministic
         criteria based on its contents.)
 
+        # TODO(Arthur): stop using an argument; sim_obj is just the receiver of the events in the queue
         Args:
-            sim_obj (SimulationObject): the simulation object that will execute the list of event(s)
+            sim_obj (:obj:`SimulationObject`): the simulation object that will execute the list of event(s)
                 that are returned.
 
         Returns:
-            A list of next event(s), sorted by message type priority. The list will be empty if no
-                events are available.
-        '''
+            :obj:`list` of `Event`: the earliest event(s), sorted by message type priority. If no
+                events are available the list is empty.
+        """
         # TODO(Arthur): in a Time Warp simulation, order the list by some deterministic criteria
-        # based on its contents; see David's lecture on this
-
+        # based on its contents; see David Jefferson's lecture on this
         if not self.event_heap:
             return []
 
@@ -120,8 +124,12 @@ class EventQueue(object):
         return events
 
     def log_event(self, event, local_call_depth=1):
-        '''Log an event with its simulation time.
-        '''
+        """ Log an event with its simulation time
+
+        Args:
+            event (:obj:`Event`): the Event to log
+            local_call_depth (:obj:`int`, optional): the local call depth; default = 1
+        """
         debug_logs.get_log('wc.debug.file').debug("Execute: {} {}:{} {} ({})".format(event.event_time,
                 type(event.receiving_object).__name__,
                 event.receiving_object.name,
@@ -130,42 +138,27 @@ class EventQueue(object):
                 sim_time=event.event_time,
                 local_call_depth=local_call_depth)
 
-    @staticmethod
-    def event_list_to_string(event_list):
-        '''Return event_list members as a tablesorted by event time.
-
-        The table is formatted as a multi-line, tab-separated string.
-        '''
-        # todo: optionally prepend header
-        return "\n".join([str(event) for event in
-            sorted(event_list, key=lambda event: event.event_time)])
-
     def __str__(self):
-        '''return event queue members as a table'''
+        """return event queue members as a table"""
         return "\n".join([event.__str__() for (time, event) in self.event_heap])
 
-    def nsmallest(self, num=10):
-        '''Return event queue members as a table sorted by event time.
-
-        Args:
-            num (int, optional): number of events to return; default=10.
-        '''
-        return "\n".join([str(event) for (time, event) in
-            heapq.nsmallest(num, self.event_heap, key=lambda event_heap_entry: event_heap_entry[0])])
 
 class SimulationObject(object):
-    '''Base class for simulation objects.
+    """Base class for simulation objects.
 
     SimulationObject is a base class for all simulations objects. It provides basic functionality:
     the object's name (which must be unique), its simulation time, a queue of received events,
     and a send_event() method.
 
+        Args:
+            send_time (:obj:`float`): the simulation time at which the message was generated (sent)
+
     Attributes:
-        name: A string with the simulation object's name.
-        time: A float containing the simulation object's current simulation time.
-        event_queue: The object's EventQueue.
-        num_events: int; number of events processed
-        simulator: The `SimulationEngine` which uses this `SimulationObject`
+        name (:obj:`str`): this simulation object's name
+        time (:obj:`float`): this simulation object's current simulation time
+        event_queue (:obj:`EventQueue`): this simulation object's event queue
+        num_events (:obj:`int`): number of events processed
+        simulator (:obj:`int`): the `SimulationEngine` that uses this `SimulationObject`
 
     Derived class attributes:
         event_handlers: dict: message_type -> event_handler; provides the event handler for each
@@ -176,15 +169,15 @@ class SimulationObject(object):
         message_types_sent: set: the types of messages a subclass of `SimulationObject` has
             registered to send
 
-    '''
+    """
     def __init__(self, name):
-        '''Initialize a SimulationObject.
+        """Initialize a SimulationObject.
 
         Create its event queue, initialize its name, and set its start time to 0.
 
         Args:
             name: string; the object's unique name, used as a key in the dict of objects
-        '''
+        """
         self.event_queue = EventQueue()
         self.name = name
         self.time = 0.0
@@ -192,26 +185,26 @@ class SimulationObject(object):
         self.simulator = None
 
     def add(self, simulator):
-        '''Add this object to a simulation.
+        """Add this object to a simulation.
 
         Args:
             simulator: `SimulationEngine`: the simulator that will use this `SimulationObject`
 
         Raises:
-            ValueError: if this `SimulationObject` is already registered with a simulator
-        '''
+            SimulatorError: if this `SimulationObject` is already registered with a simulator
+        """
         if self.simulator is None:
             self.simulator = simulator
             return
-        raise ValueError("SimulationObject '{}' is already part of a simulator".format(self.name))
+        raise SimulatorError("SimulationObject '{}' is already part of a simulator".format(self.name))
 
     def delete(self):
-        '''Delete this object from a simulation.
-        '''
+        """Delete this object from a simulation.
+        """
         self.simulator = None
 
     def send_event_absolute(self, event_time, receiving_object, event_type, event_body=None, copy=True):
-        '''Send a simulation event message with an absolute event time.
+        """Send a simulation event message with an absolute event time.
 
         Args:
             event_time: number; the simulation time at which the receiving_object should execute the event
@@ -222,12 +215,12 @@ class SimulationObject(object):
                 avoid unexpected changes to shared objects; set False to optimize
 
         Raises:
-            ValueError: if event_time < 0
-            ValueError: if the sending object type is not registered to send a message type
-            ValueError: if the receiving simulation object type is not registered to receive the message type
-        '''
+            SimulatorError: if event_time < 0
+            SimulatorError: if the sending object type is not registered to send a message type
+            SimulatorError: if the receiving simulation object type is not registered to receive the message type
+        """
         if event_time < self.time:
-            raise ValueError("event_time ({}) < current time ({}) in send_event_absolute()".format(
+            raise SimulatorError("event_time ({}) < current time ({}) in send_event_absolute()".format(
                 round_direct(event_time, precision=3), round_direct(self.time, precision=3)))
 
         # Do not put a class reference in a message, as the message might not be received in the
@@ -238,13 +231,13 @@ class SimulationObject(object):
         # check that the sending object type is registered to send the message type
         if (not hasattr(self.__class__, 'message_types_sent') or
             event_type_name not in self.__class__.message_types_sent):
-            raise ValueError("'{}' simulation objects not registered to send '{}' messages".format(
+            raise SimulatorError("'{}' simulation objects not registered to send '{}' messages".format(
                 most_qual_cls_name(self), event_type_name))
 
         # check that the receiving simulation object type is registered to receive the message type
         receiver_priorities = receiving_object.get_receiving_priorities_dict()
         if event_type_name not in receiver_priorities:
-            raise ValueError("'{}' simulation objects not registered to receive '{}' messages".format(
+            raise SimulatorError("'{}' simulation objects not registered to receive '{}' messages".format(
                 most_qual_cls_name(receiving_object), event_type_name))
 
         if event_body and copy:
@@ -256,7 +249,7 @@ class SimulationObject(object):
             receiving_object.name, event_time, event_type.__name__))
 
     def send_event(self, delay, receiving_object, event_type, event_body=None, copy=True):
-        '''Send a simulation event message, specifing the event time as a delay
+        """Send a simulation event message, specifing the event time as a delay
 
         Args:
             delay: number; the simulation delay at which the receiving_object should execute the event.
@@ -267,18 +260,18 @@ class SimulationObject(object):
                 avoid unexpected changes to shared objects; set False to optimize
 
         Raises:
-            ValueError: if delay < 0
-            ValueError: if the sending object type is not registered to send a message type
-            ValueError: if the receiving simulation object type is not registered to receive the message type
-        '''
+            SimulatorError: if delay < 0
+            SimulatorError: if the sending object type is not registered to send a message type
+            SimulatorError: if the receiving simulation object type is not registered to receive the message type
+        """
         if delay < 0:
-            raise ValueError("delay < 0 in send_event(): {}".format(str(delay)))
+            raise SimulatorError("delay < 0 in send_event(): {}".format(str(delay)))
         self.send_event_absolute(delay + self.time, receiving_object, event_type,
             event_body=event_body, copy=copy)
 
     @staticmethod
     def register_handlers(subclass, handlers):
-        '''Register a `SimulationObject`'s event handler methods.
+        """Register a `SimulationObject`'s event handler methods.
 
         The priority of message execution in an event containing multiple messages
         is determined by the sequence of tuples in `handlers`.
@@ -290,16 +283,16 @@ class SimulationObject(object):
                 in decreasing priority for handling simulation message types
 
         Raises:
-            ValueError: if a `SimulationMessage` appears repeatedly in `handlers`
-            ValueError: if a handler is not callable
-        '''
+            SimulatorError: if a `SimulationMessage` appears repeatedly in `handlers`
+            SimulatorError: if a handler is not callable
+        """
         subclass.event_handlers = {}
         for message_type, handler in handlers:
             if most_qual_cls_name(message_type) in subclass.event_handlers:
-                raise ValueError("message type '{}' appears repeatedly".format(
+                raise SimulatorError("message type '{}' appears repeatedly".format(
                     most_qual_cls_name(message_type)))
             if not callable(handler):
-                raise ValueError("handler '{}' must be callable".format(handler))
+                raise SimulatorError("handler '{}' must be callable".format(handler))
             subclass.event_handlers[most_qual_cls_name(message_type)] = handler
 
         subclass.event_handler_priorities = {}
@@ -308,7 +301,7 @@ class SimulationObject(object):
 
     @staticmethod
     def register_sent_messages(subclass, sent_messages):
-        '''Register the messages sent by a `SimulationObject`.
+        """Register the messages sent by a `SimulationObject`.
 
         Calling `register_sent_messages` re-initializes all registered sent message types.
 
@@ -316,38 +309,45 @@ class SimulationObject(object):
             subclass: `SimulationObject`: a subclass of `SimulationObject`
             sent_messages: list: list of `SimulationMessage`'s which can be sent
             by the calling `SimulationObject`
-        '''
+        """
         subclass.message_types_sent = set()
         for sent_message_type in sent_messages:
             subclass.message_types_sent.add(most_qual_cls_name(sent_message_type))
 
     def get_receiving_priorities_dict(self):
-        '''Provide dict mapping from message types handled by a `SimulationObject` subclass,
-            to message type priority. The highest priority is 0, and priority decreases with
-            increasing priority values.
-        '''
+        """ Get priorities of message types handled by this `SimulationObject`'s type
+
+        Returns:
+            :obj:`dict`: mapping from message types handled by this `SimulationObject` to their
+                execution priorities. The highest priority is 0, and higher values have lower
+                priorities. Execution priorities determine the execution order of concurrent events
+                at a `SimulationObject`.
+
+        Raises:
+            SimulatorError: if this `SimulationObject` type has not registered its message handlers
+        """
         if not hasattr(self.__class__, 'event_handler_priorities'):
-            raise Exception("SimulationObject type '{}' must call register_handlers()".format(
+            raise SimulatorError("SimulationObject type '{}' must call register_handlers()".format(
                 self.__class__.__name__))
         return self.__class__.event_handler_priorities
 
     def _SimulationEngine__handle_event(self, event_list):
-        '''Handle a simulation event, which may involve multiple event messages.
+        """ Handle a simulation event, which may involve multiple event messages
 
-        Cannot be overridden, and can only be called from `SimulationEngine`.
+        This method's special name ensures that it cannot be overridden, and can only be called
+        from `SimulationEngine`.
 
         Attributes:
-            event_list: A non-empty list of event messages in the event
+            event_list (:obj:`list` of `Event`): the `Event` message(s) in the simulation event
 
         Raises:
-            ValueError: if some event message in event_list has an invalid type
-        '''
-        # todo: rationalize naming between simulation message, event, & event_list
-        # the PDES field needs this
-
+            SimulatorError: if a message in `event_list` has an invalid type
+        """
+        # TODO(Arthur): rationalize naming between simulation message, event, & event_list.
+        # The PDES field needs this clarity.
         self.num_events += 1
 
-        # write events to a plot log, for plotting by plotSpaceTimeDiagram.py
+        # write events to a plot log
         # plot logging is controlled by configuration files pointed to by config_constants and by env vars
         logger = debug_logs.get_log('wc.plot.file')
         for event in event_list:
@@ -358,13 +358,14 @@ class SimulationObject(object):
             try:
                 handler = self.__class__.event_handlers[event_message.event_type]
                 handler(self, event_message)
-            except KeyError:
-                raise ValueError("No handler registered for Simulation message type: '{}'".format(
+            except KeyError: # pragma no cover  # unreachable because of check that receiving sim
+                                                # obj type is registered to receive the message type
+                raise SimulatorError("No handler registered for Simulation message type: '{}'".format(
                     event_message.event_type))
 
     def event_queue_to_str(self):
-        '''Format an event queue as a string.
-        '''
+        """Format an event queue as a string.
+        """
         eq_str = '{} at {:5.3f}\n'.format(self.name, self.time)
         if self.event_queue.event_heap:
             eq_str += Event.header() + '\n' + str(self.event_queue)
@@ -373,8 +374,8 @@ class SimulationObject(object):
         return eq_str
 
     def log_with_time(self, msg, local_call_depth=1):
-        '''Write a debug log message with the simulation time.
-        '''
+        """Write a debug log message with the simulation time.
+        """
         debug_logs.get_log('wc.debug.file').debug(msg, sim_time=self.time,
             local_call_depth=local_call_depth)
 
@@ -382,31 +383,31 @@ class SimulationObject(object):
 # todo: should this inherit from object; is it possible to combine this with SimulationObject into one class?
 @six.add_metaclass(abc.ABCMeta)
 class SimulationObjectInterface():
-    '''Classes derived from `SimulationObject` must implement this interface.
-    '''
+    """Classes derived from `SimulationObject` must implement this interface.
+    """
 
     @abc.abstractmethod
     def send_initial_events(self, *args):
-        '''Send the `SimulationObject`'s initial event messages.
+        """Send the `SimulationObject`'s initial event messages.
 
         This method is distinct from initializing the `SimulationObject` with `__init__()`, because
         it requires that communicating `SimulationObject`'s exist. It may send no events.
 
         Args:
             args: tuple: parameters needed to send the initial event messages
-        '''
-        pass
+        """
+        pass    # pragma: no cover
 
     @classmethod
     @abc.abstractmethod
     def register_subclass_handlers(cls):
-        '''Register all of the `SimulationObject`'s event handler methods.
-        '''
-        pass
+        """Register all of the `SimulationObject`'s event handler methods.
+        """
+        pass    # pragma: no cover
 
     @classmethod
     @abc.abstractmethod
     def register_subclass_sent_messages(cls):
-        '''Register the messages sent by a `SimulationObject`.
-        '''
-        pass
+        """Register the messages sent by a `SimulationObject`.
+        """
+        pass    # pragma: no cover

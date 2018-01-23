@@ -18,6 +18,7 @@ from scipy.stats import binom
 
 from wc_lang.io import Reader
 import wc_lang
+from wc_sim.core.errors import SimulatorError
 from wc_sim.core.simulation_engine import SimulationEngine
 from wc_sim.core.simulation_object import EventQueue, SimulationObject, SimulationObjectInterface
 from wc_sim.multialgorithm import message_types
@@ -743,12 +744,12 @@ class TestSpeciesPopSimObject(unittest.TestCase):
 
     def test_invalid_event_types(self):
 
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SimulatorError) as context:
             self.test_species_pop_sim_obj.send_event(1.0, self.test_species_pop_sim_obj, InitMsg1)
         self.assertIn("'wc_sim.multialgorithm.species_populations.SpeciesPopSimObject' simulation "
             "objects not registered to send", str(context.exception))
 
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SimulatorError) as context:
             self.test_species_pop_sim_obj.send_event(1.0, self.test_species_pop_sim_obj,
                 message_types.GivePopulation)
         self.assertIn("'wc_sim.multialgorithm.species_populations.SpeciesPopSimObject' simulation "

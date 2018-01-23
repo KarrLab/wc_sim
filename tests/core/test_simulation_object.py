@@ -9,12 +9,15 @@ import unittest
 import random
 import six
 
+from wc_sim.core.errors import SimulatorError
+from wc_sim.core.event import Event
 from wc_sim.core.simulation_object import EventQueue, SimulationObject, SimulationObjectInterface
 from wc_sim.core.simulation_engine import SimulationEngine
 from tests.core.some_message_types import InitMsg, Eg1, UnregisteredMsg
 from wc_utils.util.misc import most_qual_cls_name
 
 ALL_MESSAGE_TYPES = [InitMsg, Eg1]
+
 
 class ExampleSimulationObject(SimulationObject, SimulationObjectInterface):
 
@@ -33,6 +36,25 @@ class ExampleSimulationObject(SimulationObject, SimulationObjectInterface):
     @classmethod
     def register_subclass_sent_messages(this_class):
         SimulationObject.register_sent_messages(this_class, ALL_MESSAGE_TYPES)
+
+
+class TestEventQueue(unittest.TestCase):
+
+    def setUp(self):
+        self.event_queue = EventQueue()
+        self.num_events = 5
+        self.sender = sender = ExampleSimulationObject('sender')
+        self.receiver = receiver = ExampleSimulationObject('receiver')
+        for i in range(self.num_events):
+            self.event_queue.schedule_event(i, i+1, sender, receiver, 'event type')
+        self.simulator = SimulationEngine()
+        self.simulator.register_object_types([ExampleSimulationObject])
+
+    def test_next_event_time(self):
+        empty_event_queue = EventQueue()
+        self.assertEqual(float('inf'), empty_event_queue.next_event_time())
+        self.assertEqual(1, self.event_queue.next_event_time())
+
 
 class TestSimulationObject(unittest.TestCase):
 
@@ -98,37 +120,37 @@ class TestSimulationObject(unittest.TestCase):
 
     def test_exceptions(self):
         delay = -1.0
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SimulatorError) as context:
             self.o1.send_event(delay, self.o2, Eg1)
         self.assertEqual(str(context.exception),
             "delay < 0 in send_event(): {}".format(str(delay)))
 
         event_time = -1
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SimulatorError) as context:
             self.o1.send_event_absolute(event_time, self.o2, Eg1)
         six.assertRegex(self, str(context.exception),
             "event_time \(-1.*\) < current time \(0.*\) in send_event_absolute\(\)")
 
         eq = EventQueue()
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SimulatorError) as context:
             eq.schedule_event(2, 1, None, None, '')
         self.assertEqual(str(context.exception),
             "receive_time < send_time in schedule_event(): {} < {}".format(1, 2))
 
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SimulatorError) as context:
             self.o1.send_event_absolute(2, self.o2, UnregisteredMsg)
         self.assertEqual(str(context.exception),
             "'{}' simulation objects not registered to send '{}' messages".format(
                 most_qual_cls_name(self.o1),
                 most_qual_cls_name(UnregisteredMsg)))
 
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SimulatorError) as context:
             self.o1.add(self.simulator)
         self.assertEqual(str(context.exception),
             "SimulationObject '{}' is already part of a simulator".format(self.o1.name))
 
         SimulationObject.register_sent_messages(ExampleSimulationObject, [UnregisteredMsg])
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SimulatorError) as context:
             self.o1.send_event_absolute(2, self.o2, UnregisteredMsg)
         self.assertEqual(str(context.exception),
             "'{}' simulation objects not registered to receive '{}' messages".format(
@@ -136,13 +158,39 @@ class TestSimulationObject(unittest.TestCase):
                 most_qual_cls_name(UnregisteredMsg)))
 
         T = 'TEST'
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SimulatorError) as context:
             SimulationObject.register_handlers(ExampleSimulationObject, [(UnregisteredMsg, T)])
         self.assertEqual(str(context.exception), "handler '{}' must be callable".format(T))
 
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SimulatorError) as context:
             # register the same type multiple times
             SimulationObject.register_handlers(ExampleSimulationObject,
                 [(UnregisteredMsg, lambda x: 0), (UnregisteredMsg, lambda x: 0)])
         self.assertEqual(str(context.exception), "message type '{}' appears repeatedly".format(
             most_qual_cls_name(UnregisteredMsg)))
+
+
+class ExampleUnregisteredSimulationObject(SimulationObject, SimulationObjectInterface):
+
+    def __init__(self, name):
+        super(ExampleUnregisteredSimulationObject, self).__init__(name)
+
+    def send_initial_events(self, *args): pass
+
+    def handler(self, event): pass
+
+    @classmethod
+    def register_subclass_handlers(this_class): pass
+
+    @classmethod
+    def register_subclass_sent_messages(this_class): pass
+
+
+class TestUnregisteredSimulationObject(unittest.TestCase):
+
+    def test_get_receiving_priorities_dict(self):
+        so = ExampleUnregisteredSimulationObject('o1')
+        with self.assertRaises(SimulatorError) as context:
+            so.get_receiving_priorities_dict()
+        self.assertIn(str(context.exception),
+            "SimulationObject type '{}' must call register_handlers()".format(so.__class__.__name__))

@@ -1,20 +1,21 @@
-''' Core DES mechanisms, including simulation message and object registries, and the scheduler
+""" Core DES mechanisms, including simulation message and object registries, and the scheduler
 
 :Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2016-06-01
 :Copyright: 2016-2018, Karr Lab
 :License: MIT
-'''
+"""
 
 import datetime
 
+from wc_sim.core.errors import SimulatorError
 from wc_sim.core.event import Event
 
 # configure logging
 from .debug_logs import logs as debug_logs
 
 class SimulationEngine(object):
-    '''A simulation engine.
+    """A simulation engine.
 
     General-purpose simulation mechanisms, including the simulation scheduler.
     Architected as an OO simulation that could be parallelized.
@@ -31,7 +32,7 @@ class SimulationEngine(object):
         # TODO(Arthur): when the number of objects in a simulation grows large, a list representation of
             the event_queues will preform sub-optimally; use a priority queue instead, reordering the
             queue as event messages are sent and received.
-    '''
+    """
 
     def __init__(self):
         self.time = 0.0
@@ -40,7 +41,7 @@ class SimulationEngine(object):
         self.__initialized = False
 
     def register_object_types(self, simulation_object_types):
-        '''Register simulation object types with the simulation.
+        """Register simulation object types with the simulation.
 
         The types of all simulation objects used by a simulation must be registered. This calls
         the methods `register_subclass_handlers()` and `register_subclass_sent_messages()` in each
@@ -50,79 +51,79 @@ class SimulationEngine(object):
         Attributes:
             simulation_object_types: `type(SimulationObject)`: a simulation object type that will
                 be used by the simulation
-        '''
+        """
         for simulation_object_type in simulation_object_types:
             simulation_object_type.register_subclass_handlers()
             simulation_object_type.register_subclass_sent_messages()
 
     def add_object(self, simulation_object):
-        '''Add a simulation object instance to this simulation.
+        """Add a simulation object instance to this simulation.
 
         Attributes:
             simulation_object: `SimulationObject`: a simulation object instance that will be used by
                 this simulation
 
         Raises:
-            ValueError: if the simulation object's name is already in use
-        '''
+            SimulatorError: if the simulation object's name is already in use
+        """
         name = simulation_object.name
         if name in self.simulation_objects:
-            raise ValueError("cannot add simulation object '{}', name already in use".format(name))
+            raise SimulatorError("cannot add simulation object '{}', name already in use".format(name))
         simulation_object.add(self)
         self.simulation_objects[name] = simulation_object
 
     def delete_object(self, simulation_object):
-        '''Delete a simulation object instance from this simulation.
+        """Delete a simulation object instance from this simulation.
 
         Attributes:
             simulation_object: `SimulationObject`: a simulation object instance that is part of
                 this simulation
 
         Raises:
-            ValueError: if the simulation object has not been previously added
-        '''
+            SimulatorError: if the simulation object has not been previously added
+        """
         name = simulation_object.name
         if name not in self.simulation_objects:
-            raise ValueError("cannot delete simulation object '{}', has not been added".format(name))
+            raise SimulatorError("cannot delete simulation object '{}', has not been added".format(name))
         simulation_object.delete()
         del self.simulation_objects[name]
 
     def load_objects(self, sim_objects):
-        '''Load simulation objects into the simulation
+        """Load simulation objects into the simulation
 
         Attributes:
             sim_objects: list: a list of simulation objects
-        '''
+        """
         for sim_object in sim_objects:
             self.add_object(sim_object)
 
     def initialize(self):
-        '''Initialize a simulation
+        """Initialize a simulation
 
         Call `send_initial_events()` in each simulation object.
 
         Raises:
-            ValueError: if the simulation has already been initialized
-        '''
+            SimulatorError: if the simulation has already been initialized
+        """
         if self.__initialized:
-            raise ValueError('Simulation has already been initialized.')
+            raise SimulatorError('Simulation has already been initialized.')
         for sim_obj in self.simulation_objects.values():
             sim_obj.send_initial_events()
         self.__initialized = True
 
     def reset(self):
-        '''Reset this `SimulationEngine`.
+        """Reset this `SimulationEngine`.
 
         Set simulation time to 0, delete all objects, and reset any prior initialization.
-        '''
+        """
         self.time = 0.0
         for simulation_object in list(self.simulation_objects.values()):
             self.delete_object(simulation_object)
         self.__initialized = False
 
     def message_queues(self):
-        '''Return a string listing all message queues in the simulation.
-        '''
+        """Return a string listing all message queues in the simulation.
+        """
         data = ['Event queues at {:6.3f}'.format(self.time)]
         for sim_obj in self.simulation_objects.values():
             data.append(sim_obj.name + ':')
@@ -135,7 +136,7 @@ class SimulationEngine(object):
         return '\n'.join(data)
 
     def simulate(self, end_time, epsilon=None):
-        '''Run the simulation; return number of events.
+        """Run the simulation; return number of events.
 
         Args:
             end_time: number: the time of the end of the simulation
@@ -148,19 +149,19 @@ class SimulationEngine(object):
             the number of events sent, because simultaneous events are handled together.
 
         Raises:
-            ValueError: if the ratio of `end_time` to epsilon is so large that epsilon is lost
+            SimulatorError: if the ratio of `end_time` to epsilon is so large that epsilon is lost
                 in roundoff error
-            ValueError: if the simulation has not been initialized
-        '''
+            SimulatorError: if the simulation has not been initialized
+        """
         # TODO(Arthur): add optional logical termation condition(s)
 
         if not self.__initialized:
-            raise ValueError("Simulation has not been initialized")
+            raise SimulatorError("Simulation has not been initialized")
 
         # ratio of max simulation time to epsilon must not be so large that epsilon is lost
         # in roundoff error
         if not epsilon is None and epsilon + end_time == end_time:
-            raise ValueError("epsilon ({:E}) and max simulation time ({:E}) too far apart".format(
+            raise SimulatorError("epsilon ({:E}) and max simulation time ({:E}) too far apart".format(
                 epsilon, end_time))
 
         # write header to a plot log
@@ -204,7 +205,7 @@ class SimulationEngine(object):
         return handle_event_invocations
 
     def log_with_time(self, msg, local_call_depth=1):
-        '''Write a debug log message with the simulation time.
-        '''
+        """Write a debug log message with the simulation time.
+        """
         debug_logs.get_log('wc.debug.file').debug(msg, sim_time=self.time,
             local_call_depth=local_call_depth)

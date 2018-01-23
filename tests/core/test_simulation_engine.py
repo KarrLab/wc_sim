@@ -8,6 +8,7 @@
 import sys
 import unittest
 
+from wc_sim.core.errors import SimulatorError
 from wc_sim.core.simulation_object import EventQueue, SimulationObject, SimulationObjectInterface
 from wc_sim.core.event import Event
 from wc_sim.core.simulation_engine import SimulationEngine
@@ -16,6 +17,7 @@ from wc_utils.util.misc import most_qual_cls_name
 
 ALL_MESSAGE_TYPES = [InitMsg, Eg1]
 
+# TODO(Arthur): test more of SimulationEngine here
 class BasicExampleSimulationObject(SimulationObject, SimulationObjectInterface):
 
     def __init__(self, name):
@@ -122,16 +124,16 @@ class TestSimulationEngine(unittest.TestCase):
 
     def test_simulation_engine_exception(self):
         obj = ExampleSimulationObject(obj_name(1))
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SimulatorError) as context:
             self.simulator.delete_object(obj)
         self.assertIn("cannot delete simulation object '{}'".format(obj.name), str(context.exception))
 
         self.simulator.add_object(obj)
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SimulatorError) as context:
             self.simulator.simulate(5.0)
         self.assertIn('Simulation has not been initialized', str(context.exception))
 
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SimulatorError) as context:
             self.simulator.add_object(obj)
         self.assertIn("cannot add simulation object '{}'".format(obj.name), str(context.exception))
 
