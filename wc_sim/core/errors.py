@@ -6,16 +6,20 @@
 '''
 
 class Error(Exception):
-    """ Base class for exceptions in wc_sim.core
+    """ Base class for exceptions in wc_sim
+
+    Attributes:
+        message (:obj:`str`): the exception's message
     """
-    pass
+    def __init__(self, message=None):
+        super(Error, self).__init__(message)
 
 
 class SimulatorError(Error):
     """ Exception raised for errors in wc_sim.core
 
     Attributes:
-        message (:obj:`srt`): the exception's message
+        message (:obj:`str`): the exception's message
     """
-    def __init__(self, message):
-        self.message = message
+    def __init__(self, message=None):
+        super(SimulatorError, self).__init__(message)
