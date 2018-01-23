@@ -124,7 +124,7 @@ class TestSimulationEngine(unittest.TestCase):
 
     def test_simulation_engine_exception(self):
         obj = ExampleSimulationObject(obj_name(1))
-        with self.assertRaises(SimulatorError) as context:
+        with self.assertRaises(ValueError) as context:
             self.simulator.delete_object(obj)
         self.assertIn("cannot delete simulation object '{}'".format(obj.name), str(context.exception))
 

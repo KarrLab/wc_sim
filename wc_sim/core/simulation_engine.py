@@ -84,7 +84,7 @@ class SimulationEngine(object):
         """
         name = simulation_object.name
         if name not in self.simulation_objects:
-            raise SimulatorError("cannot delete simulation object '{}', has not been added".format(name))
+            raise ValueError("cannot delete simulation object '{}', has not been added".format(name))
         simulation_object.delete()
         del self.simulation_objects[name]
 
