@@ -152,10 +152,9 @@ class PlotPopulationDynamics(object):
     def output_plot( args ):
         if args.pdf_file:
             print( "Writing '{}'.".format( args.pdf_file ) )
-            pp = PdfPages( args.pdf_file )
-            pp.savefig( pyplot.gcf() )
-            # Once you are done, remember to close the pdf object
-            pp.close()
+            fig = pyplot.gcf()
+            fig.savefig(args.pdf_file)
+            pyplot.close(fig)
         else:
             pyplot.show()
 

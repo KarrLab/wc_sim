@@ -10,7 +10,6 @@
 
 from matplotlib import pyplot
 from matplotlib import ticker
-from matplotlib.backends.backend_pdf import PdfPages
 from wc_lang.core import Model, Submodel
 from scipy.constants import Avogadro
 import numpy as np
@@ -106,6 +105,5 @@ def plot(model, time = np.zeros(0),
 
     #save
     if fileName:
-        pp = PdfPages(fileName)
-        pp.savefig(fig)
-        pp.close()
+        fig.savefig(fileName)
+        pyplot.close(fig)
