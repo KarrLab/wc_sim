@@ -8,7 +8,8 @@
 
 # TODO(Arthur): IMPORTANT: refactor and replace
 
-from matplotlib import pyplot, ticker
+from matplotlib import pyplot
+from matplotlib import ticker
 from matplotlib.backends.backend_pdf import PdfPages
 from wc_lang.core import Model, Submodel
 from scipy.constants import Avogadro

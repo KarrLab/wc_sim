@@ -10,7 +10,7 @@ import sys
 import math
 import argparse
 
-import matplotlib.pyplot as plt
+from matplotlib import pyplot
 from matplotlib.backends.backend_pdf import PdfPages
 
 from past import autotranslate
@@ -120,15 +120,15 @@ class PlotPopulationDynamics(object):
             'color' : 'green',
             'label' : 'Discrete adjustments' }
 
-        plt.scatter(
+        pyplot.scatter(
             map( lambda e: e.time, continuous_events ),
             map( lambda e: e.population, continuous_events ),
             **continuous_params )
-        plt.scatter(
+        pyplot.scatter(
             map( lambda e: e.time, discrete_events ),
             map( lambda e: e.population, discrete_events ),
             **discrete_params )
-        plt.legend()
+        pyplot.legend()
 
         # plot piece-wise linear line segments
         data = []
@@ -138,27 +138,26 @@ class PlotPopulationDynamics(object):
             data.append(x_vals)
             data.append(y_vals)
             data.append('blue')
-        plt.plot(*data)
+        pyplot.plot(*data)
 
         # expand axes by 1 in each direction, so all data shows
-        ymin, ymax = plt.ylim()
-        plt.ylim( ymin-1, ymax+1)
-        xmin, xmax = plt.xlim()
-        plt.xlim( xmin-1, xmax+1)
-        plt.xlabel('Simulated time (units here)')
-        plt.ylabel('Predicted copy number')
+        ymin, ymax = pyplot.ylim()
+        pyplot.ylim( ymin-1, ymax+1)
+        xmin, xmax = pyplot.xlim()
+        pyplot.xlim( xmin-1, xmax+1)
+        pyplot.xlabel('Simulated time (units here)')
+        pyplot.ylabel('Predicted copy number')
 
     @staticmethod
     def output_plot( args ):
         if args.pdf_file:
-            import matplotlib
             print( "Writing '{}'.".format( args.pdf_file ) )
             pp = PdfPages( args.pdf_file )
-            pp.savefig( plt.gcf() )
+            pp.savefig( pyplot.gcf() )
             # Once you are done, remember to close the pdf object
             pp.close()
         else:
-            plt.show()
+            pyplot.show()
 
     @staticmethod
     def main():
