@@ -7,6 +7,7 @@
 
 import sys
 import unittest
+import six
 
 from wc_sim.core.errors import SimulatorError
 from wc_sim.core.simulation_object import EventQueue, SimulationObject, SimulationObjectInterface
@@ -17,7 +18,21 @@ from wc_utils.util.misc import most_qual_cls_name
 
 ALL_MESSAGE_TYPES = [InitMsg, Eg1]
 
-# TODO(Arthur): test more of SimulationEngine here
+
+class InactiveSimulationObject(SimulationObject, SimulationObjectInterface):
+
+    def __init__(self):
+        SimulationObject.__init__(self, 'inactive')
+
+    def send_initial_events(self): pass
+
+    @classmethod
+    def register_subclass_handlers(this_class): pass
+
+    @classmethod
+    def register_subclass_sent_messages(this_class): pass
+
+
 class BasicExampleSimulationObject(SimulationObject, SimulationObjectInterface):
 
     def __init__(self, name):
@@ -101,6 +116,7 @@ class CyclicalMessagesSimulationObject(SimulationObject, SimulationObjectInterfa
     def register_subclass_sent_messages(this_class):
         SimulationObject.register_sent_messages(this_class, ALL_MESSAGE_TYPES)
 
+
 NAME_PREFIX = 'sim_obj'
 
 def obj_name(i):
@@ -122,7 +138,7 @@ class TestSimulationEngine(unittest.TestCase):
         self.simulator.initialize()
         self.assertEqual(self.simulator.simulate(5.0), 3)
 
-    def test_simulation_engine_exception(self):
+    def test_simulation_engine_exceptions(self):
         obj = ExampleSimulationObject(obj_name(1))
         with self.assertRaises(ValueError) as context:
             self.simulator.delete_object(obj)
@@ -151,6 +167,22 @@ class TestSimulationEngine(unittest.TestCase):
         self.assertIn('find object time', str(context.exception))
         self.assertIn('> event time', str(context.exception))
 
+        with self.assertRaises(SimulatorError) as context:
+            self.simulator.initialize()
+        self.assertEqual('Simulation has already been initialized', str(context.exception))
+
+        self.simulator.reset()
+        self.simulator.initialize()
+        with self.assertRaises(SimulatorError) as context:
+            self.simulator.simulate(5.0, epsilon=0)
+        six.assertRegex(self, str(context.exception), "epsilon (.*) plus end time (.*) must exceed end time")
+
+    def test_simulation_end(self):
+        self.simulator.add_object(InactiveSimulationObject())
+        self.simulator.initialize()
+        # log "No events remain"
+        self.simulator.simulate(5.0)
+
     def test_multi_object_simulation_and_reset(self):
         for i in range(1, 4):
             obj = ExampleSimulationObject(obj_name(i))
@@ -167,13 +199,23 @@ class TestSimulationEngine(unittest.TestCase):
         self.simulator.initialize()
         self.assertEqual(self.simulator.simulate(2.5), 4)
 
-    def test_cyclical_messaging_network(self):
-        # test event times at simulation objects; this test should succeed with any
-        # natural number for num_objs and any non-negative value of sim_duration
-        num_objs = 10
-        sim_duration = 20
+    def make_cyclical_messaging_network_sim(self, num_objs):
+        # make simulation with cyclical messaging network
         sim_objects = [CyclicalMessagesSimulationObject(obj_name(i), i, num_objs, self)
             for i in range(num_objs)]
         self.simulator.load_objects(sim_objects)
+
+    def test_cyclical_messaging_network(self):
+        # test event times at simulation objects; this test should succeed with any
+        # natural number for num_objs and any non-negative value of sim_duration
+        self.make_cyclical_messaging_network_sim(10)
         self.simulator.initialize()
-        self.simulator.simulate(sim_duration)
+        self.simulator.simulate(20)
+
+    def test_message_queues(self):
+        self.make_cyclical_messaging_network_sim(4)
+        self.simulator.add_object(InactiveSimulationObject())
+        self.simulator.initialize()
+        queues = self.simulator.message_queues()
+        for sim_obj_name in self.simulator.simulation_objects:
+            self.assertIn(sim_obj_name, queues)

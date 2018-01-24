@@ -1,4 +1,4 @@
-""" Core DES mechanisms, including simulation message and object registries, and the scheduler
+""" Core discrete event simulation engine
 
 :Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2016-06-01
@@ -8,14 +8,19 @@
 
 import datetime
 
+from wc_sim.core.simulation_object import SimulationObject
 from wc_sim.core.errors import SimulatorError
 from wc_sim.core.event import Event
 
 # configure logging
 from .debug_logs import logs as debug_logs
 
+# TODO(Arthur): the list representation of event_queues won't scale with the num of simulation objects
+# TODO(Arthur): use a priority queue instead, reordering the queue as event messages are sent and received.
+
+
 class SimulationEngine(object):
-    """A simulation engine.
+    """ A simulation engine
 
     General-purpose simulation mechanisms, including the simulation scheduler.
     Architected as an OO simulation that could be parallelized.
@@ -26,12 +31,9 @@ class SimulationEngine(object):
     in non-decreasing time order; and generates debugging output.
 
     Attributes:
-        time: float: the simulations's current time.
-        simulation_objects: dict: all the simulation objects, keyed by name
-        __initialized: boolean: whether the simulation has been initialized
-        # TODO(Arthur): when the number of objects in a simulation grows large, a list representation of
-            the event_queues will preform sub-optimally; use a priority queue instead, reordering the
-            queue as event messages are sent and received.
+        time (:obj:`float`): the simulations's current time
+        simulation_objects (:obj:`dict` of `SimulationObject`): all simulation objects, keyed by name
+        __initialized (:obj:`bool`): whether the simulation has been initialized
     """
 
     def __init__(self):
@@ -41,30 +43,31 @@ class SimulationEngine(object):
         self.__initialized = False
 
     def register_object_types(self, simulation_object_types):
-        """Register simulation object types with the simulation.
+        """ Register simulation object types with the simulation
 
-        The types of all simulation objects used by a simulation must be registered. This calls
+        The types of all simulation objects used by a simulation must be registered so that messages
+        can be executed by vectoring to the right message handlers. This calls
         the methods `register_subclass_handlers()` and `register_subclass_sent_messages()` in each
-        subclass of `SimulationObject` provided. Calling `register_object_types` overwrites any
+        subclass of `SimulationObject` provided. A call to this method overwrites any
         previous registration.
 
-        Attributes:
-            simulation_object_types: `type(SimulationObject)`: a simulation object type that will
-                be used by the simulation
+        Args:
+             simulation_object_types (:obj:`list`): the types of subclasses of `SimulationObject`s
+                that will be used in the simulation
         """
         for simulation_object_type in simulation_object_types:
             simulation_object_type.register_subclass_handlers()
             simulation_object_type.register_subclass_sent_messages()
 
     def add_object(self, simulation_object):
-        """Add a simulation object instance to this simulation.
+        """ Add a simulation object instance to this simulation
 
-        Attributes:
-            simulation_object: `SimulationObject`: a simulation object instance that will be used by
-                this simulation
+        Args:
+            simulation_object (:obj:`SimulationObject`): a simulation object instance that
+                will be used by this simulation
 
         Raises:
-            SimulatorError: if the simulation object's name is already in use
+            :obj:`SimulatorError`: if the simulation object's name is already in use
         """
         name = simulation_object.name
         if name in self.simulation_objects:
@@ -73,14 +76,14 @@ class SimulationEngine(object):
         self.simulation_objects[name] = simulation_object
 
     def delete_object(self, simulation_object):
-        """Delete a simulation object instance from this simulation.
+        """ Delete a simulation object instance from this simulation
 
-        Attributes:
-            simulation_object: `SimulationObject`: a simulation object instance that is part of
-                this simulation
+        Args:
+            simulation_object (:obj:`SimulationObject`): a simulation object instance that is
+                part of this simulation
 
         Raises:
-            SimulatorError: if the simulation object has not been previously added
+            :obj:`SimulatorError`: if the simulation object is not part of this simulation
         """
         name = simulation_object.name
         if name not in self.simulation_objects:
@@ -88,31 +91,31 @@ class SimulationEngine(object):
         simulation_object.delete()
         del self.simulation_objects[name]
 
-    def load_objects(self, sim_objects):
-        """Load simulation objects into the simulation
+    def load_objects(self, simulation_objects):
+        """ Load simulation objects into the simulation
 
-        Attributes:
-            sim_objects: list: a list of simulation objects
+        Args:
+            simulation_objects (:obj:`list` of `SimulationObject`): a list of simulation objects
         """
-        for sim_object in sim_objects:
-            self.add_object(sim_object)
+        for simulation_object in simulation_objects:
+            self.add_object(simulation_object)
 
     def initialize(self):
-        """Initialize a simulation
+        """ Initialize a simulation
 
-        Call `send_initial_events()` in each simulation object.
+        Call `send_initial_events()` in each simulation object that has been loaded.
 
         Raises:
             SimulatorError: if the simulation has already been initialized
         """
         if self.__initialized:
-            raise SimulatorError('Simulation has already been initialized.')
+            raise SimulatorError('Simulation has already been initialized')
         for sim_obj in self.simulation_objects.values():
             sim_obj.send_initial_events()
         self.__initialized = True
 
     def reset(self):
-        """Reset this `SimulationEngine`.
+        """ Reset this `SimulationEngine`
 
         Set simulation time to 0, delete all objects, and reset any prior initialization.
         """
@@ -122,10 +125,13 @@ class SimulationEngine(object):
         self.__initialized = False
 
     def message_queues(self):
-        """Return a string listing all message queues in the simulation.
+        """ Return a string listing all message queues in the simulation
+
+        Returns:
+            :obj:`str`: a list of all message queues in the simulation and their messages
         """
         data = ['Event queues at {:6.3f}'.format(self.time)]
-        for sim_obj in self.simulation_objects.values():
+        for sim_obj in sorted(self.simulation_objects.values(), key=lambda sim_obj: sim_obj.name):
             data.append(sim_obj.name + ':')
             if sim_obj.event_queue.event_heap:
                 data.append(Event.header())
@@ -136,22 +142,21 @@ class SimulationEngine(object):
         return '\n'.join(data)
 
     def simulate(self, end_time, epsilon=None):
-        """Run the simulation; return number of events.
+        """ Run the simulation
 
         Args:
-            end_time: number: the time of the end of the simulation
-            epsilon: float: small time interval used to control the order of near simultaneous
-                events at different simulation objects; if provided, `simulate()` compares
+            end_time (:obj:`float`): the time of the end of the simulation
+            epsilon (:obj:`float`): small time interval used to control the order of near simultaneous
+                events at different simulation objects; if provided, compare
                 `epsilon` with `end_time` to ensure the ratio is not too large.
 
         Returns:
-            The number of times a simulation object executes _handle_event(). This may be larger than
-            the number of events sent, because simultaneous events are handled together.
+            :obj:`int`: the number of times a simulation object executes `_handle_event()`. This may
+                be larger than the number of events sent, because simultaneous events are handled together.
 
         Raises:
-            SimulatorError: if the ratio of `end_time` to epsilon is so large that epsilon is lost
-                in roundoff error
-            SimulatorError: if the simulation has not been initialized
+            :obj:`SimulatorError`: if the ratio of `end_time` to `epsilon` is so large that `epsilon`
+                is lost in roundoff error, or if the simulation has not been initialized
         """
         # TODO(Arthur): add optional logical termation condition(s)
 
@@ -160,8 +165,8 @@ class SimulationEngine(object):
 
         # ratio of max simulation time to epsilon must not be so large that epsilon is lost
         # in roundoff error
-        if not epsilon is None and epsilon + end_time == end_time:
-            raise SimulatorError("epsilon ({:E}) and max simulation time ({:E}) too far apart".format(
+        if not epsilon is None and not(epsilon + end_time > end_time):
+            raise SimulatorError("epsilon ({:E}) plus end time ({:E}) must exceed end time".format(
                 epsilon, end_time))
 
         # write header to a plot log
@@ -192,13 +197,14 @@ class SimulationEngine(object):
 
             handle_event_invocations += 1
 
-            # simulation time dispatch object that's ready to execute next event
             self.time = next_time
-            # This assertion will not be violoated unless init message sent to negative time or
+
+            # assertion won't be violoated unless init message sent to negative time or
             # objects decrease their time.
             assert next_sim_obj.time <= next_time, ("Dispatching '{}', but find object time "
                 "{} > event time {}.".format(next_sim_obj.name, next_sim_obj.time, next_time))
 
+            # dispatch object that's ready to execute next event
             next_sim_obj.time = next_time
             next_sim_obj.__handle_event(next_sim_obj.event_queue.next_events(next_sim_obj))
 
