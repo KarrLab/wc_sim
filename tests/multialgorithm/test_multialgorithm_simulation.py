@@ -11,7 +11,8 @@ import six
 import math
 import numpy as np
 
-from wc_sim.multialgorithm.multialgorithm_simulation import (DynamicModel, MultialgorithmSimulation)
+from wc_sim.multialgorithm.multialgorithm_simulation import (DynamicModel, MultialgorithmSimulation,
+    WATER_ID)
 from wc_sim.multialgorithm.model_utilities import ModelUtilities
 from obj_model import utils
 from wc_lang.io import Reader
@@ -26,24 +27,33 @@ config_multialgorithm = \
 class TestDynamicModel(unittest.TestCase):
 
     MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_model.xlsx')
+    DRY_MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_dry_model.xlsx')
 
     def setUp(self):
         for model in [Submodel, Reaction, SpeciesType]:
             model.objects.reset()
+
+    def read_model(self, model_filename):
         # read and initialize a model
-        self.model = Reader().run(self.MODEL_FILENAME)
+        self.model = Reader().run(model_filename)
         args = Namespace(FBA_time_step=1)
         self.multialgorithm_simulation = MultialgorithmSimulation(self.model, args)
         self.dynamic_model = DynamicModel(self.model, self.multialgorithm_simulation)
 
     def test_initialize_dynamic_model(self):
+        self.read_model(self.MODEL_FILENAME)
         self.dynamic_model.initialize()
         self.assertEqual(self.dynamic_model.extracellular_volume, 1.00E-12)
         self.assertEqual(self.dynamic_model.volume, 4.58E-17)
         self.assertEqual(self.dynamic_model.fraction_dry_weight, 0.3)
-        self.assertAlmostEqual(self.dynamic_model.mass, 1.56273063E-42)
-        self.assertAlmostEqual(self.dynamic_model.dry_weight, 4.68819190E-43)
-        self.assertAlmostEqual(self.dynamic_model.density, 3.41207562E-26)
+        self.assertAlmostEqual(self.dynamic_model.mass, 1.562E-42)
+        self.assertAlmostEqual(self.dynamic_model.dry_weight, 4.688E-43)
+        self.assertAlmostEqual(self.dynamic_model.density, 3.412E-26)
+
+    def test_dry_dynamic_model(self):
+        self.read_model(self.DRY_MODEL_FILENAME)
+        self.dynamic_model.initialize()
+        self.assertEqual(self.dynamic_model.mass, self.dynamic_model.dry_weight)
 
 
 class TestMultialgorithmSimulation(unittest.TestCase):
@@ -58,7 +68,6 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         self.multialgorithm_simulation = MultialgorithmSimulation(self.model, args)
         self.dynamic_model = DynamicModel(self.model, self.multialgorithm_simulation)
 
-    @unittest.skip('')
     def test_initialize_simulation(self):
         self.multialgorithm_simulation.initialize()
         self.simulation_engine = self.multialgorithm_simulation.build_simulation()

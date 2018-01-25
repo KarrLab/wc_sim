@@ -110,6 +110,9 @@ class TestSimulationObject(unittest.TestCase):
         self.assertEqual(self.o2.event_queue.next_event_time(), 2)
 
     def test_event_queue_to_str(self):
+        rv = self.o1.event_queue_to_str()
+        self.assertIn(self.o1.name, rv)
+
         times=[2.0, 1.0, 0.5]
         for time in times:
             self.o1.send_event(time, self.o1, Eg1)
