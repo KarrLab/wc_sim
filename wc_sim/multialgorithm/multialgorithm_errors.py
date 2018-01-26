@@ -1,27 +1,43 @@
-'''Define multi-algoritmic simulation errors.
+"""Define multi-algoritmic simulation errors.
 
 :Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
 :Date: 2016-12-12
 :Copyright: 2016-2018, Karr Lab
 :License: MIT
-'''
+"""
 
 class Error(Exception):
-    '''Base class for exceptions involving multi-algoritmic simulation.'''
-    pass
+    """ Base class for exceptions involving multi-algoritmic simulation
+
+    Attributes:
+        message (:obj:`str`): the exception's message
+    """
+    def __init__(self, message=None):
+        super(Error, self).__init__(message)
+
+
+class MultialgorithmError(Error):
+    """ Exception raised for errors in wc_sim.multialgorithm
+
+    Attributes:
+        message (:obj:`str`): the exception's message
+    """
+    def __init__(self, message=None):
+        super(MultialgorithmError, self).__init__(message)
+
 
 class SpeciesPopulationError(Error):
-    '''Exception raised when species population management encounters a problem.'''
+    """ Exception raised when species population management encounters a problem
 
-    def __init__(self, msg):
-        self.msg = msg
+    Attributes:
+        message (:obj:`str`): the exception's message
+    """
+    def __init__(self, message=None):
+        super(SpeciesPopulationError, self).__init__(message)
 
-    def __str__(self):
-        '''Provide the Exception's msg; needed for Python 2.7, although not documented.'''
-        return self.msg
 
 class NegativePopulationError(Error):
-    '''Exception raised when a negative specie population is predicted.
+    """Exception raised when a negative specie population is predicted.
 
     The sum of `last_population` and `population_decrease` equals the predicted negative population.
 
@@ -32,7 +48,7 @@ class NegativePopulationError(Error):
         population_decrease (:obj:`float`): change to the population which would make it negative
         delta_time (:obj:`float`, optional): if the specie has been updated by a continuous submodel,
             time since the last continuous update
-    '''
+    """
     def __init__(self, method, specie, last_population, population_decrease, delta_time=None):
         self.method=method
         self.specie=specie
@@ -41,7 +57,7 @@ class NegativePopulationError(Error):
         self.delta_time=delta_time
 
     def __eq__(self, other):
-        '''Determine whether two instances have the same content'''
+        """Determine whether two instances have the same content"""
         if isinstance(other, self.__class__):
             return self.__dict__ == other.__dict__
         return False
