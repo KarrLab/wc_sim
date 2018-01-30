@@ -7,6 +7,7 @@
 
 import os, unittest, sys, math
 from io import StringIO
+from builtins import super
 
 from wc_utils.config.core import ConfigManager
 from wc_sim.multialgorithm.aggregate_distributed_props import (AggregateDistributedProps,
@@ -79,7 +80,7 @@ class TestDistributedProperty(unittest.TestCase):
 class PropertyProvider(SimulationObject, SimulationObjectInterface):
 
     def __init__(self, name, test_property_hist):
-        super(PropertyProvider, self).__init__(name)
+        super().__init__(name)
         self.test_property_hist = test_property_hist
 
     def send_initial_events(self): pass
@@ -124,7 +125,7 @@ class PropertyRequestor(SimulationObject, SimulationObjectInterface):
             expected_history (obj `dict`): dict: time -> expected property value at time
             test_case (:obj:`unittest.TestCase`): reference to the TestCase that launches the simulation
         '''
-        super(PropertyRequestor, self).__init__(name)
+        super().__init__(name)
         self.property_name = property_name
         self.period = period
         self.num_periods = 0

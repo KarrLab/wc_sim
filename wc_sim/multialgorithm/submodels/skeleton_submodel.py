@@ -5,6 +5,7 @@
 :Copyright: 2016-2018, Karr Lab
 :License: MIT
 '''
+from builtins import super
 
 from wc_sim.core.simulation_object import SimulationObject
 from wc_sim.multialgorithm import message_types
@@ -25,7 +26,7 @@ class SkeletonSubmodel(Submodel):
     def __init__(self, behavior, model, name, access_species_population,
         reactions, species, parameters):
         '''Init a SkeletonSubmodel.'''
-        super(SkeletonSubmodel, self).__init__(model, name, access_species_population,
+        super().__init__(model, name, access_species_population,
             reactions, species, parameters)
         self.behavior = behavior
         self.access_species_population = access_species_population

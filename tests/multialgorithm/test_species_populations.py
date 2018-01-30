@@ -13,6 +13,8 @@ import six
 import string
 import sys
 import unittest
+from builtins import super
+
 from scipy.constants import Avogadro
 from scipy.stats import binom
 
@@ -615,7 +617,7 @@ class MockSimulationObject(SimulationObject, SimulationObjectInterface):
             test_case (:obj:`unittest.TestCase`): reference to the TestCase that launches the simulation
         '''
         (self.test_case, self.specie_id, self.expected_value) = (test_case, specie_id, expected_value)
-        super(MockSimulationObject, self).__init__(name)
+        super().__init__(name)
 
     def send_initial_events(self): pass
 

@@ -8,6 +8,7 @@
 import unittest
 import random
 import six
+from builtins import super
 
 from wc_sim.core.errors import SimulatorError
 from wc_sim.core.event import Event
@@ -22,7 +23,7 @@ ALL_MESSAGE_TYPES = [InitMsg, Eg1]
 class ExampleSimulationObject(SimulationObject, SimulationObjectInterface):
 
     def __init__(self, name):
-        super(ExampleSimulationObject, self).__init__(name)
+        super().__init__(name)
 
     def send_initial_events(self, *args): pass
 
@@ -176,7 +177,7 @@ class TestSimulationObject(unittest.TestCase):
 class ExampleUnregisteredSimulationObject(SimulationObject, SimulationObjectInterface):
 
     def __init__(self, name):
-        super(ExampleUnregisteredSimulationObject, self).__init__(name)
+        super().__init__(name)
 
     def send_initial_events(self, *args): pass
 

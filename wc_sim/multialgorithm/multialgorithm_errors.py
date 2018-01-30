@@ -5,6 +5,7 @@
 :Copyright: 2016-2018, Karr Lab
 :License: MIT
 """
+from builtins import super
 
 class Error(Exception):
     """ Base class for exceptions involving multi-algoritmic simulation
@@ -13,7 +14,7 @@ class Error(Exception):
         message (:obj:`str`): the exception's message
     """
     def __init__(self, message=None):
-        super(Error, self).__init__(message)
+        super().__init__(message)
 
 
 class MultialgorithmError(Error):
@@ -23,7 +24,7 @@ class MultialgorithmError(Error):
         message (:obj:`str`): the exception's message
     """
     def __init__(self, message=None):
-        super(MultialgorithmError, self).__init__(message)
+        super().__init__(message)
 
 
 class SpeciesPopulationError(Error):
@@ -33,7 +34,7 @@ class SpeciesPopulationError(Error):
         message (:obj:`str`): the exception's message
     """
     def __init__(self, message=None):
-        super(SpeciesPopulationError, self).__init__(message)
+        super().__init__(message)
 
 
 class NegativePopulationError(Error):
@@ -49,6 +50,7 @@ class NegativePopulationError(Error):
         delta_time (:obj:`float`, optional): if the specie has been updated by a continuous submodel,
             time since the last continuous update
     """
+    # TODO(Arthur): perhaps call super() with message
     def __init__(self, method, specie, last_population, population_decrease, delta_time=None):
         self.method=method
         self.specie=specie

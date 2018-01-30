@@ -34,9 +34,11 @@ It is enforced by checking class names against message body types.
 For this sequential simulator, simulation messages are stored as a copy of or reference to sender's data structure
 # TODO(Arthur): for parallel simulation, serialize and deserialize message bodies, perhaps with Pickle
 '''
+from builtins import super
+
+from collections import namedtuple
 
 from wc_sim.core.simulation_message import SimulationMsgUtils
-from collections import namedtuple
 
 AdjustPopulationByDiscreteSubmodel = SimulationMsgUtils.create('AdjustPopulationByDiscreteSubmodel',
     '''A WC simulator message sent by a discrete time submodel to adjust species counts.
@@ -71,7 +73,7 @@ class ContinuousChange(ContinuousChange_namedtuple):
         Raises:
             ValueError: if some fields are not numbers.
         '''
-        self = super(ContinuousChange, cls).__new__(cls, change, flux)
+        self = super().__new__(cls, change, flux)
         self.type_check()
         return self
 

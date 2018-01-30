@@ -10,13 +10,15 @@
 import sys
 import numpy as np
 import warnings
+from builtins import super
+from scipy.constants import Avogadro
+
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     from cobra import Metabolite as CobraMetabolite
     from cobra import Model as CobraModel
     from cobra import Reaction as CobraReaction
 
-from scipy.constants import Avogadro
 from wc_sim.core.simulation_object import SimulationObject
 from wc_sim.multialgorithm import message_types
 from wc_sim.multialgorithm.submodels.submodel import Submodel
@@ -75,8 +77,7 @@ class FbaSubmodel(Submodel):
             time_step: float; time between FBA executions
         """
         # TODO(Arthur): FIX, doesn't work as Submodel expects compartment 
-        super(FbaSubmodel, self).__init__(self, model, name, access_species_population, reactions,
-            species, parameters)
+        super().__init__(model, name, access_species_population, reactions, species, parameters)
         self.algorithm = 'FBA'
         self.time_step = time_step
 

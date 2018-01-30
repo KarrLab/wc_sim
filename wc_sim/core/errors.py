@@ -4,6 +4,7 @@
 :Copyright: 2018, Karr Lab
 :License: MIT
 '''
+from builtins import super
 
 class Error(Exception):
     """ Base class for exceptions in wc_sim
@@ -12,7 +13,7 @@ class Error(Exception):
         message (:obj:`str`): the exception's message
     """
     def __init__(self, message=None):
-        super(Error, self).__init__(message)
+        super().__init__(message)
 
 
 class SimulatorError(Error):
@@ -22,4 +23,4 @@ class SimulatorError(Error):
         message (:obj:`str`): the exception's message
     """
     def __init__(self, message=None):
-        super(SimulatorError, self).__init__(message)
+        super().__init__(message)

@@ -10,6 +10,7 @@ import sys
 import math
 import numpy as np
 from scipy.constants import Avogadro as N_AVOGADRO
+from builtins import super
 
 from scipy.constants import Avogadro
 from wc_utils.config.core import ConfigManager
@@ -112,7 +113,7 @@ class SSASubmodel(Submodel):
             default_center_of_mass (type): the center_of_mass for the ExponentialMovingAverage
         """
         # TODO(Arthur): FIX, doesn't work as Submodel expects compartment 
-        Submodel.__init__(self, model, name, access_species_population, reactions,
+        super().__init__(model, name, access_species_population, reactions,
             species, parameters)
 
         self.num_SsaWaits=0

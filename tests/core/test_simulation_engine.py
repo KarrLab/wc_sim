@@ -8,6 +8,7 @@
 import sys
 import unittest
 import six
+from builtins import super
 
 from wc_sim.core.errors import SimulatorError
 from wc_sim.core.simulation_object import EventQueue, SimulationObject, SimulationObjectInterface
@@ -59,11 +60,11 @@ class ExampleSimulationObject(BasicExampleSimulationObject):
 
     @classmethod
     def register_subclass_handlers(this_class):
-        super(ExampleSimulationObject, this_class).register_subclass_handlers()
+        super().register_subclass_handlers()
 
     @classmethod
     def register_subclass_sent_messages(this_class):
-        super(ExampleSimulationObject, this_class).register_subclass_sent_messages()
+        super().register_subclass_sent_messages()
 
 
 class InteractingSimulationObject(BasicExampleSimulationObject):
@@ -76,11 +77,11 @@ class InteractingSimulationObject(BasicExampleSimulationObject):
 
     @classmethod
     def register_subclass_handlers(this_class):
-        super(InteractingSimulationObject, this_class).register_subclass_handlers()
+        super().register_subclass_handlers()
 
     @classmethod
     def register_subclass_sent_messages(this_class):
-        super(InteractingSimulationObject, this_class).register_subclass_sent_messages()
+        super().register_subclass_sent_messages()
 
 
 class CyclicalMessagesSimulationObject(SimulationObject, SimulationObjectInterface):

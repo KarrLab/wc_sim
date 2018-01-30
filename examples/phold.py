@@ -13,6 +13,7 @@ import random
 import sys
 import argparse
 import datetime
+from builtins import super
 
 from wc_sim.core.simulation_message import SimulationMsgUtils
 from wc_sim.core.simulation_object import EventQueue, SimulationObject, SimulationObjectInterface
@@ -40,7 +41,7 @@ class PholdSimulationObject(SimulationObject, SimulationObjectInterface):
 
     def __init__(self, name, args):
         self.args = args
-        super(PholdSimulationObject, self).__init__(name)
+        super().__init__(name)
 
     def send_initial_events(self):
         self.send_event(exp_delay(), self, InitMsg)

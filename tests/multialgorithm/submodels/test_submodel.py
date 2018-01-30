@@ -8,6 +8,8 @@
 import unittest
 import os, sys
 import six
+from builtins import super
+
 from scipy.constants import Avogadro
 
 from wc_lang.io import Reader
@@ -31,7 +33,7 @@ class MockSimulationObject(SimulationObject, SimulationObjectInterface):
             test_case (:obj:`unittest.TestCase`): reference to the TestCase that launches the simulation
         """
         (self.test_case, self.expected_value) = (test_case, expected_value)
-        super(MockSimulationObject, self).__init__(name)
+        super().__init__(name)
 
     def send_initial_events(self): pass
 
