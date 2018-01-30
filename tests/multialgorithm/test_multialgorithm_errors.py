@@ -24,7 +24,7 @@ class TestMultialgorithmErrors(unittest.TestCase):
         with self.assertRaises(MultialgorithmError) as context:
             raise MultialgorithmError(msg)
         self.assertEqual(msg, str(context.exception))
-        
+
         with self.assertRaises(SpeciesPopulationError) as context:
             raise SpeciesPopulationError(msg)
         self.assertEqual(msg, str(context.exception))

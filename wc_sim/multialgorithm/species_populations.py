@@ -68,14 +68,14 @@ class AccessSpeciesPopulations(AccessSpeciesPopulationInterface):
     species are represented by their populations. (A hybrid instance-population model would change
     that.) Each submodel accesses a subset of the species in a model. A submodel's
     species can be partitioned into those that are accessed ONLY by the submodel and those that it
-    shares with other submodels. These are stored in a local LocalSpeciesPopulation
+    shares with other submodels. These are respectively stored in a local LocalSpeciesPopulation
     which is private to this submodel, and a set of SpeciesPopSimObjects which are shared with other
     submodels. LocalSpeciesPopulation objects are accessed via local memory operations whereas
     SpeciesPopSimObjects, which are distinct simulation objects, are accessed via simulation event
     messages.
 
     AccessSpeciesPopulations enables a submodel to access all of the species populations that it
-    uses through a single convenient R/W interface. The submodel simply indicates the specie(s)
+    uses through a single convenient interface. The submodel simply indicates the specie(s)
     being used and the operation type. This object then maps the specie(s) to the entity or entities
     storing them, and executes the operation on each entity.
 
@@ -492,10 +492,11 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
 
     LocalSpeciesPopulation tracks the population of a set of species. Population values (copy numbers)
     can be read or written. To enable multi-algorithmic modeling, it supports writes to a specie's
-    population by both discrete and continuous models.
+    population by both discrete and continuous submodels.
 
+    # TODO(Arthur): "All [certain type of] accesses" ...
     All accesses to this object must provide a simulation time, which enables detection of errors in
-    shared access by sub-models in a sequential simulator. In particular, a read() must access the
+    shared access by submodels in a sequential simulator. In particular, a read() must access the
     previous write().
 
     For any given specie, all operations must occur in non-decreasing simulation time order.

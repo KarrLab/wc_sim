@@ -1,11 +1,11 @@
-'''A Flux Balance Analysis (FBA) sub-model that represents a set of reactions.
+""" A Flux Balance Analysis (FBA) sub-model that represents a set of reactions
 
 :Author: Jonathan Karr, karr@mssm.edu
 :Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
 :Date: 2016-07-14
 :Copyright: 2016-2018, Karr Lab
 :License: MIT
-'''
+"""
 
 import sys
 import numpy as np
@@ -22,8 +22,9 @@ from wc_sim.multialgorithm import message_types
 from wc_sim.multialgorithm.submodels.submodel import Submodel
 from wc_utils.util.misc import isclass_by_name
 
+
 class FbaSubmodel(Submodel):
-    '''
+    """
     FbaSubmodel employs Flux Balance Analysis to predict the reaction fluxes of
     a set of chemical species in a 'well-mixed' container constrained by maximizing
     biomass increase.
@@ -48,41 +49,41 @@ class FbaSubmodel(Submodel):
         AdjustPopulationByContinuousSubmodel
         GetPopulation
         GivePopulation
-    '''
+    """
 
-    # message types sent by FbaSubmodel
+    # Message types sent by FbaSubmodel
     SENT_MESSAGE_TYPES = [
         message_types.RunFba,
         message_types.AdjustPopulationByContinuousSubmodel,
         message_types.GetPopulation,
-        ]
+    ]
 
-    # at any time instant, process messages in this order
+    # At any time instant, process messages in this order
     MESSAGE_TYPES_BY_PRIORITY = [
         message_types.GivePopulation,
         message_types.RunFba,
-        ]
+    ]
 
     def __init__(self, model, name, access_species_population,
-        reactions, species, parameters, time_step ):
-        '''Initialize an FBA submodel.
+                 reactions, species, parameters, time_step):
+        """ Initialize an FBA submodel
 
         # TODO(Arthur): expand description
 
         Args:
             See pydocs of super classes.
             time_step: float; time between FBA executions
-        '''
-        Submodel.__init__( self, model, name, access_species_population, reactions, species,
-            parameters )
-
+        """
+        # TODO(Arthur): FIX, doesn't work as Submodel expects compartment 
+        super(FbaSubmodel, self).__init__(self, model, name, access_species_population, reactions,
+            species, parameters)
         self.algorithm = 'FBA'
         self.time_step = time_step
 
         # log initialization data
-        self.log_with_time( "init: name: {}".format( name ) )
-        self.log_with_time( "init: species: {}".format( str([s.serialize() for s in species]) ) )
-        self.log_with_time( "init: time_step: {}".format( str(time_step) ) )
+        self.log_with_time("init: name: {}".format(name))
+        self.log_with_time("init: species: {}".format(str([s.serialize() for s in species])))
+        self.log_with_time("init: time_step: {}".format(str(time_step)))
 
         self.metabolismProductionReaction = None
         self.exchangedSpecies = None
@@ -96,12 +97,12 @@ class FbaSubmodel(Submodel):
 
         self.set_up_fba_submodel()
 
-    def set_up_fba_submodel( self ):
-        '''Set up this FBA submodel for simulation.
+    def set_up_fba_submodel(self):
+        """Set up this FBA submodel for simulation.
 
         Setup species fluxes, reaction participant, enzyme counts matrices.
         Create initial event for this FBA submodel.
-        '''
+        """
 
         cobraModel = CobraModel(self.name)
         self.cobraModel = cobraModel
@@ -109,18 +110,18 @@ class FbaSubmodel(Submodel):
         # setup metabolites
         cbMets = []
         for species in self.species:
-            cbMets.append(CobraMetabolite(id = species.serialize(), name = species.species_type.name))
+            cbMets.append(CobraMetabolite(id=species.serialize(), name=species.species_type.name))
         cobraModel.add_metabolites(cbMets)
 
         # setup reactions
         for rxn in self.reactions:
             cbRxn = CobraReaction(
-                id = rxn.id,
-                name = rxn.name,
-                lower_bound = -self.defaultFbaBound if rxn.reversible else 0,
-                upper_bound =  self.defaultFbaBound,
-                objective_coefficient = 1 if rxn.id == 'MetabolismProduction' else 0,
-                )
+                id=rxn.id,
+                name=rxn.name,
+                lower_bound=-self.defaultFbaBound if rxn.reversible else 0,
+                upper_bound=self.defaultFbaBound,
+                objective_coefficient=1 if rxn.id == 'MetabolismProduction' else 0,
+            )
             cobraModel.add_reaction(cbRxn)
 
             cbMets = {}
@@ -133,111 +134,112 @@ class FbaSubmodel(Submodel):
         for i_species, species in enumerate(self.species):
             if species.compartment.id == 'e':
                 cbRxn = CobraReaction(
-                    id = '{}Ex'.format(species.serialize()),
-                    name = '{} exchange'.format(species.serialize()),
-                    lower_bound = -self.defaultFbaBound,
-                    upper_bound =  self.defaultFbaBound,
-                    objective_coefficient = 0)
+                    id='{}Ex'.format(species.serialize()),
+                    name='{} exchange'.format(species.serialize()),
+                    lower_bound=-self.defaultFbaBound,
+                    upper_bound=self.defaultFbaBound,
+                    objective_coefficient=0)
                 cobraModel.add_reaction(cbRxn)
                 cbRxn.add_metabolites({species.serialize(): 1})
 
                 self.exchangedSpecies.append(ExchangedSpecies(
-                    id = species.serialize(),
-                    species_index = i_species,
-                    fba_reaction_index = cobraModel.reactions.index(cbRxn),
-                    is_carbon_containing = species.species_type.is_carbon_containing()))
+                    id=species.serialize(),
+                    species_index=i_species,
+                    fba_reaction_index=cobraModel.reactions.index(cbRxn),
+                    is_carbon_containing=species.species_type.is_carbon_containing()))
 
         # add biomass exchange reaction
         cbRxn = CobraReaction(
-            id = 'BiomassEx',
-            name = 'Biomass exchange',
-            lower_bound = 0,
-            upper_bound = self.defaultFbaBound,
-            objective_coefficient = 0,
-            )
+            id='BiomassEx',
+            name='Biomass exchange',
+            lower_bound=0,
+            upper_bound=self.defaultFbaBound,
+            objective_coefficient=0,
+        )
         cobraModel.add_reaction(cbRxn)
         # TODO(Arthur): generalize this: the biomass reaction may not be named 'Biomass', and may
         # model compartments other than 'c'
         cbRxn.add_metabolites({'biomass[c]': -1})
 
-        '''Bounds'''
+        """Bounds"""
         # thermodynamic
         arrayCobraModel = cobraModel.to_array_based_model()
         self.thermodynamicBounds = {
             'lower': np.array(arrayCobraModel.lower_bounds.tolist()),
             'upper': np.array(arrayCobraModel.upper_bounds.tolist()),
-            }
+        }
 
         # exchange reactions
         carbonExRate = self.get_component_by_id('carbonExchangeRate', 'parameters').value
         nonCarbonExRate = self.get_component_by_id('nonCarbonExchangeRate', 'parameters').value
         self.exchangeRateBounds = {
             'lower': np.full(len(cobraModel.reactions), -np.nan),
-            'upper': np.full(len(cobraModel.reactions),  np.nan),
-            }
+            'upper': np.full(len(cobraModel.reactions), np.nan),
+        }
 
         for exSpecies in self.exchangedSpecies:
             if self.get_component_by_id(exSpecies.id, 'species').species.is_carbon_containing():
                 self.exchangeRateBounds['lower'][exSpecies.fba_reaction_index] = -carbonExRate
-                self.exchangeRateBounds['upper'][exSpecies.fba_reaction_index] =  carbonExRate
+                self.exchangeRateBounds['upper'][exSpecies.fba_reaction_index] = carbonExRate
             else:
                 self.exchangeRateBounds['lower'][exSpecies.fba_reaction_index] = -nonCarbonExRate
-                self.exchangeRateBounds['upper'][exSpecies.fba_reaction_index] =  nonCarbonExRate
+                self.exchangeRateBounds['upper'][exSpecies.fba_reaction_index] = nonCarbonExRate
 
-        '''Setup reactions'''
+        """Setup reactions"""
         self.metabolismProductionReaction = {
             'index': cobraModel.reactions.index(cobraModel.reactions.get_by_id('MetabolismProduction')),
             'reaction': self.get_component_by_id('MetabolismProduction', 'reactions'),
-            }
+        }
 
         self.schedule_next_FBA_analysis()
 
     def schedule_next_FBA_analysis(self):
-        '''Schedule the next analysis by this FBA submodel.
-        '''
-        self.send_event( self.time_step, self, message_types.RunFba )
+        """Schedule the next analysis by this FBA submodel.
+        """
+        self.send_event(self.time_step, self, message_types.RunFba)
 
     def calcReactionFluxes(self):
-        '''calculate growth rate.
-        '''
+        """calculate growth rate.
+        """
 
-        '''
+        """
         assertion because
             arrCbModel = self.cobraModel.to_array_based_model()
             arrCbModel.lower_bounds = lowerBounds
             arrCbModel.upper_bounds = upperBounds
         was assigning a list to the bound for each reaction
-        '''
+        """
         for r in self.cobraModel.reactions:
-            assert ( type(r.lower_bound) is np.float64 and type(r.upper_bound) is np.float64)
+            assert (isinstance(r.lower_bound, np.float64) and isinstance(r.upper_bound, np.float64))
 
         self.cobraModel.optimize()
         self.reactionFluxes = self.cobraModel.solution.x
-        self.model.growth = self.reactionFluxes[self.metabolismProductionReaction['index']] #fraction cell/s
+        self.model.growth = self.reactionFluxes[
+            self.metabolismProductionReaction['index']]  # fraction cell/s
 
     def updateMetabolites(self):
-        '''Update species (metabolite) counts and fluxes.
-        '''
+        """Update species (metabolite) counts and fluxes.
+        """
         # biomass production
-        adjustments={}
-        local_fluxes={}
+        adjustments = {}
+        local_fluxes = {}
         for participant in self.metabolismProductionReaction['reaction'].participants:
             # was: self.speciesCounts[part.id] -= self.model.growth * part.coefficient * timeStep
             adjustments[participant.id] = (-self.model.growth * participant.coefficient * self.time_step,
-                -self.model.growth * participant.coefficient )
+                                           -self.model.growth * participant.coefficient)
 
         # external nutrients
         for exSpecies in self.exchangedSpecies:
-            # was: self.speciesCounts[exSpecies.id] += self.reactionFluxes[exSpecies.fba_reaction_index] * timeStep
+            # was: self.speciesCounts[exSpecies.id] +=
+            # self.reactionFluxes[exSpecies.fba_reaction_index] * timeStep
             adjustments[exSpecies.id] = (self.reactionFluxes[exSpecies.fba_reaction_index] * self.time_step,
-                self.reactionFluxes[exSpecies.fba_reaction_index])
+                                         self.reactionFluxes[exSpecies.fba_reaction_index])
 
-        self.model.local_species_population.adjust_continuously( self.time, adjustments )
-
+        self.model.local_species_population.adjust_continuously(self.time, adjustments)
 
     def calcReactionBounds(self):
-        '''Compute FBA reaction bounds.
-        '''
+        """Compute FBA reaction bounds.
+        """
         # thermodynamics
         lowerBounds = self.thermodynamicBounds['lower'].copy()
         upperBounds = self.thermodynamicBounds['upper'].copy()
@@ -246,56 +248,60 @@ class FbaSubmodel(Submodel):
         upperBounds[0:len(self.reactions)] = np.fmin(
             upperBounds[0:len(self.reactions)],
             Submodel.calc_reaction_rates(self.reactions, self.get_specie_concentrations())
-                * self.model.volume * Avogadro )
+            * self.model.volume * Avogadro)
 
         # external nutrients availability
         specie_counts = self.get_specie_counts()
         for exSpecies in self.exchangedSpecies:
             upperBounds[exSpecies.fba_reaction_index] = max(0,
-                np.minimum(upperBounds[exSpecies.fba_reaction_index], specie_counts[exSpecies.id])
-                / self.time_step)
+                                                            np.minimum(
+                                                                upperBounds[
+                                                                    exSpecies.fba_reaction_index], specie_counts[
+                                                                    exSpecies.id])
+                                                            / self.time_step)
 
         # exchange bounds
         lowerBounds = np.fmin(lowerBounds, self.model.dryWeight / 3600 * Avogadro
-            * 1e-3 * self.exchangeRateBounds['lower'])
+                              * 1e-3 * self.exchangeRateBounds['lower'])
         upperBounds = np.fmin(upperBounds, self.model.dryWeight / 3600 * Avogadro
-            * 1e-3 * self.exchangeRateBounds['upper'])
+                              * 1e-3 * self.exchangeRateBounds['upper'])
 
         for i_rxn, rxn in enumerate(self.cobraModel.reactions):
             rxn.lower_bound = lowerBounds[i_rxn]
             rxn.upper_bound = upperBounds[i_rxn]
 
-
     # todo: restructure
-    def handle_event( self, event_list ):
-        '''Handle a FbaSubmodel simulation event.
+    def handle_event(self, event_list):
+        """Handle a FbaSubmodel simulation event.
 
         In this shared-memory FBA, the only event is RunFba, and event_list should
         always contain one event.
 
         Args:
             event_list: list of event messages to process
-        '''
-        # call handle_event() in class SimulationObject which performs generic tasks on the event list
-        SimulationObject.handle_event( self, event_list )
+        """
+        # call handle_event() in class SimulationObject which performs generic
+        # tasks on the event list
+        SimulationObject.handle_event(self, event_list)
         if not self.num_events % 100:
-            print( "{:7.1f}: submodel {}, event {}".format( self.time, self.name, self.num_events ) )
+            print("{:7.1f}: submodel {}, event {}".format(self.time, self.name, self.num_events))
 
         for event_message in event_list:
-            if isclass_by_name( event_message.event_type, message_types.GivePopulation ):
+            if isclass_by_name(event_message.event_type, message_types.GivePopulation):
 
                 pass
-                # TODO(Arthur): add this functionality; currently, handling RunFba accesses memory directly
+                # TODO(Arthur): add this functionality; currently, handling RunFba
+                # accesses memory directly
 
                 # population_values is a GivePopulation body attribute
                 population_values = event_message.event_body.population
 
-                self.log_with_time( "GivePopulation: {}".format( str(event_message.event_body) ) )
+                self.log_with_time("GivePopulation: {}".format(str(event_message.event_body)))
                 # store population_values in some local cache ...
 
-            elif isclass_by_name( event_message.event_type, message_types.RunFba ):
+            elif isclass_by_name(event_message.event_type, message_types.RunFba):
 
-                self.log_with_time( "submodel '{}' executing".format( self.name ) )
+                self.log_with_time("submodel '{}' executing".format(self.name))
 
                 # run the FBA analysis
                 self.calcReactionBounds()
@@ -305,28 +311,28 @@ class FbaSubmodel(Submodel):
 
             else:
                 assert False, "Error: the 'if' statement should handle "\
-                "event_message.event_type '{}'".format(event_message.event_type)
+                    "event_message.event_type '{}'".format(event_message.event_type)
 
 
 class ExchangedSpecies(object):
-    ''' Represents an exchanged species and its exchange reaction
+    """ Represents an exchanged species and its exchange reaction
 
     Attributes:
         id (:obj:`str`): id
         species_index (:obj:`int`): index of exchanged species within list of species
         fba_reaction_index (:obj:`int`): index of species' exchange reaction within list of cobra model reactions
         is_carbon_containing(:obj:`bool`): indicates if exchanged species contains carbon
-    '''
+    """
 
     def __init__(self, id, species_index, fba_reaction_index, is_carbon_containing):
-        ''' Construct an object to represent an exchanged species and its exchange reaction
+        """ Construct an object to represent an exchanged species and its exchange reaction
 
         Args:
             id (:obj:`str`): id
             species_index (:obj:`int`): index of exchanged species within list of species
             fba_reaction_index (:obj:`int`): index of species' exchange reaction within list of cobra model reactions
             is_carbon_containing(:obj:`bool`): indicates if exchanged species contains carbon
-        '''
+        """
         self.id = id
         self.species_index = species_index
         self.fba_reaction_index = fba_reaction_index

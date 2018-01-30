@@ -10,7 +10,7 @@ import os
 from wc_lang.io import Reader
 from wc_sim.core.simulation_object import EventQueue
 from wc_sim.core.simulation_engine import SimulationEngine
-from wc_sim.multialgorithm.submodels.ssa import SsaSubmodel
+from wc_sim.multialgorithm.submodels.ssa import SSASubmodel
 from wc_sim.multialgorithm.message_types import GivePopulation, ExecuteSsaReaction
 
 
@@ -52,7 +52,7 @@ class TestSsaSubmodel(unittest.TestCase):
                     submodel_spec.parameters]:
                     print( obj_2_str(e))
                 '''
-                ssa1 = SsaSubmodel(self.model, submodel_spec.name,
+                ssa1 = SSASubmodel(self.model, submodel_spec.name,
                     self.model.cell_state,
                     submodel_spec.reactions,
                     submodel_spec.species,

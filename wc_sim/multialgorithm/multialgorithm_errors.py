@@ -37,7 +37,7 @@ class SpeciesPopulationError(Error):
 
 
 class NegativePopulationError(Error):
-    """Exception raised when a negative specie population is predicted.
+    """ Exception raised when a negative specie population is predicted
 
     The sum of `last_population` and `population_decrease` equals the predicted negative population.
 
@@ -57,7 +57,7 @@ class NegativePopulationError(Error):
         self.delta_time=delta_time
 
     def __eq__(self, other):
-        """Determine whether two instances have the same content"""
+        """ Determine whether two instances have the same content """
         if isinstance(other, self.__class__):
             return self.__dict__ == other.__dict__
         return False

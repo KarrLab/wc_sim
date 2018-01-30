@@ -157,15 +157,15 @@ GiveProperty = SimulationMsgUtils.create('GiveProperty',
     ['property_name', 'time', 'value'])
 
 ExecuteSsaReaction = SimulationMsgUtils.create('ExecuteSsaReaction',
-    '''A WC simulator message sent by a SsaSubmodel to itself to schedule an SSA reaction execution.
+    '''A WC simulator message sent by a SSASubmodel to itself to schedule an SSA reaction execution.
 
     Attributes:
-        reaction_index (int): the index of the selected reaction in `SsaSubmodel.reactions`.
+        reaction_index (int): the index of the selected reaction in `SSASubmodel.reactions`.
     ''',
     ['reaction_index'])
 
 SsaWait = SimulationMsgUtils.create('SsaWait',
-    '''A WC simulator message sent by a SsaSubmodel to itself to temporarily suspend activity
+    '''A WC simulator message sent by a SSASubmodel to itself to temporarily suspend activity
     because no reactions are runnable.
     ''')
 

@@ -28,10 +28,8 @@ config_multialgorithm = \
     ConfigManager(config_paths_multialgorithm.core).get_config()['wc_sim']['multialgorithm']
 
 
-class SsaSubmodel(Submodel):
-    """
-    SsaSubmodel employs Gillespie's Stochastic Simulation Algorithm to predict the dynamics of a set
-    of chemical species in a 'well-mixed' container.
+class SSASubmodel(Submodel):
+    """ Use the Stochastic Simulation Algorithm to predict the dynamics of chemical species in a container
 
     This implementation supports a partition of the species populations into private, locally stored
     populations and shared, remotely stored populations. These are accessed through the ADT provided
@@ -92,7 +90,7 @@ class SsaSubmodel(Submodel):
         GivePopulation
     """
 
-    # message types sent by SsaSubmodel
+    # message types sent by SSASubmodel
     SENT_MESSAGE_TYPES = [
         message_types.AdjustPopulationByDiscreteSubmodel,
         message_types.ExecuteSsaReaction,
@@ -112,10 +110,10 @@ class SsaSubmodel(Submodel):
         Args:
             Also see pydocs of super classes.
             default_center_of_mass (type): the center_of_mass for the ExponentialMovingAverage
-
         """
-        Submodel.__init__(self, model, name, access_species_population, reactions, species,
-            parameters)
+        # TODO(Arthur): FIX, doesn't work as Submodel expects compartment 
+        Submodel.__init__(self, model, name, access_species_population, reactions,
+            species, parameters)
 
         self.num_SsaWaits=0
         # The 'initial_ssa_wait_ema' must be positive, as otherwise an infinite sequence of SsaWait
@@ -234,7 +232,7 @@ class SsaSubmodel(Submodel):
 
     # todo: restructure
     def handle_event(self, event_list):
-        """Handle a SsaSubmodel simulation event.
+        """Handle a SSASubmodel simulation event.
 
         Args:
             event_list: list of event messages to process

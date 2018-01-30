@@ -1,9 +1,9 @@
-'''
+"""
 :Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2017-03-26
 :Copyright: 2016-2018, Karr Lab
 :License: MIT
-'''
+"""
 
 import unittest
 import os, sys
@@ -21,22 +21,22 @@ from wc_sim.multialgorithm.species_populations import (LOCAL_POP_STORE, LocalSpe
 from wc_sim.multialgorithm import message_types, distributed_properties
 from wc_sim.multialgorithm.utils import get_species_and_compartment_from_name
 
-# todo: MockSimulationObjects are handy for testing other objects; generalize and place in separate module
+# TODO(Arthur): MockSimulationObjects are handy for testing other objects; generalize and place in separate module
 class MockSimulationObject(SimulationObject, SimulationObjectInterface):
 
     def __init__(self, name, test_case, expected_value):
-        '''Init a MockSimulationObject that can unittest a `SimulationObject`s behavior
+        """ Init a MockSimulationObject that can unittest a `SimulationObject`s behavior
 
         Args:
             test_case (:obj:`unittest.TestCase`): reference to the TestCase that launches the simulation
-        '''
+        """
         (self.test_case, self.expected_value) = (test_case, expected_value)
         super(MockSimulationObject, self).__init__(name)
 
     def send_initial_events(self): pass
 
     def handle_GiveProperty_event(self, event):
-        '''Perform a unit test on the molecular weight of a SpeciesPopSimObject'''
+        """Perform a unit test on the molecular weight of a SpeciesPopSimObject"""
         property_name = event.event_body.property_name
         self.test_case.assertEqual(property_name, distributed_properties.MASS)
         self.test_case.assertEqual(event.event_body.value, self.expected_value)
@@ -51,7 +51,7 @@ class MockSimulationObject(SimulationObject, SimulationObjectInterface):
         SimulationObject.register_sent_messages(this_class, [message_types.GetCurrentProperty])
 
 
-# todo: test submodels with shared species
+# TODO(Arthur): test submodels with shared species
 class TestSubmodel(unittest.TestCase):
 
     MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures',
@@ -69,7 +69,7 @@ class TestSubmodel(unittest.TestCase):
             self.submodels[lang_submodel.id] = Submodel(None,
                     lang_submodel.name,
                     access_species_pop,
-                    list(lang_submodel.reactions),
+                    lang_submodel.reactions,
                     lang_submodel.get_species(),
                     lang_submodel.compartment,
                     None)
@@ -118,9 +118,9 @@ class TestSubmodel(unittest.TestCase):
                             after[specie_id]-before[specie_id])
 
 
-# todo: test submodels with running simulator
-# todo: eliminate redundant code in test_submodel.py; search for distributed_properties
-'''
+# TODO(Arthur): test submodels with running simulator
+# TODO(Arthur): eliminate redundant code in test_submodel.py; search for distributed_properties
+"""
 class TestSubmodelSimulating(unittest.TestCase):
 
     def test_mass(self):
@@ -134,4 +134,4 @@ class TestSubmodelSimulating(unittest.TestCase):
             self.simulator.initialize()
             simulator = self.multialgorithm_simulation.build_simulation()
             simulator.simulate(2)
-'''
+"""
