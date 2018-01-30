@@ -10,6 +10,7 @@
 from itertools import chain
 import numpy as np
 from scipy.constants import Avogadro
+from builtins import super
 
 from wc_lang.core import Model, Species, Reaction, Compartment, Parameter
 from wc_sim.core.simulation_object import SimulationObject, SimulationObjectInterface
