@@ -6,13 +6,15 @@
 '''
 # example program using example spam module
 
-import spam
+# TODO(Arthur): cover after MVP wc_sim done
 
-for cmd in ["ls -l", "date", "no_such_command", 7, None, 'kill']:
+import spam   # pragma: no cover
+
+for cmd in ["ls -l", "date", "no_such_command", 7, None, 'kill']:   # pragma: no cover
     try:
         status = spam.system(cmd)
         print("'{}' returns: {}".format(cmd, status))
     except Exception as e:
         print("Exception: '{}'".format(str(e)))
 
-print(spam.nothing())
+print(spam.nothing())   # pragma: no cover

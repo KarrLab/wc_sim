@@ -20,7 +20,8 @@ from .debug_logs import logs as debug_logs
 
 config_multialgorithm = ConfigManager(config_paths_multialgorithm.core).get_config()['wc_sim']['multialgorithm']
 
-class AggregateDistributedProps(SimulationObject, SimulationObjectInterface):
+# TODO(Arthur): cover after MVP wc_sim done
+class AggregateDistributedProps(SimulationObject, SimulationObjectInterface):   # pragma: no cover
     '''Obtain and provide properties of a multi-algorithmic whole-cell model simulation
     that require retrieving distributed data.
 

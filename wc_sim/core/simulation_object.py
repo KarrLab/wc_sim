@@ -358,8 +358,8 @@ class SimulationObject(object):
             try:
                 handler = self.__class__.event_handlers[event_message.event_type]
                 handler(self, event_message)
-            except KeyError: # pragma no cover  # unreachable because of check that receiving sim
-                                                # obj type is registered to receive the message type
+            except KeyError: # pragma: no cover     # unreachable because of check that receiving sim
+                                                    # obj type is registered to receive the message type
                 raise SimulatorError("No handler registered for Simulation message type: '{}'".format(
                     event_message.event_type))
 
@@ -382,7 +382,7 @@ class SimulationObject(object):
 
 # todo: should this inherit from object; is it possible to combine this with SimulationObject into one class?
 @six.add_metaclass(abc.ABCMeta)
-class SimulationObjectInterface():
+class SimulationObjectInterface():  # pragma: no cover
     """Classes derived from `SimulationObject` must implement this interface.
     """
 
@@ -396,18 +396,18 @@ class SimulationObjectInterface():
         Args:
             args: tuple: parameters needed to send the initial event messages
         """
-        pass    # pragma: no cover
+        pass
 
     @classmethod
     @abc.abstractmethod
     def register_subclass_handlers(cls):
         """Register all of the `SimulationObject`'s event handler methods.
         """
-        pass    # pragma: no cover
+        pass
 
     @classmethod
     @abc.abstractmethod
     def register_subclass_sent_messages(cls):
         """Register the messages sent by a `SimulationObject`.
         """
-        pass    # pragma: no cover
+        pass

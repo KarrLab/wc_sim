@@ -27,7 +27,7 @@ from wc_utils.util.dict import DictUtil
 from wc_utils.util.rand import RandomStateManager
 
 @six.add_metaclass(abc.ABCMeta)
-class AccessSpeciesPopulationInterface():
+class AccessSpeciesPopulationInterface():   # pragma: no cover
     '''An abstract base class defining the interface between a submodel and its species population stores.
 
     A submodel in a WC simulation will interact with multiple components that store the population
@@ -38,22 +38,22 @@ class AccessSpeciesPopulationInterface():
     @abc.abstractmethod
     def read_one(self, time, specie_id):
         '''Obtain the predicted population of a specie at a particular time.'''
-        pass    # pragma: no cover
+        pass
 
     @abc.abstractmethod
     def read(self, time, species):
         '''Obtain the predicted population of a list of species at a particular time.'''
-        pass    # pragma: no cover
+        pass
 
     @abc.abstractmethod
     def adjust_discretely(self, time, adjustments):
         '''A discrete model adjusts the population of a set of species at a particular time.'''
-        pass    # pragma: no cover
+        pass
 
     @abc.abstractmethod
     def adjust_continuously(self, time, adjustments):
         '''A continuous model adjusts the population of a set of species at a particular time.'''
-        pass    # pragma: no cover
+        pass
 
 
 config_multialgorithm = \
@@ -384,8 +384,9 @@ class AccessSpeciesPopulations(AccessSpeciesPopulationInterface):
         return '\n'.join(state)
 
 
-epsilon = config_multialgorithm['epsilon']
-class SpeciesPopulationCache(object):
+# TODO(Arthur): cover after MVP wc_sim done
+epsilon = config_multialgorithm['epsilon']  # pragma: no cover
+class SpeciesPopulationCache(object):       # pragma: no cover
     '''Cache the population of species whose primary stores are remote population stores.
 
     Attributes:
@@ -890,8 +891,8 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             state.append(self._population[specie_id].row())
         return '\n'.join(state)
 
-
-class SpeciesPopSimObject(LocalSpeciesPopulation, SimulationObject, SimulationObjectInterface):
+# TODO(Arthur): cover after MVP wc_sim done
+class SpeciesPopSimObject(LocalSpeciesPopulation, SimulationObject, SimulationObjectInterface): # pragma: no cover
     '''Maintain the population of a set of species in a simulation object that can be parallelized.
 
     A whole-cell PDES must run multiple submodels in parallel. These share cell state, such as
