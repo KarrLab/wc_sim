@@ -1,9 +1,9 @@
-'''
+"""
 :Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2018-01-22
 :Copyright: 2018, Karr Lab
 :License: MIT
-'''
+"""
 from builtins import super
 
 class Error(Exception):

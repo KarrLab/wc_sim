@@ -1,10 +1,10 @@
-'''Test species_populations.py.
+""" Test species_populations.py.
 
 :Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
 :Date: 2017-02-04
 :Copyright: 2016-2018, Karr Lab
 :License: MIT
-'''
+"""
 
 import numpy as np
 import os, unittest, copy
@@ -161,7 +161,7 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
 
     @unittest.skip("skip until MultialgorithmSimulation().initialize() is ready")
     def test_population_changes(self):
-        '''Test population changes that occur without using event messages.'''
+        """ Test population changes that occur without using event messages."""
         self.set_up_simulation(self.MODEL_FILENAME)
         theASP = self.submodels['dfba_submodel'].access_species_population
         init_val=100
@@ -224,7 +224,7 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
     """
 
     def verify_simulation(self, expected_final_pops, sim_end):
-        '''Verify the final simulation populations.'''
+        """ Verify the final simulation populations."""
         for specie_id in self.shared_species:
             pop = self.shared_pop_sim_obj['shared_store_1'].read_one(sim_end, specie_id)
             self.assertEqual(expected_final_pops[specie_id], pop)
@@ -236,7 +236,7 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
 
     @unittest.skip("skip until MultialgorithmSimulation().initialize() is ready")
     def test_simulation(self):
-        '''Test a short simulation.'''
+        """ Test a short simulation."""
 
         self.initialize_simulation(self.MODEL_FILENAME)
 
@@ -246,13 +246,13 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
 
         # test final populations
         # Expected changes, based on the reactions executed
-        expected_changes='''
+        expected_changes="""
         specie	c	e
         specie_1	-2	0
         specie_2	-2	0
         specie_3	3	-2
         specie_4	0	-1
-        specie_5	0	1'''
+        specie_5	0	1"""
 
         expected_final_pops = copy.deepcopy(self.init_populations)
         for row in expected_changes.split('\n')[2:]:
@@ -265,10 +265,10 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
 
     @unittest.skip("skip until MODEL_FILENAME_STEADY_STATE is migrated")
     def test_stable_simulation(self):
-        '''Test a steady state simulation.
+        """ Test a steady state simulation.
 
         MODEL_FILENAME_STEADY_STATE contains a model with no net population change every 2 sec.
-        '''
+        """
         self.initialize_simulation(self.MODEL_FILENAME_STEADY_STATE)
 
         # run the simulation
@@ -355,7 +355,7 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         self.assertIn("Error: history not recorded", str(context.exception))
 
     def test_history(self):
-        """Test population history."""
+        """ Test population history."""
         an_LSP_recording_history = LocalSpeciesPopulation(None, 'test',
             self.init_populations, self.init_populations, retain_history=False)
         with self.assertRaises(SpeciesPopulationError) as context:
@@ -387,10 +387,16 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
             an_LSP_recording_history.history_debug())
 
     def test_mass(self):
-        """Test mass."""
+        """ Test mass """
         total_mass = sum([self.init_populations[specie_id]*self.molecular_weights[specie_id]/Avogadro
             for specie_id in self.species])
         self.assertAlmostEqual(self.local_species_pop.mass(), total_mass, places=37)
+
+        all_but_1st_species = self.species[1:]
+        mass_of_all_but_1st_species = sum([self.init_populations[specie_id]*self.molecular_weights[specie_id]/Avogadro
+            for specie_id in all_but_1st_species])
+        self.assertAlmostEqual(self.local_species_pop.mass(species_ids=all_but_1st_species),
+            mass_of_all_but_1st_species, places=37)
 
         removed_specie = self.species[0]
         del self.local_species_pop._molecular_weights[removed_specie]
@@ -399,7 +405,7 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         self.assertIn("molecular weight not available for '{}'".format(removed_specie),
             str(context.exception))
 
-    '''
+    """
     todo: test the distributed property MASS
     def test_mass(self):
         self.mass = sum([self.initial_population[specie_id]*self.molecular_weight[specie_id]/Avogadro
@@ -410,7 +416,7 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
             message_types.GetCurrentProperty(distributed_properties.MASS))
         self.simulator.initialize()
         self.simulator.simulate(2)
-    '''
+    """
 
 class TestSpeciesPopulationCache(unittest.TestCase):
 
@@ -600,22 +606,22 @@ class TestSpecie(unittest.TestCase):
         for i in range(samples):
             self.assertEqual(s1.get_population(3), 11.0)
 
-'''Run a simulation with another simulation object to test SpeciesPopSimObject.
+""" Run a simulation with another simulation object to test SpeciesPopSimObject.
 
 A SpeciesPopSimObject manages the population of one specie, 'x'. A MockSimulationObject sends
 initialization events to SpeciesPopSimObject and compares the 'x's correct population with
 its simulated population.
-'''
+"""
 
 # todo: MockSimulationObjects are handy for testing other objects; generalize and place in separate module
 class MockSimulationObject(SimulationObject, SimulationObjectInterface):
 
     def __init__(self, name, test_case, specie_id, expected_value):
-        '''Init a MockSimulationObject that can unittest a specie's population.
+        """ Init a MockSimulationObject that can unittest a specie's population.
 
         Args:
             test_case (:obj:`unittest.TestCase`): reference to the TestCase that launches the simulation
-        '''
+        """
         (self.test_case, self.specie_id, self.expected_value) = (test_case, specie_id, expected_value)
         super().__init__(name)
 
@@ -628,7 +634,7 @@ class MockSimulationObject(SimulationObject, SimulationObjectInterface):
             event_body=get_pop_msg_body)
 
     def handle_GivePopulation_event(self, event):
-        '''Perform a unit test on the population of self.specie_id.'''
+        """ Perform a unit test on the population of self.specie_id."""
 
         # populations is a GivePopulation_body instance
         populations = event.event_body
@@ -638,7 +644,7 @@ class MockSimulationObject(SimulationObject, SimulationObjectInterface):
                 event.event_time, self.specie_id, self.expected_value, populations[self.specie_id]))
 
     def handle_GiveProperty_event(self, event):
-        '''Perform a unit test on the mass of a SpeciesPopSimObject'''
+        """ Perform a unit test on the mass of a SpeciesPopSimObject"""
         property_name = event.event_body.property_name
         self.test_case.assertEqual(property_name, distributed_properties.MASS)
         self.test_case.assertEqual(event.event_body.value, self.expected_value)
@@ -661,7 +667,7 @@ class TestSpeciesPopSimObjectWithAnotherSimObject(unittest.TestCase):
 
     def try_update_species_pop_sim_obj(self, specie_id, init_pop, mol_weight, init_flux, update_message,
         msg_body, update_time, get_pop_time, expected_value):
-        '''Run a simulation that tests an update of a SpeciesPopSimObject by a update_msg_type message.
+        """ Run a simulation that tests an update of a SpeciesPopSimObject by a update_msg_type message.
 
         initialize simulation:
             create SpeciesPopSimObject object
@@ -672,7 +678,7 @@ class TestSpeciesPopSimObjectWithAnotherSimObject(unittest.TestCase):
             SpeciesPopSimObject obj processes both messages
             SpeciesPopSimObject obj sends GivePopulation
             Mock obj receives GivePopulation and checks value
-        '''
+        """
         self.simulator = SimulationEngine()
         self.simulator.register_object_types([MockSimulationObject, SpeciesPopSimObject])
 
@@ -689,7 +695,7 @@ class TestSpeciesPopSimObjectWithAnotherSimObject(unittest.TestCase):
         self.assertEqual(self.simulator.simulate(get_pop_time+1), 3)
 
     def test_message_types(self):
-        '''Test both discrete and continuous updates, with a range of population & flux values'''
+        """ Test both discrete and continuous updates, with a range of population & flux values"""
         s_id = 's'
         update_adjustment = +5
         get_pop_time = 4
@@ -703,14 +709,14 @@ class TestSpeciesPopSimObjectWithAnotherSimObject(unittest.TestCase):
                         update_time, get_pop_time,
                         s_init_pop + update_adjustment + get_pop_time*s_init_flux)
 
-        '''
+        """
         Test AdjustPopulationByContinuousSubmodel.
 
         Note that the expected_value does not include a term for update_time*s_init_flux. This is
         deliberately ignored by `wc_sim.multialgorithm.species_populations.Specie()` because it is
         assumed that an adjustment by a continuous submodel will incorporate the flux predicted by
         the previous iteration of that submodel.
-        '''
+        """
         for s_init_pop in range(3, 8, 2):
             for s_init_flux in range(-1, 2):
                 for update_time in range(1, 4):
