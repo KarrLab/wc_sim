@@ -24,7 +24,7 @@ from wc_sim.core.errors import SimulatorError
 from wc_sim.core.simulation_engine import SimulationEngine
 from wc_sim.core.simulation_object import EventQueue, SimulationObject, SimulationObjectInterface
 from wc_sim.multialgorithm import message_types
-from wc_sim.multialgorithm.species_populations import AccessSpeciesPopulations as ASP
+from wc_sim.multialgorithm.species_populations import AccessSpeciesPopulations
 from wc_sim.multialgorithm.species_populations import (LOCAL_POP_STORE, Specie, SpeciesPopSimObject,
     SpeciesPopulationCache, LocalSpeciesPopulation)
 from wc_sim.multialgorithm.multialgorithm_errors import NegativePopulationError, SpeciesPopulationError
@@ -51,7 +51,7 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
         'test_model_for_access_species_populations_steady_state.xlsx')
 
     def setUp(self):
-        self.an_ASP = ASP(None, remote_pop_stores)
+        self.an_ASP = AccessSpeciesPopulations(None, remote_pop_stores)
         self.simulator = SimulationEngine()
         self.simulator.register_object_types([SpeciesPopSimObject, SkeletonSubmodel])
 
@@ -96,7 +96,7 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
 
             # make AccessSpeciesPopulations objects
             # TODO(Arthur): stop giving all SpeciesPopSimObjects to each AccessSpeciesPopulations
-            access_species_population = ASP(local_species_population, self.shared_pop_sim_obj)
+            access_species_population = AccessSpeciesPopulations(local_species_population, self.shared_pop_sim_obj)
 
             # make SkeletonSubmodels
             behavior = {'INTER_REACTION_TIME':1}
@@ -112,7 +112,7 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
             access_species_population.add_species_locations('shared_store_1', self.shared_species)
     """
 
-    def test_species_locations(self):
+    def test_add_species_locations(self):
 
         self.an_ASP.add_species_locations(store_i(1), species_ids[:2])
         map = dict.fromkeys(species_ids[:2], store_i(1))
@@ -132,7 +132,7 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
         self.an_ASP.del_species_locations(species_ids, force=True)
         self.assertEqual(self.an_ASP.species_locations, {})
 
-    def test_species_locations_exceptions(self):
+    def test_add_species_locations(self):
         with self.assertRaises(SpeciesPopulationError) as cm:
             self.an_ASP.add_species_locations('no_such_store', species_ids[:2])
         self.assertIn("'no_such_store' not a known population store", str(cm.exception))
@@ -155,9 +155,13 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
 
     def test_other_exceptions(self):
         with self.assertRaises(SpeciesPopulationError) as cm:
-            ASP(None, {'a':None, LOCAL_POP_STORE:None})
+            AccessSpeciesPopulations(None, {'a':None, LOCAL_POP_STORE:None})
         self.assertIn("{} not a valid remote_pop_store name".format(LOCAL_POP_STORE),
             str(cm.exception))
+        with self.assertRaises(SpeciesPopulationError) as cm:
+            self.an_ASP.read_one(0, 'no_such_specie')
+        self.assertEqual(str(cm.exception), "read_one: specie 'no_such_specie' not in the location map.")
+
 
     @unittest.skip("skip until MultialgorithmSimulation().initialize() is ready")
     def test_population_changes(self):
@@ -429,7 +433,7 @@ class TestSpeciesPopulationCache(unittest.TestCase):
             self.molecular_weights)
 
         remote_pop_stores = {store_i(i):None for i in range(1, 4)}
-        self.an_ASP = ASP(local_species_population, remote_pop_stores)
+        self.an_ASP = AccessSpeciesPopulations(local_species_population, remote_pop_stores)
         self.an_ASP.add_species_locations(store_i(1), self.species_ids)
         self.an_ASP.add_species_locations(LOCAL_POP_STORE, ["specie_0"])
         self.species_population_cache = self.an_ASP.species_population_cache
