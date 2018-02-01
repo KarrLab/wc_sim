@@ -218,7 +218,7 @@ class DynamicModel(object):
 class DynamicCompartment(object):
     """ A dynamic compartment
 
-    A `DynamicCompartment` tracks the dynamic aggregate state of a compartment, especially its
+    A `DynamicCompartment` tracks the dynamic aggregate state of a compartment, primarily its
     mass and volume. Each `wc_lang` `Compartment` has a corresponding `DynamicCompartment`.
 
     Attributes:
@@ -227,18 +227,16 @@ class DynamicCompartment(object):
         init_volume (:obj:`float`): initial volume specified in the `wc_lang` model
         species_populations (:obj:`LocalSpeciesPopulation`): a shared store of the simulation's
             species populations
-
-        # TODO(Arthur): if needed:
-        submodels (:obj:`list` of `Submodel`): the submodels that model reactions which transform
-            species in this compartment
-        species (:obj:`list` of `Species`): the species that participate in the reactions in this
-            compartment
+        species_ids (:obj:`list` of `str`, optional): the IDs of the species that participate in the
+            reactions in this compartment; if `None`, then all species in the `species_populations`
+            participate
     """
-    def __init__(self, id, name, init_volume, species_populations):
+    def __init__(self, id, name, init_volume, species_populations, species_ids=None):
         self.id = id
         self.name = name
         self.init_volume = init_volume
         self.species_populations = species_populations
+        self.species_ids = species_ids
         self.initialize()
 
     def initialize(self):
@@ -252,7 +250,7 @@ class DynamicCompartment(object):
         Returns:
             :obj:`float`: this compartment's total current mass (g)
         """
-        return self.species_populations.mass()
+        return self.species_populations.mass(species_ids=self.species_ids)
 
     def volume(self):
         """ Provide the current volume of this `DynamicCompartment`

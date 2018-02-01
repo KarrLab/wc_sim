@@ -84,6 +84,11 @@ class TestDynamicCompartment(unittest.TestCase):
         estimated_mass = len(species_nums)*all_pops*all_m_weights/Avogadro
         self.assertAlmostEqual(dynamic_compartment.mass(), estimated_mass)
 
+        # compartment containing just the first species
+        dynamic_compartment = DynamicCompartment(id, name, vol, local_species_pop, species_ids=species[:1])
+        estimated_mass = all_pops*all_m_weights/Avogadro
+        self.assertAlmostEqual(dynamic_compartment.mass(), estimated_mass)
+
 
 class TestMultialgorithmSimulation(unittest.TestCase):
 
