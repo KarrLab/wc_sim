@@ -7,6 +7,7 @@
 """
 
 # TODO(Arthur): fix docstrings for sphinx, and check them
+# TODO(Arthur): for reproducibility, use lists instead of sets
 
 import abc, six
 import numpy as np
@@ -522,7 +523,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             history is recorded at each continuous adjustment.
     """
 
-    # TODO(Arthur): IMPORTANT: support tracking the population history of species added at any time
+    # TODO(Arthur): support tracking the population history of species added at any time
     # in the simulation
     # TODO(Arthur): report error if a Specie instance is updated by multiple continuous sub-models
 
@@ -601,6 +602,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self.last_access_time[specie_id] = self.time
         self._add_to_history(specie_id)
 
+    # TODO(Arthur): make species optional, and read all species if not supplied
     def _check_species(self, time, species):
         """ Check whether the species are a set, or not known by this LocalSpeciesPopulation.
 
@@ -628,6 +630,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             raise SpeciesPopulationError("Error: earlier access of specie(s): {}".format(
                 early_accesses))
 
+    # TODO(Arthur): make species optional, and read all species if not supplied
     def __update_access_times(self, time, species):
         """ Update the access time to `time` for all species_ids in `species`.
 
@@ -657,6 +660,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self.__update_access_times(time, specie_id_in_set)
         return self._population[specie_id].get_population(time)
 
+    # TODO(Arthur): make the list optional, and read all species if not supplied
     def read(self, time, species):
         """ Read the predicted population of a list of species at time `time`.
 
