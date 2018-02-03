@@ -77,13 +77,14 @@ Algs:
 
 """
 Density remains constant
-Each submodel should compute:
+Each DynamicCompartment can compute:
+    constant_density
     mass = Sum(counts * species_masses)
     volume = mass/density
     concentration = counts/volume
     counts = volume*concentration (stochastically rounded)
 
-SimSubmodels may not share memory with each other.
+SimSubmodels only share memory with each other through read-only objects and a species population object.
 What does a SimSubmodel need?:
     Part of a static WCmodel, with rate laws (but only part of it; could copy it and remove unnecessary parts):
         Write a filter, that removes specified parts of a Model.
@@ -95,8 +96,7 @@ What does a SimSubmodel need?:
             RateLaw: reaction, direction, equation, etc.
             RateLawEquation: transcoded, modifiers
     Local attributes:
-        id, density, local populations, reference(s) to shared population(s),
-        network addresses of communicating SimObjects
+        id, a dynamic compartment, reference to a shared population
 
 Each SimulationObject must run either 1) on another processor, or 2) in another thread and not
 share memory. How does ROSS handle various levels of parallelism -- multiple SimObjs in one thread;
@@ -111,11 +111,12 @@ class DynamicModel(object):
 
     The primary state of a model being simulated is its species counts, which each submodel accesses
     through its `AccessSpeciesPopulations`. A `DynamicModel` provides methods for
-    determining aggregate properties, such as model and compartment volume and mass.
+    determining aggregate properties, such as model volume and mass.
 
     Attributes:
         model (:obj:`Model`): the description of the whole-cell model in `wc_lang`
         multialgorithm_simulation (:obj:`MultialgorithmSimulation`): the multialgorithm simulation
+        # DC: remove
         volume (:obj:`float`): volume of the cell's cellular (cytoplasm) compartment
         extracellular_volume (:obj:`float`): volume of the cell's extra-cellular
         fraction_dry_weight (:obj:`float`): fraction of the cell's weight which is not water
@@ -134,7 +135,7 @@ class DynamicModel(object):
     def initialize(self):
         """ Prepare a `DynamicModel` for a discrete-event simulation
         """
-        # handle multiple cellular compartments
+        # Classify compartments by cellular and extracellular
         # all others: cellular_compartments
         extracellular_compartment = utils.get_component_by_id(self.model.get_compartments(),
             EXTRACELLULAR_COMPARTMENT_ID)
@@ -146,6 +147,7 @@ class DynamicModel(object):
                 continue
             cellular_compartments.append(compartment)
 
+        # DC: remove
         # volume: sum cellular compartment volumes
         self.volume = sum(
             [cellular_compartment.initial_volume for cellular_compartment in cellular_compartments])
@@ -159,6 +161,7 @@ class DynamicModel(object):
                 break
 
         # cell mass
+        # DC: use DC mass?
         self.mass = self.initial_cell_mass([EXTRACELLULAR_COMPARTMENT_ID])
         self.fraction_dry_weight = utils.get_component_by_id(self.model.get_parameters(),
             'fractionDryWeight').value
@@ -167,12 +170,35 @@ class DynamicModel(object):
         else:
             self.dry_weight = self.mass
 
+        # DC: remove
         # density
         self.density = self.mass / self.volume
 
         # growth
         self.growth = np.nan
 
+    '''
+    def create_dynamic_compartments(self, model):
+        """ Create dynamic compartments for the model
+
+        Args:
+            model (:obj:`Model`): the description of the whole-cell model in `wc_lang`
+
+        Returns:
+            :obj:`list` of `DynamicCompartment`: `DynamicCompartment`s for `model`, one for each
+                `Compartment` in `model`
+        """
+        dynamic_compartments = []
+        for compartment in model.get_compartments():
+            dynamic_compartments.append(DynamicCompartment(
+                compartment.id,
+                compartment.name,
+                compartment.initial_volume,
+                ))
+        return dynamic_compartments
+    '''
+
+    # DC: use DC masses
     def initial_cell_mass(self, extracellular_compartments):
         """ Compute the cell's initial mass from the model
 
@@ -228,8 +254,9 @@ class DynamicCompartment(object):
         species_populations (:obj:`LocalSpeciesPopulation`): a shared store of the simulation's
             species populations
         species_ids (:obj:`list` of `str`, optional): the IDs of the species that participate in the
-            reactions in this compartment; if `None`, then all species in the `species_populations`
-            participate
+            reactions in this compartment; this enables multiple `DynamicCompartment`s to share a
+            `LocalSpeciesPopulation`; if `None`, then all species in the `species_populations`
+            participate in the reactions in this compartment
     """
     def __init__(self, id, name, init_volume, species_populations, species_ids=None):
         self.id = id
@@ -282,7 +309,7 @@ class DynamicCompartment(object):
 class MultialgorithmSimulation(object):
     """ A multi-algorithmic simulation
 
-    Simulate a model described by a `wc_lang.core` `Model`, using the `wc_sim.multialgorithm`
+    Simulate a model described by a `wc_lang` `Model`, using the `wc_sim.multialgorithm`
     simulator.
 
     Attributes:
@@ -366,7 +393,7 @@ class MultialgorithmSimulation(object):
     # species_list.get_instance_attrs('species_type').get_instance_attrs('molecular_weight')
 
     def partition_species(self):
-        """ Statically partition a `Model`'s `Species` into private species and shared species.
+        """ Statically partition a `Model`'s `Species` into private species and shared species
 
         Returns:
             (dict, set): tuple containing a dict mapping submodels to their private species, and a
@@ -377,8 +404,6 @@ class MultialgorithmSimulation(object):
 
     def create_shared_species_pop_objs(self):
         """ Create the shared species object.
-
-        # TODO(Arthur): generalize to multiple shared `SpeciesPopSimObject` objects
 
         Returns:
             dict: `dict` mapping id to `SpeciesPopSimObject` objects for the simulation
@@ -396,7 +421,7 @@ class MultialgorithmSimulation(object):
             lang_submodel (:obj:`Submodel`): description of a submodel
 
         Returns:
-            (:obj:`AccessSpeciesPopulations`): an `AccessSpeciesPopulations` for the `lang_submodel`
+            :obj:`AccessSpeciesPopulations`: an `AccessSpeciesPopulations` for the `lang_submodel`
         """
         # make LocalSpeciesPopulations & molecular weights
         initial_population = {specie_id:self.init_populations[specie_id]

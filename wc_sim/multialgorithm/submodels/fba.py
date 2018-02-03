@@ -246,6 +246,7 @@ class FbaSubmodel(Submodel):
         upperBounds = self.thermodynamicBounds['upper'].copy()
 
         # rate laws
+        # DC: use DC volume
         upperBounds[0:len(self.reactions)] = np.fmin(
             upperBounds[0:len(self.reactions)],
             Submodel.calc_reaction_rates(self.reactions, self.get_specie_concentrations())

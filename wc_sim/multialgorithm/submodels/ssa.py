@@ -154,6 +154,7 @@ class SSASubmodel(Submodel):
         # TODO(Arthur): optimization: only calculate new reaction rates for species whose
         # speciesConcentrations (counts) have changed
         # TODO(Arthur): IMPORTANT: provide volume for model; probably via get_volume(self.model)
+        # DC: use DC volume
         propensities = self.model.volume * Avogadro * np.maximum(0,
             Submodel.calc_reaction_rates(self.reactions, self.get_specie_concentrations()))
 

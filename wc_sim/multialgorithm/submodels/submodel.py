@@ -35,6 +35,7 @@ class Submodel(SimulationObject, SimulationObjectInterface):
         reactions (:obj:`list` of `Reaction`): the reactions modeled by this submodel
         species (:obj:`list` of `Species`): the species that participate in the reactions modeled
             by this submodel, with their initial concentrations
+        # DC: replace with DC and use that for density, mass & volume
         compartment (:obj:`Compartment`): the compartment which this submodel models
         volume (:obj:`float`): the initial volume of this submodel's compartment
         parameters (:obj:`list` of `Parameter`): the model's parameters
@@ -50,9 +51,11 @@ class Submodel(SimulationObject, SimulationObjectInterface):
         self.reactions = reactions
         self.species = species
         self.compartment = compartment
+        # DC: replace with DC and use that for density, mass & volume
         self.volume = compartment.initial_volume
         # TODO(Arthur): determine whether self.parameters is used
         self.parameters = parameters
+        # DC: remove density
         # density is assumed constant; calculate it once from initial values
         # TODO(Arthur): need mass of a compartment to determine the compartment's volume
         self.density = self.mass()/self.volume
@@ -93,10 +96,12 @@ class Submodel(SimulationObject, SimulationObjectInterface):
         concentrations = {}
         for specie_id in ids:
             (_, compartment) = get_species_and_compartment_from_name(specie_id)
+            # DC: use DC volume
             if compartment == self.compartment.id:
                 concentrations[specie_id] = (counts[specie_id]/self.volume)/Avogadro
         return concentrations
 
+    # DC: replace with DC and use that for density, mass & volume
     def mass(self):
         """ Provide the mass of the species modeled by this submodel
 
@@ -108,6 +113,7 @@ class Submodel(SimulationObject, SimulationObjectInterface):
         """
         return self.access_species_pop.local_pop_store.mass()
 
+    # DC: remove; get from DynamicCompartment
     # TODO(Arthur): need mass of a compartment to determine the compartment's volume
     def volume(self):
         """ Provide the volume of this submodel's compartment
