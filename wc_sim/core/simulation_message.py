@@ -1,38 +1,39 @@
-'''Base class for simulation messages.
+""" Base class for simulation messages.
 
 :Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2017-03-26
 :Copyright: 2016-2018, Karr Lab
 :License: MIT
-'''
+"""
 
 import six, abc
 
+
 @six.add_metaclass(abc.ABCMeta)
 class SimulationMessage(object):
-    '''An abstract base class for simulation messages
+    """ An abstract base class for simulation messages
 
     Each simulation event contains a simulation message. All simulation messages are objects. This
-    class supports compact declaration of `SimulationMessage` types. For example::
+    module supports compact declaration of `SimulationMessage` types. For example::
 
-        GivePopulation = SimulationMsgUtils.create('GivePopulation',
-            """A WC simulator message sent by a species pop object ... """, ['population'])
+        GivePopulation = SimulationMessageFactory.create('GivePopulation',
+            '''A WC simulator message sent by a species pop object ...''', ['population'])
 
     defines a `GivePopulation` message (with an elided docstring).
 
     Attributes:
-        __slots__: list: use `__slots__` to save memory because a simulation may contain many messages
-    '''
+        __slots__ (:obj:`list`): use `__slots__` to save memory because a simulation may contain many messages
+    """
     __slots__ = []
 
     def __init__(self, *args):
-        '''Initialize a `SimulationMessage`
+        """ Initialize a `SimulationMessage`
 
-        `SimulationMessage` subclasses are defined by `SimulationMsgUtils.create()`.
+        `SimulationMessage` subclasses are defined by `SimulationMessageFactory.create()`.
 
         Args:
-            args: tuple: argument list for initializing a subclass instance
-        '''
+            args (:obj:`tuple`): argument list for initializing a subclass instance
+        """
         if len(args) != len(self.__slots__):
             raise ValueError("Constructor for SimulationMessage '{}' expects {} argument(s), but "
                 "{} provided".format(
@@ -41,8 +42,8 @@ class SimulationMessage(object):
             setattr(self, slot, arg)
 
     def __str__(self):
-        '''Provide a string representation of a `SimulationMessage`.
-        '''
+        """ Provide a string representation of a `SimulationMessage`.
+        """
         vals = []
         for attr in self.__slots__:
             if hasattr(self, attr):
@@ -54,22 +55,32 @@ class SimulationMessage(object):
         values = {attr:val for attr,val in zip(self.__slots__,vals)}
         return "SimulationMessage: {}({})".format(self.__class__.__name__, values)
 
-class SimulationMsgUtils(object):
-    '''Utilities for creating `SimulationMessage` types
-    '''
+
+class SimulationMessageFactory(object):
+    """ Factory that creates `SimulationMessage` subclasses
+    """
 
     @staticmethod
     def create(name, docstring, attributes=None):
-        '''Define a subclass of `SimulationMessage`
+        """ Compactly define a subclass of `SimulationMessage`
+
+        To avoid confusion, the class returned by `create` should be assigned to a variable called
+        `name`, which can be used to create `SimulationMessage`s of that type.
 
         Args:
-            name: string: the name of the class being defined
-            docstring: string: a docstring for the class
-            attributes: optional list: the attributes for the subclass which is being defined
+            name (:obj:`str`): the name of the `SimulationMessage` subclass being defined
+            docstring (:obj:`str`): a docstring for the subclass
+            attributes (:obj:`list` of `str`, optional): attributes for the subclass which is being
+                defined, if any
+
+        Returns:
+            :obj:`class`: a subclass of `SimulationMessage`
 
         Raises:
-            ValueError: if `docstring` is empty
-        '''
+            :obj:`ValueError`: if `name` or `docstring` is empty
+        """
+        if name == '':
+            raise ValueError("SimulationMessage name cannot be empty")
         if docstring == '':
             raise ValueError("SimulationMessage docstring cannot be empty")
         attrs = {}
@@ -78,9 +89,4 @@ class SimulationMsgUtils(object):
         generated_simulation_message_cls = type(name, (SimulationMessage,), attrs)
         generated_simulation_message_cls.__doc__ = docstring
 
-        '''
-        todo: would like to define the class as an attribute of the caller's module so the
-        caller doesn't have to. unfortunately inspect doesn't support this. perhaps possible if
-        messages are not declared in __main__ module
-        '''
         return generated_simulation_message_cls

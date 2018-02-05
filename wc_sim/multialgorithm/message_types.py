@@ -5,7 +5,7 @@
 :Copyright: 2016-2018, Karr Lab
 :License: MIT
 
-Simulation message types are subclasses of `SimulationMessage`, defined by `SimulationMsgUtils.create()`.
+Simulation message types are subclasses of `SimulationMessage`, defined by `SimulationMessageFactory.create()`.
 Every simulation event message contains a typed `SimulationMessage`.
 
 Declare
@@ -38,9 +38,9 @@ from builtins import super
 
 from collections import namedtuple
 
-from wc_sim.core.simulation_message import SimulationMsgUtils
+from wc_sim.core.simulation_message import SimulationMessageFactory
 
-AdjustPopulationByDiscreteSubmodel = SimulationMsgUtils.create('AdjustPopulationByDiscreteSubmodel',
+AdjustPopulationByDiscreteSubmodel = SimulationMessageFactory.create('AdjustPopulationByDiscreteSubmodel',
     '''A WC simulator message sent by a discrete time submodel to adjust species counts.
 
     Attributes:
@@ -77,7 +77,7 @@ class ContinuousChange(ContinuousChange_namedtuple):
         self.type_check()
         return self
 
-AdjustPopulationByContinuousSubmodel = SimulationMsgUtils.create('AdjustPopulationByContinuousSubmodel',
+AdjustPopulationByContinuousSubmodel = SimulationMessageFactory.create('AdjustPopulationByContinuousSubmodel',
     '''A WC simulator message sent by a continuous submodel to adjust species counts.
 
     Continuous submodels model species populations as continuous variables. They're usually
@@ -91,7 +91,7 @@ AdjustPopulationByContinuousSubmodel = SimulationMsgUtils.create('AdjustPopulati
     ''',
     ['population_change'])
 
-GetPopulation = SimulationMsgUtils.create('GetPopulation',
+GetPopulation = SimulationMessageFactory.create('GetPopulation',
     '''A WC simulator message sent by a submodel to obtain some current specie populations.
 
     Attributes:
@@ -100,7 +100,7 @@ GetPopulation = SimulationMsgUtils.create('GetPopulation',
     ''',
     ['species'])
 
-GivePopulation = SimulationMsgUtils.create('GivePopulation',
+GivePopulation = SimulationMessageFactory.create('GivePopulation',
     '''A WC simulator message sent by a species pop object to report some current specie populations.
 
     Attributes:
@@ -110,7 +110,7 @@ GivePopulation = SimulationMsgUtils.create('GivePopulation',
 
 # TODO(Arthur): make a pair of messages that Get and Give the population of one specie
 
-AggregateProperty = SimulationMsgUtils.create('AggregateProperty',
+AggregateProperty = SimulationMessageFactory.create('AggregateProperty',
     '''A WC simulator message sent to aggregate a property
 
     Attributes:
@@ -131,7 +131,7 @@ at least over some time period. Handling it generates an error if the property i
 at the requested time.
 '''
 
-GetHistoricalProperty = SimulationMsgUtils.create('GetHistoricalProperty',
+GetHistoricalProperty = SimulationMessageFactory.create('GetHistoricalProperty',
     '''A WC simulator message sent to obtain a property at a time that's not in the future
 
     Attributes:
@@ -140,7 +140,7 @@ GetHistoricalProperty = SimulationMsgUtils.create('GetHistoricalProperty',
     ''',
     ['property_name', 'time'])
 
-GetCurrentProperty = SimulationMsgUtils.create('GetCurrentProperty',
+GetCurrentProperty = SimulationMessageFactory.create('GetCurrentProperty',
     '''A WC simulator message sent to obtain a property at the receiver's current time
 
     Attributes:
@@ -148,7 +148,7 @@ GetCurrentProperty = SimulationMsgUtils.create('GetCurrentProperty',
     ''',
     ['property_name'])
 
-GiveProperty = SimulationMsgUtils.create('GiveProperty',
+GiveProperty = SimulationMessageFactory.create('GiveProperty',
     '''A WC simulator message sent by a simulation object to report a property
 
     Attributes:
@@ -158,7 +158,7 @@ GiveProperty = SimulationMsgUtils.create('GiveProperty',
     ''',
     ['property_name', 'time', 'value'])
 
-ExecuteSsaReaction = SimulationMsgUtils.create('ExecuteSsaReaction',
+ExecuteSsaReaction = SimulationMessageFactory.create('ExecuteSsaReaction',
     '''A WC simulator message sent by a SSASubmodel to itself to schedule an SSA reaction execution.
 
     Attributes:
@@ -166,12 +166,12 @@ ExecuteSsaReaction = SimulationMsgUtils.create('ExecuteSsaReaction',
     ''',
     ['reaction_index'])
 
-SsaWait = SimulationMsgUtils.create('SsaWait',
+SsaWait = SimulationMessageFactory.create('SsaWait',
     '''A WC simulator message sent by a SSASubmodel to itself to temporarily suspend activity
     because no reactions are runnable.
     ''')
 
-RunFba = SimulationMsgUtils.create('RunFba',
+RunFba = SimulationMessageFactory.create('RunFba',
     '''A WC simulator message sent by a DfbaSubmodel to itself to schedule the next FBA execution.
     ''')
 

@@ -15,8 +15,8 @@ from wc_sim.core.event import Event
 # configure logging
 from .debug_logs import logs as debug_logs
 
-# TODO(Arthur): the list representation of event_queues won't scale with the num of simulation objects
-# TODO(Arthur): use a priority queue instead, reordering the queue as event messages are sent and received.
+# TODO(Arthur): replace the O(n) iteration over simulation objects with a heap of them organized by next event time
+# TODO(Arthur): measure engine's raw performance
 
 
 class SimulationEngine(object):

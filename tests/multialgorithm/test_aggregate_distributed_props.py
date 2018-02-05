@@ -14,7 +14,7 @@ from wc_sim.multialgorithm.aggregate_distributed_props import (AggregateDistribu
     DistributedProperty, DistributedPropertyFactory)
 from wc_sim.core.simulation_object import EventQueue, SimulationObject, SimulationObjectInterface
 from wc_sim.core.simulation_engine import SimulationEngine
-from wc_sim.core.simulation_message import SimulationMsgUtils
+from wc_sim.core.simulation_message import SimulationMessageFactory
 from wc_sim.multialgorithm import message_types
 from wc_sim.multialgorithm.config import paths as config_paths_multialgorithm
 
@@ -105,7 +105,7 @@ class PropertyProvider(SimulationObject, SimulationObjectInterface):
         SimulationObject.register_sent_messages(this_class, [message_types.GiveProperty])
 
 
-GoGetProperty = SimulationMsgUtils.create('GoGetProperty',
+GoGetProperty = SimulationMessageFactory.create('GoGetProperty',
     'Self-clocking message for test property requestor', ['property_name', 'time'])
 
 

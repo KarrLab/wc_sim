@@ -170,7 +170,7 @@ class AggregateDistributedProps(SimulationObject, SimulationObjectInterface):   
         SimulationObject.register_sent_messages(this_class, this_class.SENT_MESSAGE_TYPES)
 
 
-class DistributedProperty(object):
+class DistributedProperty(object):  # pragma: no cover; # TODO(Arthur): cover after MVP wc_sim done
     '''A distributed property
     
     Maintain the state of an aggregate distributed property. The property is a single value,
@@ -282,7 +282,7 @@ class DistributedProperty(object):
                 "nearest times are '{}' and '{}'".format(time, lesser, greater))
 
 
-class DistributedPropertyFactory(object):
+class DistributedPropertyFactory(object):   # pragma: no cover; # TODO(Arthur): cover after MVP wc_sim done
 
     @staticmethod
     def make_distributed_property(property_name, distributed_property_name, period,
