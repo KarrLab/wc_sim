@@ -433,7 +433,7 @@ class MultialgorithmSimulation(object):
             initial_fluxes = {specie_id:0 for specie_id in self.private_species[lang_submodel.id]}
         else:
             initial_fluxes = None
-        local_species_population = LocalSpeciesPopulation(self.model,
+        local_species_population = LocalSpeciesPopulation(
             lang_submodel.id.replace('_', '_lsp_'),
             initial_population,
             molecular_weights,

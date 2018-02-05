@@ -88,7 +88,7 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
         for submodel in self.model.get_submodels():
 
             # make LocalSpeciesPopulations
-            local_species_population = LocalSpeciesPopulation(self.model,
+            local_species_population = LocalSpeciesPopulation(
                 submodel.id.replace('_', '_lsp_'),
                 {specie_id:self.init_populations[specie_id] for specie_id in
                     self.private_species[submodel.id]},
@@ -299,10 +299,10 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         init_fluxes = dict(zip(species, [self.flux]*len(species)))
         self.init_fluxes = init_fluxes
         self.molecular_weights = dict(zip(species, species_nums))
-        self.local_species_pop = LocalSpeciesPopulation(None, 'test', self.init_populations,
+        self.local_species_pop = LocalSpeciesPopulation('test', self.init_populations,
             self.molecular_weights, initial_fluxes=init_fluxes)
         self.local_species_pop_no_init_flux = LocalSpeciesPopulation(
-            None, 'test', self.init_populations, self.molecular_weights)
+            'test', self.init_populations, self.molecular_weights)
 
     def reusable_assertions(self, the_local_species_pop, flux):
         # test both discrete and hybrid species
@@ -343,7 +343,7 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
             self.reusable_assertions(local_species_pop, flux)
 
     def test_init(self):
-        an_LSP = LocalSpeciesPopulation(None, 'test', {}, {}, retain_history=False)
+        an_LSP = LocalSpeciesPopulation('test', {}, {}, retain_history=False)
         an_LSP.init_cell_state_specie('s1', 2)
         self.assertEqual(an_LSP.read(0, {'s1'}),  {'s1': 2})
 
@@ -360,7 +360,7 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
 
     def test_history(self):
         """ Test population history."""
-        an_LSP_recording_history = LocalSpeciesPopulation(None, 'test',
+        an_LSP_recording_history = LocalSpeciesPopulation('test',
             self.init_populations, self.init_populations, retain_history=False)
         with self.assertRaises(SpeciesPopulationError) as context:
             an_LSP_recording_history.report_history()
@@ -369,7 +369,7 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
             an_LSP_recording_history.history_debug()
         self.assertIn("Error: history not recorded", str(context.exception))
 
-        an_LSP_recording_history = LocalSpeciesPopulation(None, 'test',
+        an_LSP_recording_history = LocalSpeciesPopulation('test',
             self.init_populations, self.init_populations, retain_history=True)
         self.assertTrue(an_LSP_recording_history._recording_history())
         next_time = 1
@@ -429,7 +429,7 @@ class TestSpeciesPopulationCache(unittest.TestCase):
         self.species_ids = list(map(lambda x: "specie_{}".format(x), species_nums))
         self.init_populations = dict(zip(self.species_ids, [0]*len(self.species_ids)))
         self.molecular_weights = self.init_populations
-        local_species_population = LocalSpeciesPopulation(None, 'name', self.init_populations,
+        local_species_population = LocalSpeciesPopulation('name', self.init_populations,
             self.molecular_weights)
 
         remote_pop_stores = {store_i(i):None for i in range(1, 4)}

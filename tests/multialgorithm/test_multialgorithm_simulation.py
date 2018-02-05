@@ -70,7 +70,7 @@ class TestDynamicCompartment(unittest.TestCase):
         init_populations = dict(zip(species, [all_pops]*len(species_nums)))
         all_m_weights = 50
         molecular_weights = dict(zip(species, [all_m_weights]*len(species_nums)))
-        local_species_pop = LocalSpeciesPopulation(None, 'test', init_populations, molecular_weights)
+        local_species_pop = LocalSpeciesPopulation('test', init_populations, molecular_weights)
 
         # make a DynamicCompartment
         id = 'id'

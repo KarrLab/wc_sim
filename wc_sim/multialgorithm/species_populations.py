@@ -6,7 +6,6 @@
 :License: MIT
 """
 
-# TODO(Arthur): fix docstrings for sphinx, and check them
 # TODO(Arthur): for reproducibility, use lists instead of sets
 
 import abc, six
@@ -31,31 +30,35 @@ from wc_utils.util.rand import RandomStateManager
 
 @six.add_metaclass(abc.ABCMeta)
 class AccessSpeciesPopulationInterface():   # pragma: no cover; methods in abstract base classes aren't run
-    """ An abstract base class defining the interface between a submodel and its species population stores.
+    """ An abstract base class defining the interface between a submodel and its species population store(s)
 
-    A submodel in a WC simulation will interact with multiple components that store the population
-    of species it accesses. This architecture is needed for parallelism. All these stores should
+    A submodel in a WC simulation can interact with multiple components that store the population
+    of the species it models. This architecture is needed to simulate a model in parallel. All these
+    stores must
     implement this interface which defines read and write operations on the species in a store.
+    Both write operations have the prefix `adjust` in their names because they adjust a store's population.
+    All operations require a time argument that indicates the simulation time at which the operation
+    executes in the store.
     """
 
     @abc.abstractmethod
     def read_one(self, time, specie_id):
-        """ Obtain the predicted population of a specie at a particular time """
+        """ Obtain the predicted population of a specie at a particular simulation time """
         pass
 
     @abc.abstractmethod
     def read(self, time, species):
-        """ Obtain the predicted population of a list of species at a particular time """
+        """ Obtain the predicted population of a list of species at a particular simulation time """
         pass
 
     @abc.abstractmethod
     def adjust_discretely(self, time, adjustments):
-        """ A discrete model adjusts the population of a set of species at a particular time """
+        """ A discrete submodel adjusts the population of a set of species at a particular simulation time """
         pass
 
     @abc.abstractmethod
     def adjust_continuously(self, time, adjustments):
-        """ A continuous model adjusts the population of a set of species at a particular time """
+        """ A continuous submodel adjusts the population of a set of species at a particular simulation time """
         pass
 
 
@@ -64,7 +67,8 @@ config_multialgorithm = \
 LOCAL_POP_STORE = 'LOCAL_POP_STORE'  # the name of the local population store
 
 
-class AccessSpeciesPopulations(AccessSpeciesPopulationInterface):
+# TODO(Arthur): cover after MVP wc_sim done
+class AccessSpeciesPopulations(AccessSpeciesPopulationInterface):   # pragma: no cover
     """ Interface a submodel with the components that store the species populations it models.
 
     Each submodel is a distinct simulation object. In the current population-based model,
@@ -495,22 +499,22 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
     """ Maintain the population of a set of species.
 
     LocalSpeciesPopulation tracks the population of a set of species. Population values (copy numbers)
-    can be read or written. To enable multi-algorithmic modeling, it supports writes to a specie's
-    population by both discrete and continuous submodels.
+    can be read or modified (adjusted). To enable multi-algorithmic modeling, it supports writes to
+    a specie's population by both discrete time and continuous time submodels.
 
-    # TODO(Arthur): "All [certain type of] accesses" ...
-    All accesses to this object must provide a simulation time, which enables detection of errors in
-    shared access by submodels in a sequential simulator. In particular, a read() must access the
-    previous write().
-
+    All access operations that read or modify the population must provide a simulation time.
     For any given specie, all operations must occur in non-decreasing simulation time order.
     Record history operations must also occur in time order.
 
-    A LocalSpeciesPopulation object is accessed via local method calls. It can be wrapped as a
-    DES simulation object to provide distributed access, as is done by `SpeciesPopSimObject`.
+    Simulation time arguments enable detection of temporal causality errors by shared accesses from
+    different submodels in a sequential
+    simulator. In particular, every read operation must access the previous modification.
+
+    A `LocalSpeciesPopulation` object is accessed via local method calls. It can be wrapped as a
+    DES simulation object -- a `SimulationObject` -- to provide distributed access, as is done by
+    `SpeciesPopSimObject`.
 
     Attributes:
-        model (:obj:`Model`): the `Model` containing this LocalSpeciesPopulation.
         name (str): the name of this object.
         time (float): the time of the current operation.
         _population (:obj:`dict` of :obj:`Specie`): map: specie_id -> Specie(); the species whose
@@ -525,9 +529,8 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
 
     # TODO(Arthur): support tracking the population history of species added at any time
     # in the simulation
-    # TODO(Arthur): report error if a Specie instance is updated by multiple continuous sub-models
-
-    def __init__(self, model, name, initial_population, molecular_weights, initial_fluxes=None,
+    # TODO(Arthur): report error if a Specie instance is updated by multiple continuous submodels
+    def __init__(self, name, initial_population, molecular_weights, initial_fluxes=None,
         retain_history=True):
         """ Initialize a LocalSpeciesPopulation object.
 
@@ -541,15 +544,12 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
                 provided for computing the total mass of a `LocalSpeciesPopulation`
             initial_fluxes (:obj:`dict` of float, optional): map: specie_id -> initial_flux;
                 initial fluxes for all species whose populations are estimated by a continuous
-                model. Fluxes are ignored for species not specified in initial_population
+                submodel. Fluxes are ignored for species not specified in initial_population
             retain_history (:obj:`bool`, optional): whether to retain species population history
 
         Raises:
             SpeciesPopulationError: if the population cannot be initialized.
         """
-
-        # TODO(Arthur): IMPORTANT: stop using model, which might not be in the same address space as this object
-        self.model = model
         self.name = name
         self.time = 0
         self._population = {}
@@ -660,7 +660,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self.__update_access_times(time, specie_id_in_set)
         return self._population[specie_id].get_population(time)
 
-    # TODO(Arthur): make the list optional, and read all species if not supplied
+    # TODO(Arthur): make the list optional, and read all species if not supplied; need to change the interface
     def read(self, time, species):
         """ Read the predicted population of a list of species at time `time`.
 
@@ -681,7 +681,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         return {specie:self._population[specie].get_population(time) for specie in species}
 
     def adjust_discretely(self, time, adjustments):
-        """ A discrete model adjusts the population of a set of species at time `time`.
+        """ A discrete submodel adjusts the population of a set of species at time `time`.
 
         Args:
             time (float): the time at which the population is being adjusted.
@@ -704,7 +704,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             self.log_event('discrete_adjustment', self._population[specie])
 
     def adjust_continuously(self, time, adjustments):
-        """ A continuous model adjusts the population of a set of species at time `time`.
+        """ A continuous submodel adjusts the population of a set of species at time `time`.
 
         Args:
             time (float): the time at which the population is being adjusted.
@@ -822,41 +822,45 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         for specie_id, population in self.read(self.time, set(self._population.keys())).items():
             self._history['population'][specie_id].append(population)
 
-    # TODO(Arthur): unit test this with numpy_format=True
-    def report_history(self, numpy_format=False):
-        """ Provide the time and species count history.
+    # TODO(Arthur): fix this docstring
+    def report_history(self, numpy_format=False, species=None, compartments=None):
+        """ Provide the time and species count history
 
         Args:
-            numpy_format (bool): if set return history in numpy data structures.
+            numpy_format (:obj:`bool`, optional): if set, return history in a 3 dimensional numpy array
+            species (:obj:`list` of `Species`, optional): the species in the `Model` being simulated
+            compartments (:obj:`list` of `Compartment`, optional): the compartments in the `Model` being simulated
 
         Returns:
-            The time and species count history. By default, the return value rv is a dict, with
-            rv['time'] = list of time samples
-            rv['population'][specie_id] = list of counts for specie_id at the time samples
-            If numpy_format set, return the same data structure as was used in WcTutorial.
+            :obj:`dict`: The time and species count history. By default, return a `dict`, with
+            `rv['time']` = list of time samples
+            `rv['population'][specie_id]` = list of counts for specie_id at the time samples
+            If `numpy_format` set, return a tuple containing a pair of numpy arrays that contain
+            the time and population histories, respectively.
 
         Raises:
-            SpeciesPopulationError if the history was not recorded.
+            :obj:`SpeciesPopulationError`: if the history was not recorded
+            :obj:`SpeciesPopulationError`: if `numpy_format` set but `species` or `compartments` are
+                not provided
         """
-        if self._recording_history():
-            if numpy_format:
-                # TODO(Arthur): IMPORTANT: stop using model, as it may not be in this address space
-                # instead, don't provide the history in 'numpy_format'
-                timeHist = np.asarray(self._history['time'])
-                speciesCountsHist = np.zeros((len(self.model.species), len(self.model.compartments),
-                    len(self._history['time'])))
-                for specie_index,specie in list(enumerate(self.model.species)):
-                    for comp_index,compartment in list(enumerate(self.model.compartments)):
-                        for time_index in range(len(self._history['time'])):
-                            species_id = wc_lang.core.Species.gen_id(specie, compartment)
-                            speciesCountsHist[specie_index,comp_index,time_index] = \
-                                self._history['population'][species_id][time_index]
-
-                return (timeHist, speciesCountsHist)
-            else:
-                return self._history
-        else:
+        if not self._recording_history():
             raise SpeciesPopulationError("Error: history not recorded")
+        if numpy_format:
+            if species is None or compartments is None:
+                raise SpeciesPopulationError("species and compartments must be provided if numpy_format is set")
+            time_hist = np.asarray(self._history['time'])
+            species_counts_hist = np.zeros((len(species), len(compartments),
+                len(self._history['time'])))
+            for specie_index,specie in list(enumerate(species)):
+                for comp_index,compartment in list(enumerate(compartments)):
+                    for time_index in range(len(self._history['time'])):
+                        species_id = wc_lang.core.Species.gen_id(specie, compartment)
+                        species_counts_hist[specie_index,comp_index,time_index] = \
+                            self._history['population'][species_id][time_index]
+
+            return (time_hist, species_counts_hist)
+        else:
+            return self._history
 
     def history_debug(self):
         """ Provide some of the history in a string.
@@ -901,6 +905,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             state.append(self._population[specie_id].row())
         return '\n'.join(state)
 
+
 # TODO(Arthur): cover after MVP wc_sim done
 class SpeciesPopSimObject(LocalSpeciesPopulation, SimulationObject, SimulationObjectInterface): # pragma: no cover
     """ Maintain the population of a set of species in a simulation object that can be parallelized.
@@ -927,7 +932,7 @@ class SpeciesPopSimObject(LocalSpeciesPopulation, SimulationObject, SimulationOb
         (Perhaps Sphinx can automate this, but the documentation is unclear.)
         """
         SimulationObject.__init__(self, name)
-        LocalSpeciesPopulation.__init__(self, None, name, initial_population, molecular_weights,
+        LocalSpeciesPopulation.__init__(self, name, initial_population, molecular_weights,
             initial_fluxes)
 
     def handle_adjust_discretely_event(self, event):
