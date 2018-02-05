@@ -7,6 +7,7 @@
 """
 
 import numpy as np
+from numpy import all
 import os, unittest, copy
 import re
 import six
@@ -292,17 +293,54 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         RandomStateManager.initialize(seed=123)
 
         species_nums = range(1, 5)
-        species = list(map(lambda x: "specie_{}".format(x), species_nums))
-        self.species = species
-        self.init_populations = dict(zip(species, species_nums))
+        self.species_type_ids = species_type_ids = list(map(lambda x: "specie_{}".format(x), species_nums))
+        self.compartment_ids = compartment_ids = ['c1', 'c2']
+        self.species_ids = species_ids = []
+        for species_type_id in species_type_ids[:2]:
+            for compartment_id in compartment_ids[:2]:
+                species_ids.append(wc_lang.core.Species.gen_id(species_type_id, compartment_id))
+        self.init_populations = dict(zip(species_ids, species_nums))
         self.flux = 1
-        init_fluxes = dict(zip(species, [self.flux]*len(species)))
-        self.init_fluxes = init_fluxes
-        self.molecular_weights = dict(zip(species, species_nums))
+        self.init_fluxes = init_fluxes = dict(zip(species_ids, [self.flux]*len(species_ids)))
+        self.molecular_weights = dict(zip(species_ids, species_nums))
         self.local_species_pop = LocalSpeciesPopulation('test', self.init_populations,
             self.molecular_weights, initial_fluxes=init_fluxes)
         self.local_species_pop_no_init_flux = LocalSpeciesPopulation(
             'test', self.init_populations, self.molecular_weights)
+
+    def test_init(self):
+        an_LSP = LocalSpeciesPopulation('test', {}, {}, retain_history=False)
+        an_LSP.init_cell_state_specie('s1', 2)
+        self.assertEqual(an_LSP.read(0, {'s1'}), {'s1': 2})
+
+        with self.assertRaises(SpeciesPopulationError) as context:
+            an_LSP.init_cell_state_specie('s1', 2)
+        self.assertIn("specie_id 's1' already stored by this LocalSpeciesPopulation",
+            str(context.exception))
+
+        with self.assertRaises(SpeciesPopulationError) as context:
+            an_LSP.report_history()
+        self.assertIn("history not recorded", str(context.exception))
+
+        with self.assertRaises(SpeciesPopulationError) as context:
+            an_LSP.history_debug()
+        self.assertIn("history not recorded", str(context.exception))
+
+        with self.assertRaises(SpeciesPopulationError) as context:
+            LocalSpeciesPopulation('test', {'s1': 2, 's2': 1}, {})
+        self.assertIn("Cannot init LocalSpeciesPopulation because some species are missing weights",
+            str(context.exception))
+
+    def test_read_one(self):
+        test_specie = 'specie_2[c2]'
+        self.assertEqual(self.local_species_pop_no_init_flux.read_one(1, test_specie),
+            self.init_populations[test_specie])
+        with self.assertRaises(SpeciesPopulationError) as context:
+            self.local_species_pop_no_init_flux.read_one(2, 'unknown_specie_id')
+        self.assertIn("request for population of unknown specie(s): 'unknown_specie_id'", str(context.exception))
+        with self.assertRaises(SpeciesPopulationError) as context:
+            self.local_species_pop_no_init_flux.read_one(0, test_specie)
+        self.assertIn("earlier access of specie(s):", str(context.exception))
 
     def reusable_assertions(self, the_local_species_pop, flux):
         # test both discrete and hybrid species
@@ -313,67 +351,65 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
 
         with self.assertRaises(SpeciesPopulationError) as context:
             the_local_species_pop._check_species(0, {'x'})
-        self.assertIn("Error: request for population of unknown specie(s):", str(context.exception))
+        self.assertIn("request for population of unknown specie(s):", str(context.exception))
 
-        self.assertEqual(the_local_species_pop.read(0, set(self.species)), self.init_populations)
-        first_specie = self.species[0]
-        the_local_species_pop.adjust_discretely(0, { first_specie: 3 })
+        self.assertEqual(the_local_species_pop.read(0, set(self.species_ids)), self.init_populations)
+        first_specie = self.species_ids[0]
+        the_local_species_pop.adjust_discretely(0, {first_specie: 3})
         self.assertEqual(the_local_species_pop.read(0, {first_specie}),  {first_specie: 4})
 
         if flux:
             # counts: 1 initialization + 3 discrete adjustment + 2*flux:
             self.assertEqual(the_local_species_pop.read(2, {first_specie}),  {first_specie: 4+2*flux})
-            the_local_species_pop.adjust_continuously(2, {first_specie:(9, 0) })
+            the_local_species_pop.adjust_continuously(2, {first_specie:(9, 0)})
             # counts: 1 initialization + 3 discrete adjustment + 9 continuous adjustment + 0 flux = 13:
             self.assertEqual(the_local_species_pop.read(2, {first_specie}),  {first_specie: 13})
 
-    def test_read_one(self):
-        self.assertEqual(self.local_species_pop.read_one(1,'specie_3'), 4)
-        with self.assertRaises(SpeciesPopulationError) as context:
-            self.local_species_pop.read_one(2, 's1')
-        self.assertIn("request for population of unknown specie(s): 's1'", str(context.exception))
-        with self.assertRaises(SpeciesPopulationError) as context:
-            self.local_species_pop.read_one(0, 'specie_3')
-        self.assertIn("earlier access of specie(s): ['specie_3']", str(context.exception))
+            for species_id in self.species_ids:
+                self.assertIn(species_id, str(the_local_species_pop))
 
-    def test_discrete_and_hyrid(self):
+    def test_discrete_and_hybrid(self):
 
-        for (local_species_pop, flux) in [(self.local_species_pop,self.flux),
-            (self.local_species_pop_no_init_flux,None)]:
+        for (local_species_pop, flux) in [(self.local_species_pop, self.flux),
+            (self.local_species_pop_no_init_flux, None)]:
             self.reusable_assertions(local_species_pop, flux)
 
-    def test_init(self):
-        an_LSP = LocalSpeciesPopulation('test', {}, {}, retain_history=False)
-        an_LSP.init_cell_state_specie('s1', 2)
-        self.assertEqual(an_LSP.read(0, {'s1'}),  {'s1': 2})
+    def test_adjustment_exceptions(self):
+        time = 1.0
+        # test_specie_ids = ['specie_2[c2]', 'specie_1[c1]']
+        with self.assertRaises(SpeciesPopulationError) as context:
+            self.local_species_pop.adjust_discretely(time,
+                dict(zip(self.species_ids, [-10]*len(self.species_ids))))
+        self.assertIn("adjust_discretely error(s) at time {}".format(time), str(context.exception))
+        self.assertIn("negative population predicted", str(context.exception))
 
         with self.assertRaises(SpeciesPopulationError) as context:
-            an_LSP.init_cell_state_specie('s1', 2)
-        self.assertIn("Error: specie_id 's1' already stored by this LocalSpeciesPopulation",
-            str(context.exception))
+            self.local_species_pop_no_init_flux.adjust_continuously(time, {self.species_ids[0]: (-10, 2)})
+        self.assertIn('initial flux was not provided', str(context.exception))
+
         with self.assertRaises(SpeciesPopulationError) as context:
-            an_LSP.report_history()
-        self.assertIn("Error: history not recorded", str(context.exception))
-        with self.assertRaises(SpeciesPopulationError) as context:
-            an_LSP.history_debug()
-        self.assertIn("Error: history not recorded", str(context.exception))
+            self.local_species_pop.adjust_continuously(time, {self.species_ids[0]: (-10, 2)})
+        self.assertIn("adjust_continuously error(s) at time {}".format(time), str(context.exception))
+        self.assertIn("negative population predicted", str(context.exception))
 
     def test_history(self):
-        """ Test population history."""
-        an_LSP_recording_history = LocalSpeciesPopulation('test',
+
+        an_LSP_wo_recording_history = LocalSpeciesPopulation('test',
             self.init_populations, self.init_populations, retain_history=False)
+
         with self.assertRaises(SpeciesPopulationError) as context:
-            an_LSP_recording_history.report_history()
-        self.assertIn("Error: history not recorded", str(context.exception))
+            an_LSP_wo_recording_history.report_history()
+        self.assertIn("history not recorded", str(context.exception))
+
         with self.assertRaises(SpeciesPopulationError) as context:
-            an_LSP_recording_history.history_debug()
-        self.assertIn("Error: history not recorded", str(context.exception))
+            an_LSP_wo_recording_history.history_debug()
+        self.assertIn("history not recorded", str(context.exception))
 
         an_LSP_recording_history = LocalSpeciesPopulation('test',
             self.init_populations, self.init_populations, retain_history=True)
         self.assertTrue(an_LSP_recording_history._recording_history())
         next_time = 1
-        first_specie = self.species[0]
+        first_specie = self.species_ids[0]
         an_LSP_recording_history.read(next_time, {first_specie})
         an_LSP_recording_history._record_history()
         with self.assertRaises(SpeciesPopulationError) as context:
@@ -382,27 +418,37 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
             str(context.exception))
 
         history = an_LSP_recording_history.report_history()
-        self.assertEqual(history['time'],  [0,next_time])
-        first_specie_history = [1.0,1.0]
+        self.assertEqual(history['time'], [0, next_time])
+        first_specie_history = [1.0, 1.0]
         self.assertEqual(history['population'][first_specie], first_specie_history)
-
         self.assertIn(
-            '\t'.join(map(lambda x:str(x), [ first_specie, 2, ] + first_specie_history)),
+            '\t'.join(map(lambda x:str(x), [first_specie, 2] + first_specie_history)),
             an_LSP_recording_history.history_debug())
 
+        # test numpy array history
+        with self.assertRaises(SpeciesPopulationError) as context:
+            an_LSP_recording_history.report_history(numpy_format=True)
+        self.assertIn("specie_type_ids and compartment_ids must be provided", str(context.exception))
+        specie_type_ids = self.species_type_ids
+        compartment_ids = self.compartment_ids
+        time_hist, species_counts_hist = an_LSP_recording_history.report_history(numpy_format=True,
+            specie_type_ids=specie_type_ids, compartment_ids=compartment_ids)
+        self.assertTrue((time_hist == np.array([0, next_time])).all())
+        for time_idx in [0, 1]:
+            self.assertEqual(species_counts_hist[0, 0, time_idx], first_specie_history[time_idx])
+
     def test_mass(self):
-        """ Test mass """
         total_mass = sum([self.init_populations[specie_id]*self.molecular_weights[specie_id]/Avogadro
-            for specie_id in self.species])
+            for specie_id in self.species_ids])
         self.assertAlmostEqual(self.local_species_pop.mass(), total_mass, places=37)
 
-        all_but_1st_species = self.species[1:]
+        all_but_1st_species = self.species_ids[1:]
         mass_of_all_but_1st_species = sum([self.init_populations[specie_id]*self.molecular_weights[specie_id]/Avogadro
             for specie_id in all_but_1st_species])
         self.assertAlmostEqual(self.local_species_pop.mass(species_ids=all_but_1st_species),
             mass_of_all_but_1st_species, places=37)
 
-        removed_specie = self.species[0]
+        removed_specie = self.species_ids[0]
         del self.local_species_pop._molecular_weights[removed_specie]
         with self.assertRaises(SpeciesPopulationError) as context:
             self.local_species_pop.mass()
@@ -510,7 +556,7 @@ class TestSpecie(unittest.TestCase):
             s2 = Specie('specie2', 10, initial_flux=2.1)
             six.assertRegex(self, s2.row(), 'specie2\t10\..*\t0\..*\t2\.1.*')
 
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SpeciesPopulationError) as context:
             s1.continuous_adjustment(2, -23, 1)
         self.assertIn('continuous_adjustment(): time <= self.continuous_time', str(context.exception))
 
@@ -522,21 +568,21 @@ class TestSpecie(unittest.TestCase):
         adjusted_pop = s1.continuous_adjustment(0.5, 5, 0)
         self.assertEqual(int(adjusted_pop), adjusted_pop)
 
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SpeciesPopulationError) as context:
             s1.continuous_adjustment(2, 3, 1)
         self.assertIn('continuous_adjustment(): time <= self.continuous_time', str(context.exception))
 
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SpeciesPopulationError) as context:
             s1.get_population()
         self.assertIn('get_population(): time needed because continuous adjustment received at time',
             str(context.exception))
 
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SpeciesPopulationError) as context:
             s1.get_population(3)
         self.assertIn('get_population(): time < self.continuous_time', str(context.exception))
 
         s1 = Specie('specie', 10)
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SpeciesPopulationError) as context:
             s1.continuous_adjustment(2, 2, 1)
         self.assertIn('initial flux was not provided', str(context.exception))
 
@@ -563,7 +609,7 @@ class TestSpecie(unittest.TestCase):
         n1.delta_time=1
         self.assertEqual(str(n1), p + " over 1 time unit")
 
-        d = { n1:1 }
+        d = {n1:1}
         self.assertTrue(n1 in d)
 
     def test_raise_NegativePopulationError(self):
