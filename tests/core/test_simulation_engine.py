@@ -139,6 +139,12 @@ class TestSimulationEngine(unittest.TestCase):
         self.simulator.initialize()
         self.assertEqual(self.simulator.simulate(5.0), 3)
 
+    def test_one_object_simulation_neg_endtime(self):
+        obj = ExampleSimulationObject(obj_name(1))
+        self.simulator.add_object(obj)
+        self.simulator.initialize()
+        self.assertEqual(self.simulator.simulate(-1), 0)
+
     def test_simulation_engine_exceptions(self):
         obj = ExampleSimulationObject(obj_name(1))
         with self.assertRaises(ValueError) as context:
