@@ -531,65 +531,74 @@ class TestSpecie(unittest.TestCase):
     def setUp(self):
         RandomStateManager.initialize()
 
-    def test_Specie(self):
-        s1 = Specie('specie', 10)
+    def test_specie(self):
 
+        s1 = Specie('specie', 10)
         self.assertEqual(s1.get_population(), 10)
         self.assertEqual(s1.discrete_adjustment(1, 0), 11)
         self.assertEqual(s1.get_population(), 11)
         self.assertEqual(s1.discrete_adjustment(-1, 0), 10)
         self.assertEqual(s1.get_population(), 10)
 
-        s1 = Specie('specie_3', 2, 1)
-        self.assertEqual(s1.discrete_adjustment(3, 4), 9)
+        s2 = Specie('specie_3', 2, 1)
+        self.assertEqual(s2.discrete_adjustment(3, 4), 9)
 
-        s1 = Specie('specie', 10, initial_flux=0)
+        s3 = Specie('specie2', 10)
+        self.assertEqual("specie_name: specie2; last_population: 10", str(s3))
+        six.assertRegex(self, s3.row(), 'specie2\t10.*')
+
+        s4 = Specie('specie', 10, initial_flux=0)
         self.assertEqual("specie_name: specie; last_population: 10; continuous_time: 0; "
-            "continuous_flux: 0", str(s1))
-
-        if six.PY3:
-            six.assertRegex(self, s1.row(), 'specie\t10\..*\t0\..*\t0\..*')
-            s2 = Specie('specie2', 10, initial_flux=2.1)
-            six.assertRegex(self, s2.row(), 'specie2\t10\..*\t0\..*\t2\.1.*')
-        else:
-            six.assertRegex(self, s1.row(), 'specie\t10\..*\t0\..*\t0\..*')
-            s2 = Specie('specie2', 10, initial_flux=2.1)
-            six.assertRegex(self, s2.row(), 'specie2\t10\..*\t0\..*\t2\.1.*')
+            "continuous_flux: 0", str(s4))
+        six.assertRegex(self, s4.row(), 'specie\t10\..*\t0\..*\t0\..*')
 
         with self.assertRaises(SpeciesPopulationError) as context:
-            s1.continuous_adjustment(2, -23, 1)
+            s4.continuous_adjustment(2, -23, 1)
         self.assertIn('continuous_adjustment(): time <= self.continuous_time', str(context.exception))
 
-        self.assertEqual(s1.continuous_adjustment(2, 4, 1), 12)
-        self.assertEqual(s1.get_population(4.0), 12)
-        self.assertEqual(s1.get_population(6.0), 14)
+        self.assertEqual(s4.continuous_adjustment(2, 4, 1), 12)
+        self.assertEqual(s4.get_population(4.0), 12)
+        self.assertEqual(s4.get_population(6.0), 14)
 
         # ensure that continuous_adjustment() returns an integral population
-        adjusted_pop = s1.continuous_adjustment(0.5, 5, 0)
+        adjusted_pop = s4.continuous_adjustment(0.5, 5, 0)
         self.assertEqual(int(adjusted_pop), adjusted_pop)
 
         with self.assertRaises(SpeciesPopulationError) as context:
-            s1.continuous_adjustment(2, 3, 1)
+            s4.continuous_adjustment(2, 3, 1)
         self.assertIn('continuous_adjustment(): time <= self.continuous_time', str(context.exception))
 
         with self.assertRaises(SpeciesPopulationError) as context:
-            s1.get_population()
+            s4.get_population()
         self.assertIn('get_population(): time needed because continuous adjustment received at time',
             str(context.exception))
 
         with self.assertRaises(SpeciesPopulationError) as context:
-            s1.get_population(3)
+            s4.get_population(3)
         self.assertIn('get_population(): time < self.continuous_time', str(context.exception))
 
-        s1 = Specie('specie', 10)
         with self.assertRaises(SpeciesPopulationError) as context:
-            s1.continuous_adjustment(2, 2, 1)
+            Specie('specie', 10).continuous_adjustment(2, 2, 1)
         self.assertIn('initial flux was not provided', str(context.exception))
+
+        six.assertRegex(self, Specie.heading(), 'specie_name\t.*')
 
         # raise asserts
         with self.assertRaises(AssertionError) as context:
-            s1 = Specie('specie', -10)
+            Specie('specie', -10)
         self.assertIn('__init__(): population should be >= 0', str(context.exception))
+
+    def test_species_with_interpolation_false(self):
+        # change the interpolation
+        from wc_sim.multialgorithm.species_populations import config_multialgorithm
+        existing_interpolate = config_multialgorithm['interpolate']
+        config_multialgorithm['interpolate'] = False
+
+        s1 = Specie('specie', 10, initial_flux=1)
+        self.assertEqual(s1.get_population(time=0), 10)
+        self.assertEqual(s1.get_population(time=1), 10)
+        # change back because all imports may already have been cached
+        config_multialgorithm['interpolate'] = existing_interpolate
 
     def test_NegativePopulationError(self):
         s='specie_3'

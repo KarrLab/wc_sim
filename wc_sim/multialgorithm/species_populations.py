@@ -7,6 +7,7 @@
 """
 
 # TODO(Arthur): for reproducibility, use lists instead of sets
+# TODO(Arthur): analyze accuracy with and without interpolation
 
 import abc, six
 import numpy as np
@@ -1212,7 +1213,6 @@ class Specie(object):
                 raise SpeciesPopulationError("get_population(): time < self.continuous_time: {:.2f} < {:.2f}\n".format(
                     time, self.continuous_time))
             interpolation=0
-            # TODO(Arthur): compare with and wo interpolation
             if config_multialgorithm['interpolate']:
                 interpolation = (time - self.continuous_time) * self.continuous_flux
             if self.last_population + interpolation < 0:

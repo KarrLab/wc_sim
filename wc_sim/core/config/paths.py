@@ -6,6 +6,7 @@
 :License: MIT
 """
 
+# TODO(Arthur): simplify this; see paths.py in wc_utils/tests/config/fixtures/paths.py
 from pkg_resources import resource_filename
 from wc_utils.config.core import ConfigPaths
 from wc_utils.debug_logs.config import paths as debug_logs_default_paths
