@@ -380,10 +380,9 @@ class SimulationObject(object):
             local_call_depth=local_call_depth)
 
 
-# todo: should this inherit from object; is it possible to combine this with SimulationObject into one class?
 @six.add_metaclass(abc.ABCMeta)
 class SimulationObjectInterface():  # pragma: no cover
-    """Classes derived from `SimulationObject` must implement this interface.
+    """Classes derived from `SimulationObject` must implement this interface
     """
 
     @abc.abstractmethod

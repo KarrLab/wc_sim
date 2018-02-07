@@ -32,6 +32,7 @@ from wc_sim.multialgorithm.multialgorithm_errors import NegativePopulationError,
 from wc_sim.multialgorithm.submodels.skeleton_submodel import SkeletonSubmodel
 from wc_sim.multialgorithm import distributed_properties
 from wc_utils.util.rand import RandomStateManager
+from tests.core.mock_simulation_object import MockSimulationObjectInterface
 
 def store_i(i):
     return "store_{}".format(i)
@@ -667,22 +668,13 @@ class TestSpecie(unittest.TestCase):
 
 """ Run a simulation with another simulation object to test SpeciesPopSimObject.
 
-A SpeciesPopSimObject manages the population of one specie, 'x'. A MockSimulationObject sends
+A SpeciesPopSimObject manages the population of one specie, 'x'. A MockSimulationTestingObject sends
 initialization events to SpeciesPopSimObject and compares the 'x's correct population with
 its simulated population.
 """
 
-# todo: MockSimulationObjects are handy for testing other objects; generalize and place in separate module
-class MockSimulationObject(SimulationObject, SimulationObjectInterface):
 
-    def __init__(self, name, test_case, specie_id, expected_value):
-        """ Init a MockSimulationObject that can unittest a specie's population.
-
-        Args:
-            test_case (:obj:`unittest.TestCase`): reference to the TestCase that launches the simulation
-        """
-        (self.test_case, self.specie_id, self.expected_value) = (test_case, specie_id, expected_value)
-        super().__init__(name)
+class MockSimulationTestingObject(MockSimulationObjectInterface):
 
     def send_initial_events(self): pass
 
@@ -697,16 +689,18 @@ class MockSimulationObject(SimulationObject, SimulationObjectInterface):
 
         # populations is a GivePopulation_body instance
         populations = event.event_body
-        self.test_case.assertEqual(populations[self.specie_id], self.expected_value,
+        specie_id = self.kwargs['specie_id']
+        expected_value = self.kwargs['expected_value']
+        self.test_case.assertEqual(populations[specie_id], expected_value,
             msg="At event_time {} for specie '{}': the correct population "
                 "is {} but the actual population is {}.".format(
-                event.event_time, self.specie_id, self.expected_value, populations[self.specie_id]))
+                event.event_time, specie_id, expected_value, populations[specie_id]))
 
     def handle_GiveProperty_event(self, event):
         """ Perform a unit test on the mass of a SpeciesPopSimObject"""
         property_name = event.event_body.property_name
         self.test_case.assertEqual(property_name, distributed_properties.MASS)
-        self.test_case.assertEqual(event.event_body.value, self.expected_value)
+        self.test_case.assertEqual(event.event_body.value, self.kwargs['expected_value'])
 
     @classmethod
     def register_subclass_handlers(this_class):
@@ -722,6 +716,7 @@ class MockSimulationObject(SimulationObject, SimulationObjectInterface):
             message_types.AdjustPopulationByContinuousSubmodel,
             message_types.GetCurrentProperty])
 
+
 class TestSpeciesPopSimObjectWithAnotherSimObject(unittest.TestCase):
 
     def try_update_species_pop_sim_obj(self, specie_id, init_pop, mol_weight, init_flux, update_message,
@@ -730,7 +725,7 @@ class TestSpeciesPopSimObjectWithAnotherSimObject(unittest.TestCase):
 
         initialize simulation:
             create SpeciesPopSimObject object
-            create MockSimulationObject with reference to this TestCase and expected population value
+            create MockSimulationTestingObject with reference to this TestCase and expected population value
             Mock obj sends update_message for time=update_time
             Mock obj sends GetPopulation for time=get_pop_time
         run simulation:
@@ -739,13 +734,14 @@ class TestSpeciesPopSimObjectWithAnotherSimObject(unittest.TestCase):
             Mock obj receives GivePopulation and checks value
         """
         self.simulator = SimulationEngine()
-        self.simulator.register_object_types([MockSimulationObject, SpeciesPopSimObject])
+        self.simulator.register_object_types([MockSimulationTestingObject, SpeciesPopSimObject])
 
         if get_pop_time<=update_time:
             raise SpeciesPopulationError('get_pop_time<=update_time')
         species_pop_sim_obj = SpeciesPopSimObject('test_name',
             {specie_id:init_pop}, {specie_id:mol_weight}, initial_fluxes={specie_id:init_flux})
-        mock_obj = MockSimulationObject('mock_name', self, specie_id, expected_value)
+        mock_obj = MockSimulationTestingObject('mock_name', self,
+            specie_id=specie_id, expected_value=expected_value)
         self.simulator.load_objects([species_pop_sim_obj, mock_obj])
         mock_obj.send_debugging_events(species_pop_sim_obj, update_time, update_message, msg_body,
             get_pop_time, message_types.GetPopulation({specie_id}))
@@ -796,7 +792,7 @@ class TestSpeciesPopSimObject(unittest.TestCase):
 
     def setUp(self):
         self.simulator = SimulationEngine()
-        self.simulator.register_object_types([MockSimulationObject, SpeciesPopSimObject])
+        self.simulator.register_object_types([MockSimulationTestingObject, SpeciesPopSimObject])
         RandomStateManager.initialize()
         self.species_ids = 's1 s2 s3'.split()
         self.initial_population = dict(zip(self.species_ids, range(3)))

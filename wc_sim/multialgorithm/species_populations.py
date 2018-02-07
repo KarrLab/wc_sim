@@ -601,7 +601,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self.last_access_time[specie_id] = self.time
         self._add_to_history(specie_id)
 
-    # TODO(Arthur): make species optional, and read all species if not supplied
+    # TODO(Arthur): perhaps make species optional, and read all species if not supplied
     def _check_species(self, time, species):
         """ Check whether the species are a set, or not known by this LocalSpeciesPopulation
 
@@ -629,7 +629,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             raise SpeciesPopulationError("earlier access of specie(s): {}".format(
                 early_accesses))
 
-    # TODO(Arthur): make species optional, and read all species if not supplied
+    # TODO(Arthur): perhaps make species optional, and read all species if not supplied
     def __update_access_times(self, time, species):
         """ Update the access time to `time` for all species_ids in `species`
 
@@ -659,7 +659,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self.__update_access_times(time, specie_id_in_set)
         return self._population[specie_id].get_population(time)
 
-    # TODO(Arthur): make the list optional, and read all species if not supplied; need to change the interface
+    # TODO(Arthur): perhaps make species optional, and read all species if not supplied; need to change the interface
     def read(self, time, species):
         """ Read the predicted population of a list of species at simulation time `time`
 

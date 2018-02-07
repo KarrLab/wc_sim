@@ -22,18 +22,10 @@ from wc_sim.multialgorithm.species_populations import (LOCAL_POP_STORE, LocalSpe
     AccessSpeciesPopulations)
 from wc_sim.multialgorithm import message_types, distributed_properties
 from wc_sim.multialgorithm.utils import get_species_and_compartment_from_name
+from tests.core.mock_simulation_object import MockSimulationObjectInterface
 
-# TODO(Arthur): MockSimulationObjects are handy for testing other objects; generalize and place in separate module
-class MockSimulationObject(SimulationObject, SimulationObjectInterface):
 
-    def __init__(self, name, test_case, expected_value):
-        """ Init a MockSimulationObject that can unittest a `SimulationObject`s behavior
-
-        Args:
-            test_case (:obj:`unittest.TestCase`): reference to the TestCase that launches the simulation
-        """
-        (self.test_case, self.expected_value) = (test_case, expected_value)
-        super().__init__(name)
+class MockSimulationObject(MockSimulationObjectInterface):
 
     def send_initial_events(self): pass
 

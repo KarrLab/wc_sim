@@ -19,7 +19,7 @@ from wc_sim.multialgorithm.debug_logs import logs as debug_logs
 from wc_sim.multialgorithm import message_types, distributed_properties
 
 
-# TODO(Arthur): use list instead of set for reproducibility
+# TODO(Arthur): use lists instead of sets for reproducibility
 
 class Submodel(SimulationObject, SimulationObjectInterface):
     """ Generic submodel functionality; subclasses of `Submodel` are combined into a multi-algorithmic model
