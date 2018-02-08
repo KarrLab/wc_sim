@@ -1,10 +1,10 @@
-'''A simplistic, configurable submodel for testing during development.
+""" A simplistic, configurable submodel for testing during development.
 
 :Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
 :Date: 2016_12_06
 :Copyright: 2016-2018, Karr Lab
 :License: MIT
-'''
+"""
 from builtins import super
 
 from wc_sim.core.simulation_object import SimulationObject
@@ -14,18 +14,19 @@ from wc_sim.multialgorithm.submodels.submodel import Submodel
 from wc_sim.multialgorithm.message_types import ALL_MESSAGE_TYPES
 
 class SkeletonSubmodel(Submodel):
-    '''Init a SkeletonSubmodel.
-    
+    """ Init a SkeletonSubmodel
+
     A SkeletonSubmodel is a simple submodel with externally controlled behavior.
-    
+
     Attributes:
-        behavior
+        behavior (:obj:`wc_sim.core.Event`): an Event to process
+
         next_reaction
-    '''
+    """
 
     def __init__(self, behavior, model, name, access_species_population,
         reactions, species, parameters):
-        '''Init a SkeletonSubmodel.'''
+        """ Init a SkeletonSubmodel."""
         super().__init__(model, name, access_species_population,
             reactions, species, parameters)
         self.behavior = behavior
@@ -33,22 +34,22 @@ class SkeletonSubmodel(Submodel):
         self.next_reaction = 0
 
     def handle_GivePopulation_event(self, event):
-        '''Handle a simulation event.
+        """ Handle a simulation event.
 
         Args:
             event (:obj:`wc_sim.core.Event`): an Event to process
-        '''
+        """
         # populations is a GivePopulation_body instance
         populations = event.event_body
         self.access_species_population.species_population_cache.cache_population(
             self.time, populations)
 
     def handle_ExecuteSsaReaction_event(self, event):
-        '''Handle a simulation event.
+        """ Handle a simulation event.
 
         Args:
             event (:obj:`wc_sim.core.Event`): an Event to process
-        '''
+        """
         # reaction_index is the reaction to execute
         reaction_index = event.event_body.reaction_index
         # Execute a reaction
@@ -77,7 +78,7 @@ class SkeletonSubmodel(Submodel):
             (message_types.GivePopulation, this_class.handle_GivePopulation_event),
             (message_types.ExecuteSsaReaction, this_class.handle_ExecuteSsaReaction_event),
         ])
- 
+
     @classmethod
     def register_subclass_sent_messages(this_class):
         SimulationObject.register_sent_messages(this_class, ALL_MESSAGE_TYPES)

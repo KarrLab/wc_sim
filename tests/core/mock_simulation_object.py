@@ -12,6 +12,8 @@ from unittest import TestCase
 from wc_sim.core.simulation_object import SimulationObject, SimulationObjectInterface
 
 
+# TODO(Arthur): get coverage reports of the test_mock_simulation_object.py test of this module
+# the obvious ways using 'coverage' or 'pytest' do not work
 class MockSimulationObject(SimulationObject):
     """ An object to help test simulation objects
     """
