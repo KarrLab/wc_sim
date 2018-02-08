@@ -20,12 +20,12 @@ from wc_lang.core import (SubmodelAlgorithm, Model, ObjectiveFunction, SpeciesTy
     Species, Compartment, Reaction, ReactionParticipant, RateLawEquation, BiomassReaction)
 from wc_lang.core import Submodel as LangSubmodel
 from wc_lang.rate_law_utils import RateLawUtils
-
+from wc_sim.multialgorithm.dynamic_components import DynamicModel, DynamicCompartment
 from wc_sim.core.simulation_engine import SimulationEngine
 from wc_sim.multialgorithm import message_types
 from wc_sim.multialgorithm.model_utilities import ModelUtilities
 from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation, AccessSpeciesPopulations
-from wc_sim.multialgorithm.submodels.submodel import Submodel as SimSubmodel
+from wc_sim.multialgorithm.submodels.submodel import DynamicSubmodel
 from wc_sim.multialgorithm.submodels.ssa import SSASubmodel
 from wc_sim.multialgorithm.submodels.fba import FbaSubmodel
 from wc_sim.multialgorithm.species_populations import LOCAL_POP_STORE, Specie, SpeciesPopSimObject
@@ -37,8 +37,6 @@ config_multialgorithm = \
 
 # TODO(Arthur): use lists instead of sets to ensure deterministic behavior
 
-EXTRACELLULAR_COMPARTMENT_ID = 'e'
-WATER_ID = 'H2O'
 
 """
 Design notes:
@@ -106,206 +104,6 @@ Direct exchange of species count changes for shared species through a shared mem
 species copy number changes through shared population.
 """
 
-class DynamicModel(object):
-    """ Represent the aggregate dynamic state of a whole-cell model simulation
-
-    The primary state of a model being simulated is its species counts, which each submodel accesses
-    through its `AccessSpeciesPopulations`. A `DynamicModel` provides methods for
-    determining aggregate properties, such as model volume and mass.
-
-    Attributes:
-        model (:obj:`Model`): the description of the whole-cell model in `wc_lang`
-        multialgorithm_simulation (:obj:`MultialgorithmSimulation`): the multialgorithm simulation
-        # DC: remove
-        volume (:obj:`float`): volume of the cell's cellular (cytoplasm) compartment
-        extracellular_volume (:obj:`float`): volume of the cell's extra-cellular
-        fraction_dry_weight (:obj:`float`): fraction of the cell's weight which is not water
-            a constant
-        dry_weight (:obj:`float`): a cell's dry weight
-        density (:obj:`float`): cellular density, a constant
-        growth (:obj:`float`): growth in cell/s, relative to the cell's initial volume
-    """
-
-    def __init__(self, model, multialgorithm_simulation):
-        self.model = model
-        # TODO(Arthur): clarify & fix relationship between multialgorithm_simulation and DynamicModel
-        # TODO(Arthur): perhaps remove next statement
-        # self.multialgorithm_simulation = multialgorithm_simulation
-
-    def initialize(self):
-        """ Prepare a `DynamicModel` for a discrete-event simulation
-        """
-        # Classify compartments by cellular and extracellular
-        # all others: cellular_compartments
-        extracellular_compartment = utils.get_component_by_id(self.model.get_compartments(),
-            EXTRACELLULAR_COMPARTMENT_ID)
-        self.extracellular_volume = extracellular_compartment.initial_volume
-
-        cellular_compartments = []
-        for compartment in self.model.get_compartments():
-            if compartment.id == EXTRACELLULAR_COMPARTMENT_ID:
-                continue
-            cellular_compartments.append(compartment)
-
-        # DC: remove
-        # volume: sum cellular compartment volumes
-        self.volume = sum(
-            [cellular_compartment.initial_volume for cellular_compartment in cellular_compartments])
-
-        # does the model represent water?
-        water_in_model = True
-        for compartment in self.model.get_compartments():
-            water_in_compartment_id = Species.gen_id(WATER_ID, compartment.id)
-            if water_in_compartment_id not in [s.id() for s in compartment.species]:
-                water_in_model = False
-                break
-
-        # cell mass
-        # DC: use DC mass?
-        self.mass = self.initial_cell_mass([EXTRACELLULAR_COMPARTMENT_ID])
-        self.fraction_dry_weight = utils.get_component_by_id(self.model.get_parameters(),
-            'fractionDryWeight').value
-        if water_in_model:
-            self.dry_weight = self.fraction_dry_weight * self.mass
-        else:
-            self.dry_weight = self.mass
-
-        # DC: remove
-        # density
-        self.density = self.mass / self.volume
-
-        # growth
-        self.growth = np.nan
-
-    '''
-    def create_dynamic_compartments(self, model):
-        """ Create dynamic compartments for the model
-
-        Args:
-            model (:obj:`Model`): the description of the whole-cell model in `wc_lang`
-
-        Returns:
-            :obj:`list` of `DynamicCompartment`: `DynamicCompartment`s for `model`, one for each
-                `Compartment` in `model`
-        """
-        dynamic_compartments = []
-        for compartment in model.get_compartments():
-            dynamic_compartments.append(DynamicCompartment(
-                compartment.id,
-                compartment.name,
-                compartment.initial_volume,
-                ))
-        return dynamic_compartments
-    '''
-
-    # DC: use DC masses
-    def initial_cell_mass(self, extracellular_compartments):
-        """ Compute the cell's initial mass from the model
-
-        Sum the mass of all species not stored in an extracellular compartment.
-        Assumes compartment volumes are in L and concentrations in mol/L.
-
-        Args:
-            extracellular_compartments (:obj:`list`): all extracellular compartments
-
-        Returns:
-            :obj:`float`: the cell's initial mass (g)
-        """
-        # sum over all initial concentrations in intracellular compartments
-        total_mw = 0
-        for concentration in self.model.get_concentrations():
-            if concentration.species.compartment.id in extracellular_compartments:
-                continue
-            species_type = SpeciesType.objects.get_one(id=concentration.species.species_type.id)
-            total_mw += concentration.value * \
-                species_type.molecular_weight * \
-                concentration.species.compartment.initial_volume
-        return total_mw/Avogadro
-
-    def get_species_count_array(self, now):
-        """ Map current species counts into an np array
-
-        Args:
-            now (:obj:`float`): the current simulation time
-
-        Returns:
-            numpy array, #species x # compartments, containing count of specie in compartment
-        """
-        # TODO(Arthur): avoid wastefully converting between dictionary and array representations of copy numbers
-        species_counts = np.zeros((len(model.species), len(model.compartments)))
-        for species in model.species:
-            for compartment in model.compartments:
-                specie_id = Species.gen_id(species, compartment)
-                species_counts[ species.index, compartment.index ] = \
-                    model.local_species_population.read_one(now, specie_id)
-        return species_counts
-
-
-class DynamicCompartment(object):
-    """ A dynamic compartment
-
-    A `DynamicCompartment` tracks the dynamic aggregate state of a compartment, primarily its
-    mass and volume. Each `wc_lang` `Compartment` has a corresponding `DynamicCompartment`.
-
-    Attributes:
-        id (:obj:`str`): unique id of the corresponding `wc_lang` `Compartment`
-        name (:obj:`str`): name of the corresponding `wc_lang` `Compartment`
-        init_volume (:obj:`float`): initial volume specified in the `wc_lang` model
-        species_populations (:obj:`LocalSpeciesPopulation`): a shared store of the simulation's
-            species populations
-        species_ids (:obj:`list` of `str`, optional): the IDs of the species that participate in the
-            reactions in this compartment; this enables multiple `DynamicCompartment`s to share a
-            `LocalSpeciesPopulation`; if `None`, then all species in the `species_populations`
-            participate in the reactions in this compartment
-    """
-    def __init__(self, id, name, init_volume, species_populations, species_ids=None):
-        self.id = id
-        self.name = name
-        self.init_volume = init_volume
-        self.species_populations = species_populations
-        self.species_ids = species_ids
-        self.initialize()
-
-    def initialize(self):
-        """ Initialize this `DynamicCompartment`
-        """
-        self.constant_density = self.mass()/self.init_volume
-
-    def mass(self):
-        """ Provide the total current mass of all species in this `DynamicCompartment`
-
-        Returns:
-            :obj:`float`: this compartment's total current mass (g)
-        """
-        return self.species_populations.mass(species_ids=self.species_ids)
-
-    def volume(self):
-        """ Provide the current volume of this `DynamicCompartment`
-
-        This compartment's density is assumed to be constant
-
-        Returns:
-            :obj:`float`: this compartment's current volume (L)
-        """
-        return self.mass()/self.constant_density
-
-    def __str__(self):
-        """ Provide a string representation of this `DynamicCompartment`
-
-        Returns:
-            :obj:`str`: a string representation of this compartment
-        """
-        values = []
-        values.append("ID: " + self.id)
-        values.append("Name: " + self.name)
-        values.append("Initial volume (L): {}".format(self.init_volume))
-        values.append("Constant density (g/L): {}".format(self.constant_density))
-        values.append("Current mass (g): {}".format(self.mass()))
-        values.append("Current volume (L): {}".format(self.volume()))
-        values.append("Fold change volume: {}".format(self.volume()/self.init_volume))
-        return "DynamicCompartment:\n{}".format('\n'.join(values))
-
-
 class MultialgorithmSimulation(object):
     """ A multi-algorithmic simulation
 
@@ -337,12 +135,12 @@ class MultialgorithmSimulation(object):
         self.simulation_submodels = {}
         self.species_pop_objs = {}
         self.shared_specie_store_name = shared_specie_store_name
-        self.dynamic_model = DynamicModel(model, self)
+        self.dynamic_model = DynamicModel(model)
 
     def initialize(self):
         """ Initialize a simulation
         """
-        self.initialize_biological_state()
+        self.init_populations = self.get_initial_species_pop(self.model)
         (self.private_species, self.shared_species) = self.partition_species()
         RateLawUtils.transcode_rate_laws(self.model)
         self.species_pop_objs = self.create_shared_species_pop_objs()
@@ -357,20 +155,25 @@ class MultialgorithmSimulation(object):
         self.initialize_simulation()
         return self.simulation
 
-    def initialize_biological_state(self):
-        """ Initialize the biological state of the simulation
+    @staticmethod
+    def get_initial_species_pop(model):
+        """ Obtain the initial species population
+
+        Args:
+            model (:obj:`Model`): a `wc_lang` model
+
+        Returns:
+            :obj:`dict`: a map specie_id -> population, for all species in `model`
         """
-        # initialize species populations
-        for species in self.model.get_species():
-            if species.concentration is None:
-                # TODO(Arthur): just init species with concentrations; have updates to count or
-                # concentration of unknown species add them
-                # make species.id() an alias for species.serialize()
-                self.init_populations[species.serialize()] = 0
+        init_populations = {}
+        for specie in model.get_species():
+            if specie.concentration is None:
+                init_populations[specie.id()] = 0.0
             else:
-                # TODO(Arthur): confirm that truncating to int is OK here
-                self.init_populations[species.serialize()] = \
-                    int(species.concentration.value * species.compartment.initial_volume * Avogadro)
+                # TODO(Arthur): confirm that rounding down is OK here
+                init_populations[specie.id()] = \
+                    int(specie.concentration.value * specie.compartment.initial_volume * Avogadro)
+        return init_populations
 
     def molecular_weights_for_species(self, species):
         """ Obtain the molecular weights for specified species ids
@@ -450,6 +253,44 @@ class MultialgorithmSimulation(object):
             self.shared_species)
         return access_species_population
 
+    @staticmethod
+    def create_local_species_population(model, retain_history=True):
+        """ Create a `LocalSpeciesPopulation` that contains all the species in a model
+
+        Instantiate a `LocalSpeciesPopulation` as a single, centralized store of a model's population.
+
+        Args:
+            model (:obj:`Model`): a `wc_lang` model
+            retain_history (:obj:`bool`, optional): whether the `LocalSpeciesPopulation` should
+                retain species population history
+
+        Returns:
+            :obj:`LocalSpeciesPopulation`: a `LocalSpeciesPopulation` for the model
+        """
+        initial_population = MultialgorithmSimulation.get_initial_species_pop(model)
+
+        molecular_weights = {}
+        for specie in model.get_species():
+            (specie_type_id, _) = ModelUtilities.parse_specie_id(specie.id())
+            molecular_weights[specie.id()] = SpeciesType.objects.get_one(id=specie_type_id).molecular_weight
+
+        # Species used by continuous time submodels (like DFBA and ODE) need initial fluxes
+        # which indicate that the species is modeled by a continuous time submodel.
+        # TODO(Arthur): support non-zero initial fluxes
+        initial_fluxes = {}
+        continuous_time_submodels = set([SubmodelAlgorithm.dfba, SubmodelAlgorithm.ode])
+        for submodel in model.get_submodels():
+            if submodel.algorithm in continuous_time_submodels:
+                for specie in submodel.get_species():
+                    initial_fluxes[specie.id()] = 0.0
+
+        return LocalSpeciesPopulation(
+            'LSP_' + model.id,
+            initial_population,
+            molecular_weights,
+            initial_fluxes=initial_fluxes,
+            retain_history=retain_history)
+
     def create_submodels(self):
         """ Create submodels that contain private species and access shared species
 
@@ -489,7 +330,7 @@ class MultialgorithmSimulation(object):
             else:
                 raise ValueError("Unsupported lang_submodel algorithm '{}'".format(lang_submodel.algorithm))
 
-            # connect the AccessSpeciesPopulations object to its affiliated Submodel
+            # connect the AccessSpeciesPopulations object to its affiliated DynamicSubmodel
             access_species_population.set_submodel(simulation_submodels[lang_submodel.id])
 
             # add the submodel to the simulation
