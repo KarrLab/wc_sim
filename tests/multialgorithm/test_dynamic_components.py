@@ -1,8 +1,8 @@
-""" Dynamic components of a multialgorithm simulation
+""" Test dynamic components of a multialgorithm simulation
 
 :Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
 :Date: 2018-02-07
-:Copyright: 2017-2018, Karr Lab
+:Copyright: 2018, Karr Lab
 :License: MIT
 """
 
@@ -24,27 +24,28 @@ class TestDynamicCompartment(unittest.TestCase):
         # make a LocalSpeciesPopulation
         num_species = 100
         species_nums = list(range(0, num_species))
-        species = list(map(lambda x: "specie_{}".format(x), species_nums))
+        species_ids = list(map(lambda x: "specie_{}".format(x), species_nums))
         all_pops = 1E6
-        init_populations = dict(zip(species, [all_pops]*len(species_nums)))
+        init_populations = dict(zip(species_ids, [all_pops]*len(species_nums)))
         all_m_weights = 50
-        molecular_weights = dict(zip(species, [all_m_weights]*len(species_nums)))
+        molecular_weights = dict(zip(species_ids, [all_m_weights]*len(species_nums)))
         local_species_pop = LocalSpeciesPopulation('test', init_populations, molecular_weights)
 
         # make a DynamicCompartment
         id = 'id'
         name = 'name'
         vol = 1E-17
-        dynamic_compartment = DynamicCompartment(id, name, vol, local_species_pop)
+        dynamic_compartment = DynamicCompartment(id, name, vol, local_species_pop, species_ids)
 
+        # test DynamicCompartment
         self.assertEqual(dynamic_compartment.volume(), vol)
         self.assertIn(dynamic_compartment.id, str(dynamic_compartment))
         self.assertIn("Fold change volume: 1.0", str(dynamic_compartment))
         estimated_mass = len(species_nums)*all_pops*all_m_weights/Avogadro
         self.assertAlmostEqual(dynamic_compartment.mass(), estimated_mass)
 
-        # compartment containing just the first species
-        dynamic_compartment = DynamicCompartment(id, name, vol, local_species_pop, species_ids=species[:1])
+        # compartment containing just the first species_ids
+        dynamic_compartment = DynamicCompartment(id, name, vol, local_species_pop, species_ids[:1])
         estimated_mass = all_pops*all_m_weights/Avogadro
         self.assertAlmostEqual(dynamic_compartment.mass(), estimated_mass)
 

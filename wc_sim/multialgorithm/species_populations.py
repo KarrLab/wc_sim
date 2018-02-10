@@ -87,8 +87,11 @@ class AccessSpeciesPopulations(AccessSpeciesPopulationInterface):   # pragma: no
     being used and the operation type. This object then maps the specie(s) to the entity or entities
     storing them, and executes the operation on each entity.
 
+    Essentially, an AccessSpeciesPopulations multiplexes a submodel's access to multiple population
+    stores.
+
     Attributes:
-        submodel (:obj:`Submodel`): the submodel which is using this AccessSpeciesPopulations
+        submodel (:obj:`DynamicSubmodel`): the submodel which is using this AccessSpeciesPopulations
         species_locations (:obj:`dict` of `str`): a map indicating the store for each specie used
             by the submodel using this object, that is, the local submodel.
         local_pop_store (:obj:`LocalSpeciesPopulation`): a store of local species
@@ -496,6 +499,8 @@ class SpeciesPopulationCache(object):       # pragma: no cover
 # logging
 debug_log = debug_logs.get_log('wc.debug.file')
 
+# TODO(Arthur): after MVP wc_sim is done, replace references to LocalSpeciesPopulation with
+# references to AccessSpeciesPopulations
 class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
     """ Maintain the population of a set of species
 
@@ -545,7 +550,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
                 provided for computing the mass of lists of species in a `LocalSpeciesPopulation`
             initial_fluxes (:obj:`dict` of `float`, optional): map: specie_id -> initial_flux;
                 initial fluxes for all species whose populations are estimated by a continuous
-                submodel. Fluxes are ignored for species not specified in initial_population
+                submodel. Fluxes are ignored for species not specified in initial_population.
             retain_history (:obj:`bool`, optional): whether to retain species population history
 
         Raises:
@@ -559,12 +564,11 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         if retain_history:
             self._initialize_history()
 
-        if initial_fluxes is not None:
-            for specie_id in initial_population:
+        for specie_id in initial_population:
+            if initial_fluxes is not None and specie_id in initial_fluxes:
                 self.init_cell_state_specie(specie_id, initial_population[specie_id],
                     initial_fluxes[specie_id])
-        else:
-            for specie_id in initial_population:
+            else:
                 self.init_cell_state_specie(specie_id, initial_population[specie_id])
 
         unknown_weights = set(initial_population.keys()) - set(molecular_weights.keys())
@@ -575,7 +579,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
                 ', '.join(map(lambda x: "'{}'".format(str(x)), unknown_weights))))
         self._molecular_weights = molecular_weights
 
-        # write initialization data
+        # log initialization data
         debug_log.debug("initial_population: {}".format(DictUtil.to_string_sorted_by_key(
             initial_population)), sim_time=self.time)
         debug_log.debug("initial_fluxes: {}".format(DictUtil.to_string_sorted_by_key(initial_fluxes)),

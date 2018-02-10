@@ -44,6 +44,7 @@ class ModelUtilities(object):
                 submodel = species_to_submodels[specie].pop()
                 private_species[submodel].append(specie)
 
+        # TODO(Arthur): globally s/serialize()/id()/
         if return_ids:
             tmp_dict = {}
             for submodel,species in private_species.items():

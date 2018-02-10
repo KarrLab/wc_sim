@@ -25,10 +25,9 @@ class DynamicCompartment(object):
         init_volume (:obj:`float`): initial volume specified in the `wc_lang` model
         species_populations (:obj:`LocalSpeciesPopulation`): a shared store of the simulation's
             species populations
-        species_ids (:obj:`list` of `str`, optional): the IDs of the species that participate in the
-            reactions in this compartment; this enables multiple `DynamicCompartment`s to share a
-            `LocalSpeciesPopulation`; if `None`, then all species in the `species_populations`
-            participate in the reactions in this compartment
+        species_ids (:obj:`list` of `str`): the IDs of the species stored
+            in this compartment; this enables multiple `DynamicCompartment`s to share a
+            `LocalSpeciesPopulation`
     """
     def __init__(self, id, name, init_volume, species_populations, species_ids=None):
         self.id = id
@@ -137,7 +136,7 @@ class DynamicModel(object):
                 break
 
         # cell mass
-        # DC: use DC mass?
+        # TODO(Arthur): next; DC: use DC mass?
         self.mass = self.initial_cell_mass([EXTRACELLULAR_COMPARTMENT_ID])
         self.fraction_dry_weight = utils.get_component_by_id(self.model.get_parameters(),
             'fractionDryWeight').value
@@ -152,25 +151,6 @@ class DynamicModel(object):
 
         # growth
         self.growth = np.nan
-
-    def create_dynamic_compartments(self, model):
-        """ Create dynamic compartments for the model
-
-        Args:
-            model (:obj:`Model`): the description of the whole-cell model in `wc_lang`
-
-        Returns:
-            :obj:`list` of `DynamicCompartment`: `DynamicCompartment`s for `model`, one for each
-                `Compartment` in `model`
-        """
-        dynamic_compartments = []
-        for compartment in model.get_compartments():
-            dynamic_compartments.append(DynamicCompartment(
-                compartment.id,
-                compartment.name,
-                compartment.initial_volume,
-                ))
-        return dynamic_compartments
 
     # DC: use DC masses
     def initial_cell_mass(self, extracellular_compartments):

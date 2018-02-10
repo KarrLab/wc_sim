@@ -1,4 +1,4 @@
-""" A generic submodel; a multi-algorithmic model is constructed of multiple submodel subclasses
+""" A generic dynamic submodel; a multi-algorithmic model is constructed of multiple dynamic submodel subclasses
 
 :Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
 :Author: Jonathan Karr, karr@mssm.edu
@@ -12,40 +12,43 @@ from scipy.constants import Avogadro
 from builtins import super
 
 from wc_lang.core import Species, Reaction, Compartment, Parameter
+from wc_lang.rate_law_utils import RateLawUtils
 from wc_sim.multialgorithm.dynamic_components import DynamicCompartment
 from wc_sim.core.simulation_object import SimulationObject, SimulationObjectInterface
 from wc_sim.multialgorithm.utils import get_species_and_compartment_from_name
 from wc_sim.multialgorithm.debug_logs import logs as debug_logs
 from wc_sim.multialgorithm import message_types, distributed_properties
+from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 
 # TODO(Arthur): reactions -> dynamic reactions
 # TODO(Arthur): species -> dynamic species, or morph into species populations species
-# TODO(Arthur): this submodel's parameters -> dynamic parameters
+# TODO(Arthur): this dynamic submodel's parameters -> dynamic parameters
+# TODO(Arthur): add logging/debugging to dynamic reactions, dynamic species, etc.
 # TODO(Arthur): use lists instead of sets for reproducibility
 
-
 class DynamicSubmodel(SimulationObject, SimulationObjectInterface):
-    """ Generic submodel functionality; subclasses of `DynamicSubmodel` are combined into a multi-algorithmic model
+    """ Generic dynamic submodel functionality; subclasses of `DynamicSubmodel` are combined into a multi-algorithmic model
 
     Attributes:
-        id (:obj:`str`): unique id of this submodel / simulation object
-        reactions (:obj:`list` of `Reaction`): the reactions modeled by this submodel
+        id (:obj:`str`): unique id of this dynamic submodel / simulation object
+        reactions (:obj:`list` of `Reaction`): the reactions modeled by this dynamic submodel
         species (:obj:`list` of `Species`): the species that participate in the reactions modeled
-            by this submodel, with their initial concentrations
+            by this dynamic submodel, with their initial concentrations
         parameters (:obj:`list` of `Parameter`): the model's parameters
-        dynamic_compartment (:obj:`DynamicCompartment`): the compartment which this submodel models
+        dynamic_compartments (:obj:`list` of `DynamicCompartment`): the dynamic compartments containing
+            species that participate in reactions that this dynamic submodel models, including adjacent
+            compartments used by its transfer reactions
         local_species_population (:obj:`LocalSpeciesPopulation`): the store that maintains this
-            submodel's species population
+            dynamic submodel's species population
     """
-
-    def __init__(self, id, reactions, species, parameters, dynamic_compartment, local_species_population):
-        """ Initialize a submodel
+    def __init__(self, id, reactions, species, parameters, dynamic_compartments, local_species_population):
+        """ Initialize a dynamic submodel
         """
         self.id = id
         self.reactions = reactions
         self.species = species
         self.parameters = parameters
-        self.dynamic_compartment = dynamic_compartment
+        self.dynamic_compartments = dynamic_compartments
         self.local_species_population = local_species_population
         super().__init__(id)
 
@@ -66,15 +69,15 @@ class DynamicSubmodel(SimulationObject, SimulationObjectInterface):
             [message_types.GiveProperty])
 
     def get_species_ids(self):
-        """ Get ids of species used by this submodel
+        """ Get ids of species used by this dynamic submodel
 
         Returns:
-            :obj:`list`: ids of species used by this submodel
+            :obj:`list`: ids of species used by this dynamic submodel
         """
         return [s.id() for s in self.species]
 
     def get_specie_counts(self):
-        """ Get a dictionary of current species counts for this submodel
+        """ Get a dictionary of current species counts for this dynamic submodel
 
         Returns:
             :obj:`dict`: a map: species_id -> current copy number
@@ -83,47 +86,50 @@ class DynamicSubmodel(SimulationObject, SimulationObjectInterface):
         return self.local_species_population.read(self.time, species_ids)
 
     def get_specie_concentrations(self):
-        """ Get the current species concentrations for this submodel
+        """ Get the current species concentrations for this dynamic submodel
 
+        Concentrations are obtained from species counts.
         concentration ~ count/volume
-        Provide concentrations for only species stored in this submodel's compartment, whose
+        Provide concentrations for only species stored in this dynamic submodel's compartment, whose
         volume is known.
 
         Returns:
             :obj:`dict`: a map: species_id -> species concentration
+
+        Raises:
+            :obj:`MultialgorithmError:` if a dynamic compartment cannot be found for a specie being modeled
         """
         counts = self.get_specie_counts()
-        ids = self.get_species_ids()
         concentrations = {}
-        for specie_id in ids:
-            (_, compartment) = get_species_and_compartment_from_name(specie_id)
-            if compartment == self.dynamic_compartment.id:
-                concentrations[specie_id] = (counts[specie_id]/self.dynamic_compartment.volume())/Avogadro
+        for specie_id in self.get_species_ids():
+            (_, compartment_id) = get_species_and_compartment_from_name(specie_id)
+            if compartment_id not in self.dynamic_compartments:
+                raise MultialgorithmError("dynamic submodel {} lacks dynamic compartment {} for specie '{}'".format(
+                    self.id, compartment_id, specie_id))
+            dynamic_compartment = self.dynamic_compartments[compartment_id]
+            concentrations[specie_id] = counts[specie_id]/(dynamic_compartment.volume()*Avogadro)
         return concentrations
 
-    @staticmethod
-    def calc_reaction_rates(reactions):
-        """ Calculate the rates for a submodel's reactions
+    def calc_reaction_rates(self):
+        """ Calculate the rates for this dynamic submodel's reactions
 
-        Rates computed by eval'ing reactions provided in this submodel's definition,
+        Rates computed by eval'ing reactions provided in this dynamic submodel's definition,
         with species concentrations obtained by lookup from the dict
-        `species_concentrations`.
-
-        Args:
-            reactions (list): reactions modeled by a calling submodel
+        `species_concentrations`. This assumes that all any reversible reactions have been split
+        into two forward reactions, as is done by `wc_lang.transform.SplitReversibleReactionsTransform`.
 
         Returns:
             A numpy array of reaction rates, indexed by reaction index.
         """
-        rates = np.full(len(reactions), np.nan)
+        rates = np.full(len(self.reactions), np.nan)
         species_concentrations = self.get_specie_concentrations()
-        for idx_reaction, rxn in enumerate(reactions):
-            if rxn.rate_law:
-                rates[idx_reaction] = DynamicSubmodel.eval_rate_law(rxn, species_concentrations)
+        for idx_reaction, rxn in enumerate(self.reactions):
+            if rxn.rate_laws:
+                rates[idx_reaction] = RateLawUtils.eval_rate_law(rxn.rate_laws[0], species_concentrations)
         return rates
 
     # These methods - enabled_reaction, identify_enabled_reactions, execute_reaction - are used
-    # by discrete time submodels like SSA and the SkeletonSubmodel
+    # by discrete time submodels like SSASubmodel and the SkeletonSubmodel.
     def enabled_reaction(self, reaction):
         """ Determine whether the cell state has adequate specie counts to run a reaction
 
@@ -151,7 +157,7 @@ class DynamicSubmodel(SimulationObject, SimulationObjectInterface):
         Identify reactions with specie counts smaller than their stoichiometric coefficient.
 
         Args:
-            propensities: np array: the current propensities for this submodel's reactions
+            propensities: np array: the current propensities for this dynamic submodel's reactions
 
         Returns:
             np array: an array indexed by reaction number; 0 indicates reactions with a
@@ -195,7 +201,7 @@ class DynamicSubmodel(SimulationObject, SimulationObjectInterface):
         try:
             self.local_species_population.adjust_discretely(self.time, adjustments)
         except ValueError as e:
-            raise ValueError("{:7.1f}: submodel {}: reaction: {}: {}".format(self.time, self.id,
+            raise ValueError("{:7.1f}: dynamic submodel {}: reaction: {}: {}".format(self.time, self.id,
                 reaction.id, e))
 
     def handle_get_current_prop_event(self, event):
@@ -211,7 +217,7 @@ class DynamicSubmodel(SimulationObject, SimulationObjectInterface):
         property_name = event.event_body.property_name
         if property_name == distributed_properties.MASS:
             '''
-            # TODO(Arthur): rethink this, as, strictly speaking, a submodel doesn't have mass, but its compartment does
+            # TODO(Arthur): rethink this, as, strictly speaking, a dynamic submodel doesn't have mass, but its compartment does
                     self.send_event(0, event.sending_object, message_types.GiveProperty,
                         event_body=message_types.GiveProperty(property_name, self.time,
                             self.mass()))

@@ -59,3 +59,5 @@ class TestMultialgorithmSimulation(unittest.TestCase):
 
         local_species_population = MultialgorithmSimulation.create_local_species_population(self.model)
         self.assertEqual(local_species_population.read_one(0, specie_wo_init_conc), 0)
+
+        # TODO(Arthur): next; IMPT; test create_dynamic_compartments_for_submodel()

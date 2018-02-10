@@ -9,7 +9,8 @@ from examples.phold import RunPhold
 class TestMultiAlgorithm(unittest.TestCase):
 
     def setUp(self):
-        warnings.simplefilter("ignore")        
+        # TODO(Arthur): turn off console logging
+        warnings.simplefilter("ignore")
 
     def run_phold(self, seed, end_time):
         args = Namespace(end_time=end_time, frac_self_events=0.3, num_phold_procs=10, seed=seed)
@@ -23,3 +24,5 @@ class TestMultiAlgorithm(unittest.TestCase):
 
         num_events2=self.run_phold(173, 10)
         self.assertNotEqual(num_events1, num_events2)
+
+    # TODO(Arthur): test RunPhold.parse_args()

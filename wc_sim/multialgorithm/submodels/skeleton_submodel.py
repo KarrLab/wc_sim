@@ -10,10 +10,10 @@ from builtins import super
 from wc_sim.core.simulation_object import SimulationObject
 from wc_sim.multialgorithm import message_types
 from wc_sim.multialgorithm.species_populations import AccessSpeciesPopulations
-from wc_sim.multialgorithm.submodels.submodel import Submodel
+from wc_sim.multialgorithm.submodels.dynamic_submodel import DynamicSubmodel
 from wc_sim.multialgorithm.message_types import ALL_MESSAGE_TYPES
 
-class SkeletonSubmodel(Submodel):
+class SkeletonSubmodel(DynamicSubmodel):
     """ Init a SkeletonSubmodel
 
     A SkeletonSubmodel is a simple submodel with externally controlled behavior.
@@ -23,15 +23,13 @@ class SkeletonSubmodel(Submodel):
 
         next_reaction
     """
-
-    def __init__(self, behavior, model, name, access_species_population,
-        reactions, species, parameters):
+    def __init__(self, id, reactions, species, parameters, dynamic_compartment,
+        local_species_population, behavior):
         """ Init a SkeletonSubmodel."""
-        super().__init__(model, name, access_species_population,
-            reactions, species, parameters)
         self.behavior = behavior
-        self.access_species_population = access_species_population
+        self.local_species_population = local_species_population
         self.next_reaction = 0
+        super().__init__(id, reactions, species, parameters, dynamic_compartment, local_species_population)
 
     def handle_GivePopulation_event(self, event):
         """ Handle a simulation event.
@@ -53,6 +51,7 @@ class SkeletonSubmodel(Submodel):
         # reaction_index is the reaction to execute
         reaction_index = event.event_body.reaction_index
         # Execute a reaction
+        # TODO(Arthur): first need to identify_enabled_reactions
         if self.enabled_reaction(self.reactions[reaction_index]):
             self.execute_reaction(self.access_species_population,
                 self.reactions[reaction_index])

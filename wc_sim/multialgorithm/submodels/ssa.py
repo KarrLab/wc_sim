@@ -22,19 +22,19 @@ from wc_sim.core.config import paths as config_paths_core
 from wc_sim.core.simulation_object import SimulationObject
 from wc_sim.multialgorithm import message_types
 from wc_sim.multialgorithm.config import paths as config_paths_multialgorithm
-from wc_sim.multialgorithm.submodels.submodel import Submodel
+from wc_sim.multialgorithm.submodels.dynamic_submodel import DynamicSubmodel
 
 config_core = ConfigManager(config_paths_core.core).get_config()['wc_sim']['core']
 config_multialgorithm = \
     ConfigManager(config_paths_multialgorithm.core).get_config()['wc_sim']['multialgorithm']
 
 
-class SSASubmodel(Submodel):
+class SSASubmodel(DynamicSubmodel):
     """ Use the Stochastic Simulation Algorithm to predict the dynamics of chemical species in a container
 
     This implementation supports a partition of the species populations into private, locally stored
     populations and shared, remotely stored populations. These are accessed through the ADT provided
-    by the `Submodel`'s `AccessSpeciesPopulations`. Appropriate optimizations are made if no
+    by the `DynamicSubmodel`'s `LocalSpeciesPopulation`. Appropriate optimizations are made if no
     populations are stored remotely.
 
     # TODO(Arthur): update the rest of this doc string
@@ -104,17 +104,15 @@ class SSASubmodel(Submodel):
         message_types.GivePopulation,
         message_types.ExecuteSsaReaction]
 
-    def __init__(self, model, name, access_species_population,
-        reactions, species, parameters, default_center_of_mass=None):
+    def __init__(self, id, reactions, species, parameters, dynamic_compartment,
+        local_species_population, default_center_of_mass=None):
         """Initialize an SSA submodel object.
 
         Args:
             Also see pydocs of super classes.
             default_center_of_mass (type): the center_of_mass for the ExponentialMovingAverage
         """
-        # TODO(Arthur): FIX, doesn't work as Submodel expects compartment 
-        super().__init__(model, name, access_species_population, reactions,
-            species, parameters)
+        super().__init__(id, reactions, species, parameters, dynamic_compartment, local_species_population)
 
         self.num_SsaWaits=0
         # The 'initial_ssa_wait_ema' must be positive, as otherwise an infinite sequence of SsaWait
@@ -156,7 +154,7 @@ class SSASubmodel(Submodel):
         # TODO(Arthur): IMPORTANT: provide volume for model; probably via get_volume(self.model)
         # DC: use DC volume
         propensities = self.model.volume * Avogadro * np.maximum(0,
-            Submodel.calc_reaction_rates(self.reactions, self.get_specie_concentrations()))
+            DynamicSubmodel.calc_reaction_rates(self.reactions))
 
         # avoid reactions with inadequate specie counts
         # todo: incorporate generalization in the COPASI paper

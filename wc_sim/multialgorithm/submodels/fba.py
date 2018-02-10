@@ -21,11 +21,11 @@ with warnings.catch_warnings():
 
 from wc_sim.core.simulation_object import SimulationObject
 from wc_sim.multialgorithm import message_types
-from wc_sim.multialgorithm.submodels.submodel import Submodel
+from wc_sim.multialgorithm.submodels.dynamic_submodel import DynamicSubmodel
 from wc_utils.util.misc import isclass_by_name
 
 
-class FbaSubmodel(Submodel):
+class FbaSubmodel(DynamicSubmodel):
     """
     FbaSubmodel employs Flux Balance Analysis to predict the reaction fluxes of
     a set of chemical species in a 'well-mixed' container constrained by maximizing
@@ -66,8 +66,8 @@ class FbaSubmodel(Submodel):
         message_types.RunFba,
     ]
 
-    def __init__(self, model, name, access_species_population,
-                 reactions, species, parameters, time_step):
+    def __init__(self, id, reactions, species, parameters, dynamic_compartment,
+        local_species_population, time_step):
         """ Initialize an FBA submodel
 
         # TODO(Arthur): expand description
@@ -76,8 +76,7 @@ class FbaSubmodel(Submodel):
             See pydocs of super classes.
             time_step: float; time between FBA executions
         """
-        # TODO(Arthur): FIX, doesn't work as Submodel expects compartment 
-        super().__init__(model, name, access_species_population, reactions, species, parameters)
+        super().__init__(id, reactions, species, parameters, dynamic_compartment, local_species_population)
         self.algorithm = 'FBA'
         self.time_step = time_step
 
@@ -224,6 +223,7 @@ class FbaSubmodel(Submodel):
         # biomass production
         adjustments = {}
         local_fluxes = {}
+        # TODO(Arthur): important, adjustments and local_fluxes need to be converted into copy number values
         for participant in self.metabolismProductionReaction['reaction'].participants:
             # was: self.speciesCounts[part.id] -= self.model.growth * part.coefficient * timeStep
             adjustments[participant.id] = (-self.model.growth * participant.coefficient * self.time_step,
@@ -249,7 +249,7 @@ class FbaSubmodel(Submodel):
         # DC: use DC volume
         upperBounds[0:len(self.reactions)] = np.fmin(
             upperBounds[0:len(self.reactions)],
-            Submodel.calc_reaction_rates(self.reactions, self.get_specie_concentrations())
+            DynamicSubmodel.calc_reaction_rates(self.reactions)
             * self.model.volume * Avogadro)
 
         # external nutrients availability

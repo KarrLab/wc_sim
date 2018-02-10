@@ -15,7 +15,7 @@ from math import ceil, floor, exp, log, log10, isnan
 import tokenize, token
 
 from obj_model import utils
-from wc_utils.util.list import difference
+from wc_utils.util.list import difference, det_dedupe
 from wc_lang.core import (SubmodelAlgorithm, Model, ObjectiveFunction, SpeciesType, SpeciesTypeType,
     Species, Compartment, Reaction, ReactionParticipant, RateLawEquation, BiomassReaction)
 from wc_lang.core import Submodel as LangSubmodel
@@ -25,7 +25,7 @@ from wc_sim.core.simulation_engine import SimulationEngine
 from wc_sim.multialgorithm import message_types
 from wc_sim.multialgorithm.model_utilities import ModelUtilities
 from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation, AccessSpeciesPopulations
-from wc_sim.multialgorithm.submodels.submodel import DynamicSubmodel
+from wc_sim.multialgorithm.submodels.dynamic_submodel import DynamicSubmodel
 from wc_sim.multialgorithm.submodels.ssa import SSASubmodel
 from wc_sim.multialgorithm.submodels.fba import FbaSubmodel
 from wc_sim.multialgorithm.species_populations import LOCAL_POP_STORE, Specie, SpeciesPopSimObject
@@ -168,7 +168,7 @@ class MultialgorithmSimulation(object):
         init_populations = {}
         for specie in model.get_species():
             if specie.concentration is None:
-                init_populations[specie.id()] = 0.0
+                init_populations[specie.id()] = 0
             else:
                 # TODO(Arthur): confirm that rounding down is OK here
                 init_populations[specie.id()] = \
@@ -252,6 +252,41 @@ class MultialgorithmSimulation(object):
         access_species_population.add_species_locations(self.shared_specie_store_name,
             self.shared_species)
         return access_species_population
+
+    @staticmethod
+    def create_dynamic_compartments_for_submodel(model, submodel, local_species_pop):
+        """ Create the `DynamicCompartment`(s) that a `DynamicSubmodel` will use
+
+        Args:
+            model (:obj:`Model`): a `wc_lang` model
+            submodel (:obj:`Submodel`): the `wc_lang` submodel being compiled into a `DynamicSubmodel`
+            local_species_pop (:obj:`LocalSpeciesPopulation`): the store that maintains the
+                species population for the `DynamicCompartment`(s)
+
+        Returns:
+            :obj:`dict`: mapping: compartment id -> `DynamicCompartment` for the
+                `DynamicCompartment`(s) that a new `DynamicSubmodel` needs
+        """
+        # TODO(Arthur): make and use a det_set object, that has performance of a set and determinism of a list
+        compartments = []
+        for rxn in submodel.reactions:
+            for participant in rxn.participants:
+                compartments.append(participant.species.compartment)
+        compartments = det_dedupe(compartments)
+        # TODO(Arthur): log this
+        # print("submodel {} needs these DynamicCompartment(s): {}".format(submodel.id, [c.id for c in compartments]))
+
+        # make DynamicCompartments
+        dynamic_compartments = {}
+        for comp in compartments:
+            # TODO(Arthur): make this cleaner:
+            # a dynamic compartment must have the same id as the corresponding wc_lang compartment
+            dynamic_compartments[comp.id] = DynamicCompartment(
+                comp.id,
+                comp.name,
+                comp.initial_volume,
+                local_species_pop)
+        return dynamic_compartments
 
     @staticmethod
     def create_local_species_population(model, retain_history=True):
