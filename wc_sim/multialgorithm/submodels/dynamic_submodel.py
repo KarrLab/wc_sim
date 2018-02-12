@@ -18,7 +18,7 @@ from wc_sim.core.simulation_object import SimulationObject, SimulationObjectInte
 from wc_sim.multialgorithm.utils import get_species_and_compartment_from_name
 from wc_sim.multialgorithm.debug_logs import logs as debug_logs
 from wc_sim.multialgorithm import message_types, distributed_properties
-from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
+from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError, SpeciesPopulationError
 
 # TODO(Arthur): reactions -> dynamic reactions
 # TODO(Arthur): species -> dynamic species, or morph into species populations species
@@ -104,7 +104,7 @@ class DynamicSubmodel(SimulationObject, SimulationObjectInterface):
         for specie_id in self.get_species_ids():
             (_, compartment_id) = get_species_and_compartment_from_name(specie_id)
             if compartment_id not in self.dynamic_compartments:
-                raise MultialgorithmError("dynamic submodel {} lacks dynamic compartment {} for specie '{}'".format(
+                raise MultialgorithmError("dynamic submodel '{}' lacks dynamic compartment '{}' for specie '{}'".format(
                     self.id, compartment_id, specie_id))
             dynamic_compartment = self.dynamic_compartments[compartment_id]
             concentrations[specie_id] = counts[specie_id]/(dynamic_compartment.volume()*Avogadro)
@@ -133,6 +133,9 @@ class DynamicSubmodel(SimulationObject, SimulationObjectInterface):
     def enabled_reaction(self, reaction):
         """ Determine whether the cell state has adequate specie counts to run a reaction
 
+        Indicate whether the current specie counts are large enough to execute `reaction`, based on
+        its stoichiometry.
+
         Args:
             reaction (:obj:`Reaction`): the reaction to evaluate
 
@@ -149,36 +152,18 @@ class DynamicSubmodel(SimulationObject, SimulationObjectInterface):
                 return False
         return True
 
-    def identify_enabled_reactions(self, propensities):
+    def identify_enabled_reactions(self):
         """ Determine which reactions have adequate specie counts to run
 
-        A reaction's mass action kinetics, as computed by calc_reaction_rates(),
-        may be positive when insufficient species are available to execute the reaction.
-        Identify reactions with specie counts smaller than their stoichiometric coefficient.
-
-        Args:
-            propensities: np array: the current propensities for this dynamic submodel's reactions
-
         Returns:
-            np array: an array indexed by reaction number; 0 indicates reactions with a
-            propensity of 0 or without adequate species counts
+            np array: an array indexed by reaction number; 0 indicates reactions without adequate
+                species counts
         """
         enabled = np.full(len(self.reactions), 1)
         for idx_reaction, rxn in enumerate(self.reactions):
-            # ignore reactions with propensities that are already 0
-            if propensities[idx_reaction] <= 0:
-                enabled[idx_reaction] = 0
-                continue
-
-            # compare each reaction with its stoichiometry,
-            # reaction disabled if the specie count of any reactant is less than its coefficient
             if not self.enabled_reaction(rxn):
                 enabled[idx_reaction] = 0
 
-                log = debug_logs.get_log('wc.debug.file')
-                log.debug(
-                    "reaction: {} of {}: insufficient counts".format(idx_reaction, len(self.reactions)),
-                    sim_time=self.time)
         return enabled
 
     def execute_reaction(self, reaction):
@@ -191,7 +176,7 @@ class DynamicSubmodel(SimulationObject, SimulationObjectInterface):
             reaction (:obj:`Reaction`): the reaction being executed
 
         Raises:
-            :obj:`ValueError:` if the species population cannot be updated
+            :obj:`MultialgorithmError:` if the species population cannot be updated
         """
         adjustments = {}
         for participant in reaction.participants:
@@ -200,19 +185,19 @@ class DynamicSubmodel(SimulationObject, SimulationObjectInterface):
             adjustments[species_id] = participant.coefficient
         try:
             self.local_species_population.adjust_discretely(self.time, adjustments)
-        except ValueError as e:
-            raise ValueError("{:7.1f}: dynamic submodel {}: reaction: {}: {}".format(self.time, self.id,
-                reaction.id, e))
+        except SpeciesPopulationError as e:
+            raise MultialgorithmError("{:7.1f}: dynamic submodel '{}' cannot execute reaction: {}: {}".format(
+                self.time, self.id, reaction.id, e))
 
-    def handle_get_current_prop_event(self, event):
+    # TODO(Arthur): cover after MVP wc_sim done
+    def handle_get_current_prop_event(self, event):   # pragma: no cover
         """ Handle a GetCurrentProperty simulation event.
 
         Args:
             event (:obj:`wc_sim.core.Event`): an `Event` to process
 
         Raises:
-            ValueError: if an `GetCurrentProperty` message requests an unknown
-                property.
+            MultialgorithmError: if an `GetCurrentProperty` message requests an unknown property
         """
         property_name = event.event_body.property_name
         if property_name == distributed_properties.MASS:
@@ -222,6 +207,6 @@ class DynamicSubmodel(SimulationObject, SimulationObjectInterface):
                         event_body=message_types.GiveProperty(property_name, self.time,
                             self.mass()))
             '''
-            raise ValueError("Error: not handling distributed_properties.MASS")
+            raise MultialgorithmError("Error: not handling distributed_properties.MASS")
         else:
-            raise ValueError("Error: unknown property_name: '{}'".format(property_name))
+            raise MultialgorithmError("Error: unknown property_name: '{}'".format(property_name))

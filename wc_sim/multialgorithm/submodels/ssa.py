@@ -157,8 +157,8 @@ class SSASubmodel(DynamicSubmodel):
             DynamicSubmodel.calc_reaction_rates(self.reactions))
 
         # avoid reactions with inadequate specie counts
-        # todo: incorporate generalization in the COPASI paper
-        enabled_reactions = self.identify_enabled_reactions(propensities)
+        # TODO(Arthur): incorporate generalization in the COPASI paper
+        enabled_reactions = self.identify_enabled_reactions()
         propensities = enabled_reactions * propensities
         total_propensities = np.sum(propensities)
         return (propensities, total_propensities)

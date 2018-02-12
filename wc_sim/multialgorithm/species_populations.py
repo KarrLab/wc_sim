@@ -617,7 +617,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
 
         Raises:
             :obj:`SpeciesPopulationError`: if species is not a set
-            :obj:`SpeciesPopulationError`: if any species in `species are non-existent
+            :obj:`SpeciesPopulationError`: if any species in `species` do not exist
             :obj:`SpeciesPopulationError`: if a specie in `species` is being accessed at a time earlier
                 than a prior access.
         """
