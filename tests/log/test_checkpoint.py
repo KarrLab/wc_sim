@@ -13,8 +13,8 @@ import shutil
 import tempfile
 import unittest
 # import wc.sim.core
-# import wc.sim.metadata
 import wc_sim.sim_config
+import wc_sim.sim_metadata
 import wc_lang.core
 import wc_utils.util.types
 
@@ -147,14 +147,14 @@ class CheckpointLogTest(unittest.TestCase):
         chkpt = wc_sim.log.checkpoint.Checkpoint.get_checkpoint(dirname=checkpoint_dir, time=2.)
         wc_utils.util.types.assert_value_equal(
             chkpt.metadata,
-            wc.sim.metadata.Metadata(None, sim_config, None, None),
+            wc_sim.sim_metadata.Metadata(None, sim_config, None, None),
             check_iterable_ordering=True)
         self.assertEqual(chkpt.time, 2)
 
         chkpt = wc_sim.log.checkpoint.Checkpoint.get_checkpoint(dirname=checkpoint_dir)
         wc_utils.util.types.assert_value_equal(
             chkpt.metadata,
-            wc.sim.metadata.Metadata(None, sim_config, None, None),
+            wc_sim.sim_metadata.Metadata(None, sim_config, None, None),
             check_iterable_ordering=True)
         self.assertEqual(chkpt.time, time_max)
 
@@ -186,7 +186,7 @@ class CheckpointLogTest(unittest.TestCase):
         chkpt = wc_sim.log.checkpoint.Checkpoint.get_checkpoint(dirname=checkpoint_dir)
         wc_utils.util.types.assert_value_equal(
             chkpt.metadata,
-            wc.sim.metadata.Metadata(None, sim_config, None, None),
+            wc_sim.sim_metadata.Metadata(None, sim_config, None, None),
             check_iterable_ordering=True)
         self.assertEqual(chkpt.time, final_time)
         numpy.testing.assert_equal(chkpt.random_state, final_random_state)
