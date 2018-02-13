@@ -33,6 +33,12 @@ class Writer(object):
     # .. todo:: Use pytables rather than pickle
     # .. todo:: implement parallelizable logging system
 
+    STATES = (
+        'volume',
+        'growth',
+        'species_counts',
+    )
+
     def __init__(self, state, num_time_steps, log_path):
         """ Construct a log writer.
 
@@ -55,18 +61,19 @@ class Writer(object):
         """
 
         # Allocate memory to store results
+        n_steps = self.num_time_steps
         self._simulation_results = {
-            'time': numpy.full((1, 1, self.num_time_steps + 1), numpy.nan),
-            'volume': numpy.full((1, 2, self.num_time_steps + 1), numpy.nan),
-            'growth': numpy.full((1, 1, self.num_time_steps + 1), numpy.nan),
-            'species_counts': numpy.zeros((len(self.state.species_ids), len(self.state.compartment_ids), self.num_time_steps + 1)),
+            'time': numpy.full((1, 1, n_steps + 1), numpy.nan),
         }
+        for state in self.STATES:
+            size = getattr(self.state, state).shape
+            self._simulation_results[state] = numpy.full(list(size) + [n_steps + 1], numpy.nan)
 
         # Initial index of current log slice
         self._current_results_index = -1
 
         # Record initial simulated state
-        self.append(0)
+        self.append(0.)
 
     def append(self, time):
         """ Appends current simulated state to results log.
@@ -80,9 +87,8 @@ class Writer(object):
 
         # Record simulated state
         self._simulation_results['time'][:, :, self._current_results_index] = time
-        self._simulation_results['volume'][:, :, self._current_results_index] = self.state.volume
-        self._simulation_results['growth'][:, :, self._current_results_index] = self.state.growth
-        self._simulation_results['species_counts'][:, :, self._current_results_index] = self.state.species_counts
+        for state in self.STATES:
+            self._simulation_results[state][:, :, self._current_results_index] = getattr(self.state, state)
 
     def close(self):
         """ Finalizes simulation results log.
@@ -96,3 +102,19 @@ class Writer(object):
 
         # Deallocate memory
         self._simulation_results = None
+
+
+class Reader(object):
+    """ Reads logged simulation results from pickle files """
+
+    def run(self, log_path):
+        """ Read a log
+
+        Args:
+            log_path (:obj:`str`): path to log
+
+        Returns:
+            :obj:`dict`: logged results
+        """
+        with open(log_path, 'rb') as file:
+            return pickle.load(file)

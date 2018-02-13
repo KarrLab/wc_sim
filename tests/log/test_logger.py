@@ -6,61 +6,80 @@
 :License: MIT
 """
 
+import math
+import mock
+import numpy
+import os
+import shutil
+import tempfile
 import unittest
-# import wc.sim.core
-import wc_lang.core
 import wc_sim.log.core
 import wc_sim.sim_config
+
+# .. todo :: test with the actual simulator
 
 
 class TestLogging(unittest.TestCase):
     """ Tests of the complete example model """
 
     def setUp(self):
-        # build model
-        self.model = wc_lang.core.Model()
+        self.dir = tempfile.mkdtemp()
 
+    def tearDown(self):
+        shutil.rmtree(self.dir)
+
+    def test_ExampleSimulator(self):
         # build simulation configuration
-        self.sim_config = wc_sim.sim_config.SimulationConfig(time_max=10, time_step=1)
+        sim_config = wc_sim.sim_config.SimulationConfig(time_max=10., time_step=1.)
 
-    @unittest.skip('skipping temporarily')
-    def test_logger(self):
-        simulator = wc.sim.core.Simulator(self.model)
-        simulator.run(self.sim_config)
+        # run simulation and log results
+        log_path = os.path.join(self.dir, 'log.pickle')
+        simulator = ExampleSimulator()
+        simulator.run(sim_config, log_path)
+
+        # assertions
+        results = wc_sim.log.core.Reader().run(log_path)
+
+        numpy.testing.assert_array_equal(results['time'], numpy.arange(0., 11., 1.).reshape((1, 1, 11)))
+
+        numpy.testing.assert_array_equal(results['volume'][:, :, 0], numpy.full((1, 2), 1.))
+        numpy.testing.assert_array_equal(results['volume'][:, :, -1], numpy.full((1, 2), 2.))
+
+        numpy.testing.assert_array_equal(results['growth'][:, :, 0], numpy.full((1, 2), 1.))
+        numpy.testing.assert_array_equal(results['growth'][:, :, -1], numpy.full((1, 2), 2.))
+
+        self.assertEqual(results['species_counts'].shape, (5, 2, 11))
 
 
-class SimulatorExample(object):
+class ExampleSimulator(object):
 
-    def __init__(self):
-        self.processes = [
-            ExampleProcess(id='proc-1'),
-            ExampleProcess(id='proc-2'),
-        ]
+    def run(self, sim_config, log_path):
+        time_max = sim_config.time_max
+        time_step = sim_config.time_step
+        num_time_steps = sim_config.get_num_time_steps()
 
-    def run(self, time_max, time_step, log_path):
-        # initialize logs
-        log_writers = []
-        for process in self.processes:
-            log_writer = wc_sim.log.core.Writer()
-            log_writer.start()
-            log_writers.append(log_writer)
+        state = mock.Mock(
+            time=0.,
+            volume=numpy.ones((1, 2)),
+            growth=numpy.ones((1, 2)),
+            species_counts=numpy.random.random_integers(0, 100, size=(5, 2)),
+        )
+
+        # initialize log
+        writer = wc_sim.log.core.Writer(state, num_time_steps, log_path)
+        writer.start()
 
         # simulate and log results
-        num_time_steps = int(self.time_max / self.time_step)
+        time = 0.
         for i_time_step in range(num_time_steps):
             time += time_step
-            for process, log_writer in zip(self.processes, log_writers):
-                process.integrate(time_step, log_writer)
+
+            state.time = time
+            state.volume = numpy.full((1, 2), math.exp(math.log(2) * time / time_max))
+            state.growth = numpy.full((1, 2), math.exp(math.log(2) * time / time_max))
+            state.species_counts = numpy.random.random_integers(0, 100, size=(5, 2))
+
+            writer.append(time)
 
         # finalize logs
-        for log_writer in log_writers:
-            log_writer.close()
-
-
-class ExampleProcess(object):
-
-    def __init__(self, id):
-        self.id = id
-
-    def integrate(self, log_writer):
-        pass
+        writer.close()
