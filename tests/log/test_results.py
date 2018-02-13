@@ -38,7 +38,7 @@ class TestLogging(unittest.TestCase):
         simulator.run(sim_config, log_path)
 
         # assertions
-        results = wc_sim.log.results.Reader().run(log_path)
+        results = wc_sim.log.results.Reader(log_path).run()
 
         numpy.testing.assert_array_equal(results['time'], numpy.arange(0., 11., 1.).reshape((1, 1, 11)))
 

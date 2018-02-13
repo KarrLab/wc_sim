@@ -105,16 +105,24 @@ class Writer(object):
 
 
 class Reader(object):
-    """ Reads logged simulation results from pickle files """
+    """ Reads logged simulation results from pickle files
 
-    def run(self, log_path):
-        """ Read a log
+    Attributes:
+        log_path (:obj:`str`): path to log
+    """
 
+    def __init__(self, log_path):
+        """
         Args:
             log_path (:obj:`str`): path to log
+        """
+        self.log_path = log_path
+
+    def run(self):
+        """ Read a log        
 
         Returns:
             :obj:`dict`: logged results
         """
-        with open(log_path, 'rb') as file:
+        with open(self.log_path, 'rb') as file:
             return pickle.load(file)
