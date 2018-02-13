@@ -14,7 +14,6 @@ import warnings
 
 from scipy.constants import Avogadro
 
-import wc_lang
 from wc_lang.io import Reader
 from wc_lang.core import Reaction, SpeciesType, Species
 from wc_lang.prepare import PrepareModel, CheckModel
@@ -27,71 +26,51 @@ from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation
 from wc_sim.multialgorithm import message_types, distributed_properties
 from wc_sim.multialgorithm.utils import get_species_and_compartment_from_name
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
+from wc_sim.multialgorithm.submodels.skeleton_submodel import SkeletonSubmodel
 from obj_model.utils import get_component_by_id
-from tests.core.mock_simulation_object import MockSimulationObjectInterface
 
+def prepare_model(model):
+    SplitReversibleReactionsTransform().run(model)
+    # TODO:(Arthur): put these in a high-level prepare
+    PrepareModel(model).run()
+    CheckModel(model).run()
 
-class MockSimulationObject(MockSimulationObjectInterface):
-
-    def send_initial_events(self): pass
-
-    def handle_GiveProperty_event(self, event):
-        """Perform a unit test on the molecular weight of a SpeciesPopSimObject"""
-        property_name = event.event_body.property_name
-        self.test_case.assertEqual(property_name, distributed_properties.MASS)
-        self.test_case.assertEqual(event.event_body.value, self.expected_value)
-
-    @classmethod
-    def register_subclass_handlers(this_class):
-        SimulationObject.register_handlers(this_class, [
-            (message_types.GiveProperty, this_class.handle_GiveProperty_event)])
-
-    @classmethod
-    def register_subclass_sent_messages(this_class):
-        SimulationObject.register_sent_messages(this_class, [message_types.GetCurrentProperty])
+def make_dynamic_submodel_params(model, lang_submodel):
+    local_species_pop = MultialgorithmSimulation.make_local_species_pop(model)
+    dynamic_compartments = MultialgorithmSimulation.create_dynamic_compartments_for_submodel(
+        model,
+        lang_submodel,
+        local_species_pop)
+    return (lang_submodel.id,
+            lang_submodel.reactions,
+            lang_submodel.get_species(),
+            model.get_parameters(),
+            dynamic_compartments,
+            local_species_pop)
 
 
 class TestDynamicSubmodel(unittest.TestCase):
-
-    MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures',
-        'test_submodel_no_shared_species.xlsx')
 
     def setUp(self):
         warnings.simplefilter("ignore")
         SpeciesType.objects.reset()
 
+        self.MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures',
+            'test_submodel_no_shared_species.xlsx')
         self.model = Reader().run(self.MODEL_FILENAME)
-        # TODO:(Arthur): put these in a high-level prepare
-        SplitReversibleReactionsTransform().run(self.model)
-        PrepareModel(self.model).run()
-        CheckModel(self.model).run()
-
-        self.local_species_pop = local_species_pop = MultialgorithmSimulation.create_local_species_population(self.model)
+        prepare_model(self.model)
         self.dynamic_submodels = {}
         self.misconfigured_dynamic_submodels = {}
         for lang_submodel in self.model.get_submodels():
-            dynamic_compartments = MultialgorithmSimulation.create_dynamic_compartments_for_submodel(
-                self.model,
-                lang_submodel,
-                local_species_pop)
             self.dynamic_submodels[lang_submodel.id] = DynamicSubmodel(
-                lang_submodel.id,
-                lang_submodel.reactions,
-                lang_submodel.get_species(),
-                self.model.get_parameters(),
-                dynamic_compartments,
-                local_species_pop)
+                *make_dynamic_submodel_params(self.model, lang_submodel))
 
             # create dynamic submodels that lack a dynamic compartment
-            short_dynamic_compartments = dynamic_compartments.copy()
-            short_dynamic_compartments.popitem()
+            (id, reactions, species, parameters, dynamic_compartments, local_species_pop) = \
+                make_dynamic_submodel_params(self.model, lang_submodel)
+            dynamic_compartments.popitem()
             self.misconfigured_dynamic_submodels[lang_submodel.id] = DynamicSubmodel(
-                lang_submodel.id,
-                lang_submodel.reactions,
-                lang_submodel.get_species(),
-                self.model.get_parameters(),
-                short_dynamic_compartments,
-                local_species_pop)
+                id, reactions, species, parameters, dynamic_compartments, local_species_pop)
 
     def test_get_specie_concentrations(self):
         expected_conc = {}
@@ -164,11 +143,41 @@ class TestDynamicSubmodel(unittest.TestCase):
                     six.assertRegex(self, str(context.exception),
                         "dynamic submodel .* cannot execute reaction")
 
+
+class TestSkeletonSubmodel(unittest.TestCase):
+
+    def setUp(self):
+        warnings.simplefilter("ignore")
+        self.MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures',
+            'test_submodel_no_shared_species.xlsx')
+        self.model = Reader().run(self.MODEL_FILENAME)
+        prepare_model(self.model)
+        self.dynamic_skeleton_submodel = {}
+        self.simulator = SimulationEngine()
+        self.simulator.register_object_types([SkeletonSubmodel])
+        self.simulator.reset()
+
+    def test_skeleton_submodel(self):
+        behavior = {'INTER_REACTION_TIME': 4}
+        lang_submodel = self.model.get_submodels()[0]
+        skeleton_submodel = SkeletonSubmodel(
+            *make_dynamic_submodel_params(self.model, lang_submodel),
+            behavior)
+        self.simulator.add_object(skeleton_submodel)
+        self.simulator.initialize()
+        self.simulator.simulate(50.0)
+        '''
+        self.assertEqual(self.simulator.simulate(5.0), 3)
+
+            self.submodels[submodel.id] = SkeletonSubmodel(behavior, self.model, submodel.id,
+                access_species_population, submodel.reactions, submodel.get_species(), submodel.parameters)
+            self.simulator.add_object(self.submodels[submodel.id])
+        '''
+
+
 # TODO(Arthur): test submodels with running simulator
 # TODO(Arthur): eliminate redundant code in test_submodel.py; search for distributed_properties
-"""
 class TestDynamicSubmodelSimulating(unittest.TestCase):
 
     def test_dynamic_submodel(self):
         pass
-"""

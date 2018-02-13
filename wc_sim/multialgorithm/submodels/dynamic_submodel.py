@@ -56,15 +56,19 @@ class DynamicSubmodel(SimulationObject, SimulationObjectInterface):
     def send_initial_events(self):
         pass    # pragma: no cover
 
+    # TODO(Arthur): cover after MVP wc_sim done
     @classmethod
-    def register_subclass_handlers(cls):
+    def register_subclass_handlers(cls):    # pragma: no cover
+        return
         SimulationObject.register_handlers(cls, [
             # At any time instant, event messages are processed in this order
             (message_types.GetCurrentProperty, cls.handle_get_current_prop_event),
         ])
 
+    # TODO(Arthur): cover after MVP wc_sim done
     @classmethod
-    def register_subclass_sent_messages(cls):
+    def register_subclass_sent_messages(cls):   # pragma: no cover
+        return
         SimulationObject.register_sent_messages(cls,
             [message_types.GiveProperty])
 

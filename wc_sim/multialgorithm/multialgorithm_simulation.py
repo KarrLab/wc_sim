@@ -289,7 +289,7 @@ class MultialgorithmSimulation(object):
         return dynamic_compartments
 
     @staticmethod
-    def create_local_species_population(model, retain_history=True):
+    def make_local_species_pop(model, retain_history=True):
         """ Create a `LocalSpeciesPopulation` that contains all the species in a model
 
         Instantiate a `LocalSpeciesPopulation` as a single, centralized store of a model's population.

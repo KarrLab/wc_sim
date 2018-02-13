@@ -57,7 +57,5 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         for concentration in self.model.get_concentrations():
             self.assertGreater(initial_species_population[concentration.species.id()], 0)
 
-        local_species_population = MultialgorithmSimulation.create_local_species_population(self.model)
+        local_species_population = MultialgorithmSimulation.make_local_species_pop(self.model)
         self.assertEqual(local_species_population.read_one(0, specie_wo_init_conc), 0)
-
-        # TODO(Arthur): next; IMPT; test create_dynamic_compartments_for_submodel()

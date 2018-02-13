@@ -1,4 +1,4 @@
-""" A simplistic, configurable submodel for testing during development.
+""" A simplistic, configurable submodel for testing submodels and the simulator
 
 :Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
 :Date: 2016_12_06
@@ -7,11 +7,11 @@
 """
 from builtins import super
 
+from wc_sim.core.event import Event
 from wc_sim.core.simulation_object import SimulationObject
 from wc_sim.multialgorithm import message_types
-from wc_sim.multialgorithm.species_populations import AccessSpeciesPopulations
-from wc_sim.multialgorithm.submodels.dynamic_submodel import DynamicSubmodel
 from wc_sim.multialgorithm.message_types import ALL_MESSAGE_TYPES
+from wc_sim.multialgorithm.submodels.dynamic_submodel import DynamicSubmodel
 
 class SkeletonSubmodel(DynamicSubmodel):
     """ Init a SkeletonSubmodel
@@ -19,20 +19,36 @@ class SkeletonSubmodel(DynamicSubmodel):
     A SkeletonSubmodel is a simple submodel with externally controlled behavior.
 
     Attributes:
-        behavior (:obj:`wc_sim.core.Event`): an Event to process
-
-        next_reaction
+        behavior (:obj:`dict`): a dictionary of behavioral parameters
+        next_reaction (:obj:`int`): the index of the next reaction to execute
     """
-    def __init__(self, id, reactions, species, parameters, dynamic_compartment,
+    def __init__(self, id, reactions, species, parameters, dynamic_compartments,
         local_species_population, behavior):
-        """ Init a SkeletonSubmodel."""
+        print('reactions', reactions)
         self.behavior = behavior
-        self.local_species_population = local_species_population
         self.next_reaction = 0
-        super().__init__(id, reactions, species, parameters, dynamic_compartment, local_species_population)
+        super().__init__(id, reactions, species, parameters, dynamic_compartments,
+            local_species_population)
 
-    def handle_GivePopulation_event(self, event):
-        """ Handle a simulation event.
+    # these first three methods override DynamicSubmodel methods
+    def send_initial_events(self):
+        print("{} executing handle_ExecuteSsaReaction_event".format(self.id))
+
+    @classmethod
+    def register_subclass_handlers(this_class):
+        SimulationObject.register_handlers(this_class, [
+            # TODO(Arthur): cover after MVP wc_sim done
+            # (message_types.GivePopulation, this_class.handle_GivePopulation_event),
+            (message_types.ExecuteSsaReaction, this_class.handle_ExecuteSsaReaction_event),
+        ])
+
+    @classmethod
+    def register_subclass_sent_messages(this_class):
+        SimulationObject.register_sent_messages(this_class, ALL_MESSAGE_TYPES)
+
+    # TODO(Arthur): cover after MVP wc_sim done
+    def handle_GivePopulation_event(self, event):   # pragma: no cover
+        """ Handle a simulation event that contains a GivePopulation message
 
         Args:
             event (:obj:`wc_sim.core.Event`): an Event to process
@@ -42,42 +58,25 @@ class SkeletonSubmodel(DynamicSubmodel):
         self.access_species_population.species_population_cache.cache_population(
             self.time, populations)
 
+    def schedule_the_next_reaction(self):
+        # Schedule the next reaction
+        dt = self.behavior['INTER_REACTION_TIME']
+        self.next_reaction += 1
+        self.next_reaction %= len(self.reactions)
+        self.send_event(dt, self, message_types.ExecuteSsaReaction(self.next_reaction))
+
     def handle_ExecuteSsaReaction_event(self, event):
-        """ Handle a simulation event.
+        """ Handle a simulation event that contains an ExecuteSsaReaction message
 
         Args:
             event (:obj:`wc_sim.core.Event`): an Event to process
         """
+        print("{} executing handle_ExecuteSsaReaction_event".format(self.id))
         # reaction_index is the reaction to execute
         reaction_index = event.event_body.reaction_index
         # Execute a reaction
-        # TODO(Arthur): first need to identify_enabled_reactions
         if self.enabled_reaction(self.reactions[reaction_index]):
-            self.execute_reaction(self.access_species_population,
-                self.reactions[reaction_index])
+            self.execute_reaction(self.reactions[reaction_index])
             # TODO(Arthur): convert print() to log message
-            # print("{} executing '{}'".format(self.name, str(self.reactions[reaction_index])))
-
-        # Schedule the next reaction
-        dt = self.behavior['INTER_REACTION_TIME']
-        self.next_reaction += 1
-        if self.next_reaction == len(self.reactions):
-            self.next_reaction = 0
-        self.send_event(dt, self, message_types.ExecuteSsaReaction,
-            message_types.ExecuteSsaReaction(self.next_reaction))
-
-        # issue read request for species population at time of next reaction
-        species_ids = set([s.id for s in self.species])
-        # TODO(Arthur): IMPORTANT: only prefetch reactants
-        self.access_species_population.prefetch(dt, species_ids)
-
-    @classmethod
-    def register_subclass_handlers(this_class):
-        SimulationObject.register_handlers(this_class, [
-            (message_types.GivePopulation, this_class.handle_GivePopulation_event),
-            (message_types.ExecuteSsaReaction, this_class.handle_ExecuteSsaReaction_event),
-        ])
-
-    @classmethod
-    def register_subclass_sent_messages(this_class):
-        SimulationObject.register_sent_messages(this_class, ALL_MESSAGE_TYPES)
+            print("{} executing '{}'".format(self.id, self.reactions[reaction_index].id))
+        self.schedule_the_next_reaction()
