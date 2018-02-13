@@ -9,10 +9,10 @@
 from numpy import random
 from wc_sim.log import checkpoint
 import numpy
+import os
 import shutil
 import tempfile
 import unittest
-# import wc.sim.core
 import wc_sim.sim_config
 import wc_sim.sim_metadata
 import wc_lang.core
@@ -27,6 +27,14 @@ class CheckpointLogTest(unittest.TestCase):
 
     def tearDown(self):
         shutil.rmtree(self.checkpoint_dir)
+
+    def test_constructor_creates_checkpoint_dir(self):
+        checkpoint_dir = os.path.join(self.checkpoint_dir, 'checkpoint')
+        checkpoint_step = 2
+        init_time = 0
+        metadata = {'time_max': 10}
+        wc_sim.log.checkpoint.CheckpointLogger(checkpoint_dir, checkpoint_step, init_time, metadata)
+        self.assertTrue(os.path.isdir(checkpoint_dir))
 
     def test_mock_simulator(self):
         checkpoint_dir = self.checkpoint_dir
@@ -92,7 +100,7 @@ class CheckpointLogTest(unittest.TestCase):
                             wc_utils.util.types.cast_to_builtins(final_random_state))
         wc_utils.util.types.assert_value_not_equal(chkpt.random_state, final_random_state, check_iterable_ordering=True)
 
-    @unittest.skip('Needs to be migrated to wc_sim')
+    @unittest.skip('Update to test wc_sim')
     def test_simulator(self):
         time_step = 1
         random_seed = 0
