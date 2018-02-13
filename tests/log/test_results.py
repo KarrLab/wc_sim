@@ -13,7 +13,7 @@ import os
 import shutil
 import tempfile
 import unittest
-import wc_sim.log.core
+import wc_sim.log.results
 import wc_sim.sim_config
 
 # .. todo :: test with the actual simulator
@@ -38,7 +38,7 @@ class TestLogging(unittest.TestCase):
         simulator.run(sim_config, log_path)
 
         # assertions
-        results = wc_sim.log.core.Reader().run(log_path)
+        results = wc_sim.log.results.Reader().run(log_path)
 
         numpy.testing.assert_array_equal(results['time'], numpy.arange(0., 11., 1.).reshape((1, 1, 11)))
 
@@ -66,7 +66,7 @@ class ExampleSimulator(object):
         )
 
         # initialize log
-        writer = wc_sim.log.core.Writer(state, num_time_steps, log_path)
+        writer = wc_sim.log.results.Writer(state, num_time_steps, log_path)
         writer.start()
 
         # simulate and log results
