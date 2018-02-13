@@ -1,0 +1,98 @@
+""" Classes to record and retrieve simulation results.
+
+:Author: Jonathan Karr <karr@mssm.edu>
+:Date: 2017-07-25
+:Copyright: 2016, Karr Lab
+:License: MIT
+"""
+
+# todo: build distributed, multi-state logger
+# todo: implement log reader
+
+import numpy
+import pickle
+
+
+class Writer(object):
+    """ Logs simulation results to file using pickle.
+
+    Currently, this includes:
+    * Time (s)
+    * Volume (L)
+    * Mass (g)
+    * Species counts (molecules)
+
+    Attributes:
+        state (:obj:`wc.sim.state.Model`): compiled model whose simulation will be logged
+        num_time_steps (:obj:`int`): number of time steps to keep in history
+        log_path (:obj:`str`): path where simulation results should be stored
+        _simulation_results (:obj:`dict`): data structure to represent simulation results
+        _current_results_index (:obj:`int`): index of slice of simulation_results to which results should be written
+    """
+
+    # .. todo:: Use pytables rather than pickle
+    # .. todo:: implement parallelizable logging system
+
+    def __init__(self, state, num_time_steps, log_path):
+        """ Construct a log writer.
+
+        Args:
+            state (:obj:`wc.sim.state.Model`): model state
+            num_time_steps (:obj:`int`): Number of time steps to log
+            log_path (:obj:`str`): Path to log file
+        """
+        self.state = state
+        self.num_time_steps = num_time_steps
+        self.log_path = log_path
+
+        self._simulation_results = None
+        self._current_results_index = -1
+
+    def start(self):
+        """ Starts simulation results log.
+        * Allocates memory to store results
+        * Records initial simulated state
+        """
+
+        # Allocate memory to store results
+        self._simulation_results = {
+            'time': numpy.full((1, 1, self.num_time_steps + 1), numpy.nan),
+            'volume': numpy.full((1, 2, self.num_time_steps + 1), numpy.nan),
+            'growth': numpy.full((1, 1, self.num_time_steps + 1), numpy.nan),
+            'species_counts': numpy.zeros((len(self.state.species_ids), len(self.state.compartment_ids), self.num_time_steps + 1)),
+        }
+
+        # Initial index of current log slice
+        self._current_results_index = -1
+
+        # Record initial simulated state
+        self.append(0)
+
+    def append(self, time):
+        """ Appends current simulated state to results log.
+
+        Args:
+            time (:obj:`float`): simulation time
+        """
+
+        # Advance index of current log slice
+        self._current_results_index += 1
+
+        # Record simulated state
+        self._simulation_results['time'][:, :, self._current_results_index] = time
+        self._simulation_results['volume'][:, :, self._current_results_index] = self.state.volume
+        self._simulation_results['growth'][:, :, self._current_results_index] = self.state.growth
+        self._simulation_results['species_counts'][:, :, self._current_results_index] = self.state.species_counts
+
+    def close(self):
+        """ Finalizes simulation results log.
+        * Writes simulation results to file
+        * Deallocates memory
+        """
+
+        # Write results to file
+        with open(self.log_path, 'wb') as file:
+            pickle.dump(self._simulation_results, file)
+
+        # Deallocate memory
+        self._simulation_results = None
