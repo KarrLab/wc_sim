@@ -20,12 +20,11 @@ import wc_lang
 from wc_sim.core.simulation_object import SimulationObject, SimulationObjectInterface
 from wc_sim.multialgorithm import message_types
 
-from wc_sim.multialgorithm.config import paths as config_paths_multialgorithm
+from wc_sim.multialgorithm.config import core as config_core_multialgorithm
 from wc_sim.multialgorithm.debug_logs import logs as debug_logs
 from wc_sim.multialgorithm.model_utilities import ModelUtilities
 from wc_sim.multialgorithm.multialgorithm_errors import NegativePopulationError, SpeciesPopulationError
 from wc_sim.multialgorithm import distributed_properties
-from wc_utils.config.core import ConfigManager
 from wc_utils.util.dict import DictUtil
 from wc_utils.util.rand import RandomStateManager
 
@@ -64,7 +63,7 @@ class AccessSpeciesPopulationInterface():   # pragma: no cover; methods in abstr
 
 
 config_multialgorithm = \
-    ConfigManager(config_paths_multialgorithm.core).get_config()['wc_sim']['multialgorithm']
+    config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 LOCAL_POP_STORE = 'LOCAL_POP_STORE'  # the name of the local population store
 
 
