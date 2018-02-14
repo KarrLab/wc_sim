@@ -10,6 +10,8 @@ python_libsbml
 python_libsedml
 recordtype
 scipy
+setuptools
+six
 spam
 git+https://github.com/KarrLab/wc_lang.git#egg=wc_lang-0.0.1
 git+https://github.com/KarrLab/wc_utils.git#egg=wc_utils-0.0.1a5
