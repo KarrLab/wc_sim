@@ -9,7 +9,7 @@
 # wc_sim
 
 ## Documentation
-Please see the [API documentation](http://code.karrlab.org).
+Please see the [API documentation](http://wc_sim.readthedocs.org).
 
 ## License
 The build utilities are released under the [MIT license](LICENSE).
