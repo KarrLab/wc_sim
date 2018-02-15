@@ -11,14 +11,13 @@ from collections import defaultdict
 import bisect
 import builtins, math, sys
 
-from wc_utils.config.core import ConfigManager
 from wc_sim.core.simulation_object import Event, SimulationObject, SimulationObjectInterface
 from wc_sim.multialgorithm.debug_logs import logs as debug_logs
 from wc_sim.multialgorithm import message_types
-from wc_sim.multialgorithm.config import paths as config_paths_multialgorithm
+from wc_sim.multialgorithm.config import core as config_core_multialgorithm
 from .debug_logs import logs as debug_logs
 
-config_multialgorithm = ConfigManager(config_paths_multialgorithm.core).get_config()['wc_sim']['multialgorithm']
+config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 
 # TODO(Arthur): cover after MVP wc_sim done
 class AggregateDistributedProps(SimulationObject, SimulationObjectInterface):   # pragma: no cover

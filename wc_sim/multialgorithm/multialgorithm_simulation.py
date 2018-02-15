@@ -30,10 +30,9 @@ from wc_sim.multialgorithm.submodels.ssa import SSASubmodel
 from wc_sim.multialgorithm.submodels.fba import FbaSubmodel
 from wc_sim.multialgorithm.species_populations import LOCAL_POP_STORE, Specie, SpeciesPopSimObject
 
-from wc_utils.config.core import ConfigManager
-from wc_sim.multialgorithm.config import paths as config_paths_multialgorithm
+from wc_sim.multialgorithm.config import core as config_core_multialgorithm
 config_multialgorithm = \
-    ConfigManager(config_paths_multialgorithm.core).get_config()['wc_sim']['multialgorithm']
+    config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 
 # TODO(Arthur): use lists instead of sets to ensure deterministic behavior
 

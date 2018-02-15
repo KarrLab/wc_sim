@@ -1,6 +1,4 @@
 configparser
-future
-recordtype
 robpol86_sphinxcontrib_googleanalytics
 six
 sphinx >= 1.7

@@ -1,0 +1,23 @@
+name: docs
+channels:
+  - conda-forge
+  - defaults
+  - SBMLTeam
+  - sys-bio
+dependencies:
+  - libsedml
+  - matplotlib
+  - numpy
+  - pip
+  - pygit2
+  - python>=3.6.4
+  - python-libsbml
+  - scipy
+  - sphinx
+  - pip:
+    - configparser
+    - robpol86_sphinxcontrib_googleanalytics
+    - six
+    - sphinx_rtd_theme
+    - sphinxcontrib_bibtex
+    - sphinxcontrib_spelling

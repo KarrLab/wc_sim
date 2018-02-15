@@ -20,10 +20,8 @@ from obj_model import utils
 from wc_lang.io import Reader
 from wc_lang.core import (Reaction, RateLaw, RateLawEquation, Submodel, SubmodelAlgorithm,
     Species, RateLawDirection, SpeciesType)
-from wc_utils.config.core import ConfigManager
-from wc_sim.multialgorithm.config import paths as config_paths_multialgorithm
-config_multialgorithm = \
-    ConfigManager(config_paths_multialgorithm.core).get_config()['wc_sim']['multialgorithm']
+from wc_sim.multialgorithm.config import core as config_core_multialgorithm
+config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 
 
 class TestMultialgorithmSimulation(unittest.TestCase):

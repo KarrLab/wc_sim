@@ -11,7 +11,7 @@
 
 #required libraries
 from scipy.constants import Avogadro
-from wc_analysis import analysis
+from temp_wc_analysis import analysis
 from wc_utils.util.rand import RandomStateManager
 import numpy as np
 import os

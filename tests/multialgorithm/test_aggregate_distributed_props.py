@@ -9,16 +9,15 @@ import os, unittest, sys, math
 from io import StringIO
 from builtins import super
 
-from wc_utils.config.core import ConfigManager
 from wc_sim.multialgorithm.aggregate_distributed_props import (AggregateDistributedProps,
     DistributedProperty, DistributedPropertyFactory)
 from wc_sim.core.simulation_object import EventQueue, SimulationObject, SimulationObjectInterface
 from wc_sim.core.simulation_engine import SimulationEngine
 from wc_sim.core.simulation_message import SimulationMessageFactory
 from wc_sim.multialgorithm import message_types
-from wc_sim.multialgorithm.config import paths as config_paths_multialgorithm
+from wc_sim.multialgorithm.config import core as config_core_multialgorithm
 
-config_multialgorithm = ConfigManager(config_paths_multialgorithm.core).get_config()['wc_sim']['multialgorithm']
+config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 epsilon = config_multialgorithm['epsilon']
 
 def sum_values_fn(values, **kwargs):

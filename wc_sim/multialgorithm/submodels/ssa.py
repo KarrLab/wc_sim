@@ -13,20 +13,19 @@ from scipy.constants import Avogadro as N_AVOGADRO
 from builtins import super
 
 from scipy.constants import Avogadro
-from wc_utils.config.core import ConfigManager
 from wc_utils.util.rand import RandomStateManager
 from wc_utils.util.misc import isclass_by_name
 from wc_utils.util.stats import ExponentialMovingAverage
 
-from wc_sim.core.config import paths as config_paths_core
+from wc_sim.core.config import core as config_core_core
 from wc_sim.core.simulation_object import SimulationObject
 from wc_sim.multialgorithm import message_types
-from wc_sim.multialgorithm.config import paths as config_paths_multialgorithm
+from wc_sim.multialgorithm.config import core as config_core_multialgorithm
 from wc_sim.multialgorithm.submodels.dynamic_submodel import DynamicSubmodel
 
-config_core = ConfigManager(config_paths_core.core).get_config()['wc_sim']['core']
+config_core = config_core_core.get_config()['wc_sim']['core']
 config_multialgorithm = \
-    ConfigManager(config_paths_multialgorithm.core).get_config()['wc_sim']['multialgorithm']
+    config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 
 
 class SSASubmodel(DynamicSubmodel):
