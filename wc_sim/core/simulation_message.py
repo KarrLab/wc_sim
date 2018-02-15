@@ -1,4 +1,4 @@
-""" Base class for simulation messages.
+""" Base class for simulation messages
 
 :Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2017-03-26
@@ -7,6 +7,8 @@
 """
 
 import six, abc
+
+from wc_sim.core.errors import SimulatorError
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -33,28 +35,67 @@ class SimulationMessage(object):
 
         Args:
             args (:obj:`tuple`): argument list for initializing a subclass instance
+
+        Raises:
+            :obj:`SimulatorError`: if `args` does not contain an argument for each entry in __slots__
         """
         if len(args) != len(self.__slots__):
-            raise ValueError("Constructor for SimulationMessage '{}' expects {} argument(s), but "
+            raise SimulatorError("Constructor for SimulationMessage '{}' expects {} argument(s), but "
                 "{} provided".format(
                 self.__class__.__name__, len(self.__slots__), len(args)))
         for slot,arg in zip(self.__slots__, args):
             setattr(self, slot, arg)
 
-    def __str__(self):
-        """ Provide a string representation of a `SimulationMessage`.
+    def _values(self):
+        """ Provide the values in a `SimulationMessage`, cast to strings
+
+        Returns:
+            :obj:`list`: list of attribute values
         """
         vals = []
         for attr in self.__slots__:
             if hasattr(self, attr):
-                vals.append(getattr(self,attr))
+                vals.append(str(getattr(self,attr)))
             else:
-                vals.append('undef')
+                vals.append(str(None))
+        return vals
 
-        # TODO(Arthur): improve
-        # we use str(dict()) to distinguish numeric and string attrs, but otherwise this stinks
-        values = {attr:val for attr,val in zip(self.__slots__,vals)}
-        return "SimulationMessage: {}({})".format(self.__class__.__name__, values)
+    def values(self):
+        """ Provide the values in a `SimulationMessage`, cast to strings
+
+        Returns:
+            :obj:`dict`: map attribute -> str(attribute value)
+        """
+        return {attr:val for attr,val in zip(self.__slots__,self._values())}
+
+    def __str__(self):
+        """ Provide a string representation of a `SimulationMessage`
+        """
+        return "SimulationMessage: {}({})".format(self.__class__.__name__, self.values())
+
+    def attrs(self):
+        """ Provide a list of the attributes names for this `SimulationMessage`
+
+        Returns:
+            :obj:`list` of `str`: the attributes in this `SimulationMessage`
+        """
+        return self.__slots__
+
+    def header(self):
+        """ Provide a tab-delimited string of the attribute names for this `SimulationMessage`
+
+        Returns:
+            :obj:``str`: the attributes in this `SimulationMessage`, tab-delimited
+        """
+        return '\t'.join(self.attrs())
+
+    def delimited(self):
+        """ Provide a tab-delimited string containing values in this `SimulationMessage`
+
+        Returns:
+            :obj:``str`: the values of the attributes in this `SimulationMessage`, tab-delimited
+        """
+        return '\t'.join(self._values())
 
 
 class SimulationMessageFactory(object):
@@ -78,16 +119,16 @@ class SimulationMessageFactory(object):
             :obj:`class`: a subclass of `SimulationMessage`
 
         Raises:
-            :obj:`ValueError`: if `name` or `docstring` is empty
+            :obj:`SimulatorError`: if `name` or `docstring` is empty
         """
         if name == '':
-            raise ValueError("SimulationMessage name cannot be empty")
+            raise SimulatorError("SimulationMessage name cannot be empty")
         if docstring == '':
-            raise ValueError("SimulationMessage docstring cannot be empty")
+            raise SimulatorError("SimulationMessage docstring cannot be empty")
         attrs = {}
         if attributes is not None:
             attrs['__slots__'] = attributes
         generated_simulation_message_cls = type(name, (SimulationMessage,), attrs)
-        generated_simulation_message_cls.__doc__ = docstring
+        generated_simulation_message_cls.__doc__ = docstring.strip()
 
         return generated_simulation_message_cls

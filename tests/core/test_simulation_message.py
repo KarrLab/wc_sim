@@ -8,28 +8,34 @@
 import unittest
 import six
 from wc_sim.core.simulation_message import SimulationMessageFactory, SimulationMessage
+from wc_sim.core.errors import SimulatorError
 
 
 class TestSimulationMessage(unittest.TestCase):
 
     def test_utils(self):
-        attrs = {'__slots__':['arg_1','arg_2']}
+        attributes = ['arg_1','arg_2']
+        attrs = {'__slots__':attributes}
         SimMsgType = type('test', (SimulationMessage,), attrs)
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SimulatorError) as context:
             SimMsgType()
         six.assertRegex(self, str(context.exception),
             "Constructor .*'test' expects 2 arg.*but 0 provided")
-        t = SimMsgType(1, 'a')
-        self.assertIn('1', str(t))
-        self.assertIn("'a'", str(t))
+        vals = [1, 'a']
+        t = SimMsgType(*vals)
+        self.assertIn(str(vals[0]), str(t))
+        self.assertIn(vals[1], str(t))
+        for attr in attributes:
+            self.assertIn(attr, t.attrs())
+            self.assertIn(attr, t.header())
+        self.assertEqual('\t'.join([str(v) for v in vals]), t.delimited())
         delattr(t, 'arg_2')
-        self.assertIn("'undef'", str(t))
+        self.assertIn(str(None), str(t))
 
 
 class TestSimulationMessageFactory(unittest.TestCase):
 
     def test_simulation_message_factory(self):
-
         attrs = ['attr1', 'attr2']
         ds = 'docstring'
         TestMsg = SimulationMessageFactory.create('TestMsg', ds, attrs)
@@ -43,10 +49,10 @@ class TestSimulationMessageFactory(unittest.TestCase):
         for attr in attrs:
             self.assertFalse(hasattr(test_msg2, attr))
 
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SimulatorError) as context:
             SimulationMessageFactory.create('', '')
         self.assertIn('SimulationMessage name cannot be empty', str(context.exception))
 
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SimulatorError) as context:
             SimulationMessageFactory.create('T', '')
         self.assertIn('SimulationMessage docstring cannot be empty', str(context.exception))

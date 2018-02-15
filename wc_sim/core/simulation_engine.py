@@ -164,14 +164,12 @@ class SimulationEngine(object):
 
         Returns:
             :obj:`int`: the number of times a simulation object executes `_handle_event()`. This may
-                be larger than the number of events sent, because simultaneous events are handled together.
+                be smaller than the number of events sent, because simultaneous events are handled together.
 
         Raises:
             :obj:`SimulatorError`: if the ratio of `end_time` to `epsilon` is so large that `epsilon`
                 is lost in roundoff error, or if the simulation has not been initialized
         """
-        # TODO(Arthur): add optional logical termation condition(s)
-
         if not self.__initialized:
             raise SimulatorError("Simulation has not been initialized")
 
@@ -186,10 +184,12 @@ class SimulationEngine(object):
         plotting_logger = debug_logs.get_log('wc.plot.file')
         plotting_logger.debug('# {:%Y-%m-%d %H:%M:%S}'.format(datetime.datetime.now()), sim_time=0)
 
-        handle_event_invocations = 0
+        num_events_handled = 0
         self.log_with_time("Simulation to {} starting".format(end_time))
+        # TODO(Arthur): add optional logical termation condition(s)
         while self.time <= end_time:
 
+            # TODO(Arthur): provide dynamic control
             self.log_simulation_state()
 
             # get the earliest next event in the simulation
@@ -209,7 +209,7 @@ class SimulationEngine(object):
                 self.log_with_time(" End time exceeded")
                 break
 
-            handle_event_invocations += 1
+            num_events_handled += 1
 
             self.time = next_time
 
@@ -222,7 +222,7 @@ class SimulationEngine(object):
             next_sim_obj.time = next_time
             next_sim_obj.__handle_event(next_sim_obj.event_queue.next_events(next_sim_obj))
 
-        return handle_event_invocations
+        return num_events_handled
 
     def log_with_time(self, msg, local_call_depth=1):
         """Write a debug log message with the simulation time.
@@ -263,6 +263,5 @@ class SimulationEngine(object):
         if not self.debug_log:
             return
         state = self.get_simulation_state()
-        print(pprint.pformat(state))
         # TODO(Arthur): save this through a logger
         return pprint.pformat(state)

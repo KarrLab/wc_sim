@@ -138,6 +138,16 @@ class EventQueue(object):
                 sim_time=event.event_time,
                 local_call_depth=local_call_depth)
 
+    '''
+    # TODO(Arthur): rendering an event queue as a table
+    sort events by receive time
+    if all events have the same type of message:
+        make header for event and event_body fields
+        render each event with event_body field as values
+    else
+        make header for event fields and generic for event_body fields
+        render each event with event_body field as attr:value
+    '''
     def __str__(self):
         """return event queue members as a table"""
         return "\n".join([event.__str__() for (time, event) in self.event_heap])
@@ -203,6 +213,7 @@ class SimulationObject(object):
         """
         self.simulator = None
 
+    # TODO(Arthur): simplify: combine event_type & event_body into one required parameter
     def send_event_absolute(self, event_time, receiving_object, event_type, event_body=None, copy=True):
         """Send a simulation event message with an absolute event time.
 
@@ -248,6 +259,8 @@ class SimulationObject(object):
         self.log_with_time("Send: ({}, {:6.2f}) -> ({}, {:6.2f}): {}".format(self.name, self.time,
             receiving_object.name, event_time, event_type.__name__))
 
+    # TODO(Arthur): simplify: combine event_type & event_body into one required parameter
+    # event_body, from which event_type can be determined
     def send_event(self, delay, receiving_object, event_type, event_body=None, copy=True):
         """Send a simulation event message, specifing the event time as a delay
 

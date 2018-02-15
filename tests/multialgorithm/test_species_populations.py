@@ -690,14 +690,14 @@ class MockSimulationTestingObject(MockSimulationObjectInterface):
     def handle_GivePopulation_event(self, event):
         """ Perform a unit test on the population of self.specie_id."""
 
-        # populations is a GivePopulation_body instance
-        populations = event.event_body
+        # event.event_body is a GivePopulation instance
+        the_population = event.event_body.population
         specie_id = self.kwargs['specie_id']
         expected_value = self.kwargs['expected_value']
-        self.test_case.assertEqual(populations[specie_id], expected_value,
+        self.test_case.assertEqual(the_population[specie_id], expected_value,
             msg="At event_time {} for specie '{}': the correct population "
                 "is {} but the actual population is {}.".format(
-                event.event_time, specie_id, expected_value, populations[specie_id]))
+                event.event_time, specie_id, expected_value, the_population[specie_id]))
 
     def handle_GiveProperty_event(self, event):
         """ Perform a unit test on the mass of a SpeciesPopSimObject"""

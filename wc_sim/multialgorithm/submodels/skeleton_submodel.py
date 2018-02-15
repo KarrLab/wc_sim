@@ -24,7 +24,6 @@ class SkeletonSubmodel(DynamicSubmodel):
     """
     def __init__(self, id, reactions, species, parameters, dynamic_compartments,
         local_species_population, behavior):
-        print('reactions', reactions)
         self.behavior = behavior
         self.next_reaction = 0
         super().__init__(id, reactions, species, parameters, dynamic_compartments,
@@ -63,7 +62,8 @@ class SkeletonSubmodel(DynamicSubmodel):
         dt = self.behavior['INTER_REACTION_TIME']
         self.next_reaction += 1
         self.next_reaction %= len(self.reactions)
-        self.send_event(dt, self, message_types.ExecuteSsaReaction(self.next_reaction))
+        self.send_event(dt, self, message_types.ExecuteSsaReaction,
+            message_types.ExecuteSsaReaction(self.next_reaction))
 
     def handle_ExecuteSsaReaction_event(self, event):
         """ Handle a simulation event that contains an ExecuteSsaReaction message

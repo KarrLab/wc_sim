@@ -984,7 +984,7 @@ class SpeciesPopSimObject(LocalSpeciesPopulation, SimulationObject, SimulationOb
         """
         species = event.event_body.species
         self.send_event(0, event.sending_object, message_types.GivePopulation,
-            event_body=self.read(self.time, species))
+            event_body=message_types.GivePopulation(self.read(self.time, species)))
 
     def handle_get_current_property_event(self, event):
         """ Handle a simulation event
@@ -999,7 +999,7 @@ class SpeciesPopSimObject(LocalSpeciesPopulation, SimulationObject, SimulationOb
         property_name = event.event_body.property_name
         if property_name == distributed_properties.MASS:
             self.send_event(0, event.sending_object, message_types.GiveProperty,
-                event_body = message_types.GiveProperty(property_name, self.time, self.mass()))
+                event_body=message_types.GiveProperty(property_name, self.time, self.mass()))
         else:
             raise SpeciesPopulationError("Error: unknown property_name: '{}'".format(
                 property_name))

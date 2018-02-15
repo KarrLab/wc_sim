@@ -1,9 +1,9 @@
-'''
+"""
 :Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2017-03-26
 :Copyright: 2016-2018, Karr Lab
 :License: MIT
-'''
+"""
 
 import unittest
 import random
@@ -15,10 +15,10 @@ from wc_sim.core.event import Event
 from wc_sim.core.simulation_object import EventQueue, SimulationObject, SimulationObjectInterface
 from wc_sim.core.simulation_engine import SimulationEngine
 from tests.core.some_message_types import InitMsg, Eg1, UnregisteredMsg
+from tests.core.example_simulation_objects import (ALL_MESSAGE_TYPES, TEST_SIM_OBJ_STATE,
+    ExampleSimulationObject)
 from wc_utils.util.misc import most_qual_cls_name
 
-ALL_MESSAGE_TYPES = [InitMsg, Eg1]
-TEST_SIM_OBJ_STATE = 'Test SimulationObject state'
 
 class ExampleSimulationObject(SimulationObject, SimulationObjectInterface):
 

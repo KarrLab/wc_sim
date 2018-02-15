@@ -7,13 +7,14 @@
 """
 
 from wc_utils.util.misc import round_direct
+from wc_sim.core.simulation_message import SimulationMessage
 
 
 class Event(object):
     """ An object that holds a discrete event simulation (DES) event
 
     Each DES event is scheduled by creating an `Event` instance and storing it in its
-    `receiving_object`'s event queue. To reduce interface errors `event_type` and
+    `receiving_object`'s event queue. To reduce interface errors the `event_type` and
     `event_body` attributes must be structured as specified in the `message_types` module.
 
     Attributes:
@@ -22,7 +23,9 @@ class Event(object):
         sending_object (:obj:`SimulationObject`): reference to the object that sends the event
         receiving_object (:obj:`SimulationObject`): reference to the object that receives (aka executes)
             the event
+        # TODO(Arthur): FIX
         event_type (:obj:`str`): the event's type; the name of a class declared in `message_types`
+        # TODO(Arthur): FIX
         event_body (:obj:`object`): reference to a `body` subclass of a message type declared in
             `message_types`; the message payload
     """
@@ -31,6 +34,7 @@ class Event(object):
     # use __slots__ to save space
     # TODO(Arthur): figure out how to stop Sphinx from documenting these __slots__ as attributes
     __slots__ = "creation_time event_time sending_object receiving_object event_type event_body".split()
+    BASE_HEADERS = ['t(send)', 't(event)', 'Sender', 'Receiver', 'Event type']
 
     def __init__(self, creation_time, event_time, sending_object, receiving_object, event_type,
         event_body=None):
@@ -92,20 +96,32 @@ class Event(object):
         have name attributes.
 
         Returns:
-            :obj:`str`: String representation of the `Event`'s generic fields
+            :obj:`str`: String representation of the `Event`'s fields, except `event_body`,
+                delimited by tabs
         """
         # TODO(Arthur): allow formatting of the returned string, e.g. formatting the precision of time values
-        # TODO(Arthur): output the event_body, first checking that it supports str()
-        return '\t'.join([round_direct(self.creation_time), round_direct(self.event_time),
-            self.sending_object.name, self.receiving_object.name, self.event_type])
+        vals = [round_direct(self.creation_time), round_direct(self.event_time),
+            self.sending_object.name, self.receiving_object.name, self.event_type]
+        if self.event_body is not None:
+            vals.append(self.event_body.delimited())
+        return '\t'.join(vals)
 
     @staticmethod
     def header():
         """ Return a header for an Event table
 
         Returns:
-            String Event table header
-
+            :obj:`str`: String representation of names of an `Event`'s fields, delimited by tabs
         """
-        return '\t'.join(['Creation time', 'Event time', 'Sending object', 'Receiving object',
-            'Event type'])
+        return '\t'.join(Event.BASE_HEADERS + ['Event body fields...'])
+
+    def custom_header(self):
+        """ Return a header for an Event table containing messages of a particular type
+
+        Returns:
+            :obj:`str`: String representation of names of an `Event`'s fields, delimited by tabs
+        """
+        headers = Event.BASE_HEADERS.copy()
+        if self.event_body is not None and self.event_body.header() is not None:
+            headers.append(self.event_body.header())
+        return '\t'.join(headers)
