@@ -23,7 +23,7 @@ from wc_lang.io import Reader
 import wc_lang
 from wc_sim.core.errors import SimulatorError
 from wc_sim.core.simulation_engine import SimulationEngine
-from wc_sim.core.simulation_object import EventQueue, SimulationObject, SimulationObjectInterface
+from wc_sim.core.simulation_object import EventQueue, SimulationObject
 from wc_sim.multialgorithm import message_types
 from wc_sim.multialgorithm.species_populations import AccessSpeciesPopulations
 from wc_sim.multialgorithm.species_populations import (LOCAL_POP_STORE, Specie, SpeciesPopSimObject,
@@ -677,6 +677,9 @@ its simulated population.
 class MockSimulationTestingObject(MockSimulationObjectInterface):
 
     def send_initial_events(self): pass
+
+    def get_state(self):
+        return 'object state to be provided'
 
     def send_debugging_events(self, species_pop_sim_obj, update_time, update_message, update_msg_body,
         get_pop_time, get_pop_msg_body):

@@ -930,6 +930,9 @@ class SpeciesPopSimObject(LocalSpeciesPopulation, SimulationObject, SimulationOb
     def send_initial_events(self): pass
     """ No initial events to send"""
 
+    def get_state(self):
+        return 'object state to be provided'
+
     def __init__(self, name, initial_population, molecular_weights, initial_fluxes=None,
         retain_history=True):
         """ Initialize a SpeciesPopSimObject object

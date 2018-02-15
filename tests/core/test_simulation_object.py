@@ -18,7 +18,7 @@ from tests.core.some_message_types import InitMsg, Eg1, UnregisteredMsg
 from wc_utils.util.misc import most_qual_cls_name
 
 ALL_MESSAGE_TYPES = [InitMsg, Eg1]
-
+TEST_SIM_OBJ_STATE = 'Test SimulationObject state'
 
 class ExampleSimulationObject(SimulationObject, SimulationObjectInterface):
 
@@ -26,6 +26,9 @@ class ExampleSimulationObject(SimulationObject, SimulationObjectInterface):
         super().__init__(name)
 
     def send_initial_events(self, *args): pass
+
+    def get_state(self):
+        return TEST_SIM_OBJ_STATE
 
     def handler(self, event): pass
 
@@ -173,6 +176,9 @@ class TestSimulationObject(unittest.TestCase):
         self.assertEqual(str(context.exception), "message type '{}' appears repeatedly".format(
             most_qual_cls_name(UnregisteredMsg)))
 
+    def test_misc(self):
+        self.assertEqual(self.o1.get_state(), TEST_SIM_OBJ_STATE)
+
 
 class ExampleUnregisteredSimulationObject(SimulationObject, SimulationObjectInterface):
 
@@ -180,6 +186,9 @@ class ExampleUnregisteredSimulationObject(SimulationObject, SimulationObjectInte
         super().__init__(name)
 
     def send_initial_events(self, *args): pass
+
+    def get_state(self):
+        return 'stateless object'
 
     def handler(self, event): pass
 

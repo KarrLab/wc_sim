@@ -1,9 +1,9 @@
-'''
+"""
 :Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2017-03-26
 :Copyright: 2016-2018, Karr Lab
 :License: MIT
-'''
+"""
 
 import sys
 import unittest
@@ -15,6 +15,7 @@ from wc_sim.core.simulation_object import EventQueue, SimulationObject, Simulati
 from wc_sim.core.event import Event
 from wc_sim.core.simulation_engine import SimulationEngine
 from tests.core.some_message_types import InitMsg, Eg1
+from wc_sim.core.shared_state_interface import SharedStateInterface
 from wc_utils.util.misc import most_qual_cls_name
 
 ALL_MESSAGE_TYPES = [InitMsg, Eg1]
@@ -26,6 +27,8 @@ class InactiveSimulationObject(SimulationObject, SimulationObjectInterface):
         SimulationObject.__init__(self, 'inactive')
 
     def send_initial_events(self): pass
+
+    def get_state(self): pass
 
     @classmethod
     def register_subclass_handlers(this_class): pass
@@ -42,6 +45,9 @@ class BasicExampleSimulationObject(SimulationObject, SimulationObjectInterface):
 
     def send_initial_events(self):
         self.send_event(1, self, InitMsg)
+
+    def get_state(self):
+        return "self.num: {}".format(self.num)
 
     @classmethod
     def register_subclass_handlers(this_class):
@@ -85,7 +91,8 @@ class InteractingSimulationObject(BasicExampleSimulationObject):
 
 
 class CyclicalMessagesSimulationObject(SimulationObject, SimulationObjectInterface):
-    '''Send events around a cycle of objects'''
+    """ Send events around a cycle of objects
+    """
 
     def __init__(self, name, obj_num, cycle_size, test_case):
         SimulationObject.__init__(self, name)
@@ -101,6 +108,9 @@ class CyclicalMessagesSimulationObject(SimulationObject, SimulationObjectInterfa
     def send_initial_events(self):
         # send event to next InteractingSimulationObject
         self.send_event(1, self.next_obj(), InitMsg)
+
+    def get_state(self):
+        return 'object state to be provided'
 
     def handle_event(self, event):
         self.num_msgs += 1
@@ -226,3 +236,42 @@ class TestSimulationEngine(unittest.TestCase):
         queues = self.simulator.message_queues()
         for sim_obj_name in self.simulator.simulation_objects:
             self.assertIn(sim_obj_name, queues)
+
+
+
+class ExampleSharedStateObject(SharedStateInterface):
+
+    def __init__(self, name, state):
+        self.name = name
+        self.state = state
+
+    def get_name(self):
+        return self.name
+
+    def get_shared_state(self, time):
+        return str(self.state)
+
+
+class TestSimulationEngineLogging(unittest.TestCase):
+
+    def setUp(self):
+        self.example_shared_state_obj_name = 'example_shared_state_obj_name'
+        self.example_shared_state_obj_state = [2, 'hi']
+        self.example_shared_state_objs = \
+            [ExampleSharedStateObject(self.example_shared_state_obj_name, self.example_shared_state_obj_state)]
+        self.simulator = SimulationEngine(shared_state=self.example_shared_state_objs, debug_log=True)
+        self.simulator.register_object_types([InteractingSimulationObject])
+        self.simulator.reset()
+
+    # test logging with InteractingSimulationObject and a SharedStateInterface object
+    def test_logging(self):
+        num_sim_obj = 2
+        sim_objects = [InteractingSimulationObject(obj_name(i)) for i in range(1, num_sim_obj+1)]
+        self.simulator.load_objects(sim_objects)
+        self.simulator.initialize()
+        self.assertEqual(self.simulator.simulate(2.5), 4)
+        self.assertIn(self.example_shared_state_obj_name, self.simulator.log_simulation_state())
+        self.assertIn(str(self.example_shared_state_obj_state), self.simulator.log_simulation_state())
+        self.assertIn(InteractingSimulationObject.__name__, self.simulator.log_simulation_state())
+        for i in range(1, num_sim_obj+1):
+            self.assertIn(obj_name(i), self.simulator.log_simulation_state())

@@ -15,6 +15,9 @@ class Example(MockSimulationObjectInterface):
 
     def send_initial_events(self): pass
 
+    def get_state(self):
+        return 'object state to be provided'
+
     @classmethod
     def register_subclass_handlers(this_class): pass
 

@@ -62,6 +62,9 @@ class AggregateDistributedProps(SimulationObject, SimulationObjectInterface):   
 
     def send_initial_events(self): pass
 
+    def get_state(self):
+        return 'object state to be provided'
+
     def add_property(self, distributed_property):
         '''Add a DistributedProperty 
 

@@ -42,6 +42,9 @@ class MockSimulationObjectInterface(MockSimulationObject, SimulationObjectInterf
     @abc.abstractmethod
     def send_initial_events(self): pass
 
+    @abc.abstractmethod
+    def get_state(self): pass
+
     @classmethod
     @abc.abstractmethod
     def register_subclass_handlers(this_class): pass

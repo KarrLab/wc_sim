@@ -7,10 +7,13 @@
 """
 
 import datetime
+# TODO(Arthur): rm pprint
+import pprint
 
 from wc_sim.core.simulation_object import SimulationObject
 from wc_sim.core.errors import SimulatorError
 from wc_sim.core.event import Event
+from wc_sim.core.shared_state_interface import SharedStateInterface
 
 # configure logging
 from .debug_logs import logs as debug_logs
@@ -33,10 +36,19 @@ class SimulationEngine(object):
     Attributes:
         time (:obj:`float`): the simulations's current time
         simulation_objects (:obj:`dict` of `SimulationObject`): all simulation objects, keyed by name
+        shared_state (:obj:`list` of `object`, optional): the shared state of the simulation, needed to
+            log or checkpoint the entire state of a simulation; all objects in `shared_state` must
+            implement `SharedStateInterface`
+        debug_log (:obj:`bool`, optional): whether to output a debug log
         __initialized (:obj:`bool`): whether the simulation has been initialized
     """
 
-    def __init__(self):
+    def __init__(self, shared_state=None, debug_log=False):
+        if shared_state is None:
+            self.shared_state = []
+        else:
+            self.shared_state = shared_state
+        self.debug_log = debug_log
         self.time = 0.0
         self.simulation_objects = {}
         self.log_with_time("SimulationEngine created")
@@ -178,6 +190,8 @@ class SimulationEngine(object):
         self.log_with_time("Simulation to {} starting".format(end_time))
         while self.time <= end_time:
 
+            self.log_simulation_state()
+
             # get the earliest next event in the simulation
             next_time = float('inf')
             self.log_with_time('Simulation Engine launching next object')
@@ -199,7 +213,7 @@ class SimulationEngine(object):
 
             self.time = next_time
 
-            # assertion won't be violoated unless init message sent to negative time or
+            # assertion won't be violated unless init message sent to negative time or
             # objects decrease their time.
             assert next_sim_obj.time <= next_time, ("Dispatching '{}', but find object time "
                 "{} > event time {}.".format(next_sim_obj.name, next_sim_obj.time, next_time))
@@ -215,3 +229,40 @@ class SimulationEngine(object):
         """
         debug_logs.get_log('wc.debug.file').debug(msg, sim_time=self.time,
             local_call_depth=local_call_depth)
+
+    def get_simulation_state(self):
+        """ Get the simulation's state
+        """
+        # get simulation time
+        state = [self.time]
+        # get the state of all simulation object(s)
+        sim_objects_state = []
+        # TODO(Arthur): get the message queues of all simulation object(s)
+        for simulation_object in self.simulation_objects.values():
+            # get object name, type, current time, state
+            state_entry = (simulation_object.name,
+                simulation_object.__class__.__name__,
+                simulation_object.time,
+                simulation_object.get_state())
+            sim_objects_state.append(state_entry)
+        state.append(sim_objects_state)
+
+        # get the shared state
+        shared_objects_state = []
+        for shared_state_obj in self.shared_state:
+            state_entry = (shared_state_obj.get_name(),
+                shared_state_obj.__class__.__name__,
+                shared_state_obj.get_shared_state(self.time))
+            shared_objects_state.append(state_entry)
+        state.append(shared_objects_state)
+        return state
+
+    def log_simulation_state(self):
+        """ Log the simulation's state
+        """
+        if not self.debug_log:
+            return
+        state = self.get_simulation_state()
+        print(pprint.pformat(state))
+        # TODO(Arthur): save this through a logger
+        return pprint.pformat(state)

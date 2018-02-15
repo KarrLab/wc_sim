@@ -18,7 +18,7 @@ from wc_lang.io import Reader
 from wc_lang.core import Reaction, SpeciesType, Species
 from wc_lang.prepare import PrepareModel, CheckModel
 from wc_lang.transform import SplitReversibleReactionsTransform
-from wc_sim.core.simulation_object import SimulationObject, SimulationObjectInterface
+from wc_sim.core.simulation_object import SimulationObject
 from wc_sim.core.simulation_engine import SimulationEngine
 from wc_sim.multialgorithm.submodels.dynamic_submodel import DynamicSubmodel
 from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
@@ -147,6 +147,7 @@ class TestDynamicSubmodel(unittest.TestCase):
 class TestSkeletonSubmodel(unittest.TestCase):
 
     def setUp(self):
+        SpeciesType.objects.reset()
         warnings.simplefilter("ignore")
         self.MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures',
             'test_submodel_no_shared_species.xlsx')

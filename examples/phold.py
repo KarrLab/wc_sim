@@ -68,6 +68,9 @@ class PholdSimulationObject(SimulationObject, SimulationObjectInterface):
             event_type = MessageSentToOtherObject
         self.send_event(exp_delay(), receiver, event_type)
 
+    def get_state(self):
+        return str(self.args)
+
     def log_debug_msg(self, msg):
         log = debug_logs.get_log('wc.debug.console')
         log.debug(msg, sim_time=self.time, local_call_depth=1)

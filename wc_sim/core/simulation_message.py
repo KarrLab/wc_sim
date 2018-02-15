@@ -50,7 +50,8 @@ class SimulationMessage(object):
                 vals.append(getattr(self,attr))
             else:
                 vals.append('undef')
-        # todo: improve
+
+        # TODO(Arthur): improve
         # we use str(dict()) to distinguish numeric and string attrs, but otherwise this stinks
         values = {attr:val for attr,val in zip(self.__slots__,vals)}
         return "SimulationMessage: {}({})".format(self.__class__.__name__, values)

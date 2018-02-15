@@ -85,6 +85,9 @@ class PropertyProvider(SimulationObject, SimulationObjectInterface):
 
     def send_initial_events(self): pass
 
+    def get_state(self):
+        return 'object state to be provided'
+
     def handle_get_historical_prop(self, event_message):
         # provide a property value to a requestor
         property_name = event_message.event_body.property_name
@@ -138,6 +141,9 @@ class PropertyRequestor(SimulationObject, SimulationObjectInterface):
             self,
             GoGetProperty,
             event_body=GoGetProperty(self.property_name, self.period))
+
+    def get_state(self):
+        return 'object state to be provided'
 
     def handle_give_property_event(self, event_message):
         '''PERFORM A UNIT TEST, evaluating whether the property value and time are correct'''

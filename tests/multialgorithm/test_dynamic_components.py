@@ -62,8 +62,6 @@ class TestDynamicModel(unittest.TestCase):
     def read_model(self, model_filename):
         # read and initialize a model
         self.model = Reader().run(model_filename)
-        args = Namespace(FBA_time_step=1)
-        #self.multialgorithm_simulation = MultialgorithmSimulation(self.model, args)
         self.dynamic_model = DynamicModel(self.model)
 
     def test_initialize_dynamic_model(self):

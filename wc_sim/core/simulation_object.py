@@ -397,6 +397,17 @@ class SimulationObjectInterface():  # pragma: no cover
         """
         pass
 
+    @abc.abstractmethod
+    def get_state(self):
+        """ Obtain the state of a `SimulationObject`
+
+        This is called by the simulation engine to log the simulator state
+
+        Returns:
+            :obj:`str`: the state of a `SimulationObject`, in a human-readable string
+        """
+        pass
+
     @classmethod
     @abc.abstractmethod
     def register_subclass_handlers(cls):
