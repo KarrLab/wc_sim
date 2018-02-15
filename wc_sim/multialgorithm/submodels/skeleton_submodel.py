@@ -31,7 +31,8 @@ class SkeletonSubmodel(DynamicSubmodel):
 
     # these first three methods override DynamicSubmodel methods
     def send_initial_events(self):
-        print("{} executing handle_ExecuteSsaReaction_event".format(self.id))
+        # print("{} executing handle_ExecuteSsaReaction_event".format(self.id))
+        pass
 
     @classmethod
     def register_subclass_handlers(this_class):
@@ -71,12 +72,11 @@ class SkeletonSubmodel(DynamicSubmodel):
         Args:
             event (:obj:`wc_sim.core.Event`): an Event to process
         """
-        print("{} executing handle_ExecuteSsaReaction_event".format(self.id))
         # reaction_index is the reaction to execute
         reaction_index = event.event_body.reaction_index
         # Execute a reaction
         if self.enabled_reaction(self.reactions[reaction_index]):
             self.execute_reaction(self.reactions[reaction_index])
             # TODO(Arthur): convert print() to log message
-            print("{} executing '{}'".format(self.id, self.reactions[reaction_index].id))
+            # print("{} executing '{}'".format(self.id, self.reactions[reaction_index].id))
         self.schedule_the_next_reaction()

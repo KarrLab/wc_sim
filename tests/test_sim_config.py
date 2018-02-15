@@ -13,7 +13,7 @@ import os
 import pytest
 import tempfile
 import unittest
-
+import warnings
 
 class TestSimulationConfig(unittest.TestCase):
     """ Test simulation configuration """
@@ -161,6 +161,7 @@ class TestSedMlValidation(unittest.TestCase):
 
     def setUp(self):
         _, self.filename = tempfile.mkstemp()
+        warnings.simplefilter("ignore")
 
     def tearDown(self):
         os.remove(self.filename)
