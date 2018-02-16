@@ -36,7 +36,6 @@ class TestEvent(unittest.TestCase):
         vals = ['att1_val', 'att2_val']
         test_msg = TestMsg(*vals)
         times = (0, 1)
-        # And if a is tuple: f(*(a+(3,)))
         ev = Event(*(times + (ExampleSimulationObject('sender'), ExampleSimulationObject('receiver'),
             test_msg)))
         self.assertEquals(Event.BASE_HEADERS, Event.header(as_list=True)[:-1])
