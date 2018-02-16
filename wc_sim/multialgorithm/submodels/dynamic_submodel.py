@@ -206,12 +206,12 @@ class DynamicSubmodel(SimulationObject, SimulationObjectInterface):
         Raises:
             MultialgorithmError: if an `GetCurrentProperty` message requests an unknown property
         """
-        property_name = event.event_body.property_name
+        property_name = event.message.property_name
         if property_name == distributed_properties.MASS:
             '''
             # TODO(Arthur): rethink this, as, strictly speaking, a dynamic submodel doesn't have mass, but its compartment does
                     self.send_event(0, event.sending_object, message_types.GiveProperty,
-                        event_body=message_types.GiveProperty(property_name, self.time,
+                        message=message_types.GiveProperty(property_name, self.time,
                             self.mass()))
             '''
             raise MultialgorithmError("Error: not handling distributed_properties.MASS")

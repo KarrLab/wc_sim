@@ -89,13 +89,12 @@ class PropertyProvider(SimulationObject, SimulationObjectInterface):
 
     def handle_get_historical_prop(self, event_message):
         # provide a property value to a requestor
-        property_name = event_message.event_body.property_name
-        time = event_message.event_body.time
+        property_name = event_message.message.property_name
+        time = event_message.message.time
         value = self.test_property_hist[property_name][time]
         self.send_event(0,
             event_message.sending_object,
-            message_types.GiveProperty,
-            event_body=message_types.GiveProperty(property_name, time, value))
+            message_types.GiveProperty(property_name, time, value))
 
     @classmethod
     def register_subclass_handlers(this_class):
@@ -138,16 +137,15 @@ class PropertyRequestor(SimulationObject, SimulationObjectInterface):
     def send_initial_events(self):
         self.send_event(self.period-epsilon,
             self,
-            GoGetProperty,
-            event_body=GoGetProperty(self.property_name, self.period))
+            GoGetProperty(self.property_name, self.period))
 
     def get_state(self):
         return 'object state to be provided'
 
     def handle_give_property_event(self, event_message):
         '''PERFORM A UNIT TEST, evaluating whether the property value and time are correct'''
-        time = event_message.event_body.time
-        value = event_message.event_body.value
+        time = event_message.message.time
+        value = event_message.message.value
         self.test_case.assertEqual(value, self.expected_history[time])
 
     def handle_go_get_property_event(self, event_message):
@@ -155,14 +153,12 @@ class PropertyRequestor(SimulationObject, SimulationObjectInterface):
         measure_property_time = (self.num_periods+1)*self.period
         self.send_event_absolute(measure_property_time-epsilon,
             self,
-            GoGetProperty,
-            event_body=GoGetProperty(event_message.event_body.property_name, measure_property_time))
+            GoGetProperty(event_message.message.property_name, measure_property_time))
         self.send_event(epsilon,
             self.aggregate_distributed_props,
-            message_types.GetHistoricalProperty,
-            event_body=message_types.GetHistoricalProperty(
-                event_message.event_body.property_name,
-                event_message.event_body.time))
+            message_types.GetHistoricalProperty(
+                event_message.message.property_name,
+                event_message.message.time))
 
     @classmethod
     def register_subclass_handlers(this_class):
@@ -269,8 +265,7 @@ class TestAggregateDistributedProps(unittest.TestCase):
         self.aggregate_distributed_props.send_event(
             0,
             self.aggregate_distributed_props,
-            message_types.GetHistoricalProperty,
-            event_body=message_types.GetHistoricalProperty('no_such_property_name', 0))
+            message_types.GetHistoricalProperty('no_such_property_name', 0))
  
         self.simulator.initialize()
         with self.assertRaises(ValueError) as context:
@@ -296,8 +291,7 @@ class TestAggregateDistributedProps(unittest.TestCase):
         self.aggregate_distributed_props.send_event(
             2,
             self.aggregate_distributed_props,
-            message_types.GetHistoricalProperty,
-            event_body=message_types.GetHistoricalProperty(prop_name, 1))
+            message_types.GetHistoricalProperty(prop_name, 1))
 
         self.simulator.initialize()
         with self.assertRaises(ValueError) as context:

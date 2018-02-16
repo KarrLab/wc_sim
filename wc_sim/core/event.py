@@ -15,7 +15,7 @@ class Event(object):
 
     Each DES event is scheduled by creating an `Event` instance and storing it in its
     `receiving_object`'s event queue. To reduce interface errors the `event_type` and
-    `event_body` attributes must be structured as specified in the `message_types` module.
+    `message` attributes must be structured as specified in the `message_types` module.
 
     Attributes:
         creation_time (:obj:`float`): simulation time when the event is created (aka `send_time`)
@@ -26,24 +26,22 @@ class Event(object):
         # TODO(Arthur): FIX
         event_type (:obj:`str`): the event's type; the name of a class declared in `message_types`
         # TODO(Arthur): FIX
-        event_body (:obj:`object`): reference to a `body` subclass of a message type declared in
+        message (:obj:`object`): reference to a `body` subclass of a message type declared in
             `message_types`; the message payload
     """
     # TODO(Arthur): for performance, perhaps pre-allocate and reuse events
 
     # use __slots__ to save space
     # TODO(Arthur): figure out how to stop Sphinx from documenting these __slots__ as attributes
-    __slots__ = "creation_time event_time sending_object receiving_object event_type event_body".split()
+    __slots__ = "creation_time event_time sending_object receiving_object message".split()
     BASE_HEADERS = ['t(send)', 't(event)', 'Sender', 'Receiver', 'Event type']
 
-    def __init__(self, creation_time, event_time, sending_object, receiving_object, event_type,
-        event_body=None):
+    def __init__(self, creation_time, event_time, sending_object, receiving_object, message):
         self.creation_time = creation_time
         self.event_time = event_time
         self.sending_object = sending_object
         self.receiving_object = receiving_object
-        self.event_type = event_type
-        self.event_body = event_body
+        self.message = message
 
     def __lt__(self, other):
         """ Does this `Event` occur earlier than `other`?
@@ -96,19 +94,20 @@ class Event(object):
         have name attributes.
 
         Returns:
-            :obj:`str`: String representation of the `Event`'s fields, except `event_body`,
+            :obj:`str`: String representation of the `Event`'s fields, except `message`,
                 delimited by tabs
         """
         # TODO(Arthur): allow formatting of the returned string, e.g. formatting the precision of time values
         vals = [round_direct(self.creation_time), round_direct(self.event_time),
-            self.sending_object.name, self.receiving_object.name, self.event_type]
-        if self.event_body is not None:
-            vals.append(self.event_body.delimited())
+            self.sending_object.name, self.receiving_object.name, self.message.__class__.__name__]
+        vals.append(self.message.delimited())
         return '\t'.join(vals)
 
     @staticmethod
     def header():
         """ Return a header for an Event table
+
+        Provide generic header suitable for any type of message in the event.
 
         Returns:
             :obj:`str`: String representation of names of an `Event`'s fields, delimited by tabs
@@ -122,6 +121,6 @@ class Event(object):
             :obj:`str`: String representation of names of an `Event`'s fields, delimited by tabs
         """
         headers = Event.BASE_HEADERS.copy()
-        if self.event_body is not None and self.event_body.header() is not None:
-            headers.append(self.event_body.header())
+        if self.message.header() is not None:
+            headers.append(self.message.header())
         return '\t'.join(headers)

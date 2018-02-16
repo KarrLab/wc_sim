@@ -44,7 +44,7 @@ class PholdSimulationObject(SimulationObject, SimulationObjectInterface):
         super().__init__(name)
 
     def send_initial_events(self):
-        self.send_event(exp_delay(), self, InitMsg)
+        self.send_event(exp_delay(), self, InitMsg())
 
     def handle_simulation_event(self, event):
         '''Handle a single simulation event.'''
@@ -66,7 +66,7 @@ class PholdSimulationObject(SimulationObject, SimulationObjectInterface):
             event_type = MessageSentToSelf
         else:
             event_type = MessageSentToOtherObject
-        self.send_event(exp_delay(), receiver, event_type)
+        self.send_event(exp_delay(), receiver, event_type())
 
     def get_state(self):
         return str(self.args)

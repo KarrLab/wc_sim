@@ -303,8 +303,7 @@ class AccessSpeciesPopulations(AccessSpeciesPopulationInterface):   # pragma: no
             else:
                 self.submodel.send_event(time-self.submodel.time,
                     self.remote_pop_stores[store],
-                    message_types.AdjustPopulationByDiscreteSubmodel,
-                    event_body=message_types.AdjustPopulationByDiscreteSubmodel(store_adjustments))
+                    message_types.AdjustPopulationByDiscreteSubmodel(store_adjustments))
         return stores
 
     def adjust_continuously(self, time, adjustments):
@@ -329,8 +328,7 @@ class AccessSpeciesPopulations(AccessSpeciesPopulationInterface):   # pragma: no
             else:
                 self.submodel.send_event(time-self.submodel.time,
                     self.remote_pop_stores[store],
-                    message_types.AdjustPopulationByContinuousSubmodel,
-                    event_body=message_types.AdjustPopulationByContinuousSubmodel(store_adjustments))
+                    message_types.AdjustPopulationByContinuousSubmodel(store_adjustments))
         return stores
 
     def prefetch(self, delay, species_ids):
@@ -370,8 +368,7 @@ class AccessSpeciesPopulations(AccessSpeciesPopulationInterface):   # pragma: no
                 # the submodel needs the value
                 self.submodel.send_event(delay - epsilon*0.5,
                     self.remote_pop_stores[store],
-                    message_types.GetPopulation,
-                    event_body=message_types.GetPopulation(set(species_ids)))
+                    message_types.GetPopulation(set(species_ids)))
         return stores
 
     def __str__(self):
@@ -955,7 +952,7 @@ class SpeciesPopSimObject(LocalSpeciesPopulation, SimulationObject, SimulationOb
         Args:
             event (:obj:`wc_sim.core.Event`): an `Event` to process
         """
-        population_change = event.event_body.population_change
+        population_change = event.message.population_change
         self.adjust_discretely(self.time, population_change)
 
     def handle_adjust_continuously_event(self, event):
@@ -968,7 +965,7 @@ class SpeciesPopSimObject(LocalSpeciesPopulation, SimulationObject, SimulationOb
             :obj:`SpeciesPopulationError`: if an `AdjustPopulationByContinuousSubmodel` event acts on a
                 non-existent species.
         """
-        population_change = event.event_body.population_change
+        population_change = event.message.population_change
         self.adjust_continuously(self.time, population_change)
 
     def handle_get_population_event(self, event):
@@ -981,9 +978,9 @@ class SpeciesPopSimObject(LocalSpeciesPopulation, SimulationObject, SimulationOb
             :obj:`SpeciesPopulationError`: if a `GetPopulation` message requests the population of an
                 unknown species.
         """
-        species = event.event_body.species
-        self.send_event(0, event.sending_object, message_types.GivePopulation,
-            event_body=message_types.GivePopulation(self.read(self.time, species)))
+        species = event.message.species
+        self.send_event(0, event.sending_object,
+            message_types.GivePopulation(self.read(self.time, species)))
 
     def handle_get_current_property_event(self, event):
         """ Handle a simulation event
@@ -995,10 +992,10 @@ class SpeciesPopSimObject(LocalSpeciesPopulation, SimulationObject, SimulationOb
             :obj:`SpeciesPopulationError`: if an `GetCurrentProperty` message requests an unknown
                 property.
         """
-        property_name = event.event_body.property_name
+        property_name = event.message.property_name
         if property_name == distributed_properties.MASS:
-            self.send_event(0, event.sending_object, message_types.GiveProperty,
-                event_body=message_types.GiveProperty(property_name, self.time, self.mass()))
+            self.send_event(0, event.sending_object,
+                message_types.GiveProperty(property_name, self.time, self.mass()))
         else:
             raise SpeciesPopulationError("Error: unknown property_name: '{}'".format(
                 property_name))

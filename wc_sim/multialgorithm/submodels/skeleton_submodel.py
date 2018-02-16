@@ -54,7 +54,7 @@ class SkeletonSubmodel(DynamicSubmodel):
             event (:obj:`wc_sim.core.Event`): an Event to process
         """
         # populations is a GivePopulation_body instance
-        populations = event.event_body
+        populations = event.message
         self.access_species_population.species_population_cache.cache_population(
             self.time, populations)
 
@@ -63,8 +63,7 @@ class SkeletonSubmodel(DynamicSubmodel):
         dt = self.behavior['INTER_REACTION_TIME']
         self.next_reaction += 1
         self.next_reaction %= len(self.reactions)
-        self.send_event(dt, self, message_types.ExecuteSsaReaction,
-            message_types.ExecuteSsaReaction(self.next_reaction))
+        self.send_event(dt, self, message_types.ExecuteSsaReaction(self.next_reaction))
 
     def handle_ExecuteSsaReaction_event(self, event):
         """ Handle a simulation event that contains an ExecuteSsaReaction message
@@ -73,7 +72,7 @@ class SkeletonSubmodel(DynamicSubmodel):
             event (:obj:`wc_sim.core.Event`): an Event to process
         """
         # reaction_index is the reaction to execute
-        reaction_index = event.event_body.reaction_index
+        reaction_index = event.message.reaction_index
         # Execute a reaction
         if self.enabled_reaction(self.reactions[reaction_index]):
             self.execute_reaction(self.reactions[reaction_index])

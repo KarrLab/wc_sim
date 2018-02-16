@@ -14,6 +14,7 @@ import six
 from wc_sim.core.event import Event
 from wc_sim.core.errors import SimulatorError
 from wc_utils.util.misc import most_qual_cls_name, round_direct
+from wc_sim.core.simulation_message import SimulationMessage
 
 # configure logging
 from .debug_logs import logs as debug_logs
@@ -34,12 +35,11 @@ class EventQueue(object):
     def __init__(self):
         self.event_heap = []
 
-    def schedule_event(self, send_time, receive_time, sending_object, receiving_object, event_type,
-        event_body=None):
+    def schedule_event(self, send_time, receive_time, sending_object, receiving_object, message):
         """ Insert an event in this event queue, scheduled to execute at `receive_time`
 
         Object X sends an event to object Y by invoking
-            `Y.event_queue.send_event(send_time, receive_time, X, Y, event_type, <event_body=value>)`
+            `Y.event_queue.send_event(send_time, receive_time, X, Y, event_type, <message=value>)`
 
         Args:
             send_time (:obj:`float`): the simulation time at which the message was generated (sent)
@@ -50,7 +50,7 @@ class EventQueue(object):
                 identifiers.
             event_type: class; the type of the message; the class' string name is sent with the
                 message, as messages should not contain references.
-            event_body: object; an object containing the body of the event
+            message: object; an object containing the body of the event
 
         Raises:
             SimulatorError: if receive_time < send_time
@@ -63,7 +63,11 @@ class EventQueue(object):
             raise SimulatorError("receive_time < send_time in schedule_event(): {} < {}".format(
                 str(receive_time), str(send_time)))
 
-        event = Event(send_time, receive_time, sending_object, receiving_object, event_type, event_body)
+        if not isinstance(message, SimulationMessage):
+            raise SimulatorError("message should be an instance of {} but is a '{}'".format(
+                SimulationMessage.__name__, type(message).__name__))
+
+        event = Event(send_time, receive_time, sending_object, receiving_object, message)
         heapq.heappush(self.event_heap, (receive_time, event))
 
     def next_event_time(self):
@@ -116,7 +120,7 @@ class EventQueue(object):
             # in priority order; this costs O(n log(n)) in the number of event messages in events
             receiver_priority_dict = sim_obj.get_receiving_priorities_dict()
             events = sorted(events,
-                key=lambda event: receiver_priority_dict[event.event_type])
+                key=lambda event: receiver_priority_dict[event.message.__class__])
 
         for event in events:
             self.log_event(event)
@@ -133,8 +137,8 @@ class EventQueue(object):
         debug_logs.get_log('wc.debug.file').debug("Execute: {} {}:{} {} ({})".format(event.event_time,
                 type(event.receiving_object).__name__,
                 event.receiving_object.name,
-                event.event_type.split('.')[-1],
-                str(event.event_body)),
+                event.message.__class__.__name__,
+                str(event.message)),
                 sim_time=event.event_time,
                 local_call_depth=local_call_depth)
 
@@ -142,11 +146,11 @@ class EventQueue(object):
     # TODO(Arthur): rendering an event queue as a table
     sort events by receive time
     if all events have the same type of message:
-        make header for event and event_body fields
-        render each event with event_body field as values
+        make header for event and message fields
+        render each event with message field as values
     else
-        make header for event fields and generic for event_body fields
-        render each event with event_body field as attr:value
+        make header for event fields and generic for message fields
+        render each event with message field as attr:value
     '''
     def __str__(self):
         """return event queue members as a table"""
@@ -213,16 +217,15 @@ class SimulationObject(object):
         """
         self.simulator = None
 
-    # TODO(Arthur): simplify: combine event_type & event_body into one required parameter
-    def send_event_absolute(self, event_time, receiving_object, event_type, event_body=None, copy=True):
+    def send_event_absolute(self, event_time, receiving_object, message, copy=True):
         """Send a simulation event message with an absolute event time.
 
         Args:
             event_time: number; the simulation time at which the receiving_object should execute the event
             receiving_object: object; the object that will receive the event
             event_type (class): the class of the event message
-            event_body: object; an optional object containing the body of the event
-            copy: boolean; if True, copy the event_body; True by default as a safety measure to
+            message: object; an optional object containing the body of the event
+            copy: boolean; if True, copy the message; True by default as a safety measure to
                 avoid unexpected changes to shared objects; set False to optimize
 
         Raises:
@@ -237,39 +240,39 @@ class SimulationObject(object):
         # Do not put a class reference in a message, as the message might not be received in the
         # same address space.
         # To eliminate the risk of name collisions use the fully qualified classname.
-        event_type_name = most_qual_cls_name(event_type)
+        # TODO(Arthur): wait until after MVP
+        # event_type_name = most_qual_cls_name(event_type)
+        event_type_name = message.__class__.__name__
 
         # check that the sending object type is registered to send the message type
         if (not hasattr(self.__class__, 'message_types_sent') or
-            event_type_name not in self.__class__.message_types_sent):
+            message.__class__ not in self.__class__.message_types_sent):
             raise SimulatorError("'{}' simulation objects not registered to send '{}' messages".format(
                 most_qual_cls_name(self), event_type_name))
 
         # check that the receiving simulation object type is registered to receive the message type
         receiver_priorities = receiving_object.get_receiving_priorities_dict()
-        if event_type_name not in receiver_priorities:
+        if message.__class__ not in receiver_priorities:
             raise SimulatorError("'{}' simulation objects not registered to receive '{}' messages".format(
                 most_qual_cls_name(receiving_object), event_type_name))
 
-        if event_body and copy:
-            event_body = deepcopy(event_body)
+        if copy:
+            message = deepcopy(message)
 
         receiving_object.event_queue.schedule_event(self.time, event_time, self,
-            receiving_object, event_type_name, event_body)
+            receiving_object, message)
         self.log_with_time("Send: ({}, {:6.2f}) -> ({}, {:6.2f}): {}".format(self.name, self.time,
-            receiving_object.name, event_time, event_type.__name__))
+            receiving_object.name, event_time, message.__class__.__name__))
 
-    # TODO(Arthur): simplify: combine event_type & event_body into one required parameter
-    # event_body, from which event_type can be determined
-    def send_event(self, delay, receiving_object, event_type, event_body=None, copy=True):
+    def send_event(self, delay, receiving_object, message, copy=True):
         """Send a simulation event message, specifing the event time as a delay
 
         Args:
             delay: number; the simulation delay at which the receiving_object should execute the event.
             receiving_object: object; the object that will receive the event
             event_type (class): the class of the event message.
-            event_body: object; an optional object containing the body of the event
-            copy: boolean; if True, copy the event_body; True by default as a safety measure to
+            message: object; an optional object containing the body of the event
+            copy: boolean; if True, copy the message; True by default as a safety measure to
                 avoid unexpected changes to shared objects; set False to optimize
 
         Raises:
@@ -279,8 +282,7 @@ class SimulationObject(object):
         """
         if delay < 0:
             raise SimulatorError("delay < 0 in send_event(): {}".format(str(delay)))
-        self.send_event_absolute(delay + self.time, receiving_object, event_type,
-            event_body=event_body, copy=copy)
+        self.send_event_absolute(delay + self.time, receiving_object, message, copy=copy)
 
     @staticmethod
     def register_handlers(subclass, handlers):
@@ -301,16 +303,16 @@ class SimulationObject(object):
         """
         subclass.event_handlers = {}
         for message_type, handler in handlers:
-            if most_qual_cls_name(message_type) in subclass.event_handlers:
+            if message_type in subclass.event_handlers:
                 raise SimulatorError("message type '{}' appears repeatedly".format(
                     most_qual_cls_name(message_type)))
             if not callable(handler):
                 raise SimulatorError("handler '{}' must be callable".format(handler))
-            subclass.event_handlers[most_qual_cls_name(message_type)] = handler
+            subclass.event_handlers[message_type] = handler
 
         subclass.event_handler_priorities = {}
         for index,(message_type, _) in enumerate(handlers):
-            subclass.event_handler_priorities[most_qual_cls_name(message_type)] = index
+            subclass.event_handler_priorities[message_type] = index
 
     @staticmethod
     def register_sent_messages(subclass, sent_messages):
@@ -325,7 +327,7 @@ class SimulationObject(object):
         """
         subclass.message_types_sent = set()
         for sent_message_type in sent_messages:
-            subclass.message_types_sent.add(most_qual_cls_name(sent_message_type))
+            subclass.message_types_sent.add(sent_message_type)
 
     def get_receiving_priorities_dict(self):
         """ Get priorities of message types handled by this `SimulationObject`'s type
@@ -367,14 +369,14 @@ class SimulationObject(object):
             logger.debug(str(event), sim_time=self.time)
 
         # iterate through event_list, branching to handler
-        for event_message in event_list:
+        for event in event_list:
             try:
-                handler = self.__class__.event_handlers[event_message.event_type]
-                handler(self, event_message)
+                handler = self.__class__.event_handlers[event.message.__class__]
+                handler(self, event)
             except KeyError: # pragma: no cover     # unreachable because of check that receiving sim
                                                     # obj type is registered to receive the message type
                 raise SimulatorError("No handler registered for Simulation message type: '{}'".format(
-                    event_message.event_type))
+                    event.message.__class__.__name__))
 
     def event_queue_to_str(self):
         """Format an event queue as a string.

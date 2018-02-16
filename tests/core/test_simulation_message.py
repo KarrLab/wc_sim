@@ -48,6 +48,7 @@ class TestSimulationMessageFactory(unittest.TestCase):
         test_msg2 = TestMsg2()
         for attr in attrs:
             self.assertFalse(hasattr(test_msg2, attr))
+        self.assertEqual(test_msg2.header(), None)
 
         with self.assertRaises(SimulatorError) as context:
             SimulationMessageFactory.create('', '')

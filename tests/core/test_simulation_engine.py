@@ -12,7 +12,6 @@ from builtins import super
 
 from wc_sim.core.errors import SimulatorError
 from wc_sim.core.simulation_object import EventQueue, SimulationObject, SimulationObjectInterface
-from wc_sim.core.event import Event
 from wc_sim.core.simulation_engine import SimulationEngine
 from tests.core.some_message_types import InitMsg, Eg1
 from wc_sim.core.shared_state_interface import SharedStateInterface
@@ -21,6 +20,7 @@ from wc_utils.util.misc import most_qual_cls_name
 ALL_MESSAGE_TYPES = [InitMsg, Eg1]
 
 
+# TODO(Arthur): consolidate in example_simulation_objects
 class InactiveSimulationObject(SimulationObject, SimulationObjectInterface):
 
     def __init__(self):
@@ -44,7 +44,7 @@ class BasicExampleSimulationObject(SimulationObject, SimulationObjectInterface):
         self.num = 0
 
     def send_initial_events(self):
-        self.send_event(1, self, InitMsg)
+        self.send_event(1, self, InitMsg())
 
     def get_state(self):
         return "self.num: {}".format(self.num)
@@ -62,7 +62,7 @@ class BasicExampleSimulationObject(SimulationObject, SimulationObjectInterface):
 class ExampleSimulationObject(BasicExampleSimulationObject):
 
     def handle_event(self, event):
-        self.send_event(2.0, self, InitMsg)
+        self.send_event(2.0, self, InitMsg())
 
     @classmethod
     def register_subclass_handlers(this_class):
@@ -79,7 +79,7 @@ class InteractingSimulationObject(BasicExampleSimulationObject):
         self.num += 1
         # send an event to each InteractingSimulationObject
         for obj in self.simulator.simulation_objects.values():
-            self.send_event(1, obj, InitMsg)
+            self.send_event(1, obj, InitMsg())
 
     @classmethod
     def register_subclass_handlers(this_class):
@@ -107,7 +107,7 @@ class CyclicalMessagesSimulationObject(SimulationObject, SimulationObjectInterfa
 
     def send_initial_events(self):
         # send event to next InteractingSimulationObject
-        self.send_event(1, self.next_obj(), InitMsg)
+        self.send_event(1, self.next_obj(), InitMsg())
 
     def get_state(self):
         return 'object state to be provided'
@@ -116,7 +116,7 @@ class CyclicalMessagesSimulationObject(SimulationObject, SimulationObjectInterfa
         self.num_msgs += 1
         self.test_case.assertEqual(self.time, float(self.num_msgs))
         # send event to next InteractingSimulationObject
-        self.send_event(1, self.next_obj(), InitMsg)
+        self.send_event(1, self.next_obj(), InitMsg())
 
     @classmethod
     def register_subclass_handlers(this_class):
@@ -178,7 +178,7 @@ class TestSimulationEngine(unittest.TestCase):
 
         self.simulator.initialize()
         event_queue = obj.event_queue
-        event_queue.schedule_event(-1, -1, obj, obj, most_qual_cls_name(InitMsg))
+        event_queue.schedule_event(-1, -1, obj, obj, InitMsg())
         with self.assertRaises(AssertionError) as context:
             self.simulator.simulate(5.0)
         self.assertIn('find object time', str(context.exception))

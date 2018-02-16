@@ -165,7 +165,7 @@ class SSASubmodel(DynamicSubmodel):
     def schedule_SsaWait(self):
         """Schedule an SsaWait.
         """
-        self.send_event(self.ema_of_inter_event_time.get_value(), self, message_types.SsaWait)
+        self.send_event(self.ema_of_inter_event_time.get_value(), self, message_types.SsaWait())
         self.num_SsaWaits += 1
         # TODO(Arthur): IMPORTANT: avoid arbitrarily slow progress which arises when 1) no reactions
         # are enabled & 2) EMA of the time between ExecuteSsaReaction events is arbitrarily small
@@ -174,8 +174,7 @@ class SSASubmodel(DynamicSubmodel):
     def schedule_ExecuteSsaReaction(self, dt, reaction_index):
         """Schedule an ExecuteSsaReaction.
         """
-        self.send_event(dt, self,
-            message_types.ExecuteSsaReaction, message_types.ExecuteSsaReaction(reaction_index))
+        self.send_event(dt, self, message_types.ExecuteSsaReaction(reaction_index))
 
         # maintain EMA of the time between ExecuteSsaReaction events
         self.ema_of_inter_event_time.add_value(dt)
@@ -246,16 +245,16 @@ class SSASubmodel(DynamicSubmodel):
             if isclass_by_name(event_message.event_type, message_types.GivePopulation):
 
                 # population_values is a GivePopulation body attribute
-                population_values = event_message.event_body.population
+                population_values = event_message.message.population
                 # store population_values in the AccessSpeciesPopulations cache
                 self.access_species_pop.species_population_cache.cache_population(self.now,
                     population_values)
 
-                self.log_with_time("GivePopulation: {}".format(str(event_message.event_body)))
+                self.log_with_time("GivePopulation: {}".format(str(event_message.message)))
 
             elif isclass_by_name(event_message.event_type, message_types.ExecuteSsaReaction):
 
-                reaction_index = event_message.event_body.reaction_index
+                reaction_index = event_message.message.reaction_index
 
                 # if the selected reaction is still enabled execute it, otherwise try to choose another
                 if self.enabled_reaction(self.reactions[reaction_index]):

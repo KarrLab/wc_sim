@@ -196,7 +196,7 @@ class FbaSubmodel(DynamicSubmodel):
     def schedule_next_FBA_analysis(self):
         """Schedule the next analysis by this FBA submodel.
         """
-        self.send_event(self.time_step, self, message_types.RunFba)
+        self.send_event(self.time_step, self, message_types.RunFba())
 
     def calcReactionFluxes(self):
         """calculate growth rate.
@@ -296,9 +296,9 @@ class FbaSubmodel(DynamicSubmodel):
                 # accesses memory directly
 
                 # population_values is a GivePopulation body attribute
-                population_values = event_message.event_body.population
+                population_values = event_message.message.population
 
-                self.log_with_time("GivePopulation: {}".format(str(event_message.event_body)))
+                self.log_with_time("GivePopulation: {}".format(str(event_message.message)))
                 # store population_values in some local cache ...
 
             elif isclass_by_name(event_message.event_type, message_types.RunFba):

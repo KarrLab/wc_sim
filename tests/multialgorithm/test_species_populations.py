@@ -683,15 +683,14 @@ class MockSimulationTestingObject(MockSimulationObjectInterface):
 
     def send_debugging_events(self, species_pop_sim_obj, update_time, update_message, update_msg_body,
         get_pop_time, get_pop_msg_body):
-        self.send_event(update_time, species_pop_sim_obj, update_message, event_body=update_msg_body)
-        self.send_event(get_pop_time, species_pop_sim_obj, message_types.GetPopulation,
-            event_body=get_pop_msg_body)
+        self.send_event(update_time, species_pop_sim_obj, update_msg_body)
+        self.send_event(get_pop_time, species_pop_sim_obj, get_pop_msg_body)
 
     def handle_GivePopulation_event(self, event):
         """ Perform a unit test on the population of self.specie_id."""
 
-        # event.event_body is a GivePopulation instance
-        the_population = event.event_body.population
+        # event.message is a GivePopulation instance
+        the_population = event.message.population
         specie_id = self.kwargs['specie_id']
         expected_value = self.kwargs['expected_value']
         self.test_case.assertEqual(the_population[specie_id], expected_value,
@@ -701,9 +700,9 @@ class MockSimulationTestingObject(MockSimulationObjectInterface):
 
     def handle_GiveProperty_event(self, event):
         """ Perform a unit test on the mass of a SpeciesPopSimObject"""
-        property_name = event.event_body.property_name
+        property_name = event.message.property_name
         self.test_case.assertEqual(property_name, distributed_properties.MASS)
-        self.test_case.assertEqual(event.event_body.value, self.kwargs['expected_value'])
+        self.test_case.assertEqual(event.message.value, self.kwargs['expected_value'])
 
     @classmethod
     def register_subclass_handlers(this_class):
@@ -811,13 +810,13 @@ class TestSpeciesPopSimObject(unittest.TestCase):
     def test_invalid_event_types(self):
 
         with self.assertRaises(SimulatorError) as context:
-            self.test_species_pop_sim_obj.send_event(1.0, self.test_species_pop_sim_obj, InitMsg1)
+            self.test_species_pop_sim_obj.send_event(1.0, self.test_species_pop_sim_obj, InitMsg1())
         self.assertIn("'wc_sim.multialgorithm.species_populations.SpeciesPopSimObject' simulation "
             "objects not registered to send", str(context.exception))
 
         with self.assertRaises(SimulatorError) as context:
             self.test_species_pop_sim_obj.send_event(1.0, self.test_species_pop_sim_obj,
-                message_types.GivePopulation)
+                message_types.GivePopulation(7))
         self.assertIn("'wc_sim.multialgorithm.species_populations.SpeciesPopSimObject' simulation "
             "objects not registered to receive", str(context.exception))
 

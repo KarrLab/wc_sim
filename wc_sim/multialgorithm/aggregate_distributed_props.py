@@ -80,7 +80,7 @@ class AggregateDistributedProps(SimulationObject, SimulationObjectInterface):   
         Args:
             event_message (:obj:`Event`): an event message about a `DistributedProperty`
         '''
-        property_name = event_message.event_body.property_name
+        property_name = event_message.message.property_name
         # if the property value isn't available, return an error
         if not property_name in self.properties:
             msg = "Error: unknown distributed property '{}'".format(property_name)
@@ -106,8 +106,7 @@ class AggregateDistributedProps(SimulationObject, SimulationObjectInterface):   
         # send self-clocking AggregateProperty
         self.send_event(next_property_time-self.time,
             self,
-            message_types.AggregateProperty,
-            event_body=message_types.AggregateProperty(property_name))
+            message_types.AggregateProperty(property_name))
 
     def handle_aggregate_property_event(self, event_message):
         '''Process an event message `AggregateProperty`
@@ -128,7 +127,7 @@ class AggregateDistributedProps(SimulationObject, SimulationObjectInterface):   
             :obj:`ValueError`: if the `DistributedProperty` is not available at the requested time
         '''
         property_name = self.get_property(event_message)
-        time = event_message.event_body.time
+        time = event_message.message.time
         try:
             value = self.properties[property_name].get_aggregate_value(time)
         except ValueError as e:
@@ -139,8 +138,7 @@ class AggregateDistributedProps(SimulationObject, SimulationObjectInterface):   
 
         self.send_event(0,
             event_message.sending_object,
-            message_types.GiveProperty,
-            event_body=message_types.GiveProperty(property_name, time, value))
+            message_types.GiveProperty(property_name, time, value))
 
     def handle_give_property_event(self, event_message):
         '''Record a property value from a contributor
@@ -151,8 +149,8 @@ class AggregateDistributedProps(SimulationObject, SimulationObjectInterface):   
         property_name = self.get_property(event_message)
         self.properties[property_name].record_value(
             event_message.sending_object,
-            event_message.event_body.time,
-            event_message.event_body.value)
+            event_message.message.time,
+            event_message.message.value)
 
     @classmethod
     def register_subclass_handlers(this_class):
@@ -223,8 +221,7 @@ class DistributedProperty(object):  # pragma: no cover; # TODO(Arthur): cover af
         epsilon = config_multialgorithm['epsilon']
         for contributor in self.contributors:
             the_aggregate_distributed_props.send_event(self.period-epsilon, contributor,
-                message_types.GetHistoricalProperty,
-                event_body=message_types.GetHistoricalProperty(self.name, time))
+                message_types.GetHistoricalProperty(self.name, time))
 
     def record_value(self, contributor, time, value):
         '''Record a contributed value of a distributed property

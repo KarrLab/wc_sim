@@ -85,9 +85,13 @@ class SimulationMessage(object):
         """ Provide a tab-delimited string of the attribute names for this `SimulationMessage`
 
         Returns:
-            :obj:``str`: the attributes in this `SimulationMessage`, tab-delimited
+            :obj:``str`: the attributes in this `SimulationMessage`, tab-delimited, or `None`
+                if this message has no attributes
         """
-        return '\t'.join(self.attrs())
+        if self.attrs():
+            return '\t'.join(self.attrs())
+        else:
+            return None
 
     def delimited(self):
         """ Provide a tab-delimited string containing values in this `SimulationMessage`

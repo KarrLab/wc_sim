@@ -9,7 +9,7 @@ Simulation message types are subclasses of `SimulationMessage`, defined by `Simu
 Every simulation event message contains a typed `SimulationMessage`.
 
 Declare
-    1. For each message type which has an event_body, a class that represents the body
+    1. For each message type which has an message, a class that represents the body
 
 Event message types, bodies and reply message:
 
