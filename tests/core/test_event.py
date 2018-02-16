@@ -35,10 +35,13 @@ class TestEvent(unittest.TestCase):
         TestMsg = SimulationMessageFactory.create('TestMsg', ds, attrs)
         vals = ['att1_val', 'att2_val']
         test_msg = TestMsg(*vals)
-        times = [0, 1]
-        ev = Event(*times, ExampleSimulationObject('sender'), ExampleSimulationObject('receiver'),
-            test_msg)
+        times = (0, 1)
+        # And if a is tuple: f(*(a+(3,)))
+        ev = Event(*(times + (ExampleSimulationObject('sender'), ExampleSimulationObject('receiver'),
+            test_msg)))
+        self.assertEquals(Event.BASE_HEADERS, Event.header(as_list=True)[:-1])
         self.assertIn('\t'.join(Event.BASE_HEADERS), Event.header())
+        self.assertEquals(Event.BASE_HEADERS, ev.custom_header(as_list=True)[:-len(attrs)])
         self.assertIn('\t'.join(Event.BASE_HEADERS), ev.custom_header())
         self.assertIn('\t'.join(attrs), ev.custom_header())
         self.assertIn('\t'.join(vals), str(ev))

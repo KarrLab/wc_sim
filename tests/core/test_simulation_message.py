@@ -1,9 +1,9 @@
-'''
+"""
 :Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2017-06-01
 :Copyright: 2017-2018, Karr Lab
 :License: MIT
-'''
+"""
 
 import unittest
 import six
@@ -28,9 +28,17 @@ class TestSimulationMessage(unittest.TestCase):
         for attr in attributes:
             self.assertIn(attr, t.attrs())
             self.assertIn(attr, t.header())
-        self.assertEqual('\t'.join([str(v) for v in vals]), t.delimited())
+            self.assertIn(attr, t.header(as_list=True))
+            self.assertIn(attr, t.values(annotated=True))
+            self.assertIn(attr, t.values(annotated=True, separator=','))
+            print(t.values(annotated=True, separator=','))
+        self.assertEqual([str(v) for v in vals], t.values(as_list=True))
+        self.assertEqual('\t'.join([str(v) for v in vals]), t.values())
         delattr(t, 'arg_2')
         self.assertIn(str(None), str(t))
+        NoBodyMessage = SimulationMessageFactory.create('NoBodyMessage', 'A msg with no attributes')
+        no_body_msg = NoBodyMessage()
+        self.assertEqual(None, no_body_msg.values())
 
 
 class TestSimulationMessageFactory(unittest.TestCase):

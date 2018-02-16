@@ -49,6 +49,8 @@ class SimulationMessage(object):
     def _values(self):
         """ Provide the values in a `SimulationMessage`, cast to strings
 
+        Uninitialized values are returned as `str(None)`.
+
         Returns:
             :obj:`list`: list of attribute values
         """
@@ -60,18 +62,47 @@ class SimulationMessage(object):
                 vals.append(str(None))
         return vals
 
-    def values(self):
-        """ Provide the values in a `SimulationMessage`, cast to strings
+    def value_map(self):
+        """ Provide a map from attribute to value, cast to strings, for this `SimulationMessage`
+
+        Uninitialized values are returned as `str(None)`.
 
         Returns:
             :obj:`dict`: map attribute -> str(attribute value)
         """
-        return {attr:val for attr,val in zip(self.__slots__,self._values())}
+        return {attr:val for attr,val in zip(self.__slots__, self._values())}
+
+    def values(self, annotated=False, as_list=False, separator='\t'):
+        """ Provide the values in this `SimulationMessage`
+
+        Uninitialized values are returned as `str(None)`.
+
+        Args:
+            annotated (:obj:`bool`, optional): if set, prefix each value with its attribute name
+            as_list (:obj:`bool`, optional): if set, return the attribute names in a :obj:`list`
+            separator (:obj:`str`, optional): the separator used if the attribute names are returned
+                as a string
+
+        Returns:
+            :obj:`obj`: `None` if this message has no attributes, or a string representation of
+                the attribute names for this `SimulationMessage`, or a :obj:`list`
+                representation if `as_list` is set
+        """
+        if not self.attrs():
+            return None
+        if annotated:
+            list_repr = ["{}:{}".format(attr, val) for attr,val in zip(self.__slots__, self._values())]
+        else:
+            list_repr = self._values()
+        if as_list:
+            return list_repr
+        else:
+            return separator.join(list_repr)
 
     def __str__(self):
         """ Provide a string representation of a `SimulationMessage`
         """
-        return "SimulationMessage: {}({})".format(self.__class__.__name__, self.values())
+        return "SimulationMessage: {}({})".format(self.__class__.__name__, self.value_map())
 
     def attrs(self):
         """ Provide a list of the attributes names for this `SimulationMessage`
@@ -81,25 +112,25 @@ class SimulationMessage(object):
         """
         return self.__slots__
 
-    def header(self):
-        """ Provide a tab-delimited string of the attribute names for this `SimulationMessage`
+    def header(self, as_list=False, separator='\t'):
+        """ Provide the attribute names for this `SimulationMessage`
+
+        Args:
+            as_list (:obj:`bool`, optional): if set, return the attribute names in a :obj:`list`
+            separator (:obj:`str`, optional): the separator used if the attribute names are returned
+                as a string
 
         Returns:
-            :obj:``str`: the attributes in this `SimulationMessage`, tab-delimited, or `None`
-                if this message has no attributes
+            :obj:`obj`: `None` if this message has no attributes, or a string representation of
+                the attribute names for this `SimulationMessage`, or a :obj:`list`
+                representation if `as_list` is set
         """
-        if self.attrs():
-            return '\t'.join(self.attrs())
-        else:
+        if not self.attrs():
             return None
-
-    def delimited(self):
-        """ Provide a tab-delimited string containing values in this `SimulationMessage`
-
-        Returns:
-            :obj:``str`: the values of the attributes in this `SimulationMessage`, tab-delimited
-        """
-        return '\t'.join(self._values())
+        if as_list:
+            return self.attrs()
+        else:
+            return separator.join(self.attrs())
 
 
 class SimulationMessageFactory(object):

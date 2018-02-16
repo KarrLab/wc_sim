@@ -46,7 +46,7 @@ class Event(object):
     def __lt__(self, other):
         """ Does this `Event` occur earlier than `other`?
 
-        Attributes:
+        Args:
             other (:obj:`Event`): another `Event`
 
         Returns:
@@ -57,7 +57,7 @@ class Event(object):
     def __le__(self, other):
         """ Does this `Event` occur earlier or at the same time as `other`?
 
-        Attributes:
+        Args:
             other (:obj:`Event`): another `Event`
 
         Returns:
@@ -68,7 +68,7 @@ class Event(object):
     def __gt__(self, other):
         """ Does this `Event` occur later than `other`?
 
-        Attributes:
+        Args:
             other (:obj:`Event`): another `Event`
 
         Returns:
@@ -79,7 +79,7 @@ class Event(object):
     def __ge__(self, other):
         """ Does this `Event` occur later or at the same time as `other`?
 
-        Attributes:
+        Args:
             other (:obj:`Event`): another `Event`
 
         Returns:
@@ -100,27 +100,48 @@ class Event(object):
         # TODO(Arthur): allow formatting of the returned string, e.g. formatting the precision of time values
         vals = [round_direct(self.creation_time), round_direct(self.event_time),
             self.sending_object.name, self.receiving_object.name, self.message.__class__.__name__]
-        vals.append(self.message.delimited())
+        if self.message.values():
+            vals.append(self.message.values())
         return '\t'.join(vals)
 
     @staticmethod
-    def header():
-        """ Return a header for an Event table
+    def header(as_list=False, separator='\t'):
+        """ Return a header for an :obj:`Event` table
 
-        Provide generic header suitable for any type of message in the event.
+        Provide generic header suitable for any type of message in an event.
+
+        Args:
+            as_list (:obj:`bool`, optional): if set, return the header fields in a :obj:`list`
+            separator (:obj:`str`, optional): the separator used if the header is returned as
+                a string
 
         Returns:
-            :obj:`str`: String representation of names of an `Event`'s fields, delimited by tabs
+            :obj:`str`: String representation of names of an :obj:`Event`'s fields, or a :obj:`list`
+                representation if `as_list` is set
         """
-        return '\t'.join(Event.BASE_HEADERS + ['Event body fields...'])
+        MESSAGE_FIELDS_HEADER = 'Message fields...'
+        list_repr = Event.BASE_HEADERS + [MESSAGE_FIELDS_HEADER]
+        if as_list:
+            return list_repr
+        else:
+            return separator.join(list_repr)
 
-    def custom_header(self):
-        """ Return a header for an Event table containing messages of a particular type
+    def custom_header(self, as_list=False, separator='\t'):
+        """ Return a header for an :obj:`Event` table containing messages of a particular type
+
+        Args:
+            as_list (:obj:`bool`, optional): if set, return the header fields in a :obj:`list`
+            separator (:obj:`str`, optional): the separator used if the header is returned as
+                a string
 
         Returns:
-            :obj:`str`: String representation of names of an `Event`'s fields, delimited by tabs
+            :obj:`str`: String representation of names of an `Event`'s fields, or a :obj:`list`
+                representation if `as_list` is set
         """
         headers = Event.BASE_HEADERS.copy()
         if self.message.header() is not None:
-            headers.append(self.message.header())
-        return '\t'.join(headers)
+            headers.extend(self.message.header(as_list=True))
+        if as_list:
+            return headers
+        else:
+            return separator.join(headers)

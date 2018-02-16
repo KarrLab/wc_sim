@@ -156,6 +156,10 @@ class EventQueue(object):
         """return event queue members as a table"""
         return "\n".join([event.__str__() for (time, event) in self.event_heap])
 
+    def render(self):
+        """ Render event queue into a """
+        pass
+
 
 class SimulationObject(object):
     """Base class for simulation objects.
