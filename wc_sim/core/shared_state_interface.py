@@ -7,7 +7,6 @@
 """
 
 import six, abc
-from builtins import super
 
 
 @six.add_metaclass(abc.ABCMeta)

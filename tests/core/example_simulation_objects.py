@@ -4,6 +4,7 @@
 :Copyright: 2018, Karr Lab
 :License: MIT
 """
+from builtins import super
 
 from wc_sim.core.simulation_object import EventQueue, SimulationObject, SimulationObjectInterface
 from tests.core.some_message_types import InitMsg, Eg1, UnregisteredMsg

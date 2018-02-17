@@ -161,7 +161,7 @@ class TestSkeletonSubmodel(unittest.TestCase):
     def test_skeleton_submodel(self):
         behavior = {'INTER_REACTION_TIME': 4}
         lang_submodel = self.model.get_submodels()[0]
-        # concatenate tuples for Py 2.7
+        # concatenate tuples in fn call for Py 2.7
         skeleton_submodel = SkeletonSubmodel(
             *(make_dynamic_submodel_params(self.model, lang_submodel) + (behavior,)))
         self.simulator.add_object(skeleton_submodel)
