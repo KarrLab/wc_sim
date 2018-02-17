@@ -13,6 +13,7 @@ import six
 
 from wc_sim.core.event import Event
 from wc_sim.core.errors import SimulatorError
+from wc_utils.util.list import elements_to_str
 from wc_utils.util.misc import most_qual_cls_name, round_direct
 from wc_sim.core.simulation_message import SimulationMessage
 
@@ -142,23 +143,62 @@ class EventQueue(object):
                 sim_time=event.event_time,
                 local_call_depth=local_call_depth)
 
-    '''
-    # TODO(Arthur): rendering an event queue as a table
-    sort events by receive time
-    if all events have the same type of message:
-        make header for event and message fields
-        render each event with message field as values
-    else
-        make header for event fields and generic for message fields
-        render each event with message field as attr:value
-    '''
     def __str__(self):
         """return event queue members as a table"""
         return "\n".join([event.__str__() for (time, event) in self.event_heap])
 
-    def render(self):
-        """ Render event queue into a """
-        pass
+    def render(self, as_list=False, separator='\t'):
+        """ Return the content of an `EventQueue`
+
+        Make a human-readable event queue, sorted by non-decreasing event time.
+        Provide a header row and a row for each event. If all events have the same type of message,
+        the header contains event and message fields. Otherwise, the header has event fields and
+        a message field label, and each event labels message fields with their attribute names.
+
+        Args:
+            as_list (:obj:`bool`, optional): if set, return the `EventQueue`'s values in a :obj:`list`
+            separator (:obj:`str`, optional): the field separator used if the values are returned as
+                a string
+
+        Returns:
+            :obj:`str`: String representation of the values of an `EventQueue`, or a :obj:`list`
+                representation if `as_list` is set
+        """
+        if not self.event_heap:
+            return None
+
+        # Sort the events in non-decreasing event time (receive_time)
+        sorted_events = sorted(self.event_heap, key=lambda record: record[0])
+        # Does the queue contain multiple message types?
+        message_types = set()
+        for _,event in self.event_heap:
+            message_types.add(event.message.__class__)
+            if 1<len(message_types):
+                break
+        multiple_msg_types = 1<len(message_types)
+
+        rendered_event_queue = []
+        if multiple_msg_types:
+            # The queue contains multiple message types
+            rendered_event_queue.append(Event.header(as_list=True))
+            for _,event in sorted_events:
+                rendered_event_queue.append(event.render(annotated=True, as_list=True))
+
+        else:
+            # The queue contain only one message type
+            # message_type = message_types.pop()
+            (_,event) = sorted_events[0]
+            rendered_event_queue.append(event.custom_header(as_list=True))
+            for _,event in sorted_events:
+                rendered_event_queue.append(event.render(as_list=True))
+
+        if as_list:
+            return rendered_event_queue
+        else:
+            table = []
+            for row in rendered_event_queue:
+                table.append(separator.join(elements_to_str(row)))
+            return '\n'.join(table)
 
 
 class SimulationObject(object):

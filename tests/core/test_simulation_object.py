@@ -13,10 +13,11 @@ from builtins import super
 from wc_sim.core.errors import SimulatorError
 from wc_sim.core.simulation_object import EventQueue, SimulationObject, SimulationObjectInterface
 from wc_sim.core.simulation_engine import SimulationEngine
-from tests.core.some_message_types import InitMsg, Eg1, UnregisteredMsg
+from tests.core.some_message_types import InitMsg, Eg1, MsgWithAttrs, UnregisteredMsg
 from tests.core.example_simulation_objects import (ALL_MESSAGE_TYPES, TEST_SIM_OBJ_STATE,
     ExampleSimulationObject)
 from wc_utils.util.misc import most_qual_cls_name
+from wc_utils.util.list import is_sorted
 
 
 class ExampleUnregisteredSimulationObject(SimulationObject, SimulationObjectInterface):
@@ -64,6 +65,32 @@ class TestEventQueue(unittest.TestCase):
         empty_event_queue = EventQueue()
         self.assertEqual(float('inf'), empty_event_queue.next_event_time())
         self.assertEqual(1, self.event_queue.next_event_time())
+
+    def test_render(self):
+        self.assertEqual(EventQueue().render(), None)
+        self.assertEqual(len(self.event_queue.render(as_list=True)), self.num_events+1)
+        def get_event_times(eq_rendered_as_list):
+            return [row[1] for row in eq_rendered_as_list[1:]]
+        self.assertTrue(is_sorted(get_event_times(self.event_queue.render(as_list=True))))
+
+        # test sorting
+        test_eq = EventQueue()
+        num_events = 10
+        for i in range(num_events):
+            test_eq.schedule_event(i, random.uniform(i, i+num_events), self.sender, self.receiver,
+                MsgWithAttrs(2, 3))
+        self.assertTrue(is_sorted(get_event_times(test_eq.render(as_list=True))))
+
+        # test multiple message types
+        test_eq = EventQueue()
+        num_events = 20
+        for i in range(num_events):
+            msg = random.choice([InitMsg(), MsgWithAttrs(2, 3)])
+            test_eq.schedule_event(i, i+1, self.sender, self.receiver, msg)
+        self.assertEqual(len(test_eq.render(as_list=True)), num_events+1)
+        self.assertTrue(is_sorted(get_event_times(test_eq.render(as_list=True))))
+        for attr in MsgWithAttrs.__slots__:
+            self.assertIn("\t{}:".format(attr), test_eq.render())
 
 
 class TestSimulationObject(unittest.TestCase):

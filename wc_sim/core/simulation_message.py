@@ -161,6 +161,7 @@ class SimulationMessageFactory(object):
         if docstring == '':
             raise SimulatorError("SimulationMessage docstring cannot be empty")
         attrs = {}
+        # TODO(Arthur): raise exception if attributes contains dupes
         if attributes is not None:
             attrs['__slots__'] = attributes
         generated_simulation_message_cls = type(name, (SimulationMessage,), attrs)

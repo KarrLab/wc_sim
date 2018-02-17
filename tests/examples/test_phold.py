@@ -26,3 +26,4 @@ class TestMultiAlgorithm(unittest.TestCase):
         self.assertNotEqual(num_events1, num_events2)
 
     # TODO(Arthur): test RunPhold.parse_args()
+    # TODO(Arthur): reduce or stop console output during testing

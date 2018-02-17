@@ -7,6 +7,7 @@
 """
 
 from wc_utils.util.misc import round_direct
+from wc_utils.util.list import elements_to_str
 from wc_sim.core.simulation_message import SimulationMessage
 
 
@@ -87,23 +88,6 @@ class Event(object):
         """
         return self.event_time >= other.event_time
 
-    def __str__(self):
-        """ Return an `Event` as a string
-
-        To generate the returned string, it is assumed that `sending_object` and `receiving_object`
-        have name attributes.
-
-        Returns:
-            :obj:`str`: String representation of the `Event`'s fields, except `message`,
-                delimited by tabs
-        """
-        # TODO(Arthur): allow formatting of the returned string, e.g. formatting the precision of time values
-        vals = [round_direct(self.creation_time), round_direct(self.event_time),
-            self.sending_object.name, self.receiving_object.name, self.message.__class__.__name__]
-        if self.message.values():
-            vals.append(self.message.values())
-        return '\t'.join(vals)
-
     @staticmethod
     def header(as_list=False, separator='\t'):
         """ Return a header for an :obj:`Event` table
@@ -145,3 +129,44 @@ class Event(object):
             return headers
         else:
             return separator.join(headers)
+
+    def render(self, round_w_direction=False, annotated=False, as_list=False, separator='\t'):
+        """ Return the content of an `Event`
+
+        Rendering the content assumes that `sending_object` and `receiving_object`
+        have name attributes.
+
+        Args:
+            round_w_direction (:obj:`bool`, optional): if set, round times to strings indicating
+                the direction of the rounding
+            annotated (:obj:`bool`, optional): if set, prefix each message field value with its
+                attribute name
+            as_list (:obj:`bool`, optional): if set, return the `Event`'s values in a :obj:`list`
+            separator (:obj:`str`, optional): the separator used if the values are returned as
+                a string
+
+        Returns:
+            :obj:`str`: String representation of the values of an `Event`'s fields, or a :obj:`list`
+                representation if `as_list` is set
+        """
+        # TODO(Arthur): allow formatting of the returned string, e.g. formatting the precision of time values
+        if round_w_direction:
+            times = [round_direct(self.creation_time), round_direct(self.event_time)]
+        else:
+            times = [self.creation_time, self.event_time]
+        vals = times + [self.sending_object.name, self.receiving_object.name, self.message.__class__.__name__]
+        if self.message.values():
+            vals.extend(self.message.values(annotated=annotated, as_list=True))
+        if as_list:
+            return vals
+        else:
+            return separator.join(elements_to_str(vals))
+
+    def __str__(self):
+        """ Return an `Event` as a string
+
+        Returns:
+            :obj:`str`: String representation of the `Event`'s fields, except `message`,
+                delimited by tabs
+        """
+        return self.render()

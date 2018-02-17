@@ -9,6 +9,7 @@ import unittest
 import six
 from wc_sim.core.simulation_message import SimulationMessageFactory, SimulationMessage
 from wc_sim.core.errors import SimulatorError
+from wc_utils.util.list import elements_to_str
 
 
 class TestSimulationMessage(unittest.TestCase):
@@ -32,8 +33,8 @@ class TestSimulationMessage(unittest.TestCase):
             self.assertIn(attr, t.values(annotated=True))
             self.assertIn(attr, t.values(annotated=True, separator=','))
             print(t.values(annotated=True, separator=','))
-        self.assertEqual([str(v) for v in vals], t.values(as_list=True))
-        self.assertEqual('\t'.join([str(v) for v in vals]), t.values())
+        self.assertEqual(elements_to_str(vals), t.values(as_list=True))
+        self.assertEqual('\t'.join(elements_to_str(vals)), t.values())
         delattr(t, 'arg_2')
         self.assertIn(str(None), str(t))
         NoBodyMessage = SimulationMessageFactory.create('NoBodyMessage', 'A msg with no attributes')
