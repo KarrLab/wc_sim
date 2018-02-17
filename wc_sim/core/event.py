@@ -138,7 +138,7 @@ class Event(object):
             :obj:`str`: String representation of names of an `Event`'s fields, or a :obj:`list`
                 representation if `as_list` is set
         """
-        headers = Event.BASE_HEADERS.copy()
+        headers = list(Event.BASE_HEADERS)
         if self.message.header() is not None:
             headers.extend(self.message.header(as_list=True))
         if as_list:
