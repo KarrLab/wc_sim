@@ -1,10 +1,10 @@
-'''A simple example simulation. Implements PHOLD.
+""" A simple example simulation. Implements PHOLD.
 
 :Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2016-06-10
 :Copyright: 2016-2018, Karr Lab
 :License: MIT
-'''
+"""
 
 # TODO(Arthur): replace python random with RandomStateManager
 # from wc_utils.util.rand import RandomStateManager
@@ -47,7 +47,7 @@ class PholdSimulationObject(SimulationObject, SimulationObjectInterface):
         self.send_event(exp_delay(), self, InitMsg())
 
     def handle_simulation_event(self, event):
-        '''Handle a single simulation event.'''
+        """Handle a single simulation event."""
         # schedule event
         if random.random() < self.args.frac_self_events or self.args.num_phold_procs == 1:
             receiver = self
@@ -88,7 +88,15 @@ class PholdSimulationObject(SimulationObject, SimulationObjectInterface):
 class RunPhold(object):
 
     @staticmethod
-    def parse_args():
+    def parse_args(cli_args=None):
+        """ Parse command line arguments
+
+        Args:
+            cli_args (:obj:`list`, optional): if provided, use to test command line parsing
+
+        Returns:
+            :obj:`argparse.Namespace`: parsed command line arguements
+        """
         parser = argparse.ArgumentParser(description="Run PHOLD simulation. "
             "Each PHOLD event either schedules an event for 'self' or for some other randomly selected LP, "
             "in either case with an exponentially-distributed time-stamp increment having mean of 1.0. "
@@ -99,12 +107,15 @@ class RunPhold(object):
         parser.add_argument('frac_self_events', type=float, help="Fraction of events sent to self")
         parser.add_argument('end_time', type=float, help="End time for the simulation")
         parser.add_argument('--seed', '-s', type=int, help='Random number seed')
-        args = parser.parse_args()
-        if args.num_phold_procs < 1:
+        if cli_args is not None:
+            args = parser.parse_args(cli_args)
+        else:    # pragma: no cover     # reachable only from command line
+            args = parser.parse_args()
+        if args.num_phold_procs < 1:    # pragma: no cover     # unittest cannot catch parser.error
             parser.error("Must create at least 1 PHOLD process.")
-        if args.frac_self_events < 0:
+        if args.frac_self_events < 0:    # pragma: no cover
             parser.error("Fraction of events sent to self ({}) should be >= 0.".format(args.frac_self_events))
-        if 1 < args.frac_self_events:
+        if 1 < args.frac_self_events:    # pragma: no cover
             parser.error("Fraction of events sent to self ({}) should be <= 1.".format(args.frac_self_events))
         if args.seed:
             random.seed(args.seed)
@@ -130,7 +141,7 @@ class RunPhold(object):
         sys.stderr.write("Executed {} events.\n".format(event_num))
         return(event_num)
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover     # reachable only from command line
     try:
         args = RunPhold.parse_args()
         RunPhold.main(args)
