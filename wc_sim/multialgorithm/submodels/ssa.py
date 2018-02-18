@@ -241,20 +241,20 @@ class SSASubmodel(DynamicSubmodel):
             # TODO(Arthur): perhaps log this msg to console
             self.log_with_time("submodel {}, event {}".format(self.name, self.num_events))
 
-        for event_message in event_list:
-            if isclass_by_name(event_message.event_type, message_types.GivePopulation):
+        for event in event_list:
+            if isclass_by_name(event.message, message_types.GivePopulation):
 
                 # population_values is a GivePopulation body attribute
-                population_values = event_message.message.population
+                population_values = event.message.population
                 # store population_values in the AccessSpeciesPopulations cache
                 self.access_species_pop.species_population_cache.cache_population(self.now,
                     population_values)
 
-                self.log_with_time("GivePopulation: {}".format(str(event_message.message)))
+                self.log_with_time("GivePopulation: {}".format(str(event.message)))
 
-            elif isclass_by_name(event_message.event_type, message_types.ExecuteSsaReaction):
+            elif isclass_by_name(event.message, message_types.ExecuteSsaReaction):
 
-                reaction_index = event_message.message.reaction_index
+                reaction_index = event.message.reaction_index
 
                 # if the selected reaction is still enabled execute it, otherwise try to choose another
                 if self.enabled_reaction(self.reactions[reaction_index]):
@@ -276,7 +276,7 @@ class SSASubmodel(DynamicSubmodel):
 
                 self.schedule_next_events()
 
-            elif isclass_by_name(event_message.event_type, message_types.SsaWait):
+            elif isclass_by_name(event.message, message_types.SsaWait):
 
                 # TODO(Arthur): generate WARNING(s) if SsaWaits are numerous, or a high fraction of events
                 # no reaction to execute
@@ -284,7 +284,7 @@ class SSASubmodel(DynamicSubmodel):
 
             else:
                 assert False, "Error: the 'if' statement should handle " \
-                "event_message.event_type '{}'".format(event_message.event_type)
+                "event.message '{}'".format(event.message)
 
         self.log_with_time("EMA of inter event time: "
             "{:3.2f}; num_events: {}; num_SsaWaits: {}".format(

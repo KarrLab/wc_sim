@@ -63,10 +63,10 @@ class PholdSimulationObject(SimulationObject, SimulationObjectInterface):
                 obj_name(index)))
 
         if receiver == self:
-            event_type = MessageSentToSelf
+            message = MessageSentToSelf
         else:
-            event_type = MessageSentToOtherObject
-        self.send_event(exp_delay(), receiver, event_type())
+            message = MessageSentToOtherObject
+        self.send_event(exp_delay(), receiver, message())
 
     def get_state(self):
         return str(self.args)

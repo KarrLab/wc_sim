@@ -100,7 +100,7 @@ class TestSimulationObject(unittest.TestCase):
         self.simulator.register_object_types([ExampleSimulationObject])
         self.o1 = ExampleSimulationObject('o1')
         self.o2 = ExampleSimulationObject('o2')
-        self.simulator.load_objects([self.o1, self.o2])
+        self.simulator.add_objects([self.o1, self.o2])
         self.simulator.initialize()
 
     def test_send_events(self):

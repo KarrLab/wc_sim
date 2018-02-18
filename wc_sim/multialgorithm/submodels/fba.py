@@ -288,20 +288,20 @@ class FbaSubmodel(DynamicSubmodel):
         if not self.num_events % 100:
             print("{:7.1f}: submodel {}, event {}".format(self.time, self.name, self.num_events))
 
-        for event_message in event_list:
-            if isclass_by_name(event_message.event_type, message_types.GivePopulation):
+        for event in event_list:
+            if isclass_by_name(event.message, message_types.GivePopulation):
 
                 pass
                 # TODO(Arthur): add this functionality; currently, handling RunFba
                 # accesses memory directly
 
                 # population_values is a GivePopulation body attribute
-                population_values = event_message.message.population
+                population_values = event.message.population
 
-                self.log_with_time("GivePopulation: {}".format(str(event_message.message)))
+                self.log_with_time("GivePopulation: {}".format(str(event.message)))
                 # store population_values in some local cache ...
 
-            elif isclass_by_name(event_message.event_type, message_types.RunFba):
+            elif isclass_by_name(event.message, message_types.RunFba):
 
                 self.log_with_time("submodel '{}' executing".format(self.name))
 
@@ -313,7 +313,7 @@ class FbaSubmodel(DynamicSubmodel):
 
             else:
                 assert False, "Error: the 'if' statement should handle "\
-                    "event_message.event_type '{}'".format(event_message.event_type)
+                    "event.message '{}'".format(event.message)
 
 
 class ExchangedSpecies(object):

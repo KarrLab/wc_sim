@@ -212,7 +212,7 @@ class TestSimulationEngine(unittest.TestCase):
 
     def test_multi_interacting_object_simulation(self):
         sim_objects = [InteractingSimulationObject(obj_name(i)) for i in range(1, 3)]
-        self.simulator.load_objects(sim_objects)
+        self.simulator.add_objects(sim_objects)
         self.simulator.initialize()
         self.assertEqual(self.simulator.simulate(2.5), 4)
 
@@ -220,7 +220,7 @@ class TestSimulationEngine(unittest.TestCase):
         # make simulation with cyclical messaging network
         sim_objects = [CyclicalMessagesSimulationObject(obj_name(i), i, num_objs, self)
             for i in range(num_objs)]
-        self.simulator.load_objects(sim_objects)
+        self.simulator.add_objects(sim_objects)
 
     def test_cyclical_messaging_network(self):
         # test event times at simulation objects; this test should succeed with any
@@ -267,7 +267,7 @@ class TestSimulationEngineLogging(unittest.TestCase):
     def test_logging(self):
         num_sim_obj = 2
         sim_objects = [InteractingSimulationObject(obj_name(i)) for i in range(1, num_sim_obj+1)]
-        self.simulator.load_objects(sim_objects)
+        self.simulator.add_objects(sim_objects)
         self.simulator.initialize()
         self.assertEqual(self.simulator.simulate(2.5), 4)
         self.assertIn(self.example_shared_state_obj_name, self.simulator.log_simulation_state())

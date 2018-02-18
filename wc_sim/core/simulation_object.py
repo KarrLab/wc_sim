@@ -37,29 +37,30 @@ class EventQueue(object):
         self.event_heap = []
 
     def schedule_event(self, send_time, receive_time, sending_object, receiving_object, message):
-        """ Insert an event in this event queue, scheduled to execute at `receive_time`
+        """ Create an event and insert in this event queue, scheduled to execute at `receive_time`
 
-        Object X sends an event to object Y by invoking
-            `Y.event_queue.send_event(send_time, receive_time, X, Y, event_type, <message=value>)`
+        Simulation object X can sends an event to simulation object Y by invoking
+            `X.send_event(receive_delay, Y, message)`
 
         Args:
-            send_time (:obj:`float`): the simulation time at which the message was generated (sent)
-            receive_time (:obj:`float`): the simulation time at which the receiving_object will execute the event
-            sending_object: object; the object sending the event
-            receiving_object: object; the object that will receive the event; when the simulation is
-                parallelized `sending_object` and `receiving_object` will need to be global
-                identifiers.
-            event_type: class; the type of the message; the class' string name is sent with the
-                message, as messages should not contain references.
-            message: object; an object containing the body of the event
+            send_time (:obj:`float`): the simulation time at which the event was generated (sent)
+            receive_time (:obj:`float`): the simulation time at which the `receiving_object` will
+                execute the event
+            sending_object (:obj:`SimulationObject`): the object sending the event
+            receiving_object (:obj:`SimulationObject`): the object that will receive the event; when
+                the simulation is parallelized `sending_object` and `receiving_object` will need
+                to be global identifiers.
+            message (:obj:`SimulationMessage`): a `SimulationMessage` carried by the event; its type
+                provides the simulation application's type for an `Event`; it may also carry a payload
+                for the `Event` in its attributes.
 
         Raises:
-            SimulatorError: if receive_time < send_time
+            :obj:`SimulatorError`: if `receive_time` < `send_time`
         """
 
-        # ensure that send_time <= receive_time
-        # events with send_time == receive_time can cause loops, but the application programmer
-        # is responsible for avoiding them
+        # Ensure that send_time <= receive_time.
+        # Events with send_time == receive_time can cause loops, but the application programmer
+        # is responsible for avoiding them.
         if receive_time < send_time:
             raise SimulatorError("receive_time < send_time in schedule_event(): {} < {}".format(
                 str(receive_time), str(send_time)))
@@ -267,7 +268,7 @@ class SimulationObject(object):
         Args:
             event_time: number; the simulation time at which the receiving_object should execute the event
             receiving_object: object; the object that will receive the event
-            event_type (class): the class of the event message
+            message (class): the class of the event message
             message: object; an optional object containing the body of the event
             copy: boolean; if True, copy the message; True by default as a safety measure to
                 avoid unexpected changes to shared objects; set False to optimize
@@ -285,7 +286,7 @@ class SimulationObject(object):
         # same address space.
         # To eliminate the risk of name collisions use the fully qualified classname.
         # TODO(Arthur): wait until after MVP
-        # event_type_name = most_qual_cls_name(event_type)
+        # event_type_name = most_qual_cls_name(message)
         event_type_name = message.__class__.__name__
 
         # check that the sending object type is registered to send the message type
@@ -314,7 +315,7 @@ class SimulationObject(object):
         Args:
             delay: number; the simulation delay at which the receiving_object should execute the event.
             receiving_object: object; the object that will receive the event
-            event_type (class): the class of the event message.
+            message (class): the class of the event message.
             message: object; an optional object containing the body of the event
             copy: boolean; if True, copy the message; True by default as a safety measure to
                 avoid unexpected changes to shared objects; set False to optimize

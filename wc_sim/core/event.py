@@ -15,20 +15,18 @@ class Event(object):
     """ An object that holds a discrete event simulation (DES) event
 
     Each DES event is scheduled by creating an `Event` instance and storing it in its
-    `receiving_object`'s event queue. To reduce interface errors the `event_type` and
-    `message` attributes must be structured as specified in the `message_types` module.
+    `receiving_object`'s event queue. To reduce interface errors the `message`
+    attribute must be structured as specified in the `message_types` module.
 
     Attributes:
         creation_time (:obj:`float`): simulation time when the event is created (aka `send_time`)
         event_time (:obj:`float`): simulation time when the event must be executed (aka `receive_time`)
         sending_object (:obj:`SimulationObject`): reference to the object that sends the event
-        receiving_object (:obj:`SimulationObject`): reference to the object that receives (aka executes)
-            the event
-        # TODO(Arthur): FIX
-        event_type (:obj:`str`): the event's type; the name of a class declared in `message_types`
-        # TODO(Arthur): FIX
-        message (:obj:`object`): reference to a `body` subclass of a message type declared in
-            `message_types`; the message payload
+        receiving_object (:obj:`SimulationObject`): reference to the object that receives
+            (aka executes) the event
+        message (:obj:`SimulationMessage`): a `SimulationMessage` carried by the event; its type
+            provides the simulation application's type for an `Event`; it may also carry a payload
+            for the `Event` in its attributes.
     """
     # TODO(Arthur): for performance, perhaps pre-allocate and reuse events
 
@@ -96,7 +94,7 @@ class Event(object):
 
         Args:
             as_list (:obj:`bool`, optional): if set, return the header fields in a :obj:`list`
-            separator (:obj:`str`, optional): the separator used if the header is returned as
+            separator (:obj:`str`, optional): the field separator used if the header is returned as
                 a string
 
         Returns:
@@ -115,7 +113,7 @@ class Event(object):
 
         Args:
             as_list (:obj:`bool`, optional): if set, return the header fields in a :obj:`list`
-            separator (:obj:`str`, optional): the separator used if the header is returned as
+            separator (:obj:`str`, optional): the field separator used if the header is returned as
                 a string
 
         Returns:
@@ -131,7 +129,7 @@ class Event(object):
             return separator.join(headers)
 
     def render(self, round_w_direction=False, annotated=False, as_list=False, separator='\t'):
-        """ Return the content of an `Event`
+        """ Format the content of an `Event`
 
         Rendering the content assumes that `sending_object` and `receiving_object`
         have name attributes.
@@ -142,7 +140,7 @@ class Event(object):
             annotated (:obj:`bool`, optional): if set, prefix each message field value with its
                 attribute name
             as_list (:obj:`bool`, optional): if set, return the `Event`'s values in a :obj:`list`
-            separator (:obj:`str`, optional): the separator used if the values are returned as
+            separator (:obj:`str`, optional): the field separator used if the values are returned as
                 a string
 
         Returns:

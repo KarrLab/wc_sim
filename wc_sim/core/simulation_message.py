@@ -80,7 +80,7 @@ class SimulationMessage(object):
         Args:
             annotated (:obj:`bool`, optional): if set, prefix each value with its attribute name
             as_list (:obj:`bool`, optional): if set, return the attribute names in a :obj:`list`
-            separator (:obj:`str`, optional): the separator used if the attribute names are returned
+            separator (:obj:`str`, optional): the field separator used if the attribute names are returned
                 as a string
 
         Returns:
@@ -117,7 +117,7 @@ class SimulationMessage(object):
 
         Args:
             as_list (:obj:`bool`, optional): if set, return the attribute names in a :obj:`list`
-            separator (:obj:`str`, optional): the separator used if the attribute names are returned
+            separator (:obj:`str`, optional): the field separator used if the attribute names are returned
                 as a string
 
         Returns:

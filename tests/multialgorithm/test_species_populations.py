@@ -744,7 +744,7 @@ class TestSpeciesPopSimObjectWithAnotherSimObject(unittest.TestCase):
             {specie_id:init_pop}, {specie_id:mol_weight}, initial_fluxes={specie_id:init_flux})
         mock_obj = MockSimulationTestingObject('mock_name', self,
             specie_id=specie_id, expected_value=expected_value)
-        self.simulator.load_objects([species_pop_sim_obj, mock_obj])
+        self.simulator.add_objects([species_pop_sim_obj, mock_obj])
         mock_obj.send_debugging_events(species_pop_sim_obj, update_time, update_message, msg_body,
             get_pop_time, message_types.GetPopulation({specie_id}))
         self.simulator.initialize()

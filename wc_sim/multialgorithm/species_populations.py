@@ -763,21 +763,21 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
                     specie_id))
         return mass
 
-    def log_event(self, event_type, specie):
+    def log_event(self, message, specie):
         """ Log an event that modifies a specie's population
 
         Log the event's simulation time, event type, specie population, and current flux (if
         specified).
 
         Args:
-            event_type (:obj:`str`): description of the event's type.
+            message (:obj:`str`): description of the event's type.
             specie (:obj:`Specie`): the object whose adjustment is being logged
         """
         try:
             flux = specie.continuous_flux
         except AttributeError:
             flux = None
-        values = [event_type, specie.last_population, flux]
+        values = [message, specie.last_population, flux]
         values = map(lambda x: str(x), values)
         # log Sim_time Adjustment_type New_population New_flux
         debug_log.debug('\t'.join(values), local_call_depth=1, sim_time=self.time)

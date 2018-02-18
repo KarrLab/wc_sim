@@ -103,11 +103,11 @@ class SimulationEngine(object):
         simulation_object.delete()
         del self.simulation_objects[name]
 
-    def load_objects(self, simulation_objects):
-        """ Load simulation objects into the simulation
+    def add_objects(self, simulation_objects):
+        """ Add many simulation objects into the simulation
 
         Args:
-            simulation_objects (:obj:`list` of `SimulationObject`): a list of simulation objects
+            simulation_objects (:obj:`iterator` of `SimulationObject`): an iterator of simulation objects
         """
         for simulation_object in simulation_objects:
             self.add_object(simulation_object)
@@ -145,6 +145,7 @@ class SimulationEngine(object):
         data = ['Event queues at {:6.3f}'.format(self.time)]
         for sim_obj in sorted(self.simulation_objects.values(), key=lambda sim_obj: sim_obj.name):
             data.append(sim_obj.name + ':')
+            # TODO(Arthur): replace with improved event queue output
             if sim_obj.event_queue.event_heap:
                 data.append(Event.header())
                 data.append(str(sim_obj.event_queue))

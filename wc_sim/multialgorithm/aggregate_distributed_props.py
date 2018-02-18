@@ -74,13 +74,13 @@ class AggregateDistributedProps(SimulationObject, SimulationObjectInterface):   
         self.properties[distributed_property.name] = distributed_property
         self.process_aggregate_property_event(distributed_property.name, initial_event=True)
 
-    def get_property(self, event_message):
+    def get_property(self, event):
         '''Obtain an event's property_name
 
         Args:
-            event_message (:obj:`Event`): an event message about a `DistributedProperty`
+            event (:obj:`Event`): an event message about a `DistributedProperty`
         '''
-        property_name = event_message.message.property_name
+        property_name = event.message.property_name
         # if the property value isn't available, return an error
         if not property_name in self.properties:
             msg = "Error: unknown distributed property '{}'".format(property_name)
@@ -108,26 +108,26 @@ class AggregateDistributedProps(SimulationObject, SimulationObjectInterface):   
             self,
             message_types.AggregateProperty(property_name))
 
-    def handle_aggregate_property_event(self, event_message):
+    def handle_aggregate_property_event(self, event):
         '''Process an event message `AggregateProperty`
 
         Args:
-            event_message (:obj:`Event`): an event message about a `DistributedProperty`
+            event (:obj:`Event`): an event message about a `DistributedProperty`
         '''
-        property_name = self.get_property(event_message)
+        property_name = self.get_property(event)
         self.process_aggregate_property_event(property_name)        
 
-    def handle_get_historical_property_event(self, event_message):
+    def handle_get_historical_property_event(self, event):
         '''Provide an aggregate property value to a requestor
 
         Args:
-            event_message (:obj:`Event`): an event message about a `DistributedProperty`
+            event (:obj:`Event`): an event message about a `DistributedProperty`
 
         Raises:
             :obj:`ValueError`: if the `DistributedProperty` is not available at the requested time
         '''
-        property_name = self.get_property(event_message)
-        time = event_message.message.time
+        property_name = self.get_property(event)
+        time = event.message.time
         try:
             value = self.properties[property_name].get_aggregate_value(time)
         except ValueError as e:
@@ -137,20 +137,20 @@ class AggregateDistributedProps(SimulationObject, SimulationObjectInterface):   
             raise ValueError(msg)
 
         self.send_event(0,
-            event_message.sending_object,
+            event.sending_object,
             message_types.GiveProperty(property_name, time, value))
 
-    def handle_give_property_event(self, event_message):
+    def handle_give_property_event(self, event):
         '''Record a property value from a contributor
 
         Args:
-            event_message (:obj:`Event`): an event message about a `DistributedProperty`
+            event (:obj:`Event`): an event message about a `DistributedProperty`
         '''
-        property_name = self.get_property(event_message)
+        property_name = self.get_property(event)
         self.properties[property_name].record_value(
-            event_message.sending_object,
-            event_message.message.time,
-            event_message.message.value)
+            event.sending_object,
+            event.message.time,
+            event.message.value)
 
     @classmethod
     def register_subclass_handlers(this_class):
