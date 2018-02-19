@@ -626,8 +626,8 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
                 ', '.join(map(lambda x: "'{}'".format(str(x)), unknown_species))))
         early_accesses = list(filter(lambda s: time < self.last_access_time[s], species))
         if early_accesses:
-            raise SpeciesPopulationError("earlier access of specie(s): {}".format(
-                early_accesses))
+            raise SpeciesPopulationError("access at time {} is an earlier access of specie(s) {} than at {}".format(
+                time, early_accesses, [self.last_access_time[s] for s in early_accesses]))
 
     # TODO(Arthur): perhaps make species optional, and read all species if not supplied
     def __update_access_times(self, time, species):

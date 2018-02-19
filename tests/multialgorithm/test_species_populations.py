@@ -341,7 +341,7 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         self.assertIn("request for population of unknown specie(s): 'unknown_specie_id'", str(context.exception))
         with self.assertRaises(SpeciesPopulationError) as context:
             self.local_species_pop_no_init_flux.read_one(0, test_specie)
-        self.assertIn("earlier access of specie(s):", str(context.exception))
+        self.assertIn("is an earlier access of specie(s)", str(context.exception))
 
     def reusable_assertions(self, the_local_species_pop, flux):
         # test both discrete and hybrid species

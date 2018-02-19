@@ -157,32 +157,33 @@ class TestSkeletonSubmodel(unittest.TestCase):
             'test_submodel_no_shared_species.xlsx')
         self.model = Reader().run(self.MODEL_FILENAME)
         prepare_model(self.model)
-        self.dynamic_skeleton_submodel = {}
+
+    def make_sim_w_skeleton_submodel(self, lang_submodel, behavior):
+        # concatenate tuples in fn call for Py 2.7: see https://stackoverflow.com/a/12830036
         self.simulator = SimulationEngine()
         self.simulator.register_object_types([SkeletonSubmodel])
-        self.simulator.reset()
-
-    def test_skeleton_submodel(self):
-        behavior = {'INTER_REACTION_TIME': 4}
-        lang_submodel = self.model.get_submodels()[0]
-        # concatenate tuples in fn call for Py 2.7
         skeleton_submodel = SkeletonSubmodel(
             *(make_dynamic_submodel_params(self.model, lang_submodel) + (behavior,)))
         self.simulator.add_object(skeleton_submodel)
         self.simulator.initialize()
-        self.simulator.simulate(50.0)
-        '''
-        self.assertEqual(self.simulator.simulate(5.0), 3)
+        return skeleton_submodel
 
-            self.submodels[submodel.id] = SkeletonSubmodel(behavior, self.model, submodel.id,
-                access_species_population, submodel.reactions, submodel.get_species(), submodel.parameters)
-            self.simulator.add_object(self.submodels[submodel.id])
-        '''
+    def test_skeleton_submodel(self):
+        behavior = {SkeletonSubmodel.INTER_REACTION_TIME: 2}
+        lang_submodel = self.model.get_submodels()[0]
+        end_time = 100
+        skeleton_submodel = self.make_sim_w_skeleton_submodel(lang_submodel, behavior)
+        self.assertEqual(self.simulator.simulate(end_time),
+            end_time/behavior[SkeletonSubmodel.INTER_REACTION_TIME])
 
-
-# TODO(Arthur): test submodels with running simulator
-# TODO(Arthur): eliminate redundant code in test_submodel.py; search for distributed_properties
-class TestDynamicSubmodelSimulating(unittest.TestCase):
-
-    def test_dynamic_submodel(self):
-        pass
+        behavior = {SkeletonSubmodel.INTER_REACTION_TIME: 2,
+            SkeletonSubmodel.REACTION_TO_EXECUTE: 0}    # reaction #0 makes one more 'specie_1[c]'
+        skeleton_submodel = self.make_sim_w_skeleton_submodel(lang_submodel, behavior)
+        interval = 10
+        pop_before = skeleton_submodel.local_species_population.read_one(0, 'specie_1[c]')
+        for end_time in range(interval, 5*interval, interval):
+            self.simulator.simulate(end_time)
+            pop_after = skeleton_submodel.local_species_population.read_one(end_time, 'specie_1[c]')
+            delta = pop_after - pop_before
+            self.assertEqual(delta, interval/behavior[SkeletonSubmodel.INTER_REACTION_TIME])
+            pop_before = pop_after
