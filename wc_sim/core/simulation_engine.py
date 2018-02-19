@@ -7,7 +7,6 @@
 """
 
 import datetime
-# TODO(Arthur): rm pprint
 import pprint
 
 from wc_sim.core.simulation_object import SimulationObject
@@ -194,6 +193,25 @@ class SimulationEngine(object):
             # TODO(Arthur): provide dynamic control
             self.log_simulation_state()
 
+            '''
+            # TODO(Arthur): design for fast retrieval of sim obj with lowest event time
+            keep sim objects in a sorted dict (SD) keyed & arranged by (next event time, obj.id)
+            def add_to_sd(sim_obj):
+                key = (next event time; sim_obj.id)
+                sd[key] = sim_obj
+            def del_from_sd(sim_obj):
+                key = (next event time; sim_obj.id)
+                del sd[key]
+            to execute event:
+                popitem from SD to get sim obj with smallest event time; remove event from event queue; add_to_sd(sim_obj)
+            to schedule event in sim_obj:
+                save sim_obj.event_queue.next_event_time
+                push it on sim_obj.event_queue
+                if this changes sim_obj.event_queue.next_event_time:
+                    del_from_sd(sim_obj, old event time)
+                    add_to_sd(sim_obj)
+            see http://www.grantjenks.com/docs/sortedcontainers/sorteddict.html
+            '''
             # get the earliest next event in the simulation
             next_time = float('inf')
             self.log_with_time('Simulation Engine launching next object')
