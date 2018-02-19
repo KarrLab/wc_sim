@@ -27,10 +27,10 @@ class ExampleSimulationObject(SimulationObject, SimulationObjectInterface):
     def handler(self, event): pass
 
     @classmethod
-    def register_subclass_handlers(this_class):
-        SimulationObject.register_handlers(this_class,
-            [(sim_msg_type, this_class.handler) for sim_msg_type in ALL_MESSAGE_TYPES])
+    def register_subclass_handlers(cls):
+        SimulationObject.register_handlers(cls,
+            [(sim_msg_type, cls.handler) for sim_msg_type in ALL_MESSAGE_TYPES])
 
     @classmethod
-    def register_subclass_sent_messages(this_class):
-        SimulationObject.register_sent_messages(this_class, ALL_MESSAGE_TYPES)
+    def register_subclass_sent_messages(cls):
+        SimulationObject.register_sent_messages(cls, ALL_MESSAGE_TYPES)

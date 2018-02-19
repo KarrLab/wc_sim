@@ -19,10 +19,10 @@ class Example(MockSimulationObjectInterface):
         return 'object state to be provided'
 
     @classmethod
-    def register_subclass_handlers(this_class): pass
+    def register_subclass_handlers(cls): pass
 
     @classmethod
-    def register_subclass_sent_messages(this_class): pass
+    def register_subclass_sent_messages(cls): pass
 
 
 class TestMockSimulationObjectInterface(unittest.TestCase):

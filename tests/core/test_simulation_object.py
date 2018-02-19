@@ -33,10 +33,10 @@ class ExampleUnregisteredSimulationObject(SimulationObject, SimulationObjectInte
     def handler(self, event): pass
 
     @classmethod
-    def register_subclass_handlers(this_class): pass
+    def register_subclass_handlers(cls): pass
 
     @classmethod
-    def register_subclass_sent_messages(this_class): pass
+    def register_subclass_sent_messages(cls): pass
 
 
 class TestUnregisteredSimulationObject(unittest.TestCase):
@@ -67,7 +67,7 @@ class TestEventQueue(unittest.TestCase):
         self.assertEqual(1, self.event_queue.next_event_time())
 
     def test_render(self):
-        self.assertEqual(EventQueue().render(), None)
+        self.assertIn('Empty', EventQueue().render())
         self.assertEqual(len(self.event_queue.render(as_list=True)), self.num_events+1)
         def get_event_times(eq_rendered_as_list):
             return [row[1] for row in eq_rendered_as_list[1:]]
@@ -147,15 +147,16 @@ class TestSimulationObject(unittest.TestCase):
 
         self.assertEqual(self.o2.event_queue.next_event_time(), 2)
 
-    def test_event_queue_to_str(self):
-        rv = self.o1.event_queue_to_str()
-        self.assertIn(self.o1.name, rv)
+    def test_render_event_queue(self):
+        rv = self.o1.render_event_queue()
 
         times=[2.0, 1.0, 0.5]
         for time in times:
             self.o1.send_event(time, self.o1, Eg1())
-        rv = self.o1.event_queue_to_str()
-        self.assertEqual(len(rv.split('\n')), len(times)+2)
+        rv = self.o1.render_event_queue()
+        self.assertIn(self.o1.name, rv)
+        # 1 extra row for the header
+        self.assertEqual(len(rv.split('\n')), len(times)+1)
         for time in times:
             self.assertIn(str(time), rv)
 

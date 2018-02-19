@@ -705,14 +705,14 @@ class MockSimulationTestingObject(MockSimulationObjectInterface):
         self.test_case.assertEqual(event.message.value, self.kwargs['expected_value'])
 
     @classmethod
-    def register_subclass_handlers(this_class):
-        SimulationObject.register_handlers(this_class, [
-            (message_types.GivePopulation, this_class.handle_GivePopulation_event),
-            (message_types.GiveProperty, this_class.handle_GiveProperty_event)])
+    def register_subclass_handlers(cls):
+        SimulationObject.register_handlers(cls, [
+            (message_types.GivePopulation, cls.handle_GivePopulation_event),
+            (message_types.GiveProperty, cls.handle_GiveProperty_event)])
 
     @classmethod
-    def register_subclass_sent_messages(this_class):
-        SimulationObject.register_sent_messages(this_class,
+    def register_subclass_sent_messages(cls):
+        SimulationObject.register_sent_messages(cls,
             [message_types.GetPopulation,
             message_types.AdjustPopulationByDiscreteSubmodel,
             message_types.AdjustPopulationByContinuousSubmodel,

@@ -8,6 +8,7 @@
 import sys
 import unittest
 import six
+import time
 from builtins import super
 
 from wc_sim.core.errors import SimulatorError
@@ -31,10 +32,10 @@ class InactiveSimulationObject(SimulationObject, SimulationObjectInterface):
     def get_state(self): pass
 
     @classmethod
-    def register_subclass_handlers(this_class): pass
+    def register_subclass_handlers(cls): pass
 
     @classmethod
-    def register_subclass_sent_messages(this_class): pass
+    def register_subclass_sent_messages(cls): pass
 
 
 class BasicExampleSimulationObject(SimulationObject, SimulationObjectInterface):
@@ -50,27 +51,19 @@ class BasicExampleSimulationObject(SimulationObject, SimulationObjectInterface):
         return "self.num: {}".format(self.num)
 
     @classmethod
-    def register_subclass_handlers(this_class):
-        SimulationObject.register_handlers(this_class,
-            [(sim_msg_type, this_class.handle_event) for sim_msg_type in ALL_MESSAGE_TYPES])
+    def register_subclass_handlers(cls):
+        SimulationObject.register_handlers(cls,
+            [(sim_msg_type, cls.handle_event) for sim_msg_type in ALL_MESSAGE_TYPES])
 
     @classmethod
-    def register_subclass_sent_messages(this_class):
-        SimulationObject.register_sent_messages(this_class, ALL_MESSAGE_TYPES)
+    def register_subclass_sent_messages(cls):
+        SimulationObject.register_sent_messages(cls, ALL_MESSAGE_TYPES)
 
 
 class ExampleSimulationObject(BasicExampleSimulationObject):
 
     def handle_event(self, event):
         self.send_event(2.0, self, InitMsg())
-
-    @classmethod
-    def register_subclass_handlers(this_class):
-        super().register_subclass_handlers()
-
-    @classmethod
-    def register_subclass_sent_messages(this_class):
-        super().register_subclass_sent_messages()
 
 
 class InteractingSimulationObject(BasicExampleSimulationObject):
@@ -80,14 +73,6 @@ class InteractingSimulationObject(BasicExampleSimulationObject):
         # send an event to each InteractingSimulationObject
         for obj in self.simulator.simulation_objects.values():
             self.send_event(1, obj, InitMsg())
-
-    @classmethod
-    def register_subclass_handlers(this_class):
-        super().register_subclass_handlers()
-
-    @classmethod
-    def register_subclass_sent_messages(this_class):
-        super().register_subclass_sent_messages()
 
 
 class CyclicalMessagesSimulationObject(SimulationObject, SimulationObjectInterface):
@@ -106,26 +91,26 @@ class CyclicalMessagesSimulationObject(SimulationObject, SimulationObjectInterfa
         return self.simulator.simulation_objects[obj_name(next)]
 
     def send_initial_events(self):
-        # send event to next InteractingSimulationObject
+        # send event to next CyclicalMessagesSimulationObject
         self.send_event(1, self.next_obj(), InitMsg())
-
-    def get_state(self):
-        return 'object state to be provided'
 
     def handle_event(self, event):
         self.num_msgs += 1
         self.test_case.assertEqual(self.time, float(self.num_msgs))
-        # send event to next InteractingSimulationObject
+        # send event to next CyclicalMessagesSimulationObject
         self.send_event(1, self.next_obj(), InitMsg())
 
-    @classmethod
-    def register_subclass_handlers(this_class):
-        SimulationObject.register_handlers(this_class,
-            [(sim_msg_type, this_class.handle_event) for sim_msg_type in ALL_MESSAGE_TYPES])
+    def get_state(self):
+        return "self: obj_num: {} num_msgs: {}".format(self.obj_num, self.num_msgs)
 
     @classmethod
-    def register_subclass_sent_messages(this_class):
-        SimulationObject.register_sent_messages(this_class, ALL_MESSAGE_TYPES)
+    def register_subclass_handlers(cls):
+        SimulationObject.register_handlers(cls,
+            [(sim_msg_type, cls.handle_event) for sim_msg_type in ALL_MESSAGE_TYPES])
+
+    @classmethod
+    def register_subclass_sent_messages(cls):
+        SimulationObject.register_sent_messages(cls, ALL_MESSAGE_TYPES)
 
 
 NAME_PREFIX = 'sim_obj'
@@ -237,6 +222,22 @@ class TestSimulationEngine(unittest.TestCase):
         for sim_obj_name in self.simulator.simulation_objects:
             self.assertIn(sim_obj_name, queues)
 
+    @unittest.skip("slow performance scaling test")
+    def test_performance(self):
+        end_sim_time = 100
+        max_num_sim_objs = 1000
+        num_sim_objs = 10
+        print("\n#sim obs\t# events\trun time (s)\tevents/s".format())
+        while num_sim_objs < max_num_sim_objs:
+            self.simulator.reset()
+            self.make_cyclical_messaging_network_sim(num_sim_objs)
+            self.simulator.initialize()
+            start_time = time.process_time()
+            num_events = self.simulator.simulate(end_sim_time)
+            run_time = time.process_time() - start_time
+            self.assertEqual(num_sim_objs*end_sim_time, num_events)
+            print("{}\t{}\t{:8.3f}\t{:8.3f}".format(num_sim_objs, num_events, run_time, num_events/run_time))
+            num_sim_objs *= 4
 
 
 class ExampleSharedStateObject(SharedStateInterface):
@@ -260,18 +261,21 @@ class TestSimulationEngineLogging(unittest.TestCase):
         self.example_shared_state_objs = \
             [ExampleSharedStateObject(self.example_shared_state_obj_name, self.example_shared_state_obj_state)]
         self.simulator = SimulationEngine(shared_state=self.example_shared_state_objs, debug_log=True)
-        self.simulator.register_object_types([InteractingSimulationObject])
         self.simulator.reset()
 
     # test logging with InteractingSimulationObject and a SharedStateInterface object
     def test_logging(self):
-        num_sim_obj = 2
-        sim_objects = [InteractingSimulationObject(obj_name(i)) for i in range(1, num_sim_obj+1)]
+        num_sim_objs = 2
+        sim_objects = [InteractingSimulationObject(obj_name(i+1)) for i in range(num_sim_objs)]
+        self.simulator.register_object_types([InteractingSimulationObject])
         self.simulator.add_objects(sim_objects)
         self.simulator.initialize()
-        self.assertEqual(self.simulator.simulate(2.5), 4)
-        self.assertIn(self.example_shared_state_obj_name, self.simulator.log_simulation_state())
-        self.assertIn(str(self.example_shared_state_obj_state), self.simulator.log_simulation_state())
-        self.assertIn(InteractingSimulationObject.__name__, self.simulator.log_simulation_state())
-        for i in range(1, num_sim_obj+1):
-            self.assertIn(obj_name(i), self.simulator.log_simulation_state())
+        self.simulator.simulate(3)
+        simulation_state = self.simulator.log_simulation_state()
+        self.assertIn(self.example_shared_state_obj_name, simulation_state)
+        self.assertIn(str(self.example_shared_state_obj_state), simulation_state)
+        self.assertIn(InteractingSimulationObject.__name__, simulation_state)
+        for sim_obj in sim_objects:
+            self.assertIn(sim_obj.name, simulation_state)
+        # message type name should be in event queue
+        self.assertIn(InitMsg.__name__, simulation_state)

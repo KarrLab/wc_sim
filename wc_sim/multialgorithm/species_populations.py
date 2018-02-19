@@ -1001,18 +1001,18 @@ class SpeciesPopSimObject(LocalSpeciesPopulation, SimulationObject, SimulationOb
                 property_name))
 
     @classmethod
-    def register_subclass_handlers(this_class):
-        SimulationObject.register_handlers(this_class, [
+    def register_subclass_handlers(cls):
+        SimulationObject.register_handlers(cls, [
             # At any time instant, messages are processed in this order
-            (message_types.AdjustPopulationByDiscreteSubmodel, this_class.handle_adjust_discretely_event),
-            (message_types.AdjustPopulationByContinuousSubmodel, this_class.handle_adjust_continuously_event),
-            (message_types.GetPopulation, this_class.handle_get_population_event),
-            (message_types.GetCurrentProperty, this_class.handle_get_current_property_event)
+            (message_types.AdjustPopulationByDiscreteSubmodel, cls.handle_adjust_discretely_event),
+            (message_types.AdjustPopulationByContinuousSubmodel, cls.handle_adjust_continuously_event),
+            (message_types.GetPopulation, cls.handle_get_population_event),
+            (message_types.GetCurrentProperty, cls.handle_get_current_property_event)
         ])
 
     @classmethod
-    def register_subclass_sent_messages(this_class):
-        SimulationObject.register_sent_messages(this_class,
+    def register_subclass_sent_messages(cls):
+        SimulationObject.register_sent_messages(cls,
             [message_types.GivePopulation, message_types.GiveProperty])
 
 

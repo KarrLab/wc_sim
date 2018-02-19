@@ -35,16 +35,16 @@ class SkeletonSubmodel(DynamicSubmodel):
         pass
 
     @classmethod
-    def register_subclass_handlers(this_class):
-        SimulationObject.register_handlers(this_class, [
+    def register_subclass_handlers(cls):
+        SimulationObject.register_handlers(cls, [
             # TODO(Arthur): cover after MVP wc_sim done
-            # (message_types.GivePopulation, this_class.handle_GivePopulation_event),
-            (message_types.ExecuteSsaReaction, this_class.handle_ExecuteSsaReaction_event),
+            # (message_types.GivePopulation, cls.handle_GivePopulation_event),
+            (message_types.ExecuteSsaReaction, cls.handle_ExecuteSsaReaction_event),
         ])
 
     @classmethod
-    def register_subclass_sent_messages(this_class):
-        SimulationObject.register_sent_messages(this_class, ALL_MESSAGE_TYPES)
+    def register_subclass_sent_messages(cls):
+        SimulationObject.register_sent_messages(cls, ALL_MESSAGE_TYPES)
 
     # TODO(Arthur): cover after MVP wc_sim done
     def handle_GivePopulation_event(self, event):   # pragma: no cover

@@ -72,6 +72,10 @@ class TestDynamicSubmodel(unittest.TestCase):
             self.misconfigured_dynamic_submodels[lang_submodel.id] = DynamicSubmodel(
                 id, reactions, species, parameters, dynamic_compartments, local_species_pop)
 
+    def test_get_state(self):
+        for dynamic_submodel in self.dynamic_submodels.values():
+            self.assertEqual(dynamic_submodel.get_state(), DynamicSubmodel.GET_STATE_METHOD_MESSAGE)
+
     def test_get_specie_concentrations(self):
         expected_conc = {}
         for conc in self.model.get_concentrations():

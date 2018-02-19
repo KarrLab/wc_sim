@@ -153,21 +153,21 @@ class AggregateDistributedProps(SimulationObject, SimulationObjectInterface):   
             event.message.value)
 
     @classmethod
-    def register_subclass_handlers(this_class):
+    def register_subclass_handlers(cls):
         '''Register the handlers for event messages received by an `AggregateDistributedProps`
         '''
-        SimulationObject.register_handlers(this_class,
+        SimulationObject.register_handlers(cls,
             [
                 # At any time instant, process message types in this order
-                (message_types.AggregateProperty, this_class.handle_aggregate_property_event),
-                (message_types.GiveProperty, this_class.handle_give_property_event),
-                (message_types.GetHistoricalProperty, this_class.handle_get_historical_property_event),
+                (message_types.AggregateProperty, cls.handle_aggregate_property_event),
+                (message_types.GiveProperty, cls.handle_give_property_event),
+                (message_types.GetHistoricalProperty, cls.handle_get_historical_property_event),
                 # todo: add a handler for GetCurrentProperty
             ])
 
     @classmethod
-    def register_subclass_sent_messages(this_class):
-        SimulationObject.register_sent_messages(this_class, this_class.SENT_MESSAGE_TYPES)
+    def register_subclass_sent_messages(cls):
+        SimulationObject.register_sent_messages(cls, cls.SENT_MESSAGE_TYPES)
 
 
 class DistributedProperty(object):  # pragma: no cover; # TODO(Arthur): cover after MVP wc_sim done

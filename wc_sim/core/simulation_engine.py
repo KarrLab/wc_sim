@@ -19,7 +19,6 @@ from wc_sim.core.shared_state_interface import SharedStateInterface
 from .debug_logs import logs as debug_logs
 
 # TODO(Arthur): replace the O(n) iteration over simulation objects with a heap of them organized by next event time
-# TODO(Arthur): measure engine's raw performance
 
 
 class SimulationEngine(object):
@@ -54,6 +53,8 @@ class SimulationEngine(object):
         self.log_with_time("SimulationEngine created")
         self.__initialized = False
 
+    # TODO(Arthur): to simplify simulator setup, make register_object_types private,
+    # and have add_object call it
     def register_object_types(self, simulation_object_types):
         """ Register simulation object types with the simulation
 
@@ -238,21 +239,21 @@ class SimulationEngine(object):
         state = [self.time]
         # get the state of all simulation object(s)
         sim_objects_state = []
-        # TODO(Arthur): get the message queues of all simulation object(s)
         for simulation_object in self.simulation_objects.values():
             # get object name, type, current time, state
-            state_entry = (simulation_object.name,
-                simulation_object.__class__.__name__,
+            state_entry = (simulation_object.__class__.__name__,
+                simulation_object.name,
                 simulation_object.time,
-                simulation_object.get_state())
+                simulation_object.get_state(),
+                simulation_object.render_event_queue())
             sim_objects_state.append(state_entry)
         state.append(sim_objects_state)
 
         # get the shared state
         shared_objects_state = []
         for shared_state_obj in self.shared_state:
-            state_entry = (shared_state_obj.get_name(),
-                shared_state_obj.__class__.__name__,
+            state_entry = (shared_state_obj.__class__.__name__,
+                shared_state_obj.get_name(),
                 shared_state_obj.get_shared_state(self.time))
             shared_objects_state.append(state_entry)
         state.append(shared_objects_state)
@@ -265,4 +266,5 @@ class SimulationEngine(object):
             return
         state = self.get_simulation_state()
         # TODO(Arthur): save this through a logger
+        # print(pprint.pformat(state))
         return pprint.pformat(state)

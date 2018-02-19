@@ -97,13 +97,13 @@ class PropertyProvider(SimulationObject, SimulationObjectInterface):
             message_types.GiveProperty(property_name, time, value))
 
     @classmethod
-    def register_subclass_handlers(this_class):
-        SimulationObject.register_handlers(this_class,
-            [(message_types.GetHistoricalProperty, this_class.handle_get_historical_prop)])
+    def register_subclass_handlers(cls):
+        SimulationObject.register_handlers(cls,
+            [(message_types.GetHistoricalProperty, cls.handle_get_historical_prop)])
 
     @classmethod
-    def register_subclass_sent_messages(this_class):
-        SimulationObject.register_sent_messages(this_class, [message_types.GiveProperty])
+    def register_subclass_sent_messages(cls):
+        SimulationObject.register_sent_messages(cls, [message_types.GiveProperty])
 
 
 GoGetProperty = SimulationMessageFactory.create('GoGetProperty',
@@ -161,15 +161,15 @@ class PropertyRequestor(SimulationObject, SimulationObjectInterface):
                 event.message.time))
 
     @classmethod
-    def register_subclass_handlers(this_class):
-        SimulationObject.register_handlers(this_class, [
+    def register_subclass_handlers(cls):
+        SimulationObject.register_handlers(cls, [
             # (message type, handler)
-            (message_types.GiveProperty, this_class.handle_give_property_event),
-            (GoGetProperty, this_class.handle_go_get_property_event),])
+            (message_types.GiveProperty, cls.handle_give_property_event),
+            (GoGetProperty, cls.handle_go_get_property_event),])
 
     @classmethod
-    def register_subclass_sent_messages(this_class):
-        SimulationObject.register_sent_messages(this_class,
+    def register_subclass_sent_messages(cls):
+        SimulationObject.register_sent_messages(cls,
             [message_types.GetHistoricalProperty, GoGetProperty])
 
 def sum_values(values):

@@ -44,7 +44,7 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         self.assertEqual(len(self.simulation_engine.simulation_objects.keys()), 3)
         for name,simulation_obj in six.iteritems(self.simulation_engine.simulation_objects):
             print("\n{}: {} event queue:".format(simulation_obj.__class__.__name__, name))
-            print(simulation_obj.event_queue_to_str())
+            print(simulation_obj.render_event_queue())
         self.simulation_engine.simulate(10)
 
     def test_static_methods(self):

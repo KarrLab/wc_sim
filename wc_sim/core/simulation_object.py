@@ -144,10 +144,6 @@ class EventQueue(object):
                 sim_time=event.event_time,
                 local_call_depth=local_call_depth)
 
-    def __str__(self):
-        """return event queue members as a table"""
-        return "\n".join([event.__str__() for (time, event) in self.event_heap])
-
     def render(self, as_list=False, separator='\t'):
         """ Return the content of an `EventQueue`
 
@@ -166,7 +162,7 @@ class EventQueue(object):
                 representation if `as_list` is set
         """
         if not self.event_heap:
-            return None
+            return "Empty event queue"
 
         # Sort the events in non-decreasing event time (receive_time)
         sorted_events = sorted(self.event_heap, key=lambda record: record[0])
@@ -200,6 +196,11 @@ class EventQueue(object):
             for row in rendered_event_queue:
                 table.append(separator.join(elements_to_str(row)))
             return '\n'.join(table)
+
+    def __str__(self):
+        """ Return event queue members as a table
+        """
+        return self.render()
 
 
 class SimulationObject(object):
@@ -423,15 +424,10 @@ class SimulationObject(object):
                 raise SimulatorError("No handler registered for Simulation message type: '{}'".format(
                     event.message.__class__.__name__))
 
-    def event_queue_to_str(self):
-        """Format an event queue as a string.
+    def render_event_queue(self):
+        """ Format an event queue as a string
         """
-        eq_str = '{} at {:5.3f}\n'.format(self.name, self.time)
-        if self.event_queue.event_heap:
-            eq_str += Event.header() + '\n' + str(self.event_queue)
-        else:
-            eq_str += 'Empty event queue'
-        return eq_str
+        return self.event_queue.render()
 
     def log_with_time(self, msg, local_call_depth=1):
         """Write a debug log message with the simulation time.
@@ -471,13 +467,13 @@ class SimulationObjectInterface():  # pragma: no cover
     @classmethod
     @abc.abstractmethod
     def register_subclass_handlers(cls):
-        """Register all of the `SimulationObject`'s event handler methods.
+        """ Register all of the `SimulationObject`'s event handler methods
         """
         pass
 
     @classmethod
     @abc.abstractmethod
     def register_subclass_sent_messages(cls):
-        """Register the messages sent by a `SimulationObject`.
+        """ Register the messages sent by a `SimulationObject`
         """
         pass

@@ -56,8 +56,9 @@ class DynamicSubmodel(SimulationObject, SimulationObjectInterface):
     def send_initial_events(self):
         pass    # pragma: no cover
 
+    GET_STATE_METHOD_MESSAGE = 'object state to be provided by subclass'
     def get_state(self):
-        return 'object state to be provided'
+        return DynamicSubmodel.GET_STATE_METHOD_MESSAGE
 
     # TODO(Arthur): cover after MVP wc_sim done
     @classmethod

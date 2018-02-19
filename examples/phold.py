@@ -76,13 +76,13 @@ class PholdSimulationObject(SimulationObject, SimulationObjectInterface):
         log.debug(msg, sim_time=self.time, local_call_depth=1)
 
     @classmethod
-    def register_subclass_handlers(this_class):
-        SimulationObject.register_handlers(this_class,
-            [(sim_msg_type, this_class.handle_simulation_event) for sim_msg_type in MESSAGE_TYPES])
+    def register_subclass_handlers(cls):
+        SimulationObject.register_handlers(cls,
+            [(sim_msg_type, cls.handle_simulation_event) for sim_msg_type in MESSAGE_TYPES])
 
     @classmethod
-    def register_subclass_sent_messages(this_class):
-        SimulationObject.register_sent_messages(this_class, MESSAGE_TYPES)
+    def register_subclass_sent_messages(cls):
+        SimulationObject.register_sent_messages(cls, MESSAGE_TYPES)
 
 
 class RunPhold(object):
