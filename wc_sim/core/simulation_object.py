@@ -243,6 +243,11 @@ class SimulationObject(object):
         self.time = 0.0
         self.num_events = 0
         self.simulator = None
+        # TODO(Arthur): create Meta class for declaring SimulationObjects that registers these properties:
+        subclass = self.__class__
+        subclass.event_handlers = {}
+        subclass.message_types_sent = set()
+        subclass.event_handler_priorities = {}
 
     def add(self, simulator):
         """Add this object to a simulation.
@@ -291,8 +296,7 @@ class SimulationObject(object):
         event_type_name = message.__class__.__name__
 
         # check that the sending object type is registered to send the message type
-        if (not hasattr(self.__class__, 'message_types_sent') or
-            message.__class__ not in self.__class__.message_types_sent):
+        if message.__class__ not in self.__class__.message_types_sent:
             raise SimulatorError("'{}' simulation objects not registered to send '{}' messages".format(
                 most_qual_cls_name(self), event_type_name))
 
@@ -347,33 +351,38 @@ class SimulationObject(object):
             SimulatorError: if a `SimulationMessage` appears repeatedly in `handlers`
             SimulatorError: if a handler is not callable
         """
-        subclass.event_handlers = {}
         for message_type, handler in handlers:
+            '''
+            # TODO(Arthur): use when create Meta class for declaring SimulationObjects
             if message_type in subclass.event_handlers:
                 raise SimulatorError("message type '{}' appears repeatedly".format(
                     most_qual_cls_name(message_type)))
+            '''
             if not callable(handler):
                 raise SimulatorError("handler '{}' must be callable".format(handler))
             subclass.event_handlers[message_type] = handler
 
-        subclass.event_handler_priorities = {}
         for index,(message_type, _) in enumerate(handlers):
             subclass.event_handler_priorities[message_type] = index
 
     @staticmethod
     def register_sent_messages(subclass, sent_messages):
-        """Register the messages sent by a `SimulationObject`.
+        """ Register the messages sent by a `SimulationObject` subclass
 
         Calling `register_sent_messages` re-initializes all registered sent message types.
 
         Args:
             subclass: `SimulationObject`: a subclass of `SimulationObject`
             sent_messages: list: list of `SimulationMessage`'s which can be sent
-            by the calling `SimulationObject`
+            by `SimulationObject`s of type `subclass`
         """
-        subclass.message_types_sent = set()
-        for sent_message_type in sent_messages:
-            subclass.message_types_sent.add(sent_message_type)
+        # optimization: register each subclass just once
+        if not hasattr(subclass, 'message_types_sent'):
+            raise SimulatorError("No instances of SimulationObjects of type '{}' exist".format(
+                subclass.__name__))
+        if not subclass.message_types_sent:
+            for sent_message_type in sent_messages:
+                subclass.message_types_sent.add(sent_message_type)
 
     def get_receiving_priorities_dict(self):
         """ Get priorities of message types handled by this `SimulationObject`'s type
@@ -387,8 +396,8 @@ class SimulationObject(object):
         Raises:
             SimulatorError: if this `SimulationObject` type has not registered its message handlers
         """
-        if not hasattr(self.__class__, 'event_handler_priorities'):
-            raise SimulatorError("SimulationObject type '{}' must call register_handlers()".format(
+        if not self.__class__.event_handler_priorities:
+            raise SimulatorError("SimulationObjects of type '{}' must be added to the simulation".format(
                 self.__class__.__name__))
         return self.__class__.event_handler_priorities
 

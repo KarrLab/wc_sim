@@ -182,8 +182,6 @@ class TestAggregateDistributedProps(unittest.TestCase):
         self.property_name = 'test_prop'
         self.aggregate_distributed_props = AggregateDistributedProps('aggregate_distributed_props')
         self.simulator = SimulationEngine()
-        self.simulator.register_object_types([PropertyProvider, PropertyRequestor,
-            AggregateDistributedProps])
 
     def make_properties_and_providers(self, num_properties, num_providers, period, num_periods,
         value_hist_generator):

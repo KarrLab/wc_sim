@@ -159,9 +159,8 @@ class TestSkeletonSubmodel(unittest.TestCase):
         prepare_model(self.model)
 
     def make_sim_w_skeleton_submodel(self, lang_submodel, behavior):
-        # concatenate tuples in fn call for Py 2.7: see https://stackoverflow.com/a/12830036
         self.simulator = SimulationEngine()
-        self.simulator.register_object_types([SkeletonSubmodel])
+        # concatenate tuples in fn call for Py 2.7: see https://stackoverflow.com/a/12830036
         skeleton_submodel = SkeletonSubmodel(
             *(make_dynamic_submodel_params(self.model, lang_submodel) + (behavior,)))
         self.simulator.add_object(skeleton_submodel)

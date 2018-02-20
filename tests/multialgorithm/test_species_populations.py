@@ -55,7 +55,6 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
     def setUp(self):
         self.an_ASP = AccessSpeciesPopulations(None, remote_pop_stores)
         self.simulator = SimulationEngine()
-        self.simulator.register_object_types([SpeciesPopSimObject, SkeletonSubmodel])
 
     """
     todo: replace this code with calls to MultialgorithmSimulation().initialize()
@@ -736,7 +735,6 @@ class TestSpeciesPopSimObjectWithAnotherSimObject(unittest.TestCase):
             Mock obj receives GivePopulation and checks value
         """
         self.simulator = SimulationEngine()
-        self.simulator.register_object_types([MockSimulationTestingObject, SpeciesPopSimObject])
 
         if get_pop_time<=update_time:
             raise SpeciesPopulationError('get_pop_time<=update_time')
@@ -794,7 +792,6 @@ class TestSpeciesPopSimObject(unittest.TestCase):
 
     def setUp(self):
         self.simulator = SimulationEngine()
-        self.simulator.register_object_types([MockSimulationTestingObject, SpeciesPopSimObject])
         RandomStateManager.initialize()
         self.species_ids = 's1 s2 s3'.split()
         self.initial_population = dict(zip(self.species_ids, range(3)))

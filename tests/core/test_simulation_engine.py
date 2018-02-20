@@ -124,8 +124,6 @@ class TestSimulationEngine(unittest.TestCase):
     def setUp(self):
         # create simulator and register simulation object types
         self.simulator = SimulationEngine()
-        self.simulator.register_object_types([ExampleSimulationObject, InteractingSimulationObject,
-            CyclicalMessagesSimulationObject])
         self.simulator.reset()
 
     def test_one_object_simulation(self):
@@ -267,7 +265,6 @@ class TestSimulationEngineLogging(unittest.TestCase):
     def test_logging(self):
         num_sim_objs = 2
         sim_objects = [InteractingSimulationObject(obj_name(i+1)) for i in range(num_sim_objs)]
-        self.simulator.register_object_types([InteractingSimulationObject])
         self.simulator.add_objects(sim_objects)
         self.simulator.initialize()
         self.simulator.simulate(3)

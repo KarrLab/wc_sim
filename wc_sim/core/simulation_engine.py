@@ -52,9 +52,7 @@ class SimulationEngine(object):
         self.log_with_time("SimulationEngine created")
         self.__initialized = False
 
-    # TODO(Arthur): to simplify simulator setup, make register_object_types private,
-    # and have add_object call it
-    def register_object_types(self, simulation_object_types):
+    def _register_object_type(self, simulation_object_type):
         """ Register simulation object types with the simulation
 
         The types of all simulation objects used by a simulation must be registered so that messages
@@ -64,12 +62,11 @@ class SimulationEngine(object):
         previous registration.
 
         Args:
-             simulation_object_types (:obj:`list`): the types of subclasses of `SimulationObject`s
+             simulation_object_type (:obj:`SimulationObject`): a type of subclass of `SimulationObject`
                 that will be used in the simulation
         """
-        for simulation_object_type in simulation_object_types:
-            simulation_object_type.register_subclass_handlers()
-            simulation_object_type.register_subclass_sent_messages()
+        simulation_object_type.register_subclass_handlers()
+        simulation_object_type.register_subclass_sent_messages()
 
     def add_object(self, simulation_object):
         """ Add a simulation object instance to this simulation
@@ -86,6 +83,7 @@ class SimulationEngine(object):
             raise SimulatorError("cannot add simulation object '{}', name already in use".format(name))
         simulation_object.add(self)
         self.simulation_objects[name] = simulation_object
+        self._register_object_type(simulation_object.__class__)
 
     def delete_object(self, simulation_object):
         """ Delete a simulation object instance from this simulation
@@ -194,7 +192,8 @@ class SimulationEngine(object):
             self.log_simulation_state()
 
             '''
-            # TODO(Arthur): design for fast retrieval of sim obj with lowest event time
+            # TODO(Arthur): quickly retrieve sim obj with lowest event time
+            design:
             keep sim objects in a sorted dict (SD) keyed & arranged by (next event time, obj.id)
             def add_to_sd(sim_obj):
                 key = (next event time; sim_obj.id)
@@ -211,6 +210,7 @@ class SimulationEngine(object):
                     del_from_sd(sim_obj, old event time)
                     add_to_sd(sim_obj)
             see http://www.grantjenks.com/docs/sortedcontainers/sorteddict.html
+            alternatively, create a heap in a balanced tree that supports rebalancing after node removal or key change
             '''
             # get the earliest next event in the simulation
             next_time = float('inf')

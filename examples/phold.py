@@ -127,9 +127,6 @@ class RunPhold(object):
         # create a simulator
         simulator = SimulationEngine()
         
-        # register the object type
-        simulator.register_object_types([PholdSimulationObject])
-        
         # create simulation objects, and send each one an initial event message to self
         for obj_id in range(args.num_phold_procs):
             phold_obj = PholdSimulationObject(obj_name(obj_id), args)

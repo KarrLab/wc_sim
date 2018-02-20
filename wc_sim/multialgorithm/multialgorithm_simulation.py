@@ -379,8 +379,6 @@ class MultialgorithmSimulation(object):
         all_object_types.add(SpeciesPopSimObject)
         for sub_model in self.sub_models.values():
             all_object_types.add(sub_model.__class__)
-        print('self.simulation.register_object_types(all_object_types)', all_object_types)
-        self.simulation.register_object_types(all_object_types)
 
         # have each simulation object send its initial event messages
         self.simulation.initialize()
