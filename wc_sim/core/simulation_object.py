@@ -9,13 +9,18 @@
 from copy import deepcopy
 import heapq
 import abc
+from abc import ABCMeta
 import six
+from builtins import super
+import warnings
+import inspect
 
 from wc_sim.core.event import Event
 from wc_sim.core.errors import SimulatorError
 from wc_utils.util.list import elements_to_str
 from wc_utils.util.misc import most_qual_cls_name, round_direct
 from wc_sim.core.simulation_message import SimulationMessage
+from wc_sim.core.utilities import ConcreteABCMeta
 
 # configure logging
 from .debug_logs import logs as debug_logs
@@ -219,16 +224,6 @@ class SimulationObject(object):
         event_queue (:obj:`EventQueue`): this simulation object's event queue
         num_events (:obj:`int`): number of events processed
         simulator (:obj:`int`): the `SimulationEngine` that uses this `SimulationObject`
-
-    Derived class attributes:
-        event_handlers: dict: message_type -> event_handler; provides the event handler for each
-            message type for a subclass of `SimulationObject`
-        event_handler_priorities: `dict`: from message types handled by a `SimulationObject` subclass,
-            to message type priority. The highest priority is 0, and priority decreases with
-            increasing priority values.
-        message_types_sent: set: the types of messages a subclass of `SimulationObject` has
-            registered to send
-
     """
     def __init__(self, name):
         """Initialize a SimulationObject.
@@ -243,11 +238,6 @@ class SimulationObject(object):
         self.time = 0.0
         self.num_events = 0
         self.simulator = None
-        # TODO(Arthur): create Meta class for declaring SimulationObjects that registers these properties:
-        subclass = self.__class__
-        subclass.event_handlers = {}
-        subclass.message_types_sent = set()
-        subclass.event_handler_priorities = {}
 
     def add(self, simulator):
         """Add this object to a simulation.
@@ -296,7 +286,7 @@ class SimulationObject(object):
         event_type_name = message.__class__.__name__
 
         # check that the sending object type is registered to send the message type
-        if message.__class__ not in self.__class__.message_types_sent:
+        if message.__class__ not in self.__class__.metadata.message_types_sent:
             raise SimulatorError("'{}' simulation objects not registered to send '{}' messages".format(
                 most_qual_cls_name(self), event_type_name))
 
@@ -352,18 +342,15 @@ class SimulationObject(object):
             SimulatorError: if a handler is not callable
         """
         for message_type, handler in handlers:
-            '''
-            # TODO(Arthur): use when create Meta class for declaring SimulationObjects
-            if message_type in subclass.event_handlers:
+            if message_type in subclass.metadata.event_handlers:
                 raise SimulatorError("message type '{}' appears repeatedly".format(
                     most_qual_cls_name(message_type)))
-            '''
             if not callable(handler):
                 raise SimulatorError("handler '{}' must be callable".format(handler))
-            subclass.event_handlers[message_type] = handler
+            subclass.metadata.event_handlers[message_type] = handler
 
         for index,(message_type, _) in enumerate(handlers):
-            subclass.event_handler_priorities[message_type] = index
+            subclass.metadata.event_handler_priorities[message_type] = index
 
     @staticmethod
     def register_sent_messages(subclass, sent_messages):
@@ -376,13 +363,8 @@ class SimulationObject(object):
             sent_messages: list: list of `SimulationMessage`'s which can be sent
             by `SimulationObject`s of type `subclass`
         """
-        # optimization: register each subclass just once
-        if not hasattr(subclass, 'message_types_sent'):
-            raise SimulatorError("No instances of SimulationObjects of type '{}' exist".format(
-                subclass.__name__))
-        if not subclass.message_types_sent:
-            for sent_message_type in sent_messages:
-                subclass.message_types_sent.add(sent_message_type)
+        for sent_message_type in sent_messages:
+            subclass.metadata.message_types_sent.add(sent_message_type)
 
     def get_receiving_priorities_dict(self):
         """ Get priorities of message types handled by this `SimulationObject`'s type
@@ -392,14 +374,8 @@ class SimulationObject(object):
                 execution priorities. The highest priority is 0, and higher values have lower
                 priorities. Execution priorities determine the execution order of concurrent events
                 at a `SimulationObject`.
-
-        Raises:
-            SimulatorError: if this `SimulationObject` type has not registered its message handlers
         """
-        if not self.__class__.event_handler_priorities:
-            raise SimulatorError("SimulationObjects of type '{}' must be added to the simulation".format(
-                self.__class__.__name__))
-        return self.__class__.event_handler_priorities
+        return self.__class__.metadata.event_handler_priorities
 
     def _SimulationEngine__handle_event(self, event_list):
         """ Handle a simulation event, which may involve multiple event messages
@@ -426,7 +402,7 @@ class SimulationObject(object):
         # iterate through event_list, branching to handler
         for event in event_list:
             try:
-                handler = self.__class__.event_handlers[event.message.__class__]
+                handler = self.__class__.metadata.event_handlers[event.message.__class__]
                 handler(self, event)
             except KeyError: # pragma: no cover     # unreachable because of check that receiving sim
                                                     # obj type is registered to receive the message type
@@ -445,44 +421,117 @@ class SimulationObject(object):
             local_call_depth=local_call_depth)
 
 
-@six.add_metaclass(abc.ABCMeta)
-class SimulationObjectInterface():  # pragma: no cover
-    """Classes derived from `SimulationObject` must implement this interface
+class ApplicationSimulationObjectInterface(metaclass=ABCMeta):  # pragma: no cover
+
+    @abc.abstractmethod
+    def send_initial_events(self, *args): pass
+
+    @abc.abstractmethod
+    def get_state(self): pass
+
+
+class ApplicationSimulationObjectMetadata(object):
+    """ Meta data for an :class:`ApplicationSimulationObject`
+
+    Attributes:
+        event_handlers: dict: message_type -> event_handler; provides the event handler for each
+            message type for a subclass of `SimulationObject`
+        event_handler_priorities: `dict`: from message types handled by a `SimulationObject` subclass,
+            to message type priority. The highest priority is 0, and priority decreases with
+            increasing priority values.
+        message_types_sent: set: the types of messages a subclass of `SimulationObject` has
+            registered to send
     """
+    def __init__(self):
+        self.event_handlers = {}
+        self.event_handler_priorities = {}
+        self.message_types_sent = set()
 
-    @abc.abstractmethod
-    def send_initial_events(self, *args):
-        """Send the `SimulationObject`'s initial event messages.
 
-        This method is distinct from initializing the `SimulationObject` with `__init__()`, because
-        it requires that communicating `SimulationObject`'s exist. It may send no events.
+class ApplicationSimulationObjMeta(type):
+    # event handler mapping keyword
+    EVENT_HANDLERS = 'event_handlers'
+    # messages sent list keyword
+    MESSAGES_SENT = 'messages_sent'
 
-        Args:
-            args: tuple: parameters needed to send the initial event messages
+    def __new__(cls, clsname, superclasses, namespace):
         """
-        pass
-
-    @abc.abstractmethod
-    def get_state(self):
-        """ Obtain the state of a `SimulationObject`
-
-        This is called by the simulation engine to log the simulator state
+        Args:
+            cls (:obj:`class`): an instance of this class
+            clsname (:obj:`str`): name of `SimulationObject` subclass being created
+            superclasses (:obj: `tuple`): tuple of superclasses
+            namespace (:obj:`dict`): namespace of subclass of `ApplicationSimulationObject` being created
 
         Returns:
-            :obj:`str`: the state of a `SimulationObject`, in a human-readable string
+            :obj:`SimulationObject`: a new instance of a subclass of `SimulationObject`
         """
-        pass
+        # Short circuit when ApplicationSimulationObject is defined
+        if clsname == 'ApplicationSimulationObject':
+            return super().__new__(cls, clsname, superclasses, namespace)
 
-    @classmethod
-    @abc.abstractmethod
-    def register_subclass_handlers(cls):
-        """ Register all of the `SimulationObject`'s event handler methods
-        """
-        pass
+        new_application_simulation_obj_subclass = super().__new__(cls, clsname, superclasses, namespace)
+        new_application_simulation_obj_subclass.metadata = ApplicationSimulationObjectMetadata()
 
-    @classmethod
-    @abc.abstractmethod
-    def register_subclass_sent_messages(cls):
-        """ Register the messages sent by a `SimulationObject`
-        """
-        pass
+        # determine whether event_handlers or messages_sent is defined
+        event_handlers_defined = cls.EVENT_HANDLERS in namespace
+        messages_sent_defined = cls.MESSAGES_SENT in namespace
+        for superclass in superclasses:
+            for name,value in inspect.getmembers(superclass):
+                # TODO(Arthur): check types more carefully
+                event_handlers_defined |= name == cls.EVENT_HANDLERS
+                messages_sent_defined |= name == cls.MESSAGES_SENT
+ApplicationSimulationObjMeta
+        if (not event_handlers_defined and not messages_sent_defined):
+            raise SimulatorError("ApplicationSimulationObject '{}' definition must provide '{}' or '{}' or both.".format(
+                clsname, cls.EVENT_HANDLERS,
+                cls.MESSAGES_SENT))
+        elif not event_handlers_defined:
+            warnings.warn("ApplicationSimulationObject '{}' definition does not provide '{}'.".format(
+                clsname, cls.EVENT_HANDLERS))
+        elif not messages_sent_defined:
+            warnings.warn("ApplicationSimulationObject '{}' definition does not provide '{}'.".format(
+                clsname, cls.MESSAGES_SENT))
+
+        # define, and perhaps override, the event_handlers and messages_sent attributes of cls
+        if cls.EVENT_HANDLERS in namespace:
+            handler_mapping = []
+            for msg_type,handler_name in namespace[cls.EVENT_HANDLERS]:
+                # TODO(Arthur): check types more carefully: msg_types
+                '''
+                if not isinstance(msg_type, SimulationMessage):
+                    raise SimulatorError("In ApplicationSimulationObject '{}' definition of '{}' "
+                        "must be list of (SimulationMessage, method) pairs.".format(clsname, cls.EVENT_HANDLERS))
+                '''
+                if isinstance(handler_name, six.string_types):
+                    if handler_name not in namespace:
+                        raise SimulatorError("ApplicationSimulationObject '{}' definition must define "
+                            "'{}'.".format(clsname, handler_name))
+                    handler_mapping.append((msg_type, namespace[handler_name]))
+                elif callable(handler_name):
+                    handler_mapping.append((msg_type, handler_name))
+                else:
+                    raise SimulatorError("ApplicationSimulationObject '{}' handler_name '{}' must "
+                        "be a string or a callable.".format(clsname, handler_name))
+            new_application_simulation_obj_subclass.register_handlers(
+                new_application_simulation_obj_subclass, handler_mapping)
+        if cls.MESSAGES_SENT in namespace:
+                # TODO(Arthur): check types more carefully: msg_types
+            new_application_simulation_obj_subclass.register_sent_messages(
+                new_application_simulation_obj_subclass,
+                namespace[cls.MESSAGES_SENT])
+
+        # return the class to instantiate it
+        return new_application_simulation_obj_subclass
+
+
+class AppSimObjAndABCMeta(ApplicationSimulationObjMeta, ConcreteABCMeta):
+    """ A concrete class based on two Meta classes to be used as a metaclass for classes derived from both
+    """
+    pass
+
+
+class ApplicationSimulationObject(SimulationObject, ApplicationSimulationObjectInterface,
+    metaclass=AppSimObjAndABCMeta):
+
+    def send_initial_events(self, *args): return
+    def get_state(self): return ''

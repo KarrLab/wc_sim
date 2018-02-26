@@ -52,22 +52,6 @@ class SimulationEngine(object):
         self.log_with_time("SimulationEngine created")
         self.__initialized = False
 
-    def _register_object_type(self, simulation_object_type):
-        """ Register simulation object types with the simulation
-
-        The types of all simulation objects used by a simulation must be registered so that messages
-        can be executed by vectoring to the right message handlers. This calls
-        the methods `register_subclass_handlers()` and `register_subclass_sent_messages()` in each
-        subclass of `SimulationObject` provided. A call to this method overwrites any
-        previous registration.
-
-        Args:
-             simulation_object_type (:obj:`SimulationObject`): a type of subclass of `SimulationObject`
-                that will be used in the simulation
-        """
-        simulation_object_type.register_subclass_handlers()
-        simulation_object_type.register_subclass_sent_messages()
-
     def add_object(self, simulation_object):
         """ Add a simulation object instance to this simulation
 
@@ -83,7 +67,6 @@ class SimulationEngine(object):
             raise SimulatorError("cannot add simulation object '{}', name already in use".format(name))
         simulation_object.add(self)
         self.simulation_objects[name] = simulation_object
-        self._register_object_type(simulation_object.__class__)
 
     def delete_object(self, simulation_object):
         """ Delete a simulation object instance from this simulation

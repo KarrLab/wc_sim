@@ -133,6 +133,8 @@ class SimulationMessage(object):
             return separator.join(self.attrs())
 
 
+
+# TODO(Arthur): replace with meta class that creates SimulationMessage objects and defines their type names
 class SimulationMessageFactory(object):
     """ Factory that creates `SimulationMessage` subclasses
     """

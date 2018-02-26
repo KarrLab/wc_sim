@@ -9,12 +9,12 @@ import six, abc
 from builtins import super
 from unittest import TestCase
 
-from wc_sim.core.simulation_object import SimulationObject, SimulationObjectInterface
+from wc_sim.core.simulation_object import SimulationObject, ApplicationSimulationObject
 
 
 # TODO(Arthur): get coverage reports of the test_mock_simulation_object.py test of this module
 # the obvious ways using 'coverage' or 'pytest' do not work
-class MockSimulationObject(SimulationObject):
+class MockSimulationObject(ApplicationSimulationObject):
     """ An object to help test simulation objects
     """
 
@@ -34,21 +34,4 @@ class MockSimulationObject(SimulationObject):
         (self.test_case, self.kwargs) = (test_case, kwargs)
         super().__init__(name)
 
-@six.add_metaclass(abc.ABCMeta)
-class MockSimulationObjectInterface(MockSimulationObject, SimulationObjectInterface):  # pragma: no cover
-    """ An ABC to help test simulation objects
-    """
-
-    @abc.abstractmethod
-    def send_initial_events(self): pass
-
-    @abc.abstractmethod
-    def get_state(self): pass
-
-    @classmethod
-    @abc.abstractmethod
-    def register_subclass_handlers(cls): pass
-
-    @classmethod
-    @abc.abstractmethod
-    def register_subclass_sent_messages(cls): pass
+    messages_sent = []

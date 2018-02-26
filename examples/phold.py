@@ -16,7 +16,7 @@ import datetime
 from builtins import super
 
 from wc_sim.core.simulation_message import SimulationMessageFactory
-from wc_sim.core.simulation_object import EventQueue, SimulationObject, SimulationObjectInterface
+from wc_sim.core.simulation_object import EventQueue, SimulationObject, ApplicationSimulationObject
 from wc_sim.core.simulation_engine import SimulationEngine
 from examples.debug_logs import logs as debug_logs
 
@@ -37,7 +37,8 @@ MessageSentToOtherObject = SimulationMessageFactory.create('MessageSentToOtherOb
 InitMsg = SimulationMessageFactory.create('InitMsg', 'initialization message')
 MESSAGE_TYPES = [MessageSentToSelf, MessageSentToOtherObject, InitMsg]
 
-class PholdSimulationObject(SimulationObject, SimulationObjectInterface):
+
+class PholdSimulationObject(ApplicationSimulationObject):
 
     def __init__(self, name, args):
         self.args = args
@@ -75,14 +76,10 @@ class PholdSimulationObject(SimulationObject, SimulationObjectInterface):
         log = debug_logs.get_log('wc.debug.console')
         log.debug(msg, sim_time=self.time, local_call_depth=1)
 
-    @classmethod
-    def register_subclass_handlers(cls):
-        SimulationObject.register_handlers(cls,
-            [(sim_msg_type, cls.handle_simulation_event) for sim_msg_type in MESSAGE_TYPES])
+    event_handlers = [(sim_msg_type, 'handle_simulation_event') for sim_msg_type in MESSAGE_TYPES]
 
-    @classmethod
-    def register_subclass_sent_messages(cls):
-        SimulationObject.register_sent_messages(cls, MESSAGE_TYPES)
+    # register the message types sent
+    messages_sent = MESSAGE_TYPES
 
 
 class RunPhold(object):

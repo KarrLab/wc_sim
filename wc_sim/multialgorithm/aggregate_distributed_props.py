@@ -11,7 +11,7 @@ from collections import defaultdict
 import bisect
 import builtins, math, sys
 
-from wc_sim.core.simulation_object import Event, SimulationObject, SimulationObjectInterface
+from wc_sim.core.simulation_object import Event, SimulationObject, ApplicationSimulationObject
 from wc_sim.multialgorithm.debug_logs import logs as debug_logs
 from wc_sim.multialgorithm import message_types
 from wc_sim.multialgorithm.config import core as config_core_multialgorithm
@@ -20,7 +20,7 @@ from .debug_logs import logs as debug_logs
 config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 
 # TODO(Arthur): cover after MVP wc_sim done
-class AggregateDistributedProps(SimulationObject, SimulationObjectInterface):   # pragma: no cover
+class AggregateDistributedProps(ApplicationSimulationObject):   # pragma: no cover
     '''Obtain and provide properties of a multi-algorithmic whole-cell model simulation
     that require retrieving distributed data.
 
@@ -152,22 +152,17 @@ class AggregateDistributedProps(SimulationObject, SimulationObjectInterface):   
             event.message.time,
             event.message.value)
 
-    @classmethod
-    def register_subclass_handlers(cls):
-        '''Register the handlers for event messages received by an `AggregateDistributedProps`
-        '''
-        SimulationObject.register_handlers(cls,
-            [
+    # Register the handlers for event messages received by an `AggregateDistributedProps`
+    event_handlers = [
                 # At any time instant, process message types in this order
-                (message_types.AggregateProperty, cls.handle_aggregate_property_event),
-                (message_types.GiveProperty, cls.handle_give_property_event),
-                (message_types.GetHistoricalProperty, cls.handle_get_historical_property_event),
+                (message_types.AggregateProperty, handle_aggregate_property_event),
+                (message_types.GiveProperty, handle_give_property_event),
+                (message_types.GetHistoricalProperty, handle_get_historical_property_event),
                 # todo: add a handler for GetCurrentProperty
-            ])
+            ]
 
-    @classmethod
-    def register_subclass_sent_messages(cls):
-        SimulationObject.register_sent_messages(cls, cls.SENT_MESSAGE_TYPES)
+    # register the message types sent
+    messages_sent = SENT_MESSAGE_TYPES
 
 
 class DistributedProperty(object):  # pragma: no cover; # TODO(Arthur): cover after MVP wc_sim done

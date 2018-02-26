@@ -14,7 +14,7 @@ from builtins import super
 from wc_lang.core import Species, Reaction, Compartment, Parameter
 from wc_lang.rate_law_utils import RateLawUtils
 from wc_sim.multialgorithm.dynamic_components import DynamicCompartment
-from wc_sim.core.simulation_object import SimulationObject, SimulationObjectInterface
+from wc_sim.core.simulation_object import SimulationObject, ApplicationSimulationObject
 from wc_sim.multialgorithm.utils import get_species_and_compartment_from_name
 from wc_sim.multialgorithm.debug_logs import logs as debug_logs
 from wc_sim.multialgorithm import message_types, distributed_properties
@@ -26,7 +26,7 @@ from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError, Spe
 # TODO(Arthur): add logging/debugging to dynamic reactions, dynamic species, etc.
 # TODO(Arthur): use lists instead of sets for reproducibility
 
-class DynamicSubmodel(SimulationObject, SimulationObjectInterface):
+class DynamicSubmodel(ApplicationSimulationObject):
     """ Generic dynamic submodel functionality; subclasses of `DynamicSubmodel` are combined into a multi-algorithmic model
 
     Attributes:
@@ -52,7 +52,7 @@ class DynamicSubmodel(SimulationObject, SimulationObjectInterface):
         self.local_species_population = local_species_population
         super().__init__(id)
 
-    # The next 3 methods implement the abstract SimulationObjectInterface methods
+    # The next 3 methods implement the abstract ApplicationSimulationObject methods
     def send_initial_events(self):
         pass    # pragma: no cover
 
@@ -60,21 +60,12 @@ class DynamicSubmodel(SimulationObject, SimulationObjectInterface):
     def get_state(self):
         return DynamicSubmodel.GET_STATE_METHOD_MESSAGE
 
+    # At any time instant, event messages are processed in this order
     # TODO(Arthur): cover after MVP wc_sim done
-    @classmethod
-    def register_subclass_handlers(cls):    # pragma: no cover
-        return
-        SimulationObject.register_handlers(cls, [
-            # At any time instant, event messages are processed in this order
-            (message_types.GetCurrentProperty, cls.handle_get_current_prop_event),
-        ])
+    event_handlers = [(message_types.GetCurrentProperty, 'handle_get_current_prop_event')]  # pragma: no cover
 
     # TODO(Arthur): cover after MVP wc_sim done
-    @classmethod
-    def register_subclass_sent_messages(cls):   # pragma: no cover
-        return
-        SimulationObject.register_sent_messages(cls,
-            [message_types.GiveProperty])
+    messages_sent = [message_types.GiveProperty]    # pragma: no cover
 
     def get_species_ids(self):
         """ Get ids of species used by this dynamic submodel

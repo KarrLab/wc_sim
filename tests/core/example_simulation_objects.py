@@ -6,7 +6,7 @@
 """
 from builtins import super
 
-from wc_sim.core.simulation_object import EventQueue, SimulationObject, SimulationObjectInterface
+from wc_sim.core.simulation_object import EventQueue, SimulationObject, ApplicationSimulationObject
 from tests.core.some_message_types import InitMsg, Eg1, UnregisteredMsg
 from wc_utils.util.misc import most_qual_cls_name
 
@@ -14,7 +14,7 @@ ALL_MESSAGE_TYPES = [InitMsg, Eg1]
 TEST_SIM_OBJ_STATE = 'Test SimulationObject state'
 
 
-class ExampleSimulationObject(SimulationObject, SimulationObjectInterface):
+class ExampleSimulationObject(ApplicationSimulationObject):
 
     def __init__(self, name):
         super().__init__(name)
@@ -26,11 +26,8 @@ class ExampleSimulationObject(SimulationObject, SimulationObjectInterface):
 
     def handler(self, event): pass
 
-    @classmethod
-    def register_subclass_handlers(cls):
-        SimulationObject.register_handlers(cls,
-            [(sim_msg_type, cls.handler) for sim_msg_type in ALL_MESSAGE_TYPES])
+    # register the event handler for each type of message received
+    event_handlers = [(sim_msg_type, 'handler') for sim_msg_type in ALL_MESSAGE_TYPES]
 
-    @classmethod
-    def register_subclass_sent_messages(cls):
-        SimulationObject.register_sent_messages(cls, ALL_MESSAGE_TYPES)
+    # register the message types sent
+    messages_sent = ALL_MESSAGE_TYPES

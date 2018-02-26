@@ -6,32 +6,29 @@
 """
 import unittest
 
-from tests.core.mock_simulation_object import MockSimulationObjectInterface
+from tests.core.mock_simulation_object import MockSimulationObject
+from tests.core.some_message_types import Eg1
 
-class Example(MockSimulationObjectInterface):
 
-    def test_method(self, value):
-        self.test_case.assertEqual(value, self.kwargs['expected'])
+class Example(MockSimulationObject):
 
     def send_initial_events(self): pass
 
     def get_state(self):
         return 'object state to be provided'
 
-    @classmethod
-    def register_subclass_handlers(cls): pass
+    def test_handler(self, value):
+        self.test_case.assertEqual(value, self.kwargs['expected'])
 
-    @classmethod
-    def register_subclass_sent_messages(cls): pass
+    event_handlers = [(Eg1, test_handler)]
 
 
-class TestMockSimulationObjectInterface(unittest.TestCase):
+class TestMockSimulationObject(unittest.TestCase):
 
     def test(self):
         t = Example('name', self, a=1, expected=2)
-        t.test_method(2)
+        t.test_handler(2)
 
         with self.assertRaises(ValueError) as context:
             Example('name', 'string')
         self.assertIn("'test_case' should be a unittest.TestCase instance", str(context.exception))
-        

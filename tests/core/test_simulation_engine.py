@@ -12,7 +12,7 @@ import time
 from builtins import super
 
 from wc_sim.core.errors import SimulatorError
-from wc_sim.core.simulation_object import EventQueue, SimulationObject, SimulationObjectInterface
+from wc_sim.core.simulation_object import EventQueue, SimulationObject, ApplicationSimulationObject
 from wc_sim.core.simulation_engine import SimulationEngine
 from tests.core.some_message_types import InitMsg, Eg1
 from wc_sim.core.shared_state_interface import SharedStateInterface
@@ -22,7 +22,7 @@ ALL_MESSAGE_TYPES = [InitMsg, Eg1]
 
 
 # TODO(Arthur): consolidate in example_simulation_objects
-class InactiveSimulationObject(SimulationObject, SimulationObjectInterface):
+class InactiveSimulationObject(ApplicationSimulationObject):
 
     def __init__(self):
         SimulationObject.__init__(self, 'inactive')
@@ -31,14 +31,12 @@ class InactiveSimulationObject(SimulationObject, SimulationObjectInterface):
 
     def get_state(self): pass
 
-    @classmethod
-    def register_subclass_handlers(cls): pass
+    event_handlers = []
 
-    @classmethod
-    def register_subclass_sent_messages(cls): pass
+    messages_sent = []
 
 
-class BasicExampleSimulationObject(SimulationObject, SimulationObjectInterface):
+class BasicExampleSimulationObject(ApplicationSimulationObject):
 
     def __init__(self, name):
         SimulationObject.__init__(self, name)
@@ -50,20 +48,18 @@ class BasicExampleSimulationObject(SimulationObject, SimulationObjectInterface):
     def get_state(self):
         return "self.num: {}".format(self.num)
 
-    @classmethod
-    def register_subclass_handlers(cls):
-        SimulationObject.register_handlers(cls,
-            [(sim_msg_type, cls.handle_event) for sim_msg_type in ALL_MESSAGE_TYPES])
-
-    @classmethod
-    def register_subclass_sent_messages(cls):
-        SimulationObject.register_sent_messages(cls, ALL_MESSAGE_TYPES)
+    # register the message types sent
+    messages_sent = ALL_MESSAGE_TYPES
 
 
 class ExampleSimulationObject(BasicExampleSimulationObject):
 
     def handle_event(self, event):
         self.send_event(2.0, self, InitMsg())
+
+    event_handlers = [(sim_msg_type, 'handle_event') for sim_msg_type in ALL_MESSAGE_TYPES]
+
+    messages_sent = ALL_MESSAGE_TYPES
 
 
 class InteractingSimulationObject(BasicExampleSimulationObject):
@@ -74,8 +70,12 @@ class InteractingSimulationObject(BasicExampleSimulationObject):
         for obj in self.simulator.simulation_objects.values():
             self.send_event(1, obj, InitMsg())
 
+    event_handlers = [(sim_msg_type, 'handle_event') for sim_msg_type in ALL_MESSAGE_TYPES]
 
-class CyclicalMessagesSimulationObject(SimulationObject, SimulationObjectInterface):
+    messages_sent = ALL_MESSAGE_TYPES
+
+
+class CyclicalMessagesSimulationObject(ApplicationSimulationObject):
     """ Send events around a cycle of objects
     """
 
@@ -103,14 +103,10 @@ class CyclicalMessagesSimulationObject(SimulationObject, SimulationObjectInterfa
     def get_state(self):
         return "self: obj_num: {} num_msgs: {}".format(self.obj_num, self.num_msgs)
 
-    @classmethod
-    def register_subclass_handlers(cls):
-        SimulationObject.register_handlers(cls,
-            [(sim_msg_type, cls.handle_event) for sim_msg_type in ALL_MESSAGE_TYPES])
+    event_handlers = [(sim_msg_type, 'handle_event') for sim_msg_type in ALL_MESSAGE_TYPES]
 
-    @classmethod
-    def register_subclass_sent_messages(cls):
-        SimulationObject.register_sent_messages(cls, ALL_MESSAGE_TYPES)
+    # register the message types sent
+    messages_sent = ALL_MESSAGE_TYPES
 
 
 NAME_PREFIX = 'sim_obj'

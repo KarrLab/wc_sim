@@ -36,16 +36,13 @@ class SkeletonSubmodel(DynamicSubmodel):
     def send_initial_events(self):
         self.schedule_the_next_reaction()
 
-    @classmethod
-    def register_subclass_handlers(cls):
-        SimulationObject.register_handlers(cls, [
-            (message_types.GivePopulation, cls.handle_GivePopulation_event),
-            (message_types.ExecuteSsaReaction, cls.handle_ExecuteSsaReaction_event),
-        ])
+    # register the event handler for each type of message received
+    event_handlers =[
+            (message_types.GivePopulation, 'handle_GivePopulation_event'),
+            (message_types.ExecuteSsaReaction, 'handle_ExecuteSsaReaction_event')]
 
-    @classmethod
-    def register_subclass_sent_messages(cls):
-        SimulationObject.register_sent_messages(cls, ALL_MESSAGE_TYPES)
+    # register the message types sent
+    messages_sent = ALL_MESSAGE_TYPES
 
     def schedule_the_next_reaction(self):
         """ Schedule the next reaction for this `SkeletonSubmodel`

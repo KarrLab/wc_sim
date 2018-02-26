@@ -11,7 +11,7 @@ from builtins import super
 
 from wc_sim.multialgorithm.aggregate_distributed_props import (AggregateDistributedProps,
     DistributedProperty, DistributedPropertyFactory)
-from wc_sim.core.simulation_object import EventQueue, SimulationObject, SimulationObjectInterface
+from wc_sim.core.simulation_object import EventQueue, SimulationObject, ApplicationSimulationObject
 from wc_sim.core.simulation_engine import SimulationEngine
 from wc_sim.core.simulation_message import SimulationMessageFactory
 from wc_sim.multialgorithm import message_types
@@ -76,7 +76,7 @@ class TestDistributedProperty(unittest.TestCase):
             later_time, self.test_time), str(context.exception))
 
 
-class PropertyProvider(SimulationObject, SimulationObjectInterface):
+class PropertyProvider(ApplicationSimulationObject):
 
     def __init__(self, name, test_property_hist):
         super().__init__(name)
@@ -96,21 +96,17 @@ class PropertyProvider(SimulationObject, SimulationObjectInterface):
             event.sending_object,
             message_types.GiveProperty(property_name, time, value))
 
-    @classmethod
-    def register_subclass_handlers(cls):
-        SimulationObject.register_handlers(cls,
-            [(message_types.GetHistoricalProperty, cls.handle_get_historical_prop)])
+    event_handlers = [(message_types.GetHistoricalProperty, handle_get_historical_prop)]
 
-    @classmethod
-    def register_subclass_sent_messages(cls):
-        SimulationObject.register_sent_messages(cls, [message_types.GiveProperty])
+    # register the message types sent
+    messages_sent = [message_types.GiveProperty]
 
 
 GoGetProperty = SimulationMessageFactory.create('GoGetProperty',
     'Self-clocking message for test property requestor', ['property_name', 'time'])
 
 
-class PropertyRequestor(SimulationObject, SimulationObjectInterface):
+class PropertyRequestor(ApplicationSimulationObject):
 
     def __init__(self, name, property_name, period, aggregate_distributed_props, expected_history,
         test_case):
@@ -160,20 +156,19 @@ class PropertyRequestor(SimulationObject, SimulationObjectInterface):
                 event.message.property_name,
                 event.message.time))
 
-    @classmethod
-    def register_subclass_handlers(cls):
-        SimulationObject.register_handlers(cls, [
+    # register the event handler for each type of message received
+    event_handlers =[
             # (message type, handler)
-            (message_types.GiveProperty, cls.handle_give_property_event),
-            (GoGetProperty, cls.handle_go_get_property_event),])
+            (message_types.GiveProperty, handle_give_property_event),
+            (GoGetProperty, handle_go_get_property_event)]
 
-    @classmethod
-    def register_subclass_sent_messages(cls):
-        SimulationObject.register_sent_messages(cls,
-            [message_types.GetHistoricalProperty, GoGetProperty])
+    # register the message types sent
+    messages_sent = [message_types.GetHistoricalProperty, GoGetProperty]
+
 
 def sum_values(values):
     return sum(values)
+
 
 class TestAggregateDistributedProps(unittest.TestCase):
 

@@ -17,9 +17,9 @@ from six import iteritems
 from scipy.constants import Avogadro
 
 import wc_lang
-from wc_sim.core.simulation_object import SimulationObject, SimulationObjectInterface
+from wc_sim.core.simulation_object import (SimulationObject, ApplicationSimulationObject,
+    AppSimObjAndABCMeta, ApplicationSimulationObjMeta)
 from wc_sim.multialgorithm import message_types
-
 from wc_sim.multialgorithm.config import core as config_core_multialgorithm
 from wc_sim.multialgorithm.debug_logs import logs as debug_logs
 from wc_sim.multialgorithm.model_utilities import ModelUtilities
@@ -28,8 +28,9 @@ from wc_sim.multialgorithm import distributed_properties
 from wc_utils.util.dict import DictUtil
 from wc_utils.util.rand import RandomStateManager
 
-@six.add_metaclass(abc.ABCMeta)
-class AccessSpeciesPopulationInterface():   # pragma: no cover; methods in abstract base classes aren't run
+
+# @six.add_metaclass(abc.ABCMeta)
+class AccessSpeciesPopulationInterface(metaclass=abc.ABCMeta):   # pragma: no cover; methods in abstract base classes aren't run
     """ An abstract base class defining the interface between a submodel and its species population store(s)
 
     A submodel in a WC simulation can interact with multiple components that store the population
@@ -44,22 +45,22 @@ class AccessSpeciesPopulationInterface():   # pragma: no cover; methods in abstr
     @abc.abstractmethod
     def read_one(self, time, specie_id):
         """ Obtain the predicted population of a specie at a particular simulation time """
-        pass
+        raise NotImplemented
 
     @abc.abstractmethod
     def read(self, time, species):
         """ Obtain the predicted population of a list of species at a particular simulation time """
-        pass
+        raise NotImplemented
 
     @abc.abstractmethod
     def adjust_discretely(self, time, adjustments):
         """ A discrete submodel adjusts the population of a set of species at a particular simulation time """
-        pass
+        raise NotImplemented
 
     @abc.abstractmethod
     def adjust_continuously(self, time, adjustments):
         """ A continuous submodel adjusts the population of a set of species at a particular simulation time """
-        pass
+        raise NotImplemented
 
 
 config_multialgorithm = \
@@ -915,7 +916,8 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
 
 
 # TODO(Arthur): cover after MVP wc_sim done
-class SpeciesPopSimObject(LocalSpeciesPopulation, SimulationObject, SimulationObjectInterface): # pragma: no cover
+class SpeciesPopSimObject(LocalSpeciesPopulation, ApplicationSimulationObject,
+    metaclass=AppSimObjAndABCMeta): # pragma: no cover
     """ Maintain the population of a set of species in a simulation object that can be parallelized
 
     A whole-cell PDES must run multiple submodels in parallel. These share cell state, such as
@@ -1000,20 +1002,16 @@ class SpeciesPopSimObject(LocalSpeciesPopulation, SimulationObject, SimulationOb
             raise SpeciesPopulationError("Error: unknown property_name: '{}'".format(
                 property_name))
 
-    @classmethod
-    def register_subclass_handlers(cls):
-        SimulationObject.register_handlers(cls, [
+    # register the event handler for each type of message received
+    event_handlers =[
             # At any time instant, messages are processed in this order
-            (message_types.AdjustPopulationByDiscreteSubmodel, cls.handle_adjust_discretely_event),
-            (message_types.AdjustPopulationByContinuousSubmodel, cls.handle_adjust_continuously_event),
-            (message_types.GetPopulation, cls.handle_get_population_event),
-            (message_types.GetCurrentProperty, cls.handle_get_current_property_event)
-        ])
+            (message_types.AdjustPopulationByDiscreteSubmodel, handle_adjust_discretely_event),
+            (message_types.AdjustPopulationByContinuousSubmodel, handle_adjust_continuously_event),
+            (message_types.GetPopulation, handle_get_population_event),
+            (message_types.GetCurrentProperty, handle_get_current_property_event)]
 
-    @classmethod
-    def register_subclass_sent_messages(cls):
-        SimulationObject.register_sent_messages(cls,
-            [message_types.GivePopulation, message_types.GiveProperty])
+    # register the message types sent
+    messages_sent = [message_types.GivePopulation, message_types.GiveProperty]
 
 
 class Specie(object):

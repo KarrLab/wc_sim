@@ -32,7 +32,7 @@ from wc_sim.multialgorithm.multialgorithm_errors import NegativePopulationError,
 from wc_sim.multialgorithm.submodels.skeleton_submodel import SkeletonSubmodel
 from wc_sim.multialgorithm import distributed_properties
 from wc_utils.util.rand import RandomStateManager
-from tests.core.mock_simulation_object import MockSimulationObjectInterface
+from tests.core.mock_simulation_object import MockSimulationObject
 
 def store_i(i):
     return "store_{}".format(i)
@@ -673,7 +673,7 @@ its simulated population.
 """
 
 
-class MockSimulationTestingObject(MockSimulationObjectInterface):
+class MockSimulationTestingObject(MockSimulationObject):
 
     def send_initial_events(self): pass
 
@@ -703,19 +703,16 @@ class MockSimulationTestingObject(MockSimulationObjectInterface):
         self.test_case.assertEqual(property_name, distributed_properties.MASS)
         self.test_case.assertEqual(event.message.value, self.kwargs['expected_value'])
 
-    @classmethod
-    def register_subclass_handlers(cls):
-        SimulationObject.register_handlers(cls, [
-            (message_types.GivePopulation, cls.handle_GivePopulation_event),
-            (message_types.GiveProperty, cls.handle_GiveProperty_event)])
+    # register the event handler for each type of message received
+    event_handlers =[
+            (message_types.GivePopulation, handle_GivePopulation_event),
+            (message_types.GiveProperty, handle_GiveProperty_event)]
 
-    @classmethod
-    def register_subclass_sent_messages(cls):
-        SimulationObject.register_sent_messages(cls,
-            [message_types.GetPopulation,
+    # register the message types sent
+    messages_sent = [message_types.GetPopulation,
             message_types.AdjustPopulationByDiscreteSubmodel,
             message_types.AdjustPopulationByContinuousSubmodel,
-            message_types.GetCurrentProperty])
+            message_types.GetCurrentProperty]
 
 
 class TestSpeciesPopSimObjectWithAnotherSimObject(unittest.TestCase):
