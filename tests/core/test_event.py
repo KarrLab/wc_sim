@@ -9,7 +9,7 @@ import unittest
 import six
 
 from wc_sim.core.event import Event
-from wc_sim.core.simulation_message import SimulationMessageFactory, SimulationMessage
+from wc_sim.core.simulation_message import SimulationMessage
 from tests.core.example_simulation_objects import (ALL_MESSAGE_TYPES, TEST_SIM_OBJ_STATE,
     ExampleSimulationObject)
 from wc_utils.util.misc import most_qual_cls_name, round_direct
@@ -33,7 +33,9 @@ class TestEvent(unittest.TestCase):
     def test_event_w_message(self):
         ds = 'docstring'
         attrs = ['attr1', 'attr2']
-        TestMsg = SimulationMessageFactory.create('TestMsg', ds, attrs)
+        class TestMsg(SimulationMessage):
+            'docstring'
+            attributes = ['attr1', 'attr2']
         vals = ['att1_val', 'att2_val']
         test_msg = TestMsg(*vals)
         times = (0, 1)
@@ -66,8 +68,8 @@ class TestEvent(unittest.TestCase):
             self.assertIn(str(round_direct(t)), ev_offset.render(round_w_direction=True))
         self.assertEqual(data+vals, ev.render(as_list=True))
 
-        NoBodyMessage = SimulationMessageFactory.create('NoBodyMessage',
-            """A message with no attributes""")
+        class NoBodyMessage(SimulationMessage):
+            """A message with no attributes"""
         ev2 = Event(0, 1, ExampleSimulationObject('sender'), ExampleSimulationObject('receiver'),
             NoBodyMessage())
         self.assertIn('\t'.join(Event.BASE_HEADERS), ev2.custom_header())

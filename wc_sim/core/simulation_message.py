@@ -6,19 +6,21 @@
 :License: MIT
 """
 
-import six, abc
+from abc import ABCMeta
+import inspect
+import warnings
 
 from wc_sim.core.errors import SimulatorError
+from wc_sim.core.utilities import ConcreteABCMeta
 
 
-@six.add_metaclass(abc.ABCMeta)
-class SimulationMessage(object):
+class SimulationMessageInterface(object, metaclass=ABCMeta):
     """ An abstract base class for simulation messages
 
     Each simulation event contains a simulation message. All simulation messages are objects. This
     module supports compact declaration of `SimulationMessage` types. For example::
 
-        GivePopulation = SimulationMessageFactory.create('GivePopulation',
+class GivePopulation(SimulationMessage):,
             '''A WC simulator message sent by a species pop object ...''', ['population'])
 
     defines a `GivePopulation` message (with an elided docstring).
@@ -30,8 +32,6 @@ class SimulationMessage(object):
 
     def __init__(self, *args):
         """ Initialize a `SimulationMessage`
-
-        `SimulationMessage` subclasses are defined by `SimulationMessageFactory.create()`.
 
         Args:
             args (:obj:`tuple`): argument list for initializing a subclass instance
@@ -133,40 +133,41 @@ class SimulationMessage(object):
             return separator.join(self.attrs())
 
 
+class SimulationMessageMeta(type):
+    # attributes mapping keyword
+    ATTRIBUTES = 'attributes'
 
-# TODO(Arthur): replace with meta class that creates SimulationMessage objects and defines their type names
-class SimulationMessageFactory(object):
-    """ Factory that creates `SimulationMessage` subclasses
-    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-    @staticmethod
-    def create(name, docstring, attributes=None):
-        """ Compactly define a subclass of `SimulationMessage`
+    def __new__(cls, clsname, superclasses, namespace):
+        # Short circuit when SimulationMessage is defined
+        if clsname == 'SimulationMessage':
+            return super().__new__(cls, clsname, superclasses, namespace)
 
-        To avoid confusion, the class returned by `create` should be assigned to a variable called
-        `name`, which can be used to create `SimulationMessage`s of that type.
+        if '__doc__' not in namespace:
+            warnings.warn("SimulationMessage '{}' definition does not contain a docstring.".format(
+                clsname))
 
-        Args:
-            name (:obj:`str`): the name of the `SimulationMessage` subclass being defined
-            docstring (:obj:`str`): a docstring for the subclass
-            attributes (:obj:`list` of `str`, optional): attributes for the subclass which is being
-                defined, if any
-
-        Returns:
-            :obj:`class`: a subclass of `SimulationMessage`
-
-        Raises:
-            :obj:`SimulatorError`: if `name` or `docstring` is empty
-        """
-        if name == '':
-            raise SimulatorError("SimulationMessage name cannot be empty")
-        if docstring == '':
-            raise SimulatorError("SimulationMessage docstring cannot be empty")
         attrs = {}
-        # TODO(Arthur): raise exception if attributes contains dupes
-        if attributes is not None:
-            attrs['__slots__'] = attributes
-        generated_simulation_message_cls = type(name, (SimulationMessage,), attrs)
-        generated_simulation_message_cls.__doc__ = docstring.strip()
+        if cls.ATTRIBUTES in namespace:
 
-        return generated_simulation_message_cls
+            # check types
+            attributes = namespace[cls.ATTRIBUTES]
+            if not (isinstance(attributes, list) and all([isinstance(attr, str) for attr in attributes])):
+                raise SimulatorError("'{}' must be a list of strings, but is '{}'".format(
+                    cls.ATTRIBUTES, attributes))
+
+            # error if attributes contains dupes
+            if not len(attributes)==len(set(attributes)):
+                raise SimulatorError("'{}' contains duplicates".format(cls.ATTRIBUTES))
+            attrs['__slots__'] = attributes
+
+        new_simulation_message_class = super().__new__(cls, clsname, superclasses, attrs)
+        if '__doc__' in namespace:
+            new_simulation_message_class.__doc__ = namespace['__doc__'].strip()
+        return new_simulation_message_class
+
+class CombinedMeta(ConcreteABCMeta, SimulationMessageMeta): pass
+
+class SimulationMessage(SimulationMessageInterface, metaclass=CombinedMeta): pass

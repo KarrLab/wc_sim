@@ -1,7 +1,16 @@
 # example message types:
-from wc_sim.core.simulation_message import SimulationMessageFactory
+from wc_sim.core.simulation_message import SimulationMessage
 
-InitMsg = SimulationMessageFactory.create('InitMsg', 'An InitMsg message')
-Eg1 = SimulationMessageFactory.create('Eg1', 'Eg1 simulation message')
-MsgWithAttrs = SimulationMessageFactory.create('MsgWithAttrs', 'MsgWithAttrs simulation message', ['attr1', 'attr2'])
-UnregisteredMsg = SimulationMessageFactory.create('UnregisteredMsg', 'Unregistered simulation message')
+
+class InitMsg(SimulationMessage):
+    'An InitMsg message'
+
+class Eg1(SimulationMessage):
+    'Eg1 simulation message'
+
+class MsgWithAttrs(SimulationMessage):
+    'MsgWithAttrs simulation message'
+    attributes = ['attr1', 'attr2']
+
+class UnregisteredMsg(SimulationMessage):
+    'Unregistered simulation message'

@@ -5,7 +5,7 @@
 :Copyright: 2016-2018, Karr Lab
 :License: MIT
 
-Simulation message types are subclasses of `SimulationMessage`, defined by `SimulationMessageFactory.create()`.
+Simulation message types are subclasses of `SimulationMessage`.
 Every simulation event message contains a typed `SimulationMessage`.
 
 Declare
@@ -38,16 +38,16 @@ from builtins import super
 
 from collections import namedtuple
 
-from wc_sim.core.simulation_message import SimulationMessageFactory
+from wc_sim.core.simulation_message import SimulationMessage
 
-AdjustPopulationByDiscreteSubmodel = SimulationMessageFactory.create('AdjustPopulationByDiscreteSubmodel',
+class AdjustPopulationByDiscreteSubmodel(SimulationMessage):
     """ A WC simulator message sent by a discrete time submodel to adjust species counts.
 
     Attributes:
         population_change (:obj:`dict` of `float`): map: species_id -> population_change;
             changes in the population of the identified species.
-    """,
-    ["population_change"])
+    """
+    attributes = ["population_change"]
 
 ContinuousChange_namedtuple = namedtuple('ContinuousChange_namedtuple', 'change, flux')
 class ContinuousChange(ContinuousChange_namedtuple):
@@ -80,7 +80,7 @@ class ContinuousChange(ContinuousChange_namedtuple):
         self.type_check()
         return self
 
-AdjustPopulationByContinuousSubmodel = SimulationMessageFactory.create('AdjustPopulationByContinuousSubmodel',
+class AdjustPopulationByContinuousSubmodel(SimulationMessage):
     """ A WC simulator message sent by a continuous submodel to adjust species counts.
 
     Continuous submodels model species populations as continuous variables. They're usually
@@ -91,35 +91,35 @@ AdjustPopulationByContinuousSubmodel = SimulationMessageFactory.create('AdjustPo
             map: species_id -> ContinuousChange namedtuple; changes in the population of the
             identified species, and the predicted future flux of the species (which may be
             simply the historic flux).
-    """,
-    ['population_change'])
+    """
+    attributes = ['population_change']
 
-GetPopulation = SimulationMessageFactory.create('GetPopulation',
+class GetPopulation(SimulationMessage):
     """ A WC simulator message sent by a submodel to obtain some current specie populations.
 
     Attributes:
         species (:obj:`set` of `str`): set of species_ids; the species whose populations are
         requested.
-    """,
-    ['species'])
+    """
+    attributes = ['species']
 
-GivePopulation = SimulationMessageFactory.create('GivePopulation',
+class GivePopulation(SimulationMessage):
     """ A WC simulator message sent by a species pop object to report some current specie populations.
 
     Attributes:
         population (:obj:`dict` of `str`): species_id -> population; the populations of some species.
-    """,
-    ['population'])
+    """
+    attributes = ['population']
 
 # TODO(Arthur): make a pair of messages that Get and Give the population of one specie
 
-AggregateProperty = SimulationMessageFactory.create('AggregateProperty',
+class AggregateProperty(SimulationMessage):
     """ A WC simulator message sent to aggregate a property
 
     Attributes:
         property_name (:obj:`str`): the name of the requested property
-    """,
-    ['property_name'])
+    """
+    attributes = ['property_name']
 
 """
 We support two different types of get-property messages, GetCurrentProperty and GetHistoricalProperty,
@@ -134,49 +134,49 @@ at least over some time period. Handling it generates an error if the property i
 at the requested time.
 """
 
-GetHistoricalProperty = SimulationMessageFactory.create('GetHistoricalProperty',
+class GetHistoricalProperty(SimulationMessage):
     """ A WC simulator message sent to obtain a property at a time that's not in the future
 
     Attributes:
         property_name (:obj:`str`): the name of the requested property
         time (`float`): the time at which the property should be measured
-    """,
-    ['property_name', 'time'])
+    """
+    attributes = ['property_name', 'time']
 
-GetCurrentProperty = SimulationMessageFactory.create('GetCurrentProperty',
+class GetCurrentProperty(SimulationMessage):
     """ A WC simulator message sent to obtain a property at the receiver's current time
 
     Attributes:
         property_name (:obj:`str`): the name of the requested property
-    """,
-    ['property_name'])
+    """
+    attributes = ['property_name']
 
-GiveProperty = SimulationMessageFactory.create('GiveProperty',
+class GiveProperty(SimulationMessage):
     """ A WC simulator message sent by a simulation object to report a property
 
     Attributes:
         property_name (:obj:`str`): the name of the reported property
         time (`float`): the time at which the property was measured
         value (:obj:`object`): the value of the property at `time`
-    """,
-    ['property_name', 'time', 'value'])
+    """
+    attributes = ['property_name', 'time', 'value']
 
-ExecuteSsaReaction = SimulationMessageFactory.create('ExecuteSsaReaction',
+class ExecuteSsaReaction(SimulationMessage):
     """ A WC simulator message sent by a SSASubmodel to itself to schedule an SSA reaction execution.
 
     Attributes:
         reaction_index (int): the index of the selected reaction in `SSASubmodel.reactions`.
-    """,
-    ['reaction_index'])
+    """
+    attributes = ['reaction_index']
 
-SsaWait = SimulationMessageFactory.create('SsaWait',
+class SsaWait(SimulationMessage):
     """ A WC simulator message sent by a SSASubmodel to itself to temporarily suspend activity
     because no reactions are runnable.
-    """)
+    """
 
-RunFba = SimulationMessageFactory.create('RunFba',
+class RunFba(SimulationMessage):
     """ A WC simulator message sent by a DfbaSubmodel to itself to schedule the next FBA execution.
-    """)
+    """
 
 ALL_MESSAGE_TYPES = [
     AdjustPopulationByDiscreteSubmodel,    # A discrete model changes the population.

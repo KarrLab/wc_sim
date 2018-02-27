@@ -15,7 +15,7 @@ import argparse
 import datetime
 from builtins import super
 
-from wc_sim.core.simulation_message import SimulationMessageFactory
+from wc_sim.core.simulation_message import SimulationMessage
 from wc_sim.core.simulation_object import EventQueue, SimulationObject, ApplicationSimulationObject
 from wc_sim.core.simulation_engine import SimulationEngine
 from examples.debug_logs import logs as debug_logs
@@ -31,10 +31,12 @@ def obj_index(obj_name):
 def exp_delay():
     return random.expovariate(1.0)
 
-MessageSentToSelf = SimulationMessageFactory.create('MessageSentToSelf', "A message that's sent to self")
-MessageSentToOtherObject = SimulationMessageFactory.create('MessageSentToOtherObject',
-    "A message that's sent to another PHold simulation object")
-InitMsg = SimulationMessageFactory.create('InitMsg', 'initialization message')
+class MessageSentToSelf(SimulationMessage):
+    "A message that's sent to self"
+class MessageSentToOtherObject(SimulationMessage):
+    "A message that's sent to another PHold simulation object"
+class InitMsg(SimulationMessage):
+    'initialization message'
 MESSAGE_TYPES = [MessageSentToSelf, MessageSentToOtherObject, InitMsg]
 
 

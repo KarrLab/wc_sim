@@ -421,7 +421,7 @@ class SimulationObject(object):
             local_call_depth=local_call_depth)
 
 
-class ApplicationSimulationObjectInterface(metaclass=ABCMeta):  # pragma: no cover
+class ApplicationSimulationObjectInterface(object, metaclass=ABCMeta):  # pragma: no cover
 
     @abc.abstractmethod
     def send_initial_events(self, *args): pass
@@ -480,7 +480,7 @@ class ApplicationSimulationObjMeta(type):
                 # TODO(Arthur): check types more carefully
                 event_handlers_defined |= name == cls.EVENT_HANDLERS
                 messages_sent_defined |= name == cls.MESSAGES_SENT
-ApplicationSimulationObjMeta
+
         if (not event_handlers_defined and not messages_sent_defined):
             raise SimulatorError("ApplicationSimulationObject '{}' definition must provide '{}' or '{}' or both.".format(
                 clsname, cls.EVENT_HANDLERS,

@@ -24,7 +24,7 @@ EVENT_HANDLERS = ApplicationSimulationObjMeta.EVENT_HANDLERS
 MESSAGES_SENT = ApplicationSimulationObjMeta.MESSAGES_SENT
 
 
-# TODO(Arthur): combine together example classed in tests.core.example_simulation_objects
+# TODO(Arthur): combine together example classes in tests.core.example_simulation_objects
 class ImproperlyRegisteredSimulationObject(ApplicationSimulationObject):
 
     # register the event handler for each type of message received

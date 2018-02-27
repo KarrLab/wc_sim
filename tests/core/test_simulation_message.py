@@ -7,17 +7,19 @@
 
 import unittest
 import six
-from wc_sim.core.simulation_message import SimulationMessageFactory, SimulationMessage
+import warnings
+
+from wc_sim.core.simulation_message import SimulationMessage, SimulationMessageInterface
 from wc_sim.core.errors import SimulatorError
 from wc_utils.util.list import elements_to_str
 
 
-class TestSimulationMessage(unittest.TestCase):
+class TestSimulationMessageInterface(unittest.TestCase):
 
     def test_utils(self):
         attributes = ['arg_1','arg_2']
         attrs = {'__slots__':attributes}
-        SimMsgType = type('test', (SimulationMessage,), attrs)
+        SimMsgType = type('test', (SimulationMessageInterface,), attrs)
         with self.assertRaises(SimulatorError) as context:
             SimMsgType()
         six.assertRegex(self, str(context.exception),
@@ -32,37 +34,49 @@ class TestSimulationMessage(unittest.TestCase):
             self.assertIn(attr, t.header(as_list=True))
             self.assertIn(attr, t.values(annotated=True))
             self.assertIn(attr, t.values(annotated=True, separator=','))
-            print(t.values(annotated=True, separator=','))
         self.assertEqual(elements_to_str(vals), t.values(as_list=True))
         self.assertEqual('\t'.join(elements_to_str(vals)), t.values())
         delattr(t, 'arg_2')
         self.assertIn(str(None), str(t))
-        NoBodyMessage = SimulationMessageFactory.create('NoBodyMessage', 'A msg with no attributes')
-        no_body_msg = NoBodyMessage()
-        self.assertEqual(None, no_body_msg.values())
 
 
-class TestSimulationMessageFactory(unittest.TestCase):
+class ExampleSimulationMessage1(SimulationMessage):
+    ' My docstring '
+    attributes = ['attr1', 'attr2']
 
-    def test_simulation_message_factory(self):
+
+class ExampleSimulationMessage2(SimulationMessage):
+    " docstring "
+    pass
+
+
+class TestSimulationMessageMeta(unittest.TestCase):
+
+    def test_simulation_message_meta(self):
+        self.assertTrue(issubclass(ExampleSimulationMessage1, SimulationMessage))
+        with warnings.catch_warnings(record=True) as w:
+            class BadSimulationMessage2(SimulationMessage):
+                attributes = ['x']
+            self.assertIn("definition does not contain a docstring", str(w[-1].message))
+        warnings.simplefilter("ignore")
+
+        self.assertEqual(ExampleSimulationMessage1.__doc__, 'My docstring')
+        attr_vals = ('att1_val', 'att2_val')
+        example_simulation_message = ExampleSimulationMessage1(*attr_vals)
         attrs = ['attr1', 'attr2']
-        ds = 'docstring'
-        TestMsg = SimulationMessageFactory.create('TestMsg', ds, attrs)
-        test_msg = TestMsg('att1_val', 'att2_val')
-        self.assertEqual(test_msg.__doc__, ds)
-        for attr in attrs:
-            self.assertTrue(hasattr(test_msg, attr))
+        for attr,val in zip(attrs, attr_vals):
+            self.assertEqual(getattr(example_simulation_message, attr), val)
 
-        TestMsg2 = SimulationMessageFactory.create('TestMsg2', ds)
-        test_msg2 = TestMsg2()
-        for attr in attrs:
-            self.assertFalse(hasattr(test_msg2, attr))
-        self.assertEqual(test_msg2.header(), None)
+        example_simulation_message2 = ExampleSimulationMessage2()
+        self.assertEqual(example_simulation_message2.attrs(), [])
+        self.assertEqual(example_simulation_message2.header(), None)
 
         with self.assertRaises(SimulatorError) as context:
-            SimulationMessageFactory.create('', '')
-        self.assertIn('SimulationMessage name cannot be empty', str(context.exception))
+            class BadSimulationMessage1(SimulationMessage):
+                attributes = [2.5]
+        self.assertIn('must be a list of strings', str(context.exception))
 
         with self.assertRaises(SimulatorError) as context:
-            SimulationMessageFactory.create('T', '')
-        self.assertIn('SimulationMessage docstring cannot be empty', str(context.exception))
+            class BadSimulationMessage2(SimulationMessage):
+                attributes = ['x', 'y', 'x']
+        self.assertIn('contains duplicates', str(context.exception))
