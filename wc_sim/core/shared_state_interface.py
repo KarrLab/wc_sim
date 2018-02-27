@@ -6,11 +6,10 @@
 :License: MIT
 """
 
-import six, abc
+import abc
 
 
-@six.add_metaclass(abc.ABCMeta)
-class SharedStateInterface(object):  # pragma: no cover
+class SharedStateInterface(object, metaclass=abc.ABCMeta):  # pragma: no cover
     """ An ABC all shared state objects must support so they can participate in logs and checkpoints
     """
 

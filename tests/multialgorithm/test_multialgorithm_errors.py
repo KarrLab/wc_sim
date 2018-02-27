@@ -7,8 +7,6 @@
 
 import unittest, os
 
-import six
-
 from wc_sim.multialgorithm.multialgorithm_errors import (Error,
     MultialgorithmError, SpeciesPopulationError, NegativePopulationError)
 
@@ -39,5 +37,5 @@ class TestMultialgorithmErrors(unittest.TestCase):
 
         with self.assertRaises(NegativePopulationError) as context:
             raise NegativePopulationError('method_name', 'specie_name', 1, 3, 1)
-        six.assertRegex(self, str(context.exception),
+        self.assertRegex(str(context.exception),
             "negative population predicted for .* with decline from .* to .* over .* time unit")

@@ -5,7 +5,6 @@
 :Copyright: 2016-2018, Karr Lab
 :License: MIT
 """
-from builtins import super
 
 from wc_sim.core.event import Event
 from wc_sim.core.simulation_object import SimulationObject

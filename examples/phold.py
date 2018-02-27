@@ -13,7 +13,6 @@ import random
 import sys
 import argparse
 import datetime
-from builtins import super
 
 from wc_sim.core.simulation_message import SimulationMessage
 from wc_sim.core.simulation_object import EventQueue, SimulationObject, ApplicationSimulationObject

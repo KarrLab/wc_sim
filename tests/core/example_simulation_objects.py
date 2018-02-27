@@ -4,7 +4,6 @@
 :Copyright: 2018, Karr Lab
 :License: MIT
 """
-from builtins import super
 
 from wc_sim.core.simulation_object import EventQueue, SimulationObject, ApplicationSimulationObject
 from tests.core.some_message_types import InitMsg, Eg1, UnregisteredMsg
@@ -31,3 +30,19 @@ class ExampleSimulationObject(ApplicationSimulationObject):
 
     # register the message types sent
     messages_sent = ALL_MESSAGE_TYPES
+
+
+class ImproperlyRegisteredSimulationObject(ApplicationSimulationObject):
+
+    # register the event handler for each type of message received
+    event_handlers = [(Eg1, 'handler')]
+
+    # register the message types sent
+    messages_sent = [InitMsg]
+
+    def send_initial_events(self, *args): pass
+
+    def get_state(self):
+        return 'stateless object'
+
+    def handler(self, event): pass

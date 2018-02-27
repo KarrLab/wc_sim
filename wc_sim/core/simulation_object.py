@@ -10,8 +10,6 @@ from copy import deepcopy
 import heapq
 import abc
 from abc import ABCMeta
-import six
-from builtins import super
 import warnings
 import inspect
 
@@ -286,6 +284,9 @@ class SimulationObject(object):
         event_type_name = message.__class__.__name__
 
         # check that the sending object type is registered to send the message type
+        if not isinstance(message, SimulationMessage):
+            raise SimulatorError("simulation messages must be instances of type 'SimulationMessage'; "
+                "'{}' is not".format(event_type_name))
         if message.__class__ not in self.__class__.metadata.message_types_sent:
             raise SimulatorError("'{}' simulation objects not registered to send '{}' messages".format(
                 most_qual_cls_name(self), event_type_name))
@@ -310,8 +311,7 @@ class SimulationObject(object):
         Args:
             delay: number; the simulation delay at which the receiving_object should execute the event.
             receiving_object: object; the object that will receive the event
-            message (class): the class of the event message.
-            message: object; an optional object containing the body of the event
+            message: object; an object containing the body of the event
             copy: boolean; if True, copy the message; True by default as a safety measure to
                 avoid unexpected changes to shared objects; set False to optimize
 
@@ -502,7 +502,7 @@ class ApplicationSimulationObjMeta(type):
                     raise SimulatorError("In ApplicationSimulationObject '{}' definition of '{}' "
                         "must be list of (SimulationMessage, method) pairs.".format(clsname, cls.EVENT_HANDLERS))
                 '''
-                if isinstance(handler_name, six.string_types):
+                if isinstance(handler_name, str):
                     if handler_name not in namespace:
                         raise SimulatorError("ApplicationSimulationObject '{}' definition must define "
                             "'{}'.".format(clsname, handler_name))

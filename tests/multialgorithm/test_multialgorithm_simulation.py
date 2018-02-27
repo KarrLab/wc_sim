@@ -7,7 +7,6 @@
 
 import os, unittest
 from argparse import Namespace
-import six
 import math
 import numpy as np
 from scipy.constants import Avogadro
@@ -42,7 +41,7 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         self.multialgorithm_simulation.initialize()
         self.simulation_engine = self.multialgorithm_simulation.build_simulation()
         self.assertEqual(len(self.simulation_engine.simulation_objects.keys()), 3)
-        for name,simulation_obj in six.iteritems(self.simulation_engine.simulation_objects):
+        for name,simulation_obj in self.simulation_engine.simulation_objects.items():
             print("\n{}: {} event queue:".format(simulation_obj.__class__.__name__, name))
             print(simulation_obj.render_event_queue())
         self.simulation_engine.simulate(10)

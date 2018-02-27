@@ -5,8 +5,7 @@
 :License: MIT
 """
 
-import six, abc
-from builtins import super
+import abc
 from unittest import TestCase
 
 from wc_sim.core.simulation_object import SimulationObject, ApplicationSimulationObject

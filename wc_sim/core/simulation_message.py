@@ -168,6 +168,6 @@ class SimulationMessageMeta(type):
             new_simulation_message_class.__doc__ = namespace['__doc__'].strip()
         return new_simulation_message_class
 
-class CombinedMeta(ConcreteABCMeta, SimulationMessageMeta): pass
+class CombinedSimulationMessageMeta(ConcreteABCMeta, SimulationMessageMeta): pass
 
-class SimulationMessage(SimulationMessageInterface, metaclass=CombinedMeta): pass
+class SimulationMessage(SimulationMessageInterface, metaclass=CombinedSimulationMessageMeta): pass

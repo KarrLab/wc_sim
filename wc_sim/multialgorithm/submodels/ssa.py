@@ -10,7 +10,6 @@ import sys
 import math
 import numpy as np
 from scipy.constants import Avogadro as N_AVOGADRO
-from builtins import super
 
 from scipy.constants import Avogadro
 from wc_utils.util.rand import RandomStateManager

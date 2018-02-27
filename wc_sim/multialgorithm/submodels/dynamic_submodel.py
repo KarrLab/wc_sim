@@ -9,7 +9,6 @@
 
 import numpy as np
 from scipy.constants import Avogadro
-from builtins import super
 
 from wc_lang.core import Species, Reaction, Compartment, Parameter
 from wc_lang.rate_law_utils import RateLawUtils

@@ -5,7 +5,6 @@
 :Copyright: 2016-2018, Karr Lab
 :License: MIT
 """
-from builtins import super
 
 class Error(Exception):
     """ Base class for exceptions involving multi-algoritmic simulation

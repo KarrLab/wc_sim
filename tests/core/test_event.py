@@ -6,7 +6,6 @@
 """
 
 import unittest
-import six
 
 from wc_sim.core.event import Event
 from wc_sim.core.simulation_message import SimulationMessage

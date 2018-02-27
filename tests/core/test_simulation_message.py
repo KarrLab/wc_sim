@@ -6,7 +6,6 @@
 """
 
 import unittest
-import six
 import warnings
 
 from wc_sim.core.simulation_message import SimulationMessage, SimulationMessageInterface
@@ -22,7 +21,7 @@ class TestSimulationMessageInterface(unittest.TestCase):
         SimMsgType = type('test', (SimulationMessageInterface,), attrs)
         with self.assertRaises(SimulatorError) as context:
             SimMsgType()
-        six.assertRegex(self, str(context.exception),
+        self.assertRegex(str(context.exception),
             "Constructor .*'test' expects 2 arg.*but 0 provided")
         vals = [1, 'a']
         t = SimMsgType(*vals)

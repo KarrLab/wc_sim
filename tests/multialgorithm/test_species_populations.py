@@ -10,11 +10,9 @@ import numpy as np
 from numpy import all
 import os, unittest, copy
 import re
-import six
 import string
 import sys
 import unittest
-from builtins import super
 
 from scipy.constants import Avogadro
 from scipy.stats import binom
@@ -24,10 +22,10 @@ import wc_lang
 from wc_sim.core.errors import SimulatorError
 from wc_sim.core.simulation_engine import SimulationEngine
 from wc_sim.core.simulation_object import EventQueue, SimulationObject
+from wc_sim.core.simulation_message import SimulationMessage
 from wc_sim.multialgorithm import message_types
-from wc_sim.multialgorithm.species_populations import AccessSpeciesPopulations
 from wc_sim.multialgorithm.species_populations import (LOCAL_POP_STORE, Specie, SpeciesPopSimObject,
-    SpeciesPopulationCache, LocalSpeciesPopulation)
+    SpeciesPopulationCache, LocalSpeciesPopulation, AccessSpeciesPopulations)
 from wc_sim.multialgorithm.multialgorithm_errors import NegativePopulationError, SpeciesPopulationError
 from wc_sim.multialgorithm.submodels.skeleton_submodel import SkeletonSubmodel
 from wc_sim.multialgorithm import distributed_properties
@@ -214,7 +212,7 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
     def initialize_simulation(self, model_file):
         self.set_up_simulation(model_file)
         delay_to_first_event = 1.0/len(self.submodels)
-        for name,submodel in six.iteritems(self.submodels):
+        for name,submodel in self.submodels.items():
 
             # prefetch into caches
             submodel.access_species_population.prefetch(delay_to_first_event,
@@ -545,12 +543,12 @@ class TestSpecie(unittest.TestCase):
 
         s3 = Specie('specie2', 10)
         self.assertEqual("specie_name: specie2; last_population: 10", str(s3))
-        six.assertRegex(self, s3.row(), 'specie2\t10.*')
+        self.assertRegex(s3.row(), 'specie2\t10.*')
 
         s4 = Specie('specie', 10, initial_flux=0)
         self.assertEqual("specie_name: specie; last_population: 10; continuous_time: 0; "
             "continuous_flux: 0", str(s4))
-        six.assertRegex(self, s4.row(), 'specie\t10\..*\t0\..*\t0\..*')
+        self.assertRegex(s4.row(), 'specie\t10\..*\t0\..*\t0\..*')
 
         with self.assertRaises(SpeciesPopulationError) as context:
             s4.continuous_adjustment(2, -23, 1)
@@ -581,7 +579,7 @@ class TestSpecie(unittest.TestCase):
             Specie('specie', 10).continuous_adjustment(2, 2, 1)
         self.assertIn('initial flux was not provided', str(context.exception))
 
-        six.assertRegex(self, Specie.heading(), 'specie_name\t.*')
+        self.assertRegex(Specie.heading(), 'specie_name\t.*')
 
         # raise asserts
         with self.assertRaises(AssertionError) as context:
@@ -783,7 +781,7 @@ class TestSpeciesPopSimObjectWithAnotherSimObject(unittest.TestCase):
 
 
 
-class InitMsg1(object): pass
+class InitMsg1(SimulationMessage): pass
 
 class TestSpeciesPopSimObject(unittest.TestCase):
 

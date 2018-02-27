@@ -10,7 +10,6 @@
 import sys
 import numpy as np
 import warnings
-from builtins import super
 from scipy.constants import Avogadro
 
 with warnings.catch_warnings():

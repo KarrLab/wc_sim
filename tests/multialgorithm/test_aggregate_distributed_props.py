@@ -7,7 +7,6 @@
 
 import os, unittest, sys, math
 from io import StringIO
-from builtins import super
 
 from wc_sim.multialgorithm.aggregate_distributed_props import (AggregateDistributedProps,
     DistributedProperty, DistributedPropertyFactory)

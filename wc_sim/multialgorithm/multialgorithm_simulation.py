@@ -10,7 +10,6 @@ import re
 import numpy as np
 from scipy.constants import Avogadro
 from collections import defaultdict
-from six import iteritems, itervalues
 from math import ceil, floor, exp, log, log10, isnan
 import tokenize, token
 

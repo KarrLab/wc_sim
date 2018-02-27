@@ -9,11 +9,10 @@
 # TODO(Arthur): for reproducibility, use lists instead of sets
 # TODO(Arthur): analyze accuracy with and without interpolation
 
-import abc, six
+import abc
 import numpy as np
 import sys
 from collections import defaultdict
-from six import iteritems
 from scipy.constants import Avogadro
 
 import wc_lang
@@ -29,7 +28,6 @@ from wc_utils.util.dict import DictUtil
 from wc_utils.util.rand import RandomStateManager
 
 
-# @six.add_metaclass(abc.ABCMeta)
 class AccessSpeciesPopulationInterface(metaclass=abc.ABCMeta):   # pragma: no cover; methods in abstract base classes aren't run
     """ An abstract base class defining the interface between a submodel and its species population store(s)
 
@@ -296,7 +294,7 @@ class AccessSpeciesPopulations(AccessSpeciesPopulationInterface):   # pragma: no
             :obj:`list`: the names of the stores for the species whose populations are adjusted
         """
         stores=[]
-        for store,species_ids in iteritems(self.locate_species(adjustments.keys())):
+        for store,species_ids in self.locate_species(adjustments.keys()).items():
             stores.append(store)
             store_adjustments = DictUtil.filtered_dict(adjustments, species_ids)
             if store==LOCAL_POP_STORE:
@@ -321,7 +319,7 @@ class AccessSpeciesPopulations(AccessSpeciesPopulationInterface):   # pragma: no
             list: the names of the stores for the species whose populations are adjusted.
         """
         stores=[]
-        for store,species_ids in iteritems(self.locate_species(adjustments.keys())):
+        for store,species_ids in self.locate_species(adjustments.keys()).items():
             stores.append(store)
             store_adjustments = DictUtil.filtered_dict(adjustments, species_ids)
             if store==LOCAL_POP_STORE:
@@ -362,7 +360,7 @@ class AccessSpeciesPopulations(AccessSpeciesPopulationInterface):   # pragma: no
                 "be non-negative.".format(delay))
         stores=[]
         epsilon = config_multialgorithm['epsilon']
-        for store,species_ids in iteritems(self.locate_species(species_ids)):
+        for store,species_ids in self.locate_species(species_ids).items():
             if store!=LOCAL_POP_STORE:
                 stores.append(store)
                 # advance the receipt of GetPopulation so the SpeciesPopSimObject executes it before
@@ -434,7 +432,7 @@ class SpeciesPopulationCache(object):       # pragma: no cover
                 "AccessSpeciesPopulations's local store: {}.".format(
                     list(store_name_map[LOCAL_POP_STORE])))
         # TODO(Arthur): could raise an exception if the species are not stored in the ASP's remote stores
-        for specie_id,population in iteritems(populations):
+        for specie_id,population in populations.items():
             # raise exception if the time of this cache is not greater than the previous cache time
             if specie_id in self._cache and time <= self._cache[specie_id][0]:
                 raise SpeciesPopulationError("cache_population: caching an earlier population: "

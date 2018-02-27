@@ -7,9 +7,7 @@
 
 import unittest
 import random
-import six
 import warnings
-from builtins import super
 
 from wc_sim.core.errors import SimulatorError
 from wc_sim.core.simulation_object import (EventQueue, SimulationObject, ApplicationSimulationObject,
@@ -17,28 +15,11 @@ from wc_sim.core.simulation_object import (EventQueue, SimulationObject, Applica
 from wc_sim.core.simulation_engine import SimulationEngine
 from tests.core.some_message_types import InitMsg, Eg1, MsgWithAttrs, UnregisteredMsg
 from tests.core.example_simulation_objects import (ALL_MESSAGE_TYPES, TEST_SIM_OBJ_STATE,
-    ExampleSimulationObject)
+    ExampleSimulationObject, ImproperlyRegisteredSimulationObject)
 from wc_utils.util.misc import most_qual_cls_name
 from wc_utils.util.list import is_sorted
 EVENT_HANDLERS = ApplicationSimulationObjMeta.EVENT_HANDLERS
 MESSAGES_SENT = ApplicationSimulationObjMeta.MESSAGES_SENT
-
-
-# TODO(Arthur): combine together example classes in tests.core.example_simulation_objects
-class ImproperlyRegisteredSimulationObject(ApplicationSimulationObject):
-
-    # register the event handler for each type of message received
-    event_handlers = [(Eg1, 'handler')]
-
-    # register the message types sent
-    messages_sent = [InitMsg]
-
-    def send_initial_events(self, *args): pass
-
-    def get_state(self):
-        return 'stateless object'
-
-    def handler(self, event): pass
 
 
 class TestEventQueue(unittest.TestCase):
@@ -206,6 +187,11 @@ class TestSimulationObject(unittest.TestCase):
                 most_qual_cls_name(self.irso1),
                 InitMsg().__class__.__name__))
 
+        with self.assertRaises(SimulatorError) as context:
+            self.eso1.send_event_absolute(2, self.irso1, InitMsg)
+        self.assertIn("simulation messages must be instances of type 'SimulationMessage'; ",
+            str(context.exception))
+
     def test_get_receiving_priorities_dict(self):
         self.assertTrue(ExampleSimulationObject.metadata.event_handler_priorities[InitMsg] <
             ExampleSimulationObject.metadata.event_handler_priorities[Eg1])
@@ -279,7 +265,7 @@ class TestSimulationObject(unittest.TestCase):
         event_time = -1
         with self.assertRaises(SimulatorError) as context:
             self.o1.send_event_absolute(event_time, self.o2, Eg1())
-        six.assertRegex(self, str(context.exception),
+        self.assertRegex(str(context.exception),
             "event_time \(-1.*\) < current time \(0.*\) in send_event_absolute\(\)")
 
         eq = EventQueue()

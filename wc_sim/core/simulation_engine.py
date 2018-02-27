@@ -185,7 +185,7 @@ class SimulationEngine(object):
                 key = (next event time; sim_obj.id)
                 del sd[key]
             to execute event:
-                popitem from SD to get sim obj with smallest event time; remove event from event queue; add_to_sd(sim_obj)
+                popitem from SD to get sim obj with smallest event time; remove event from event queue
             to schedule event in sim_obj:
                 save sim_obj.event_queue.next_event_time
                 push it on sim_obj.event_queue

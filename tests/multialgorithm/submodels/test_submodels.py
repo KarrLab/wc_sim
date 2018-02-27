@@ -7,9 +7,7 @@
 
 import unittest
 import os, sys
-import six
 import numpy as np
-from builtins import super
 import warnings
 
 from scipy.constants import Avogadro
@@ -88,7 +86,7 @@ class TestDynamicSubmodel(unittest.TestCase):
         for dynamic_submodel in self.misconfigured_dynamic_submodels.values():
             with self.assertRaises(MultialgorithmError) as context:
                 dynamic_submodel.get_specie_concentrations()
-            six.assertRegex(self, str(context.exception),
+            self.assertRegex(str(context.exception),
                 "dynamic submodel .* lacks dynamic compartment .* for specie .*")
 
     def test_calc_reaction_rates(self):
@@ -144,7 +142,7 @@ class TestDynamicSubmodel(unittest.TestCase):
                 if reaction not in enabled_reactions:
                     with self.assertRaises(MultialgorithmError) as context:
                         dynamic_submodel.execute_reaction(reaction)
-                    six.assertRegex(self, str(context.exception),
+                    self.assertRegex(str(context.exception),
                         "dynamic submodel .* cannot execute reaction")
 
 

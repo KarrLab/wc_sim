@@ -34,7 +34,6 @@ It is enforced by checking class names against message body types.
 For this sequential simulator, simulation messages are stored as a copy of or reference to sender's data structure
 # TODO(Arthur): for parallel simulation, serialize and deserialize message bodies, perhaps with Pickle
 """
-from builtins import super
 
 from collections import namedtuple
 

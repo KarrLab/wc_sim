@@ -6,10 +6,13 @@
 """
 
 import sys
+import os
 import unittest
-import six
 import time
-from builtins import super
+import tempfile
+import shutil
+import cProfile
+import pstats
 
 from wc_sim.core.errors import SimulatorError
 from wc_sim.core.simulation_object import EventQueue, SimulationObject, ApplicationSimulationObject
@@ -21,7 +24,6 @@ from wc_utils.util.misc import most_qual_cls_name
 ALL_MESSAGE_TYPES = [InitMsg, Eg1]
 
 
-# TODO(Arthur): consolidate in example_simulation_objects
 class InactiveSimulationObject(ApplicationSimulationObject):
 
     def __init__(self):
@@ -121,6 +123,10 @@ class TestSimulationEngine(unittest.TestCase):
         # create simulator and register simulation object types
         self.simulator = SimulationEngine()
         self.simulator.reset()
+        self.out_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.out_dir)
 
     def test_one_object_simulation(self):
         obj = ExampleSimulationObject(obj_name(1))
@@ -171,7 +177,7 @@ class TestSimulationEngine(unittest.TestCase):
         self.simulator.initialize()
         with self.assertRaises(SimulatorError) as context:
             self.simulator.simulate(5.0, epsilon=0)
-        six.assertRegex(self, str(context.exception), "epsilon (.*) plus end time (.*) must exceed end time")
+        self.assertRegex(str(context.exception), "epsilon (.*) plus end time (.*) must exceed end time")
 
     def test_simulation_end(self):
         self.simulator.add_object(InactiveSimulationObject())
@@ -220,18 +226,30 @@ class TestSimulationEngine(unittest.TestCase):
     def test_performance(self):
         end_sim_time = 100
         max_num_sim_objs = 1000
-        num_sim_objs = 10
-        print("\n#sim obs\t# events\trun time (s)\tevents/s".format())
+        num_sim_objs = 4
+        print()
+        print("Performance test of cyclical messaging network: end simulation time: {}".format(end_sim_time))
+        overall_perf = ["\n#sim obs\t# events\trun time (s)\tevents/s".format()]
         while num_sim_objs < max_num_sim_objs:
             self.simulator.reset()
             self.make_cyclical_messaging_network_sim(num_sim_objs)
             self.simulator.initialize()
             start_time = time.process_time()
-            num_events = self.simulator.simulate(end_sim_time)
+            out_file = os.path.join(self.out_dir, "profile_out_{}.out".format(num_sim_objs))
+            # num_events = self.simulator.simulate(end_sim_time)
+            locals = {'self':self,
+                'end_sim_time':end_sim_time}
+            cProfile.runctx('num_events = self.simulator.simulate(end_sim_time)', {}, locals, filename=out_file)
+            num_events = locals['num_events']
+            profile = pstats.Stats(out_file)
+            print("Profile for {} simulation objects:".format(num_sim_objs))
+            profile.strip_dirs().sort_stats('cumulative').print_stats(15)
             run_time = time.process_time() - start_time
             self.assertEqual(num_sim_objs*end_sim_time, num_events)
-            print("{}\t{}\t{:8.3f}\t{:8.3f}".format(num_sim_objs, num_events, run_time, num_events/run_time))
+            overall_perf.append("{}\t{}\t{:8.3f}\t{:8.3f}".format(num_sim_objs, num_events, run_time, num_events/run_time))
             num_sim_objs *= 4
+        print('Performance summary')
+        print("\n".join(overall_perf))
 
 
 class ExampleSharedStateObject(SharedStateInterface):

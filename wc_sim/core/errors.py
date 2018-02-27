@@ -4,7 +4,6 @@
 :Copyright: 2018, Karr Lab
 :License: MIT
 """
-from builtins import super
 
 class Error(Exception):
     """ Base class for exceptions in wc_sim
