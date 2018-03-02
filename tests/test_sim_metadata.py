@@ -40,7 +40,8 @@ class TestMetadata(unittest.TestCase):
     def test_build_metadata(self):
         model = self.metadata.model
         self.assertIn(model.url, ['https://github.com/KarrLab/wc_sim.git',
-                                  'git@github.com:KarrLab/wc_sim.git'])
+                                  'git@github.com:KarrLab/wc_sim.git',
+                                  'ssh://git@github.com/KarrLab/wc_sim.git'])
         self.assertEqual(model.branch, 'master')
 
         run = self.metadata.run
