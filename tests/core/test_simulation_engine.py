@@ -249,7 +249,7 @@ class TestSimulationEngine(unittest.TestCase):
 
     # @unittest.skip("performance scaling test; runs slowly")
     def test_performance(self):
-        end_sim_time = 100
+        end_sim_time = 10
         max_num_sim_objs = 2000
         num_sim_objs = 4
         print()
