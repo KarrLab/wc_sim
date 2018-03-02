@@ -133,6 +133,7 @@ class Event(object):
 
         Rendering the content assumes that `sending_object` and `receiving_object`
         have name attributes.
+        # TODO(Arthur): document contents of a rendered event
 
         Args:
             round_w_direction (:obj:`bool`, optional): if set, round times to strings indicating

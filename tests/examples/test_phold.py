@@ -12,12 +12,22 @@ import random
 
 from argparse import Namespace
 from examples.phold import RunPhold
+from wc_sim.core.debug_logs import config
+# TODO(Arthur): combine tests/examples/test_* into one file
+
 
 class TestPhold(unittest.TestCase):
 
     def setUp(self):
-        # TODO(Arthur): turn off console logging
+        # turn off console logging
+        self.console_level = config['debug_logs']['loggers']['wc.debug.console']['level']
+        config['debug_logs']['loggers']['wc.debug.console']['level'] = 'ERROR'
         warnings.simplefilter("ignore")
+        # TODO(Arthur): also turn off logging via from examples.debug_logs import logs
+
+    def tearDown(self):
+        # restore console logging
+        config['debug_logs']['loggers']['wc.debug.console']['level'] = self.console_level
 
     def run_phold(self, seed, end_time):
         args = Namespace(end_time=end_time, frac_self_events=0.3, num_phold_procs=10, seed=seed)

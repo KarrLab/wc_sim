@@ -172,7 +172,7 @@ class SimulationEngine(object):
         while self.time <= end_time:
 
             # TODO(Arthur): provide dynamic control
-            self.log_simulation_state()
+            # self.log_simulation_state()
 
             '''
             # TODO(Arthur): quickly retrieve sim obj with lowest event time

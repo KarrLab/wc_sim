@@ -13,6 +13,7 @@ import tempfile
 import shutil
 import cProfile
 import pstats
+import copy
 
 from wc_sim.core.errors import SimulatorError
 from wc_sim.core.simulation_object import EventQueue, SimulationObject, ApplicationSimulationObject
@@ -20,6 +21,9 @@ from wc_sim.core.simulation_engine import SimulationEngine
 from tests.core.some_message_types import InitMsg, Eg1
 from wc_sim.core.shared_state_interface import SharedStateInterface
 from wc_utils.util.misc import most_qual_cls_name
+from wc_utils.util.dict import DictUtil
+from wc_sim.core.debug_logs import logs, config
+
 
 ALL_MESSAGE_TYPES = [InitMsg, Eg1]
 
@@ -222,34 +226,63 @@ class TestSimulationEngine(unittest.TestCase):
         for sim_obj_name in self.simulator.simulation_objects:
             self.assertIn(sim_obj_name, queues)
 
-    @unittest.skip("slow performance scaling test")
+    # test simulation performance code:
+    def prep_simulation(self, num_sim_objs):
+        self.simulator.reset()
+        self.make_cyclical_messaging_network_sim(num_sim_objs)
+        self.simulator.initialize()
+
+    def suspend_logging(self):
+        self.saved_config = copy.deepcopy(config)
+        DictUtil.set_value(config, 'level', 'ERROR')
+
+    def restore_logging(self):
+        global config
+        config = self.saved_config
+
+    def test_log_conf(self):
+        console_level = config['debug_logs']['loggers']['wc.debug.console']['level']
+        self.suspend_logging()
+        self.assertEqual(config['debug_logs']['loggers']['wc.debug.console']['level'], 'ERROR')
+        self.restore_logging()
+        self.assertEqual(config['debug_logs']['loggers']['wc.debug.console']['level'], console_level)
+
+    # @unittest.skip("performance scaling test; runs slowly")
     def test_performance(self):
         end_sim_time = 100
-        max_num_sim_objs = 1000
+        max_num_sim_objs = 2000
         num_sim_objs = 4
         print()
         print("Performance test of cyclical messaging network: end simulation time: {}".format(end_sim_time))
-        overall_perf = ["\n#sim obs\t# events\trun time (s)\tevents/s".format()]
+        unprofiled_perf = ["\n#sim obs\t# events\trun time (s)\tevents/s".format()]
+
+        self.suspend_logging()
         while num_sim_objs < max_num_sim_objs:
-            self.simulator.reset()
-            self.make_cyclical_messaging_network_sim(num_sim_objs)
-            self.simulator.initialize()
+
+            # measure execution time
+            self.prep_simulation(num_sim_objs)
             start_time = time.process_time()
+            num_events = self.simulator.simulate(end_sim_time)
+            run_time = time.process_time() - start_time
+            self.assertEqual(num_sim_objs*end_sim_time, num_events)
+            unprofiled_perf.append("{}\t{}\t{:8.3f}\t{:8.3f}".format(num_sim_objs, num_events,
+                run_time, num_events/run_time))
+
+            # profile
+            self.prep_simulation(num_sim_objs)
             out_file = os.path.join(self.out_dir, "profile_out_{}.out".format(num_sim_objs))
-            # num_events = self.simulator.simulate(end_sim_time)
             locals = {'self':self,
                 'end_sim_time':end_sim_time}
             cProfile.runctx('num_events = self.simulator.simulate(end_sim_time)', {}, locals, filename=out_file)
-            num_events = locals['num_events']
             profile = pstats.Stats(out_file)
             print("Profile for {} simulation objects:".format(num_sim_objs))
             profile.strip_dirs().sort_stats('cumulative').print_stats(15)
-            run_time = time.process_time() - start_time
-            self.assertEqual(num_sim_objs*end_sim_time, num_events)
-            overall_perf.append("{}\t{}\t{:8.3f}\t{:8.3f}".format(num_sim_objs, num_events, run_time, num_events/run_time))
+
             num_sim_objs *= 4
+
         print('Performance summary')
-        print("\n".join(overall_perf))
+        print("\n".join(unprofiled_perf))
+        self.restore_logging()
 
 
 class ExampleSharedStateObject(SharedStateInterface):

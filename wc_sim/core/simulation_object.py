@@ -165,7 +165,7 @@ class EventQueue(object):
                 representation if `as_list` is set
         """
         if not self.event_heap:
-            return "Empty event queue"
+            return None
 
         # Sort the events in non-decreasing event time (receive_time)
         sorted_events = sorted(self.event_heap, key=lambda record: record[0])

@@ -39,7 +39,7 @@ class TestEventQueue(unittest.TestCase):
         self.assertEqual(1, self.event_queue.next_event_time())
 
     def test_render(self):
-        self.assertIn('Empty', EventQueue().render())
+        self.assertEqual(None, EventQueue().render())
         self.assertEqual(len(self.event_queue.render(as_list=True)), self.num_events+1)
         def get_event_times(eq_rendered_as_list):
             return [row[1] for row in eq_rendered_as_list[1:]]
