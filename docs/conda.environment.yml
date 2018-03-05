@@ -4,10 +4,12 @@ channels:
   - defaults
   - SBMLTeam
   - sys-bio
+  - openbabel
 dependencies:
   - libsedml
   - matplotlib
   - numpy
+  - openbabel
   - pip
   - pygit2
   - python>=3.6.4
