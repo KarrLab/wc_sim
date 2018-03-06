@@ -1,5 +1,5 @@
 [//]: # ( [![PyPI package](https://img.shields.io/pypi/v/wc_sim.svg)](https://pypi.python.org/pypi/wc_sim) )
-[![Documentation](https://readthedocs.org/projects/wc_sim/badge/?version=latest)](http://wc_sim.readthedocs.org)
+[![Documentation](https://img.shields.io/badge/docs-latest-green.svg)](http://docs.karrlab.org/wc_sim)
 [![Test results](https://circleci.com/gh/KarrLab/wc_sim.svg?style=shield)](https://circleci.com/gh/KarrLab/wc_sim)
 [![Test coverage](https://coveralls.io/repos/github/KarrLab/wc_sim/badge.svg)](https://coveralls.io/github/KarrLab/wc_sim)
 [![Code analysis](https://api.codeclimate.com/v1/badges/9f434719685a7ec914f0/maintainability)](https://codeclimate.com/github/KarrLab/wc_sim)
@@ -9,7 +9,7 @@
 # wc_sim
 
 ## Documentation
-Please see the [API documentation](http://wc_sim.readthedocs.org).
+Please see the [API documentation](http://docs.karrlab.org/wc_sim).
 
 ## License
 The build utilities are released under the [MIT license](LICENSE).
