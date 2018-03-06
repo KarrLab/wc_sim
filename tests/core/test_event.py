@@ -9,17 +9,22 @@ import unittest
 
 from wc_sim.core.event import Event
 from wc_sim.core.simulation_message import SimulationMessage
-from tests.core.example_simulation_objects import (ALL_MESSAGE_TYPES, TEST_SIM_OBJ_STATE,
-    ExampleSimulationObject)
 from wc_utils.util.misc import most_qual_cls_name, round_direct
 from wc_utils.util.list import elements_to_str
+from tests.core.example_simulation_objects import (ALL_MESSAGE_TYPES, TEST_SIM_OBJ_STATE,
+    ExampleSimulationObject)
+from tests.core.some_message_types import InitMsg
 
 
 class TestEvent(unittest.TestCase):
 
     def test_event_inequalities(self):
-        e1 = Event(0, 1, object(), object(), object())
-        e2 = Event(0, 2, object(), object(), object())
+        example_sim_obj_a = ExampleSimulationObject('a')
+        example_sim_obj_b = ExampleSimulationObject('b')
+
+        # test Events with different event times
+        e1 = Event(0, 1, example_sim_obj_a, example_sim_obj_a, InitMsg())
+        e2 = Event(0, 2, example_sim_obj_a, example_sim_obj_b, InitMsg())
         self.assertTrue(e1 < e2)
         self.assertFalse(e1 > e2)
         self.assertTrue(e1 <= e1)
@@ -28,6 +33,17 @@ class TestEvent(unittest.TestCase):
         self.assertFalse(e2 < e1)
         self.assertTrue(e1 >= e1)
         self.assertTrue(e2 >= e1)
+
+        # test Events with equal event times and different recipients
+        e3 = Event(0, 1, example_sim_obj_a, example_sim_obj_b, InitMsg())
+        self.assertTrue(e1 < e3)
+        self.assertFalse(e1 > e3)
+        self.assertTrue(e1 <= e1)
+        self.assertTrue(e1 <= e3)
+        self.assertTrue(e3 > e1)
+        self.assertFalse(e3 < e1)
+        self.assertTrue(e1 >= e1)
+        self.assertTrue(e3 >= e1)
 
     def test_event_w_message(self):
         ds = 'docstring'

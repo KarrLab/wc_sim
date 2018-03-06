@@ -42,6 +42,7 @@ class Event(object):
         self.receiving_object = receiving_object
         self.message = message
 
+    # TODO(Arthur): after SimulationMessages have comparison operations, add self.message to these
     def __lt__(self, other):
         """ Does this `Event` occur earlier than `other`?
 
@@ -51,7 +52,8 @@ class Event(object):
         Returns:
             :obj:`bool`: `True` if this `Event` occurs earlier than `other`
         """
-        return self.event_time < other.event_time
+        return ((self.event_time, self.receiving_object.name, self.message) <
+            (other.event_time, other.receiving_object.name, other.message))
 
     def __le__(self, other):
         """ Does this `Event` occur earlier or at the same time as `other`?
@@ -62,7 +64,7 @@ class Event(object):
         Returns:
             :obj:`bool`: `True` if this `Event` occurs earlier or at the same time as `other`
         """
-        return self.event_time <= other.event_time
+        return not (other < self)
 
     def __gt__(self, other):
         """ Does this `Event` occur later than `other`?
@@ -73,7 +75,8 @@ class Event(object):
         Returns:
             :obj:`bool`: `True` if this `Event` occurs later than `other`
         """
-        return self.event_time > other.event_time
+        return ((self.event_time, self.receiving_object.name, self.message) >
+            (other.event_time, other.receiving_object.name, other.message))
 
     def __ge__(self, other):
         """ Does this `Event` occur later or at the same time as `other`?
@@ -84,7 +87,7 @@ class Event(object):
         Returns:
             :obj:`bool`: `True` if this `Event` occurs later or at the same time as `other`
         """
-        return self.event_time >= other.event_time
+        return not (self < other)
 
     @staticmethod
     def header(as_list=False, separator='\t'):
