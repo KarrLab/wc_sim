@@ -21,7 +21,7 @@ from wc_lang.io import Reader
 import wc_lang
 from wc_sim.core.errors import SimulatorError
 from wc_sim.core.simulation_engine import SimulationEngine
-from wc_sim.core.simulation_object import EventQueue, SimulationObject
+from wc_sim.core.simulation_object import SimulationObject
 from wc_sim.core.simulation_message import SimulationMessage
 from wc_sim.multialgorithm import message_types
 from wc_sim.multialgorithm.species_populations import (LOCAL_POP_STORE, Specie, SpeciesPopSimObject,

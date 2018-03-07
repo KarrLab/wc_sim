@@ -70,7 +70,6 @@ class RunMinimalSimulation(object):
         # run the simulation
         simulator.initialize()
         num_events = simulator.simulate(args.end_time)
-        sys.stderr.write("Executed {} events.\n".format(num_events))
         return(num_events)
 
 if __name__ == '__main__':  # pragma: no cover     # reachable only from command line

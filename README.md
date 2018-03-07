@@ -20,4 +20,4 @@ This package was developed by the [Karr Lab](http://www.karrlab.org) at the Icah
 * [Jonathan Karr](http://www.karrlab.org)
 
 ## Questions and comments
-Please contact the [Karr Lab](http://www.karrlab.org) with any questions or comments.
+Please contact the [Karr Lab](http://www.karrlab.org) with any questions or comments.# summarize_expenses

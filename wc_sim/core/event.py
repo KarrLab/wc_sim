@@ -14,9 +14,15 @@ from wc_sim.core.simulation_message import SimulationMessage
 class Event(object):
     """ An object that holds a discrete event simulation (DES) event
 
-    Each DES event is scheduled by creating an `Event` instance and storing it in its
-    `receiving_object`'s event queue. To reduce interface errors the `message`
+    Each DES event is scheduled by creating an `Event` instance and storing it in the
+    simulagor's event queue. To reduce interface errors the `message`
     attribute must be structured as specified in the `message_types` module.
+
+    As per David Jefferson's thinking, the event queue is ordered by data provided by the
+    simulation application, in particular (event time, receiving object name).
+    This is implemented by the comparison operators for Event below. This ordering achieves
+    deterministic and reproducible simulations.
+    # TODO(Arthur): cite lecture at LLNL, and other sources
 
     Attributes:
         creation_time (:obj:`float`): simulation time when the event is created (aka `send_time`)
@@ -42,7 +48,6 @@ class Event(object):
         self.receiving_object = receiving_object
         self.message = message
 
-    # TODO(Arthur): after SimulationMessages have comparison operations, add self.message to these
     def __lt__(self, other):
         """ Does this `Event` occur earlier than `other`?
 
@@ -52,8 +57,8 @@ class Event(object):
         Returns:
             :obj:`bool`: `True` if this `Event` occurs earlier than `other`
         """
-        return ((self.event_time, self.receiving_object.name, self.message) <
-            (other.event_time, other.receiving_object.name, other.message))
+        return ((self.event_time, self.receiving_object.name) <
+            (other.event_time, other.receiving_object.name))
 
     def __le__(self, other):
         """ Does this `Event` occur earlier or at the same time as `other`?
@@ -75,8 +80,8 @@ class Event(object):
         Returns:
             :obj:`bool`: `True` if this `Event` occurs later than `other`
         """
-        return ((self.event_time, self.receiving_object.name, self.message) >
-            (other.event_time, other.receiving_object.name, other.message))
+        return ((self.event_time, self.receiving_object.name) >
+            (other.event_time, other.receiving_object.name))
 
     def __ge__(self, other):
         """ Does this `Event` occur later or at the same time as `other`?

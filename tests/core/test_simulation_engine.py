@@ -16,7 +16,7 @@ import pstats
 import copy
 
 from wc_sim.core.errors import SimulatorError
-from wc_sim.core.simulation_object import EventQueue, SimulationObject, ApplicationSimulationObject
+from wc_sim.core.simulation_object import SimulationObject, ApplicationSimulationObject
 from wc_sim.core.simulation_engine import SimulationEngine
 from tests.core.some_message_types import InitMsg, Eg1
 from wc_sim.core.shared_state_interface import SharedStateInterface
@@ -166,7 +166,7 @@ class TestSimulationEngine(unittest.TestCase):
             self.fail('should be able to add object after delete')
 
         self.simulator.initialize()
-        event_queue = obj.event_queue
+        event_queue = self.simulator.event_queue
         event_queue.schedule_event(-1, -1, obj, obj, InitMsg())
         with self.assertRaises(AssertionError) as context:
             self.simulator.simulate(5.0)
@@ -247,9 +247,9 @@ class TestSimulationEngine(unittest.TestCase):
         self.restore_logging()
         self.assertEqual(config['debug_logs']['loggers']['wc.debug.console']['level'], console_level)
 
-    # @unittest.skip("performance scaling test; runs slowly")
+    @unittest.skip("performance scaling test; runs slowly")
     def test_performance(self):
-        end_sim_time = 10
+        end_sim_time = 100
         max_num_sim_objs = 2000
         num_sim_objs = 4
         print()
@@ -283,6 +283,8 @@ class TestSimulationEngine(unittest.TestCase):
         print('Performance summary')
         print("\n".join(unprofiled_perf))
         self.restore_logging()
+
+# TODO(Arthur): add hard reproducibility test
 
 
 class ExampleSharedStateObject(SharedStateInterface):

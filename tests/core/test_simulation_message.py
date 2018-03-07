@@ -52,6 +52,15 @@ class TestSimulationMessageInterface(unittest.TestCase):
         self.assertEqual('\t'.join(elements_to_str(vals)), t.values())
         delattr(t, 'arg_2')
         self.assertIn(str(None), str(t))
+        self.assertEqual([1, None], t._values())
+
+    def comparison(self, lesser, greater):
+        self.assertTrue(lesser < greater)
+        self.assertFalse(lesser > greater)
+        self.assertTrue(lesser <= greater)
+        self.assertTrue(greater > lesser)
+        self.assertFalse(greater < lesser)
+        self.assertTrue(greater >= lesser)
 
     def test_comparison(self):
         # test messages with no attributes
@@ -59,12 +68,7 @@ class TestSimulationMessageInterface(unittest.TestCase):
         self.assertTrue(sim_msg_2 <= sim_msg_2)
         self.assertTrue(sim_msg_2 >= sim_msg_2)
         sim_msg_3 = ExampleSimulationMessage3()
-        self.assertTrue(sim_msg_2 < sim_msg_3)
-        self.assertFalse(sim_msg_2 > sim_msg_3)
-        self.assertTrue(sim_msg_2 <= sim_msg_3)
-        self.assertTrue(sim_msg_3 > sim_msg_2)
-        self.assertFalse(sim_msg_3 < sim_msg_2)
-        self.assertTrue(sim_msg_3 >= sim_msg_2)
+        self.comparison(sim_msg_2, sim_msg_3)
 
         # test messages with attributes
         attrsa = (1, 'bye')
@@ -73,12 +77,7 @@ class TestSimulationMessageInterface(unittest.TestCase):
         self.assertTrue(sim_msg_1a >= sim_msg_1a)
         attrsb = (1, 'hi')
         sim_msg_1b = ExampleSimulationMessage1(*attrsb)
-        self.assertTrue(sim_msg_1a < sim_msg_1b)
-        self.assertFalse(sim_msg_1a > sim_msg_1b)
-        self.assertTrue(sim_msg_1a <= sim_msg_1b)
-        self.assertTrue(sim_msg_1b > sim_msg_1a)
-        self.assertFalse(sim_msg_1b < sim_msg_1a)
-        self.assertTrue(sim_msg_1b >= sim_msg_1a)
+        self.comparison(sim_msg_1a, sim_msg_1b)
 
         # test messages with attributes that cannot be compared
         sim_msg_1_bad_a = ExampleSimulationMessage1(str, str)

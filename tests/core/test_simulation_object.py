@@ -31,15 +31,88 @@ class TestEventQueue(unittest.TestCase):
         self.receiver = receiver = ExampleSimulationObject('receiver')
         for i in range(self.num_events):
             self.event_queue.schedule_event(i, i+1, sender, receiver, InitMsg())
-        self.simulator = SimulationEngine()
+
+    def test_reset(self):
+        self.event_queue.reset()
+        self.assertEqual(float('inf'), self.event_queue.next_event_time())
+        self.assertFalse(self.event_queue.next_events())
 
     def test_next_event_time(self):
         empty_event_queue = EventQueue()
         self.assertEqual(float('inf'), empty_event_queue.next_event_time())
         self.assertEqual(1, self.event_queue.next_event_time())
 
+    def test_next_event_obj(self):
+        self.assertEqual(self.receiver, self.event_queue.next_event_obj())
+        self.event_queue.reset()
+        self.assertEqual(None, self.event_queue.next_event_obj())
+
+    def test_simple_next_events(self):
+        next_events = self.event_queue.next_events()
+        self.assertEqual(len(next_events), 1)
+        event = next_events[0]
+        self.assertEqual(event.event_time, 1)
+        self.assertEqual(event.receiving_object, self.receiver)
+        self.assertEqual(type(event.message), InitMsg)
+        for i in range(self.num_events):
+            next_events = self.event_queue.next_events()
+
+    def test_concurrent_events(self):
+        # identical concurrent events to one object
+        self.event_queue.reset()
+        self.event_queue.schedule_event(0, 1, self.sender, self.receiver, InitMsg())
+        self.event_queue.schedule_event(0, 1, self.sender, self.receiver, InitMsg())
+        self.assertEqual(1, self.event_queue.next_event_time())
+        self.assertEqual(self.receiver, self.event_queue.next_event_obj())
+        next_events = self.event_queue.next_events()
+        self.assertEqual(len(next_events), 2)
+        for event in next_events:
+            self.assertEqual(event.event_time, 1)
+            self.assertEqual(event.receiving_object, self.receiver)
+            self.assertEqual(type(event.message), InitMsg)
+
+        # concurrent events to multiple objects
+        self.receiver2 = ExampleSimulationObject('receiver2')
+        self.event_queue.schedule_event(0, 1, self.sender, self.receiver, InitMsg())
+        self.event_queue.schedule_event(0, 1, self.sender, self.receiver2, InitMsg())
+        self.event_queue.schedule_event(0, 1, self.sender, self.receiver2, InitMsg())
+        self.event_queue.schedule_event(0, 1, self.sender, self.receiver, InitMsg())
+        self.event_queue.schedule_event(0, 1, self.sender, self.receiver2, InitMsg())
+
+        # get 2 events for receiver
+        self.assertEqual(1, self.event_queue.next_event_time())
+        self.assertEqual(self.receiver, self.event_queue.next_event_obj())
+        next_events = self.event_queue.next_events()
+        self.assertEqual(len(next_events), 2)
+        for event in next_events:
+            self.assertEqual(event.receiving_object, self.receiver)
+
+        # get 3 events for receiver2
+        self.assertEqual(1, self.event_queue.next_event_time())
+        self.assertEqual(self.receiver2, self.event_queue.next_event_obj())
+        next_events = self.event_queue.next_events()
+        self.assertEqual(len(next_events), 3)
+        for event in next_events:
+            self.assertEqual(event.receiving_object, self.receiver2)
+
+        # TODO(Arthur): concurrent events to one object with same and different events
+
+    def test_exceptions(self):
+        eq = EventQueue()
+        with self.assertRaises(SimulatorError) as context:
+            eq.schedule_event(2, 1, None, None, '')
+        self.assertEqual(str(context.exception),
+            "receive_time < send_time in schedule_event(): {} < {}".format(1, 2))
+
+        with self.assertRaises(SimulatorError) as context:
+            eq.schedule_event(1, 2, None, None, 13)
+        self.assertIn("message should be an instance of SimulationMessage but is a",
+            str(context.exception))
+
     def test_render(self):
         self.assertEqual(None, EventQueue().render())
+        self.assertEqual('', str(EventQueue()))
+        self.assertEqual(self.event_queue.render(), str(self.event_queue))
         self.assertEqual(len(self.event_queue.render(as_list=True)), self.num_events+1)
         def get_event_times(eq_rendered_as_list):
             return [row[1] for row in eq_rendered_as_list[1:]]
@@ -63,6 +136,17 @@ class TestEventQueue(unittest.TestCase):
         self.assertTrue(is_sorted(get_event_times(test_eq.render(as_list=True))))
         for attr in MsgWithAttrs.__slots__:
             self.assertIn("\t{}:".format(attr), test_eq.render())
+
+    def test_filtered_render(self):
+        # test multiple receivers and filtered by receiver
+        receiver2 = ExampleSimulationObject('receiver2')
+        start, end = 3, 5
+        times = range(start, end)
+        for time in times:
+            self.event_queue.schedule_event(0, time, self.sender, receiver2, InitMsg())
+        self.assertEqual(len(self.event_queue.render(sim_obj=self.receiver, as_list=True)),
+            self.num_events+1)
+        self.assertEqual(len(self.event_queue.render(sim_obj=receiver2, as_list=True)), len(times)+1)
 
 
 class ExampleSimulationObjectSubclass(ExampleSimulationObject):
@@ -208,16 +292,16 @@ class TestSimulationObject(unittest.TestCase):
                     send_method(t, self.o2, Eg1(), copy=copy)
 
                 tmp = sorted(times)
-                while self.o2.event_queue.next_event_time() < float('inf'):
-                    self.assertEqual(self.o2.event_queue.next_event_time(), tmp.pop(0))
-                    self.o2.event_queue.next_events(self.o2)
-                self.assertEqual(self.o2.event_queue.next_events(self.o2), [])
+                while self.o2.simulator.event_queue.next_event_time() < float('inf'):
+                    self.assertEqual(self.o2.simulator.event_queue.next_event_time(), tmp.pop(0))
+                    self.o2.simulator.event_queue.next_events()
+                self.assertEqual(self.o2.simulator.event_queue.next_events(), [])
 
     def test_event_time_ties(self):
         self.o1.send_event(0, self.o2, Eg1())
         self.o1.send_event(2, self.o2, InitMsg())
 
-        num=10
+        num=20
         self.o1.send_event(1, self.o2, InitMsg())
         for i in range(num):
             if random.choice([True, False]):
@@ -225,12 +309,12 @@ class TestSimulationObject(unittest.TestCase):
             else:
                 self.o1.send_event(1, self.o2, InitMsg())
 
-        self.assertEqual(self.o2.event_queue.next_event_time(), 0)
-        event_list = self.o2.event_queue.next_events(self.o2)
+        self.assertEqual(self.o2.simulator.event_queue.next_event_time(), 0)
+        event_list = self.o2.simulator.event_queue.next_events()
         self.assertEqual(event_list[0].event_time, 0)
 
-        self.assertEqual(self.o2.event_queue.next_event_time(), 1)
-        event_list = self.o2.event_queue.next_events(self.o2)
+        self.assertEqual(self.o2.simulator.event_queue.next_event_time(), 1)
+        event_list = self.o2.simulator.event_queue.next_events()
         # all InitMsg messages come before any Eg1 message,
         # and at least 1 InitMsg message exists
         expected_type = InitMsg
@@ -240,7 +324,7 @@ class TestSimulationObject(unittest.TestCase):
                 expected_type = Eg1
             self.assertEqual(event.message.__class__, expected_type)
 
-        self.assertEqual(self.o2.event_queue.next_event_time(), 2)
+        self.assertEqual(self.o2.simulator.event_queue.next_event_time(), 2)
 
     def test_render_event_queue(self):
         rv = self.o1.render_event_queue()
@@ -267,17 +351,6 @@ class TestSimulationObject(unittest.TestCase):
             self.o1.send_event_absolute(event_time, self.o2, Eg1())
         self.assertRegex(str(context.exception),
             "event_time \(-1.*\) < current time \(0.*\) in send_event_absolute\(\)")
-
-        eq = EventQueue()
-        with self.assertRaises(SimulatorError) as context:
-            eq.schedule_event(2, 1, None, None, '')
-        self.assertEqual(str(context.exception),
-            "receive_time < send_time in schedule_event(): {} < {}".format(1, 2))
-
-        with self.assertRaises(SimulatorError) as context:
-            eq.schedule_event(1, 2, None, None, 13)
-        self.assertIn("message should be an instance of SimulationMessage but is a",
-            str(context.exception))
 
         with self.assertRaises(SimulatorError) as context:
             self.o1.add(self.simulator)

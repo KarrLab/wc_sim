@@ -9,7 +9,7 @@ import unittest
 import os
 
 from wc_lang.io import Reader
-from wc_sim.core.simulation_object import EventQueue, SimulationObject
+from wc_sim.core.simulation_object import SimulationObject
 from wc_sim.core.simulation_engine import SimulationEngine
 from wc_sim.multialgorithm.submodels.ssa import SSASubmodel
 from wc_sim.multialgorithm.message_types import GivePopulation, ExecuteSsaReaction

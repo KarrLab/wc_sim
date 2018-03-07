@@ -24,26 +24,35 @@ from wc_sim.core.utilities import ConcreteABCMeta
 from .debug_logs import logs as debug_logs
 
 
+# TODO(Arthur): move to engine
 class EventQueue(object):
-    """ A simulation object's event queue
+    """ A simulation's event queue
 
-    Stores an object's events in a heap (also known as a priority queue),
-    with each event in a tuple (time, event). The heap is
-    a 'min heap', which keeps the event with the smallest time at the root in heap[0].
+    Stores a `SimulationEngine`'s events in a heap (also known as a priority queue).
+    The heap is a 'min heap', which keeps the event with the smallest
+    `(event_time, sending_object.name)` at the root in heap[0].
+    This is implemented via comparison operations in `Event`.
+    Thus, all entries with equal `(event_time, sending_object.name)` will be popped from the heap
+    adjacently. `schedule_event()` costs `O(log(n))`, where `n` is the size of the heap,
+    while `next_events()`, which returns all events with the minimum
+    `(event_time, sending_object.name)`, costs `O(mlog(n))`, where `m` is the number of events
+    returned.
 
     Attributes:
-        event_heap (:obj:`list`): The object's heap of events, sorted by event time;
-            the operations get earliest event and insert event cost O(log(n)) in the heap
+        event_heap (:obj:`list`): a `SimulationEngine`'s heap of events
     """
 
     def __init__(self):
         self.event_heap = []
 
+    def reset(self):
+        self.event_heap = []
+
     def schedule_event(self, send_time, receive_time, sending_object, receiving_object, message):
         """ Create an event and insert in this event queue, scheduled to execute at `receive_time`
 
-        Simulation object X can sends an event to simulation object Y by invoking
-            `X.send_event(receive_delay, Y, message)`
+        Simulation object `X` can sends an event to simulation object `Y` by invoking
+            `X.send_event(receive_delay, Y, message)`.
 
         Args:
             send_time (:obj:`float`): the simulation time at which the event was generated (sent)
@@ -73,7 +82,11 @@ class EventQueue(object):
                 SimulationMessage.__name__, type(message).__name__))
 
         event = Event(send_time, receive_time, sending_object, receiving_object, message)
-        heapq.heappush(self.event_heap, (receive_time, event))
+        # As per David Jefferson's thinking, the event queue is ordered by data provided by the
+        # simulation application, in particular the tuple (event time, receiving object name).
+        # See the comparison operators for Event. This will achieve deterministic and reproducible
+        # simulations.
+        heapq.heappush(self.event_heap, event)
 
     def next_event_time(self):
         """ Get the time of the next event
@@ -84,46 +97,55 @@ class EventQueue(object):
         if not self.event_heap:
             return float('inf')
 
-        return self.event_heap[0][0]    # time of the 1st event in the heap
+        next_event = self.event_heap[0]
+        next_event_time = next_event.event_time
+        return next_event_time
 
+    def next_event_obj(self):
+        """ Get the simulation object that receives the next event
 
-    def next_events(self, sim_obj):
-        """ Get all events at the smallest event time
+        Returns:
+            :obj:`SimulationObject`): the simulation object that will execute the next event, or `None`
+                if no event is scheduled
+        """
+        if not self.event_heap:
+            return None
+
+        next_event = self.event_heap[0]
+        return next_event.receiving_object
+
+    def next_events(self):
+        """ Get all events at the smallest event time destined for the object whose name sorts earliest
 
         Because multiple events may occur concurrently -- that is, have the same simulation time --
         they must be provided as a collection to the simulation object that executes them.
 
-        # TODO(Arthur): take care of this
         Handle 'ties' properly. That is, since an object may receive multiple events
         with the same event_time (aka receive_time), pass them all to the object in a list.
-        (In a Time Warp simulation, the list would need to be ordered by some deterministic
-        criteria based on its contents.)
-
-        # TODO(Arthur): stop using an argument; sim_obj is just the receiver of the events in the queue
-        Args:
-            sim_obj (:obj:`SimulationObject`): the simulation object that will execute the list of event(s)
-                that are returned.
 
         Returns:
             :obj:`list` of `Event`: the earliest event(s), sorted by message type priority. If no
                 events are available the list is empty.
         """
-        # TODO(Arthur): in a Time Warp simulation, order the list by some deterministic criteria
-        # based on its contents; see David Jefferson's lecture on this
         if not self.event_heap:
             return []
 
         events = []
-        (now, an_event) = heapq.heappop(self.event_heap)
-        events.append(an_event)
-        while self.event_heap and now == self.next_event_time():    # time of the 1st event in the heap
-            (_, an_event) = heapq.heappop(self.event_heap)
-            events.append(an_event)
+        next_event = heapq.heappop(self.event_heap)
+        now = next_event.event_time
+        receiving_obj = next_event.receiving_object
+        events.append(next_event)
 
+        # gather all events with the same event_time and receiving_object
+        while (self.event_heap and now == self.next_event_time() and
+            receiving_obj == self.next_event_obj()):
+            events.append(heapq.heappop(self.event_heap))
+
+        # TODO:(Arthur): order events by message contents within message types
         if 1<len(events):
             # sort events by message type priority, so an object handles simultaneous messages
             # in priority order; this costs O(n log(n)) in the number of event messages in events
-            receiver_priority_dict = sim_obj.get_receiving_priorities_dict()
+            receiver_priority_dict = receiving_obj.get_receiving_priorities_dict()
             events = sorted(events,
                 key=lambda event: receiver_priority_dict[event.message.__class__])
 
@@ -147,7 +169,7 @@ class EventQueue(object):
                 sim_time=event.event_time,
                 local_call_depth=local_call_depth)
 
-    def render(self, as_list=False, separator='\t'):
+    def render(self, sim_obj=None, as_list=False, separator='\t'):
         """ Return the content of an `EventQueue`
 
         Make a human-readable event queue, sorted by non-decreasing event time.
@@ -156,6 +178,9 @@ class EventQueue(object):
         a message field label, and each event labels message fields with their attribute names.
 
         Args:
+            sim_obj (:obj:`SimulationObject`, optional): if provided, return only events to be
+                received by `sim_obj`
+            `EventQueue`'s values in a :obj:`list`
             as_list (:obj:`bool`, optional): if set, return the `EventQueue`'s values in a :obj:`list`
             separator (:obj:`str`, optional): the field separator used if the values are returned as
                 a string
@@ -164,14 +189,19 @@ class EventQueue(object):
             :obj:`str`: String representation of the values of an `EventQueue`, or a :obj:`list`
                 representation if `as_list` is set
         """
-        if not self.event_heap:
+        event_heap = self.event_heap
+        if sim_obj is not None:
+            event_heap = list(filter(lambda event: event.receiving_object==sim_obj, event_heap))
+
+        if not event_heap:
             return None
 
-        # Sort the events in non-decreasing event time (receive_time)
-        sorted_events = sorted(self.event_heap, key=lambda record: record[0])
+        # Sort the events in non-decreasing event time (receive_time, receiving_object.name)
+        sorted_events = sorted(event_heap)
+
         # Does the queue contain multiple message types?
         message_types = set()
-        for _,event in self.event_heap:
+        for event in event_heap:
             message_types.add(event.message.__class__)
             if 1<len(message_types):
                 break
@@ -181,15 +211,15 @@ class EventQueue(object):
         if multiple_msg_types:
             # The queue contains multiple message types
             rendered_event_queue.append(Event.header(as_list=True))
-            for _,event in sorted_events:
+            for event in sorted_events:
                 rendered_event_queue.append(event.render(annotated=True, as_list=True))
 
         else:
             # The queue contain only one message type
             # message_type = message_types.pop()
-            (_,event) = sorted_events[0]
+            event = sorted_events[0]
             rendered_event_queue.append(event.custom_header(as_list=True))
-            for _,event in sorted_events:
+            for event in sorted_events:
                 rendered_event_queue.append(event.render(as_list=True))
 
         if as_list:
@@ -203,7 +233,10 @@ class EventQueue(object):
     def __str__(self):
         """ Return event queue members as a table
         """
-        return self.render()
+        rv = self.render()
+        if rv is None:
+            return ''
+        return rv
 
 
 class SimulationObject(object):
@@ -217,9 +250,9 @@ class SimulationObject(object):
             send_time (:obj:`float`): the simulation time at which the message was generated (sent)
 
     Attributes:
-        name (:obj:`str`): this simulation object's name
+        name (:obj:`str`): this simulation object's name, which is unique across all simulation objects
+            handled by a `SimulationEngine`
         time (:obj:`float`): this simulation object's current simulation time
-        event_queue (:obj:`EventQueue`): this simulation object's event queue
         num_events (:obj:`int`): number of events processed
         simulator (:obj:`int`): the `SimulationEngine` that uses this `SimulationObject`
     """
@@ -231,7 +264,6 @@ class SimulationObject(object):
         Args:
             name: string; the object's unique name, used as a key in the dict of objects
         """
-        self.event_queue = EventQueue()
         self.name = name
         self.time = 0.0
         self.num_events = 0
@@ -300,7 +332,7 @@ class SimulationObject(object):
         if copy:
             message = deepcopy(message)
 
-        receiving_object.event_queue.schedule_event(self.time, event_time, self,
+        self.simulator.event_queue.schedule_event(self.time, event_time, self,
             receiving_object, message)
         self.log_with_time("Send: ({}, {:6.2f}) -> ({}, {:6.2f}): {}".format(self.name, self.time,
             receiving_object.name, event_time, message.__class__.__name__))
@@ -412,7 +444,7 @@ class SimulationObject(object):
     def render_event_queue(self):
         """ Format an event queue as a string
         """
-        return self.event_queue.render()
+        return self.simulator.event_queue.render()
 
     def log_with_time(self, msg, local_call_depth=1):
         """Write a debug log message with the simulation time.
