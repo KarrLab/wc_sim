@@ -84,7 +84,6 @@ class TestSimulationMessageInterface(unittest.TestCase):
         sim_msg_1_bad_b = ExampleSimulationMessage1(int, int)
         with self.assertRaises(TypeError) as context:
             sim_msg_1_bad_a < sim_msg_1_bad_b
-        self.assertIn('unorderable types', str(context.exception))
 
         # TODO(Arthur): have simulator catch type errors
         # TODO(Arthur): test same type name declared in different modules
