@@ -9,13 +9,15 @@
 import datetime
 import pprint
 
-from wc_sim.core.simulation_object import SimulationObject
+from wc_sim.core.simulation_object import EventQueue, SimulationObject
 from wc_sim.core.errors import SimulatorError
 from wc_sim.core.event import Event
 from wc_sim.core.shared_state_interface import SharedStateInterface
+# from wc_sim.core.config import core
 
-# configure logging
+# configuration
 from .debug_logs import logs as debug_logs
+# config_core = core.get_config()['wc_sim']['core']
 
 # TODO(Arthur): replace the O(n) iteration over simulation objects with a heap of them organized by next event time
 
@@ -50,6 +52,7 @@ class SimulationEngine(object):
         self.time = 0.0
         self.simulation_objects = {}
         self.log_with_time("SimulationEngine created")
+        self.event_queue = EventQueue()
         self.__initialized = False
 
     def add_object(self, simulation_object):
@@ -115,6 +118,7 @@ class SimulationEngine(object):
         self.time = 0.0
         for simulation_object in list(self.simulation_objects.values()):
             self.delete_object(simulation_object)
+        self.event_queue.reset()
         self.__initialized = False
 
     def message_queues(self):
@@ -126,12 +130,11 @@ class SimulationEngine(object):
         data = ['Event queues at {:6.3f}'.format(self.time)]
         for sim_obj in sorted(self.simulation_objects.values(), key=lambda sim_obj: sim_obj.name):
             data.append(sim_obj.name + ':')
-            # TODO(Arthur): replace with improved event queue output
-            if sim_obj.event_queue.event_heap:
-                data.append(Event.header())
-                data.append(str(sim_obj.event_queue))
-            else:
+            rendered_eq = self.event_queue.render(sim_obj=sim_obj)
+            if rendered_eq is None:
                 data.append('Empty event queue')
+            else:
+                data.append(rendered_eq)
             data.append('')
         return '\n'.join(data)
 
@@ -174,35 +177,11 @@ class SimulationEngine(object):
             # TODO(Arthur): provide dynamic control
             # self.log_simulation_state()
 
-            '''
-            # TODO(Arthur): quickly retrieve sim obj with lowest event time
-            design:
-            keep sim objects in a sorted dict (SD) keyed & arranged by (next event time, obj.id)
-            def add_to_sd(sim_obj):
-                key = (next event time; sim_obj.id)
-                sd[key] = sim_obj
-            def del_from_sd(sim_obj):
-                key = (next event time; sim_obj.id)
-                del sd[key]
-            to execute event:
-                popitem from SD to get sim obj with smallest event time; remove event from event queue
-            to schedule event in sim_obj:
-                save sim_obj.event_queue.next_event_time
-                push it on sim_obj.event_queue
-                if this changes sim_obj.event_queue.next_event_time:
-                    del_from_sd(sim_obj, old event time)
-                    add_to_sd(sim_obj)
-            see http://www.grantjenks.com/docs/sortedcontainers/sorteddict.html
-            alternatively, create a heap in a balanced tree that supports rebalancing after node removal or key change
-            '''
             # get the earliest next event in the simulation
-            next_time = float('inf')
             self.log_with_time('Simulation Engine launching next object')
-            for sim_obj in self.simulation_objects.values():
-
-                if sim_obj.event_queue.next_event_time() < next_time:
-                    next_time = sim_obj.event_queue.next_event_time()
-                    next_sim_obj = sim_obj
+            # get parameters of next event from self.event_queue
+            next_time = self.event_queue.next_event_time()
+            next_sim_obj = self.event_queue.next_event_obj()
 
             if float('inf') == next_time:
                 self.log_with_time(" No events remain")
@@ -223,7 +202,7 @@ class SimulationEngine(object):
 
             # dispatch object that's ready to execute next event
             next_sim_obj.time = next_time
-            next_sim_obj.__handle_event(next_sim_obj.event_queue.next_events(next_sim_obj))
+            next_sim_obj.__handle_event(self.event_queue.next_events())
 
         return num_events_handled
 

@@ -15,7 +15,7 @@ import argparse
 import datetime
 
 from wc_sim.core.simulation_message import SimulationMessage
-from wc_sim.core.simulation_object import EventQueue, SimulationObject, ApplicationSimulationObject
+from wc_sim.core.simulation_object import SimulationObject, ApplicationSimulationObject
 from wc_sim.core.simulation_engine import SimulationEngine
 from examples.debug_logs import logs as debug_logs
 

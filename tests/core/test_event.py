@@ -9,25 +9,49 @@ import unittest
 
 from wc_sim.core.event import Event
 from wc_sim.core.simulation_message import SimulationMessage
-from tests.core.example_simulation_objects import (ALL_MESSAGE_TYPES, TEST_SIM_OBJ_STATE,
-    ExampleSimulationObject)
 from wc_utils.util.misc import most_qual_cls_name, round_direct
 from wc_utils.util.list import elements_to_str
+from tests.core.example_simulation_objects import (ALL_MESSAGE_TYPES, TEST_SIM_OBJ_STATE,
+    ExampleSimulationObject)
+from tests.core.some_message_types import InitMsg, Eg1, MsgWithAttrs
 
 
 class TestEvent(unittest.TestCase):
 
+    def comparison(self, lesser, greater):
+        self.assertTrue(lesser < greater)
+        self.assertFalse(lesser > greater)
+        self.assertTrue(lesser <= lesser)
+        self.assertTrue(lesser <= greater)
+        self.assertTrue(greater > lesser)
+        self.assertFalse(greater < lesser)
+        self.assertTrue(lesser >= lesser)
+        self.assertTrue(greater >= lesser)
+
     def test_event_inequalities(self):
-        e1 = Event(0, 1, object(), object(), object())
-        e2 = Event(0, 2, object(), object(), object())
-        self.assertTrue(e1 < e2)
-        self.assertFalse(e1 > e2)
-        self.assertTrue(e1 <= e1)
-        self.assertTrue(e1 <= e2)
-        self.assertTrue(e2 > e1)
-        self.assertFalse(e2 < e1)
-        self.assertTrue(e1 >= e1)
-        self.assertTrue(e2 >= e1)
+        sim_obj_a = ExampleSimulationObject('a')
+        sim_obj_b = ExampleSimulationObject('b')
+
+        # test Events with different event times
+        e1 = Event(0, 1, sim_obj_a, sim_obj_a, InitMsg())
+        e2 = Event(0, 2, sim_obj_a, sim_obj_b, InitMsg())
+        self.comparison(e1, e2)
+
+        # test Events with equal event times and different recipients
+        e3 = Event(0, 1, sim_obj_a, sim_obj_b, InitMsg())
+        self.comparison(e1, e3)
+
+        # test Events with equal event times and recipients, and different messages
+        times_n_objs = (0, 1, sim_obj_a, sim_obj_b)
+        e4 = Event(*times_n_objs, Eg1())
+        e5 = Event(*times_n_objs, Eg1())
+        self.assertTrue(e4 <= e5)
+        self.assertTrue(e4 >= e5)
+        attrs1 = (1, 'bye')
+        e6 = Event(*times_n_objs, MsgWithAttrs(*attrs1))
+        e7 = Event(*times_n_objs, MsgWithAttrs(*attrs1))
+        self.assertTrue(e6 <= e7)
+        self.assertTrue(e7 >= e6)
 
     def test_event_w_message(self):
         ds = 'docstring'

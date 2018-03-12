@@ -35,10 +35,11 @@ class RandomStateVariableSimulationObject(ApplicationSimulationObject):
 
     def handle_simulation_event(self, event):
         # print time, state, event queue
+        # TODO(Arthur): capture stdout so this can be run during unittests
         if self.output:
             print()
             print("Time: {}; state: {}".format(self.time, self.state))
-            eq = self.event_queue.render(as_list=True)
+            eq = self.simulator.event_queue.render(sim_obj=self, as_list=True)
             if eq is None:
                 print("Empty event queue")
             else:

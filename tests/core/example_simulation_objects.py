@@ -5,7 +5,7 @@
 :License: MIT
 """
 
-from wc_sim.core.simulation_object import EventQueue, SimulationObject, ApplicationSimulationObject
+from wc_sim.core.simulation_object import SimulationObject, ApplicationSimulationObject
 from tests.core.some_message_types import InitMsg, Eg1, UnregisteredMsg
 from wc_utils.util.misc import most_qual_cls_name
 

@@ -13,6 +13,21 @@ from wc_sim.core.errors import SimulatorError
 from wc_utils.util.list import elements_to_str
 
 
+class ExampleSimulationMessage1(SimulationMessage):
+    ' My docstring '
+    attributes = ['attr1', 'attr2']
+
+
+class ExampleSimulationMessage2(SimulationMessage):
+    " docstring "
+    pass
+
+
+class ExampleSimulationMessage3(SimulationMessage):
+    " docstring "
+    pass
+
+
 class TestSimulationMessageInterface(unittest.TestCase):
 
     def test_utils(self):
@@ -37,16 +52,41 @@ class TestSimulationMessageInterface(unittest.TestCase):
         self.assertEqual('\t'.join(elements_to_str(vals)), t.values())
         delattr(t, 'arg_2')
         self.assertIn(str(None), str(t))
+        self.assertEqual([1, None], t._values())
 
+    def comparison(self, lesser, greater):
+        self.assertTrue(lesser < greater)
+        self.assertFalse(lesser > greater)
+        self.assertTrue(lesser <= greater)
+        self.assertTrue(greater > lesser)
+        self.assertFalse(greater < lesser)
+        self.assertTrue(greater >= lesser)
 
-class ExampleSimulationMessage1(SimulationMessage):
-    ' My docstring '
-    attributes = ['attr1', 'attr2']
+    def test_comparison(self):
+        # test messages with no attributes
+        sim_msg_2 = ExampleSimulationMessage2()
+        self.assertTrue(sim_msg_2 <= sim_msg_2)
+        self.assertTrue(sim_msg_2 >= sim_msg_2)
+        sim_msg_3 = ExampleSimulationMessage3()
+        self.comparison(sim_msg_2, sim_msg_3)
 
+        # test messages with attributes
+        attrsa = (1, 'bye')
+        sim_msg_1a = ExampleSimulationMessage1(*attrsa)
+        self.assertTrue(sim_msg_1a <= sim_msg_1a)
+        self.assertTrue(sim_msg_1a >= sim_msg_1a)
+        attrsb = (1, 'hi')
+        sim_msg_1b = ExampleSimulationMessage1(*attrsb)
+        self.comparison(sim_msg_1a, sim_msg_1b)
 
-class ExampleSimulationMessage2(SimulationMessage):
-    " docstring "
-    pass
+        # test messages with attributes that cannot be compared
+        sim_msg_1_bad_a = ExampleSimulationMessage1(str, str)
+        sim_msg_1_bad_b = ExampleSimulationMessage1(int, int)
+        with self.assertRaises(TypeError) as context:
+            sim_msg_1_bad_a < sim_msg_1_bad_b
+
+        # TODO(Arthur): have simulator catch type errors
+        # TODO(Arthur): test same type name declared in different modules
 
 
 class TestSimulationMessageMeta(unittest.TestCase):

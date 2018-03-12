@@ -20,7 +20,7 @@ class SimulationMessageInterface(object, metaclass=ABCMeta):
     Each simulation event contains a simulation message. All simulation messages are objects. This
     module supports compact declaration of `SimulationMessage` types. For example::
 
-class GivePopulation(SimulationMessage):,
+    class GivePopulation(SimulationMessage):,
             '''A WC simulator message sent by a species pop object ...''', ['population'])
 
     defines a `GivePopulation` message (with an elided docstring).
@@ -46,10 +46,13 @@ class GivePopulation(SimulationMessage):,
         for slot,arg in zip(self.__slots__, args):
             setattr(self, slot, arg)
 
-    def _values(self):
-        """ Provide the values in a `SimulationMessage`, cast to strings
+    def _values(self, to_str=False):
+        """ Provide the values in a `SimulationMessage`
 
-        Uninitialized values are returned as `str(None)`.
+        Uninitialized attribute values are returned as `None`, or `str(None)` if `to_str` is set.
+
+        Args:
+            to_str (:obj:`bool`): if set, return `str()` of attribute values
 
         Returns:
             :obj:`list`: list of attribute values
@@ -57,9 +60,15 @@ class GivePopulation(SimulationMessage):,
         vals = []
         for attr in self.__slots__:
             if hasattr(self, attr):
-                vals.append(str(getattr(self,attr)))
+                if to_str:
+                    vals.append(str(getattr(self,attr)))
+                else:
+                    vals.append(getattr(self,attr))
             else:
-                vals.append(str(None))
+                if to_str:
+                    vals.append(str(None))
+                else:
+                    vals.append(None)
         return vals
 
     def value_map(self):
@@ -70,7 +79,7 @@ class GivePopulation(SimulationMessage):,
         Returns:
             :obj:`dict`: map attribute -> str(attribute value)
         """
-        return {attr:val for attr,val in zip(self.__slots__, self._values())}
+        return {attr:val for attr,val in zip(self.__slots__, self._values(to_str=True))}
 
     def values(self, annotated=False, as_list=False, separator='\t'):
         """ Provide the values in this `SimulationMessage`
@@ -80,8 +89,8 @@ class GivePopulation(SimulationMessage):,
         Args:
             annotated (:obj:`bool`, optional): if set, prefix each value with its attribute name
             as_list (:obj:`bool`, optional): if set, return the attribute names in a :obj:`list`
-            separator (:obj:`str`, optional): the field separator used if the attribute names are returned
-                as a string
+            separator (:obj:`str`, optional): the field separator used if the attribute names
+                are returned as a string
 
         Returns:
             :obj:`obj`: `None` if this message has no attributes, or a string representation of
@@ -91,9 +100,10 @@ class GivePopulation(SimulationMessage):,
         if not self.attrs():
             return None
         if annotated:
-            list_repr = ["{}:{}".format(attr, val) for attr,val in zip(self.__slots__, self._values())]
+            list_repr = ["{}:{}".format(attr, val) for attr,val in
+                zip(self.__slots__, self._values(to_str=True))]
         else:
-            list_repr = self._values()
+            list_repr = self._values(to_str=True)
         if as_list:
             return list_repr
         else:
@@ -132,6 +142,50 @@ class GivePopulation(SimulationMessage):,
         else:
             return separator.join(self.attrs())
 
+    def __lt__(self, other):
+        """ Does this `SimulationMessage` sort before `other`?
+
+        Args:
+            other (:obj:`SimulationMessage`): another `SimulationMessage`
+
+        Returns:
+            :obj:`bool`: `True` if this `SimulationMessage` sorts before `other`
+        """
+        return (self.__class__.__name__, self._values()) < (other.__class__.__name__, other._values())
+
+    def __le__(self, other):
+        """ Does this `SimulationMessage` sort before or equal `other`?
+
+        Args:
+            other (:obj:`SimulationMessage`): another `SimulationMessage`
+
+        Returns:
+            :obj:`bool`: `True` if this `SimulationMessage` sorts before or equals `other`
+        """
+        return not (other < self)
+
+    def __gt__(self, other):
+        """ Does this `SimulationMessage` sort after `other`?
+
+        Args:
+            other (:obj:`SimulationMessage`): another `SimulationMessage`
+
+        Returns:
+            :obj:`bool`: `True` if this `SimulationMessage` sorts after `other`
+        """
+        return (self.__class__.__name__, self._values()) > (other.__class__.__name__, other._values())
+
+    def __ge__(self, other):
+        """ Does this `SimulationMessage` sort after or equal `other`?
+
+        Args:
+            other (:obj:`SimulationMessage`): another `SimulationMessage`
+
+        Returns:
+            :obj:`bool`: `True` if this `SimulationMessage` sorts after or equals `other`
+        """
+        return not (self < other)
+
 
 class SimulationMessageMeta(type):
     # attributes mapping keyword
@@ -168,6 +222,8 @@ class SimulationMessageMeta(type):
             new_simulation_message_class.__doc__ = namespace['__doc__'].strip()
         return new_simulation_message_class
 
+
 class CombinedSimulationMessageMeta(ConcreteABCMeta, SimulationMessageMeta): pass
+
 
 class SimulationMessage(SimulationMessageInterface, metaclass=CombinedSimulationMessageMeta): pass
