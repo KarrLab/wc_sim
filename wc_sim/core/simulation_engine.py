@@ -19,8 +19,6 @@ from wc_sim.core.shared_state_interface import SharedStateInterface
 from .debug_logs import logs as debug_logs
 # config_core = core.get_config()['wc_sim']['core']
 
-# TODO(Arthur): replace the O(n) iteration over simulation objects with a heap of them organized by next event time
-
 
 class SimulationEngine(object):
     """ A simulation engine
@@ -71,6 +69,36 @@ class SimulationEngine(object):
         simulation_object.add(self)
         self.simulation_objects[name] = simulation_object
 
+    def add_objects(self, simulation_objects):
+        """ Add many simulation objects into the simulation
+
+        Args:
+            simulation_objects (:obj:`iterator` of `SimulationObject`): an iterator of simulation objects
+        """
+        for simulation_object in simulation_objects:
+            self.add_object(simulation_object)
+
+    def get_object(self, simulation_object_name):
+        """ Get a simulation object instance
+
+        Args:
+            simulation_object_name (:obj:`str`): get a simulation object instance that is
+                part of this simulation
+
+        Raises:
+            :obj:`SimulatorError`: if the simulation object is not part of this simulation
+        """
+        if simulation_object_name not in self.simulation_objects:
+            raise SimulatorError("cannot get simulation object '{}'".format(simulation_object_name))
+        return self.simulation_objects[simulation_object_name]
+
+    def get_objects(self):
+        """ Get all simulation object instances in the simulation
+        """
+        # TODO(Arthur): make this reproducible
+        # TODO(Arthur): eliminate external calls to self.simulator.simulation_objects
+        return self.simulation_objects.values()
+
     def delete_object(self, simulation_object):
         """ Delete a simulation object instance from this simulation
 
@@ -81,20 +109,13 @@ class SimulationEngine(object):
         Raises:
             :obj:`SimulatorError`: if the simulation object is not part of this simulation
         """
+        # TODO(Arthur): is this an operation that makes sense to support? if not, remove it; if yes,
+        # remove all of this object's state from simulator, and test it properly
         name = simulation_object.name
         if name not in self.simulation_objects:
-            raise ValueError("cannot delete simulation object '{}', has not been added".format(name))
+            raise SimulatorError("cannot delete simulation object '{}', has not been added".format(name))
         simulation_object.delete()
         del self.simulation_objects[name]
-
-    def add_objects(self, simulation_objects):
-        """ Add many simulation objects into the simulation
-
-        Args:
-            simulation_objects (:obj:`iterator` of `SimulationObject`): an iterator of simulation objects
-        """
-        for simulation_object in simulation_objects:
-            self.add_object(simulation_object)
 
     def initialize(self):
         """ Initialize a simulation
@@ -138,6 +159,11 @@ class SimulationEngine(object):
             data.append('')
         return '\n'.join(data)
 
+    def run(self, end_time, epsilon=None):
+        """ Alias for simulate
+        """
+        return self.simulate(end_time, epsilon=epsilon)
+
     def simulate(self, end_time, epsilon=None):
         """ Run the simulation
 
@@ -157,6 +183,12 @@ class SimulationEngine(object):
         """
         if not self.__initialized:
             raise SimulatorError("Simulation has not been initialized")
+
+        if not len(self.get_objects()):
+            raise SimulatorError("Simulation has no objects")
+
+        if self.event_queue.empty():
+            raise SimulatorError("Simulation has no events")
 
         # ratio of max simulation time to epsilon must not be so large that epsilon is lost
         # in roundoff error
@@ -202,7 +234,7 @@ class SimulationEngine(object):
 
             # dispatch object that's ready to execute next event
             next_sim_obj.time = next_time
-            next_sim_obj.__handle_event(self.event_queue.next_events())
+            next_sim_obj.__handle_event_list(self.event_queue.next_events())
 
         return num_events_handled
 

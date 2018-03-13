@@ -14,8 +14,10 @@ import shutil
 import cProfile
 import pstats
 import copy
+import random
 
 from wc_sim.core.errors import SimulatorError
+from wc_sim.core.simulation_message import SimulationMessage
 from wc_sim.core.simulation_object import SimulationObject, ApplicationSimulationObject
 from wc_sim.core.simulation_engine import SimulationEngine
 from tests.core.some_message_types import InitMsg, Eg1
@@ -54,6 +56,10 @@ class BasicExampleSimulationObject(ApplicationSimulationObject):
     def get_state(self):
         return "self.num: {}".format(self.num)
 
+    def handle_event(self, event): pass
+
+    event_handlers = [(InitMsg, handle_event)]
+
     # register the message types sent
     messages_sent = ALL_MESSAGE_TYPES
 
@@ -72,7 +78,7 @@ class InteractingSimulationObject(BasicExampleSimulationObject):
 
     def handle_event(self, event):
         self.num += 1
-        # send an event to each InteractingSimulationObject
+        # send an event to each object in the simulator
         for obj in self.simulator.simulation_objects.values():
             self.send_event(1, obj, InitMsg())
 
@@ -124,19 +130,21 @@ def obj_name(i):
 class TestSimulationEngine(unittest.TestCase):
 
     def setUp(self):
-        # create simulator and register simulation object types
+        # create simulator
         self.simulator = SimulationEngine()
-        self.simulator.reset()
         self.out_dir = tempfile.mkdtemp()
 
     def tearDown(self):
         shutil.rmtree(self.out_dir)
 
     def test_one_object_simulation(self):
-        obj = ExampleSimulationObject(obj_name(1))
-        self.simulator.add_object(obj)
-        self.simulator.initialize()
-        self.assertEqual(self.simulator.simulate(5.0), 3)
+        for operation in ['simulate', 'run']:
+            obj = ExampleSimulationObject(obj_name(1))
+            self.simulator.reset()
+            self.simulator.add_object(obj)
+            self.assertEqual(self.simulator.get_object(obj.name), obj)
+            self.simulator.initialize()
+            self.assertEqual(eval('self.simulator.'+operation+'(5.0)'), 3)
 
     def test_one_object_simulation_neg_endtime(self):
         obj = ExampleSimulationObject(obj_name(1))
@@ -146,14 +154,28 @@ class TestSimulationEngine(unittest.TestCase):
 
     def test_simulation_engine_exceptions(self):
         obj = ExampleSimulationObject(obj_name(1))
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(SimulatorError) as context:
             self.simulator.delete_object(obj)
         self.assertIn("cannot delete simulation object '{}'".format(obj.name), str(context.exception))
+
+        no_such_obj_name = 'no such object'
+        with self.assertRaises(SimulatorError) as context:
+            self.simulator.get_object(no_such_obj_name)
+        self.assertIn("cannot get simulation object '{}'".format(no_such_obj_name), str(context.exception))
+
+        with self.assertRaises(SimulatorError) as context:
+            self.simulator.simulate(5.0)
+        self.assertIn('Simulation has not been initialized', str(context.exception))
+
+        self.simulator.initialize()
+        with self.assertRaises(SimulatorError) as context:
+            self.simulator.simulate(5.0)
+        self.assertIn('Simulation has no objects', str(context.exception))
 
         self.simulator.add_object(obj)
         with self.assertRaises(SimulatorError) as context:
             self.simulator.simulate(5.0)
-        self.assertIn('Simulation has not been initialized', str(context.exception))
+        self.assertIn('Simulation has no events', str(context.exception))
 
         with self.assertRaises(SimulatorError) as context:
             self.simulator.add_object(obj)
@@ -165,7 +187,9 @@ class TestSimulationEngine(unittest.TestCase):
         except:
             self.fail('should be able to add object after delete')
 
+        self.simulator.reset()
         self.simulator.initialize()
+        self.simulator.add_object(obj)
         event_queue = self.simulator.event_queue
         event_queue.schedule_event(-1, -1, obj, obj, InitMsg())
         with self.assertRaises(AssertionError) as context:
@@ -178,13 +202,15 @@ class TestSimulationEngine(unittest.TestCase):
         self.assertEqual('Simulation has already been initialized', str(context.exception))
 
         self.simulator.reset()
+        self.simulator.add_object(obj)
         self.simulator.initialize()
         with self.assertRaises(SimulatorError) as context:
             self.simulator.simulate(5.0, epsilon=0)
         self.assertRegex(str(context.exception), "epsilon (.*) plus end time (.*) must exceed end time")
 
     def test_simulation_end(self):
-        self.simulator.add_object(InactiveSimulationObject())
+        # TODO(Arthur): make this a test or discard it
+        self.simulator.add_object(BasicExampleSimulationObject('name'))
         self.simulator.initialize()
         # log "No events remain"
         self.simulator.simulate(5.0)
@@ -284,7 +310,86 @@ class TestSimulationEngine(unittest.TestCase):
         print("\n".join(unprofiled_perf))
         self.restore_logging()
 
-# TODO(Arthur): add hard reproducibility test
+
+class Delicate(SimulationMessage):
+    'Simulation message type for testing arrival order'
+    attributes = ['sender_obj_num']
+
+
+class ReproducibleTestSimulationObject(ApplicationSimulationObject):
+    """ This sim obj is used to test whether the simulation engine is reproducible
+    """
+    def __init__(self, name, obj_num, array_size):
+        SimulationObject.__init__(self, name)
+        self.obj_num = obj_num
+        self.array_size = array_size
+        self.last_time = 0
+        # Delicate messages should arrive before Hello messages; count the failures
+        self.delicates_before_hello = 0
+        # Delicate messages should be delivered in increasing (time, obj_num) order; count the failures
+        self.disordered_delicates = 0
+        self.last_time_delicate_num_pair = (0, 0)
+
+    def next_objs(self, num_objs):
+        # get the next num_objs sim objs in the array
+        sim_objs = []
+        for obj_num in range(self.obj_num, min(self.obj_num+num_objs, self.array_size)):
+            sim_objs.append(self.simulator.get_object(obj_name(obj_num)))
+        return sim_objs
+
+    def sched_events(self):
+        # send InitMsg to self in 1 and Delicate(id) to self and next obj in 1, but randomize send order
+        receivers_n_messages = [(self, InitMsg())]
+        for sim_obj in self.next_objs(2):
+            receivers_n_messages.append((sim_obj, Delicate(self.obj_num)))
+        random.shuffle(receivers_n_messages)
+        for receiver,message in receivers_n_messages:
+            self.send_event(1, receiver, message)
+
+    def send_initial_events(self):
+        self.sched_events()
+
+    def handle_init_msg(self, event):
+        self.last_time = self.time
+        self.sched_events()
+
+    def handle_delicate_msg(self, event):
+        if self.last_time < self.time:
+            self.delicates_before_hello +=1
+        delicate_msg = event.message
+        time_delicate_num_pair = (event.event_time, delicate_msg.sender_obj_num)
+        if time_delicate_num_pair <= self.last_time_delicate_num_pair:
+            self.disordered_delicates += 1
+        self.last_time_delicate_num_pair = time_delicate_num_pair
+
+    # register event_handler(s) in message priority order
+    event_handlers = [(InitMsg, handle_init_msg), (Delicate, handle_delicate_msg)]
+
+    # register the message types sent
+    messages_sent = [InitMsg, Delicate]
+
+
+class TestSimulationReproducibility(unittest.TestCase):
+
+    NUM_SIM_OBJS = 4
+    def test_reproducibility(self):
+        self.simulator = SimulationEngine()
+
+        # comprehensive reproducibility test:
+        # test whether the simulation engine deterministically delivers events to objects
+        # run a simulation in which sim objects execute multiple concurrent events that contain
+        # messages with different types, and messages that have the same type and different contents
+        # test all types of event and message sorting
+        num_sim_objs = TestSimulationReproducibility.NUM_SIM_OBJS
+        for i in range(num_sim_objs):
+            obj_num = i+1
+            self.simulator.add_object(
+                ReproducibleTestSimulationObject(obj_name(obj_num), obj_num, num_sim_objs))
+        self.simulator.initialize()
+        self.simulator.simulate(30)
+        for sim_obj in self.simulator.get_objects():
+            self.assertEqual(0, sim_obj.delicates_before_hello)
+            self.assertEqual(0, sim_obj.disordered_delicates)
 
 
 class ExampleSharedStateObject(SharedStateInterface):

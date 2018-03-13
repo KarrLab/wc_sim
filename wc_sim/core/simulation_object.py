@@ -88,6 +88,14 @@ class EventQueue(object):
         # simulations.
         heapq.heappush(self.event_heap, event)
 
+    def empty(self):
+        """ Is the event queue empty?
+
+        Returns:
+            :obj:`bool`: return `True` if the event queue is empty
+        """
+        return not self.event_heap
+
     def next_event_time(self):
         """ Get the time of the next event
 
@@ -141,13 +149,13 @@ class EventQueue(object):
             receiving_obj == self.next_event_obj()):
             events.append(heapq.heappop(self.event_heap))
 
-        # TODO:(Arthur): order events by message contents within message types
         if 1<len(events):
-            # sort events by message type priority, so an object handles simultaneous messages
-            # in priority order; this costs O(n log(n)) in the number of event messages in events
+            # sort events by message type priority, and within priority by message content
+            # thus, a sim object handles simultaneous messages in priority order;
+            # this costs O(n log(n)) in the number of event messages in events
             receiver_priority_dict = receiving_obj.get_receiving_priorities_dict()
             events = sorted(events,
-                key=lambda event: receiver_priority_dict[event.message.__class__])
+                key=lambda event: (receiver_priority_dict[event.message.__class__], event.message))
 
         for event in events:
             self.log_event(event)
@@ -279,6 +287,7 @@ class SimulationObject(object):
             SimulatorError: if this `SimulationObject` is already registered with a simulator
         """
         if self.simulator is None:
+            # TODO(Arthur): reference to the simulator is problematic because it means simulator can't be GC'ed
             self.simulator = simulator
             return
         raise SimulatorError("SimulationObject '{}' is already part of a simulator".format(self.name))
@@ -286,6 +295,8 @@ class SimulationObject(object):
     def delete(self):
         """Delete this object from a simulation.
         """
+        # TODO(Arthur): is this an operation that makes sense to support? if not, remove it; if yes,
+        # remove all of this object's state from simulator, and test it properly
         self.simulator = None
 
     def send_event_absolute(self, event_time, receiving_object, message, copy=True):
@@ -409,8 +420,8 @@ class SimulationObject(object):
         """
         return self.__class__.metadata.event_handler_priorities
 
-    def _SimulationEngine__handle_event(self, event_list):
-        """ Handle a simulation event, which may involve multiple event messages
+    def _SimulationEngine__handle_event_list(self, event_list):
+        """ Handle a list of simulation events, which may contain multiple concurrent events
 
         This method's special name ensures that it cannot be overridden, and can only be called
         from `SimulationEngine`.

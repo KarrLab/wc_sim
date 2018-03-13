@@ -54,6 +54,10 @@ class TestSimulationMessageInterface(unittest.TestCase):
         self.assertIn(str(None), str(t))
         self.assertEqual([1, None], t._values())
 
+    def test_simple_msg(self):
+        sim_msg_2 = ExampleSimulationMessage2()
+        self.assertEqual(None, sim_msg_2.values())
+
     def comparison(self, lesser, greater):
         self.assertTrue(lesser < greater)
         self.assertFalse(lesser > greater)

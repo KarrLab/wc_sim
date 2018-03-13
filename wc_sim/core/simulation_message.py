@@ -17,14 +17,6 @@ from wc_sim.core.utilities import ConcreteABCMeta
 class SimulationMessageInterface(object, metaclass=ABCMeta):
     """ An abstract base class for simulation messages
 
-    Each simulation event contains a simulation message. All simulation messages are objects. This
-    module supports compact declaration of `SimulationMessage` types. For example::
-
-    class GivePopulation(SimulationMessage):,
-            '''A WC simulator message sent by a species pop object ...''', ['population'])
-
-    defines a `GivePopulation` message (with an elided docstring).
-
     Attributes:
         __slots__ (:obj:`list`): use `__slots__` to save memory because a simulation may contain many messages
     """
@@ -226,4 +218,20 @@ class SimulationMessageMeta(type):
 class CombinedSimulationMessageMeta(ConcreteABCMeta, SimulationMessageMeta): pass
 
 
-class SimulationMessage(SimulationMessageInterface, metaclass=CombinedSimulationMessageMeta): pass
+class SimulationMessage(SimulationMessageInterface, metaclass=CombinedSimulationMessageMeta):
+    """ The simulation message base class
+
+    Each simulation event contains a simulation message. All simulation messages are objects. This
+    module supports compact declaration of `SimulationMessage` types. For example::
+
+    class ExampleSimulationMessage1(SimulationMessage):
+        ' My docstring '
+        attributes = ['attr1', 'attr2']
+
+    defines the `ExampleSimulationMessage1` class with a short docstring and two attributes.
+
+    `SimulationMessage` subclasses must support the comparison operations `<`, `<=`, etc. This is
+    provided automatically for attributes that support comparison. Subclasses with message attributes
+    that do not support comparison must override `__lt__`, `__le__`, etc.
+    """
+    pass

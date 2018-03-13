@@ -35,6 +35,7 @@ class TestEventQueue(unittest.TestCase):
     def test_reset(self):
         self.event_queue.reset()
         self.assertEqual(float('inf'), self.event_queue.next_event_time())
+        self.assertTrue(self.event_queue.empty())
         self.assertFalse(self.event_queue.next_events())
 
     def test_next_event_time(self):
