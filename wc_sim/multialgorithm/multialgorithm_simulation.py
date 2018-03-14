@@ -15,9 +15,7 @@ import tokenize, token
 
 from obj_model import utils
 from wc_utils.util.list import difference, det_dedupe
-from wc_lang.core import (SubmodelAlgorithm, Model, ObjectiveFunction, SpeciesType, SpeciesTypeType,
-    Species, Compartment, Reaction, ReactionParticipant, RateLawEquation, BiomassReaction)
-from wc_lang.core import Submodel as LangSubmodel
+from wc_lang import SubmodelAlgorithm, Model, SpeciesType, Species, RateLawEquation
 from wc_lang.rate_law_utils import RateLawUtils
 from wc_sim.multialgorithm.dynamic_components import DynamicModel, DynamicCompartment
 from wc_sim.core.simulation_engine import SimulationEngine
@@ -41,7 +39,7 @@ Design notes:
 
 Inputs:
 
-    * Static model in a wc_lang.core.Model
+    * Static model in a wc_lang.Model
     * Command line parameters, including:
 
         * Num shared cell state objects
