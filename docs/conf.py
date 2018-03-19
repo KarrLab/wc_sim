@@ -16,10 +16,10 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
+import datetime
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
-import wc_sim
 
 # -- General configuration ------------------------------------------------
 
@@ -39,6 +39,7 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx.ext.napoleon',
     'sphinx.ext.todo',
+    'sphinxcontrib.addmetahtml',
     'sphinxcontrib.bibtex',
     'sphinxcontrib.googleanalytics',
     'sphinxcontrib.spelling',
@@ -62,7 +63,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Sequential WC simulator'
-copyright = u'2016, Karr Lab'
+copyright = u'{}, Karr Lab'.format(datetime.datetime.now().year)
 author = u'Arthur Goldberg'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -70,7 +71,9 @@ author = u'Arthur Goldberg'
 # built documents.
 #
 # The short X.Y version.
-version = wc_sim.__version__
+filename = os.path.join(os.path.dirname(__file__), '..', 'wc_sim', 'VERSION')
+with open(filename, 'r') as file:
+    version = file.read()
 # The full version, including alpha/beta/rc tags.
 release = version
 
@@ -401,18 +404,7 @@ texinfo_documents = [
 googleanalytics_id = 'UA-86340737-1'
 
 
-# -- Run sphinx-apidoc within ReadTheDocs on sphinx-build -----------------
+# -- if RTD, redirect to https://docs.karrlab.org  ------------------------
 
-from configparser import ConfigParser
-from sphinx.ext import apidoc
-
-def run_apidoc(app):
-    this_dir = os.path.dirname(__file__)
-    parser = ConfigParser()
-    parser.read(os.path.join(this_dir, '..', 'setup.cfg'))
-    packages = parser.get('sphinx-apidocs', 'packages').strip().split('\n')
-    for package in packages:
-        apidoc.main(argv=['-f', '-P', '-o', os.path.join(this_dir, 'source'), os.path.join(this_dir, '..', package)])
-
-def setup(app):
-    app.connect('builder-inited', run_apidoc)
+addmetahtml_content = '<meta http-equiv="refresh" content="0; url=https://docs.karrlab.org/wc_sim" />'
+addmetahtml_enabled = os.getenv('READTHEDOCS', '') == 'True'
