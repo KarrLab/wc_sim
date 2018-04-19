@@ -113,11 +113,11 @@ class DynamicSubmodel(ApplicationSimulationObject):
 
         Rates computed by eval'ing reactions provided in this dynamic submodel's definition,
         with species concentrations obtained by lookup from the dict
-        `species_concentrations`. This assumes that all any reversible reactions have been split
+        `species_concentrations`. This assumes that all reversible reactions have been split
         into two forward reactions, as is done by `wc_lang.transform.SplitReversibleReactionsTransform`.
 
         Returns:
-            A numpy array of reaction rates, indexed by reaction index.
+            :obj:`np.ndarray`: a numpy array of reaction rates, indexed by reaction index
         """
         rates = np.full(len(self.reactions), np.nan)
         species_concentrations = self.get_specie_concentrations()

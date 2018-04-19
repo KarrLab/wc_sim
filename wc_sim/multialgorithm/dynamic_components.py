@@ -11,6 +11,7 @@ import numpy as np
 
 from obj_model import utils
 from wc_lang.core import Species, SpeciesType
+from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 
 
 class DynamicCompartment(object):
@@ -30,16 +31,29 @@ class DynamicCompartment(object):
             `LocalSpeciesPopulation`
     """
     def __init__(self, id, name, init_volume, species_populations, species_ids=None):
+        """ Initialize this `DynamicCompartment`
+
+        Args:
+            id (:obj:`str`): unique id of the corresponding `wc_lang` `Compartment`
+            name (:obj:`str`): name of the corresponding `wc_lang` `Compartment`
+            init_volume (:obj:`float`): initial volume specified in the `wc_lang` model
+            species_populations (:obj:`LocalSpeciesPopulation`): a shared store of the simulation's
+                species populations
+            species_ids (:obj:`list` of `str`): the IDs of the species stored
+                in this compartment; this enables multiple `DynamicCompartment`s to share a
+                `LocalSpeciesPopulation`
+
+        Raises:
+            :obj:`MultialgorithmError`: if `init_volume` is not a positive number
+        """
         self.id = id
         self.name = name
         self.init_volume = init_volume
         self.species_populations = species_populations
         self.species_ids = species_ids
-        self.initialize()
-
-    def initialize(self):
-        """ Initialize this `DynamicCompartment`
-        """
+        if self.init_volume<=0:
+            raise MultialgorithmError("DynamicCompartment: init_volume must be a positive number, but it is '{}'".format(
+                self.init_volume))
         self.constant_density = self.mass()/self.init_volume
 
     def mass(self):
@@ -77,6 +91,7 @@ class DynamicCompartment(object):
         return "DynamicCompartment:\n{}".format('\n'.join(values))
 
 
+# TODO(Arthur): define these in config data, which may come from wc_lang
 EXTRACELLULAR_COMPARTMENT_ID = 'e'
 WATER_ID = 'H2O'
 
@@ -84,15 +99,13 @@ class DynamicModel(object):
     """ Represent the aggregate dynamics of a whole-cell model simulation
 
     A `DynamicModel` provides methods for determining aggregate properties that are not provided
-    by other, more specific, dynamical components suchs as species populations, submodels, and
+    by other, more specific, dynamical components such as species populations, submodels, and
     dynamic compartments.
 
     # TODO(Arthur): probably only need a model at initialization
     Attributes:
         model (:obj:`Model`): the description of the whole-cell model in `wc_lang`
         multialgorithm_simulation (:obj:`MultialgorithmSimulation`): the multialgorithm simulation
-        # DC: remove
-        volume (:obj:`float`): volume of the cell's cellular (cytoplasm) compartment
         extracellular_volume (:obj:`float`): volume of the cell's extra-cellular
         fraction_dry_weight (:obj:`float`): fraction of the cell's weight which is not water
             a constant
@@ -122,11 +135,6 @@ class DynamicModel(object):
                 continue
             cellular_compartments.append(compartment)
 
-        # DC: remove
-        # volume: sum cellular compartment volumes
-        self.volume = sum(
-            [cellular_compartment.initial_volume for cellular_compartment in cellular_compartments])
-
         # does the model represent water?
         water_in_model = True
         for compartment in self.model.get_compartments():
@@ -144,10 +152,6 @@ class DynamicModel(object):
             self.dry_weight = self.fraction_dry_weight * self.mass
         else:
             self.dry_weight = self.mass
-
-        # DC: remove
-        # density
-        self.density = self.mass / self.volume
 
         # growth
         self.growth = np.nan

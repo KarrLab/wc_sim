@@ -17,6 +17,11 @@ from wc_sim.core.utilities import ConcreteABCMeta
 class SimulationMessageInterface(object, metaclass=ABCMeta):
     """ An abstract base class for simulation messages
 
+    The comparison operations (`__gt__`, `__lt__`, etc.) order simulation message instances by the
+    tuple (class name, instance attribute values). This enables deterministic sorting of messages
+    by their content, so that simulation messages can be passed in a deterministic order to
+    a simulation object processing them in an event.
+
     Attributes:
         __slots__ (:obj:`list`): use `__slots__` to save memory because a simulation may contain many messages
     """
@@ -29,7 +34,7 @@ class SimulationMessageInterface(object, metaclass=ABCMeta):
             args (:obj:`tuple`): argument list for initializing a subclass instance
 
         Raises:
-            :obj:`SimulatorError`: if `args` does not contain an argument for each entry in __slots__
+            :obj:`SimulatorError`: if `args` does not contain an argument for each entry in `__slots__`
         """
         if len(args) != len(self.__slots__):
             raise SimulatorError("Constructor for SimulationMessage '{}' expects {} argument(s), but "

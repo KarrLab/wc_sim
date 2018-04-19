@@ -1,10 +1,10 @@
-'''A sub-model that employs Gillespie's Stochastic Simulation Algorithm (SSA) to model a set of reactions.
+""" A sub-model that employs Gillespie's Stochastic Simulation Algorithm (SSA) to model a set of reactions.
 
 :Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
 :Date: 2016-07-14
 :Copyright: 2016-2018, Karr Lab
 :License: MIT
-'''
+"""
 
 import sys
 import math
@@ -36,6 +36,7 @@ class SSASubmodel(DynamicSubmodel):
     populations are stored remotely.
 
     # TODO(Arthur): update the rest of this doc string
+    # TODO(Arthur): ensure that this doc string formats properly
     Algorithm::
 
         implement the 'direct' method, except under unusual circumstances.
@@ -107,7 +108,6 @@ class SSASubmodel(DynamicSubmodel):
         """Initialize an SSA submodel object.
 
         Args:
-            Also see pydocs of super classes.
             default_center_of_mass (type): the center_of_mass for the ExponentialMovingAverage
         """
         super().__init__(id, reactions, species, parameters, dynamic_compartment, local_species_population)

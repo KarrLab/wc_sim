@@ -12,9 +12,10 @@ from argparse import Namespace
 from scipy.constants import Avogadro
 
 from wc_lang.io import Reader
+from wc_lang.core import (Submodel, Reaction, SpeciesType)
 from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation
 from wc_sim.multialgorithm.dynamic_components import DynamicModel, DynamicCompartment
-from wc_lang.core import (Submodel, Reaction, SpeciesType)
+from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 
 
 class TestDynamicCompartment(unittest.TestCase):
@@ -49,6 +50,10 @@ class TestDynamicCompartment(unittest.TestCase):
         estimated_mass = all_pops*all_m_weights/Avogadro
         self.assertAlmostEqual(dynamic_compartment.mass(), estimated_mass)
 
+        vol = 0
+        with self.assertRaises(MultialgorithmError):
+            DynamicCompartment(id, name, vol, local_species_pop, species_ids)
+
 
 class TestDynamicModel(unittest.TestCase):
 
@@ -68,11 +73,9 @@ class TestDynamicModel(unittest.TestCase):
         self.read_model(self.MODEL_FILENAME)
         self.dynamic_model.initialize()
         self.assertEqual(self.dynamic_model.extracellular_volume, 1.00E-12)
-        self.assertEqual(self.dynamic_model.volume, 4.58E-17)
         self.assertEqual(self.dynamic_model.fraction_dry_weight, 0.3)
         self.assertAlmostEqual(self.dynamic_model.mass, 1.562E-42)
         self.assertAlmostEqual(self.dynamic_model.dry_weight, 4.688E-43)
-        self.assertAlmostEqual(self.dynamic_model.density, 3.412E-26)
 
     def test_dry_dynamic_model(self):
         self.read_model(self.DRY_MODEL_FILENAME)
