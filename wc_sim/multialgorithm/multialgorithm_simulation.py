@@ -41,9 +41,7 @@ Inputs:
 
     * Static model in a wc_lang.Model
     * Command line parameters, including:
-
         * Num shared cell state objects
-
     * Optionally, extra config
 
 Output:
@@ -142,11 +140,12 @@ class MultialgorithmSimulation(object):
         self.species_pop_objs = self.create_shared_species_pop_objs()
 
     def build_simulation(self):
-        """ Build a simulation that has been initialized
+        """ Build a simulation
 
         Returns:
-            `SimulationEngine`: an initialized simulation
+            :obj:`SimulationEngine`: an initialized simulation
         """
+        self.initialize()
         self.sub_models = self.create_submodels()
         self.initialize_simulation()
         return self.simulation
@@ -263,7 +262,6 @@ class MultialgorithmSimulation(object):
             :obj:`dict`: mapping: compartment id -> `DynamicCompartment` for the
                 `DynamicCompartment`(s) that a new `DynamicSubmodel` needs
         """
-        # TODO(Arthur): make and use a det_set object, that has performance of a set and determinism of a list
         compartments = []
         for rxn in submodel.reactions:
             for participant in rxn.participants:
@@ -275,13 +273,7 @@ class MultialgorithmSimulation(object):
         # make DynamicCompartments
         dynamic_compartments = {}
         for comp in compartments:
-            # TODO(Arthur): make this cleaner:
-            # a dynamic compartment must have the same id as the corresponding wc_lang compartment
-            dynamic_compartments[comp.id] = DynamicCompartment(
-                comp.id,
-                comp.name,
-                comp.initial_volume,
-                local_species_pop)
+            dynamic_compartments[comp.id] = DynamicCompartment(comp, local_species_pop)
         return dynamic_compartments
 
     @staticmethod
@@ -346,7 +338,6 @@ class MultialgorithmSimulation(object):
                     lang_submodel.parameters)
 
             elif lang_submodel.algorithm == SubmodelAlgorithm.dfba:
-                continue
                 simulation_submodels[lang_submodel.id] = FbaSubmodel(self.model,
                     lang_submodel.id,
                     access_species_population,
@@ -376,6 +367,3 @@ class MultialgorithmSimulation(object):
         all_object_types.add(SpeciesPopSimObject)
         for sub_model in self.sub_models.values():
             all_object_types.add(sub_model.__class__)
-
-        # have each simulation object send its initial event messages
-        self.simulation.initialize()

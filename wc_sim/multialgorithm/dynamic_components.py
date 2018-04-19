@@ -10,7 +10,7 @@ from scipy.constants import Avogadro
 import numpy as np
 
 from obj_model import utils
-from wc_lang.core import Species, SpeciesType
+from wc_lang.core import Species, SpeciesType, Compartment
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 
 
@@ -21,35 +21,30 @@ class DynamicCompartment(object):
     mass and volume. A `DynamicCompartment` is created for each `wc_lang` `Compartment`.
 
     Attributes:
-        id (:obj:`str`): unique id of the corresponding `wc_lang` `Compartment`
-        name (:obj:`str`): name of the corresponding `wc_lang` `Compartment`
+        compartment (:obj:`Compartment`): the corresponding `wc_lang` `Compartment`
         init_volume (:obj:`float`): initial volume specified in the `wc_lang` model
-        species_populations (:obj:`LocalSpeciesPopulation`): a shared store of the simulation's
-            species populations
+        species_population (:obj:`LocalSpeciesPopulation`): an object that represents
+            the populations of species in this `DynamicCompartment`
         species_ids (:obj:`list` of `str`): the IDs of the species stored
-            in this compartment; this enables multiple `DynamicCompartment`s to share a
-            `LocalSpeciesPopulation`
+            in this dynamic compartment; if `None`, use the IDs of all species in `species_population`
     """
-    def __init__(self, id, name, init_volume, species_populations, species_ids=None):
+    def __init__(self, compartment, species_population, species_ids=None):
         """ Initialize this `DynamicCompartment`
 
         Args:
-            id (:obj:`str`): unique id of the corresponding `wc_lang` `Compartment`
-            name (:obj:`str`): name of the corresponding `wc_lang` `Compartment`
-            init_volume (:obj:`float`): initial volume specified in the `wc_lang` model
-            species_populations (:obj:`LocalSpeciesPopulation`): a shared store of the simulation's
-                species populations
-            species_ids (:obj:`list` of `str`): the IDs of the species stored
-                in this compartment; this enables multiple `DynamicCompartment`s to share a
-                `LocalSpeciesPopulation`
+            compartment (:obj:`Compartment`): the corresponding `wc_lang` `Compartment`
+            species_population (:obj:`LocalSpeciesPopulation`): an object that represents
+                the populations of species in this `DynamicCompartment`
+            species_ids (:obj:`list` of `str`, optional): the IDs of the species stored
+                in this compartment; defaults to the IDs of all species in `species_population`
 
         Raises:
             :obj:`MultialgorithmError`: if `init_volume` is not a positive number
         """
-        self.id = id
-        self.name = name
-        self.init_volume = init_volume
-        self.species_populations = species_populations
+        self.id = compartment.id
+        self.name = compartment.name
+        self.init_volume = compartment.initial_volume
+        self.species_population = species_population
         self.species_ids = species_ids
         if self.init_volume<=0:
             raise MultialgorithmError("DynamicCompartment: init_volume must be a positive number, but it is '{}'".format(
@@ -62,7 +57,7 @@ class DynamicCompartment(object):
         Returns:
             :obj:`float`: this compartment's total current mass (g)
         """
-        return self.species_populations.mass(species_ids=self.species_ids)
+        return self.species_population.mass(species_ids=self.species_ids)
 
     def volume(self):
         """ Provide the current volume of this `DynamicCompartment`

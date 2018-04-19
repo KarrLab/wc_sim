@@ -36,7 +36,6 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         self.multialgorithm_simulation = MultialgorithmSimulation(self.model, args)
         self.dynamic_model = DynamicModel(self.model)
 
-    @unittest.skip("to be fixed")
     def test_initialize_simulation(self):
         self.multialgorithm_simulation.initialize()
         self.simulation_engine = self.multialgorithm_simulation.build_simulation()
@@ -56,3 +55,13 @@ class TestMultialgorithmSimulation(unittest.TestCase):
 
         local_species_population = MultialgorithmSimulation.make_local_species_pop(self.model)
         self.assertEqual(local_species_population.read_one(0, specie_wo_init_conc), 0)
+
+        expected_compartments = dict(
+            submodel_1=['c', 'e'],
+            submodel_2=['c']
+        )
+        for submodel_id in ['submodel_1', 'submodel_2']:
+            submodel = Submodel.objects.get_one(id=submodel_id)
+            dynamic_compartments = MultialgorithmSimulation.create_dynamic_compartments_for_submodel(
+                self.model, submodel, local_species_population)
+            self.assertEqual(set(dynamic_compartments.keys()), set(expected_compartments[submodel_id]))
