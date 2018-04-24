@@ -109,7 +109,6 @@ class DynamicModel(object):
     dynamic compartments.
 
     Attributes:
-        model (:obj:`Model`): the description of the whole-cell model in `wc_lang`
         # TODO(Arthur): initialize cellular_compartments
         cellular_compartments (:obj:`list` of `DynamicCompartment`): the cell's
             cellular compartments
@@ -120,33 +119,33 @@ class DynamicModel(object):
     """
 
     def __init__(self, model):
-        self.model = model
-
-    def initialize(self):
         """ Prepare a `DynamicModel` for a discrete-event simulation
+
+        Args:
+            model (:obj:`Model`): the description of the whole-cell model in `wc_lang`
         """
         # Classify compartments into extracellular and cellular
         # Compartments which are not extracellular are cellular
         # Assumes exactly one extracellular compartment
-        extracellular_compartment = utils.get_component_by_id(self.model.get_compartments(),
+        extracellular_compartment = utils.get_component_by_id(model.get_compartments(),
             EXTRACELLULAR_COMPARTMENT_ID)
 
         cellular_compartments = []
-        for compartment in self.model.get_compartments():
+        for compartment in model.get_compartments():
             if compartment.id == EXTRACELLULAR_COMPARTMENT_ID:
                 continue
             cellular_compartments.append(compartment)
 
         # Does the model represent water?
         self.water_in_model = True
-        for compartment in self.model.get_compartments():
+        for compartment in model.get_compartments():
             water_in_compartment_id = Species.gen_id(WATER_ID, compartment.id)
             if water_in_compartment_id not in [s.id() for s in compartment.species]:
                 self.water_in_model = False
                 break
 
         # cell dry weight
-        self.fraction_dry_weight = utils.get_component_by_id(self.model.get_parameters(),
+        self.fraction_dry_weight = utils.get_component_by_id(model.get_parameters(),
             'fractionDryWeight').value
 
         # growth
