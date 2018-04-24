@@ -80,8 +80,7 @@ class FbaSubmodel(DynamicSubmodel):
         self.time_step = time_step
 
         # log initialization data
-        self.log_with_time("init: name: {}".format(name))
-        self.log_with_time("init: species: {}".format(str([s.serialize() for s in species])))
+        self.log_with_time("init: id: {}".format(id))
         self.log_with_time("init: time_step: {}".format(str(time_step)))
 
         self.metabolismProductionReaction = None
@@ -103,7 +102,7 @@ class FbaSubmodel(DynamicSubmodel):
         Create initial event for this FBA submodel.
         """
 
-        cobraModel = CobraModel(self.name)
+        cobraModel = CobraModel(self.id)
         self.cobraModel = cobraModel
 
         # setup metabolites
@@ -285,7 +284,7 @@ class FbaSubmodel(DynamicSubmodel):
         # tasks on the event list
         SimulationObject.handle_event(self, event_list)
         if not self.num_events % 100:
-            print("{:7.1f}: submodel {}, event {}".format(self.time, self.name, self.num_events))
+            print("{:7.1f}: submodel {}, event {}".format(self.time, self.id, self.num_events))
 
         for event in event_list:
             if isclass_by_name(event.message, message_types.GivePopulation):
@@ -302,7 +301,7 @@ class FbaSubmodel(DynamicSubmodel):
 
             elif isclass_by_name(event.message, message_types.RunFba):
 
-                self.log_with_time("submodel '{}' executing".format(self.name))
+                self.log_with_time("submodel '{}' executing".format(self.id))
 
                 # run the FBA analysis
                 self.calcReactionBounds()

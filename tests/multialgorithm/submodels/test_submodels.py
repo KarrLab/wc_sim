@@ -36,7 +36,6 @@ def prepare_model(model):
 def make_dynamic_submodel_params(model, lang_submodel):
     local_species_pop = MultialgorithmSimulation.make_local_species_pop(model)
     dynamic_compartments = MultialgorithmSimulation.create_dynamic_compartments_for_submodel(
-        model,
         lang_submodel,
         local_species_pop)
     return (lang_submodel.id,

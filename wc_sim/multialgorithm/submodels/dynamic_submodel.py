@@ -26,7 +26,9 @@ from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError, Spe
 # TODO(Arthur): use lists instead of sets for reproducibility
 
 class DynamicSubmodel(ApplicationSimulationObject):
-    """ Generic dynamic submodel functionality; subclasses of `DynamicSubmodel` are combined into a multi-algorithmic model
+    """ Provide eneric dynamic submodel functionality
+
+    Subclasses of `DynamicSubmodel` are combined into a multi-algorithmic model.
 
     Attributes:
         id (:obj:`str`): unique id of this dynamic submodel / simulation object

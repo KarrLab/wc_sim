@@ -21,7 +21,8 @@ class DynamicCompartment(object):
     mass and volume. A `DynamicCompartment` is created for each `wc_lang` `Compartment`.
 
     Attributes:
-        compartment (:obj:`Compartment`): the corresponding `wc_lang` `Compartment`
+        id (:obj:`str`): id of this `DynamicCompartment`, copied from the corresponding `Compartment`
+        name (:obj:`str`): name of this `DynamicCompartment`, copied from the corresponding `Compartment`
         init_volume (:obj:`float`): initial volume specified in the `wc_lang` model
         species_population (:obj:`LocalSpeciesPopulation`): an object that represents
             the populations of species in this `DynamicCompartment`
@@ -47,8 +48,8 @@ class DynamicCompartment(object):
         self.species_population = species_population
         self.species_ids = species_ids
         if self.init_volume<=0:
-            raise MultialgorithmError("DynamicCompartment: init_volume must be a positive number, but it is '{}'".format(
-                self.init_volume))
+            raise MultialgorithmError("DynamicCompartment: init_volume must be a positive number, "
+                "but it is '{}'".format(self.init_volume))
         self.constant_density = self.mass()/self.init_volume
 
     def mass(self):
@@ -68,6 +69,14 @@ class DynamicCompartment(object):
             :obj:`float`: this compartment's current volume (L)
         """
         return self.mass()/self.constant_density
+
+    def density(self):
+        """ Provide the density of this `DynamicCompartment`, which is assumed to be constant
+
+        Returns:
+            :obj:`float`: this compartment's density (g/L)
+        """
+        return self.constant_density
 
     def __str__(self):
         """ Provide a string representation of this `DynamicCompartment`
@@ -90,39 +99,37 @@ class DynamicCompartment(object):
 EXTRACELLULAR_COMPARTMENT_ID = 'e'
 WATER_ID = 'H2O'
 
+
+# TODO(Arthur): figure out what goes in a DynamicModel
 class DynamicModel(object):
     """ Represent the aggregate dynamics of a whole-cell model simulation
 
-    A `DynamicModel` provides methods for determining aggregate properties that are not provided
-    by other, more specific, dynamical components such as species populations, submodels, and
+    A `DynamicModel` determines aggregate properties that are not provided
+    by other, more specific, dynamical components like species populations, submodels, and
     dynamic compartments.
 
-    # TODO(Arthur): probably only need a model at initialization
     Attributes:
         model (:obj:`Model`): the description of the whole-cell model in `wc_lang`
-        multialgorithm_simulation (:obj:`MultialgorithmSimulation`): the multialgorithm simulation
-        extracellular_volume (:obj:`float`): volume of the cell's extra-cellular
+        # TODO(Arthur): initialize cellular_compartments
+        cellular_compartments (:obj:`list` of `DynamicCompartment`): the cell's
+            cellular compartments
         fraction_dry_weight (:obj:`float`): fraction of the cell's weight which is not water
             a constant
-        dry_weight (:obj:`float`): a cell's dry weight
-        density (:obj:`float`): cellular density, a constant
+        water_in_model (:obj:`bool`): if set, the model represents water
         growth (:obj:`float`): growth in cell/s, relative to the cell's initial volume
     """
 
     def __init__(self, model):
         self.model = model
-        # TODO(Arthur): clarify & fix relationship between multialgorithm_simulation and DynamicModel
-        # TODO(Arthur): perhaps remove next statement
-        # self.multialgorithm_simulation = multialgorithm_simulation
 
     def initialize(self):
         """ Prepare a `DynamicModel` for a discrete-event simulation
         """
-        # Classify compartments by cellular and extracellular
-        # all others: cellular_compartments
+        # Classify compartments into extracellular and cellular
+        # Compartments which are not extracellular are cellular
+        # Assumes exactly one extracellular compartment
         extracellular_compartment = utils.get_component_by_id(self.model.get_compartments(),
             EXTRACELLULAR_COMPARTMENT_ID)
-        self.extracellular_volume = extracellular_compartment.initial_volume
 
         cellular_compartments = []
         for compartment in self.model.get_compartments():
@@ -130,50 +137,42 @@ class DynamicModel(object):
                 continue
             cellular_compartments.append(compartment)
 
-        # does the model represent water?
-        water_in_model = True
+        # Does the model represent water?
+        self.water_in_model = True
         for compartment in self.model.get_compartments():
             water_in_compartment_id = Species.gen_id(WATER_ID, compartment.id)
             if water_in_compartment_id not in [s.id() for s in compartment.species]:
-                water_in_model = False
+                self.water_in_model = False
                 break
 
-        # cell mass
-        # TODO(Arthur): next; DC: use DC mass?
-        self.mass = self.initial_cell_mass([EXTRACELLULAR_COMPARTMENT_ID])
+        # cell dry weight
         self.fraction_dry_weight = utils.get_component_by_id(self.model.get_parameters(),
             'fractionDryWeight').value
-        if water_in_model:
-            self.dry_weight = self.fraction_dry_weight * self.mass
-        else:
-            self.dry_weight = self.mass
 
         # growth
         self.growth = np.nan
 
-    # DC: use DC masses
-    def initial_cell_mass(self, extracellular_compartments):
-        """ Compute the cell's initial mass from the model
+    def cell_mass(self):
+        """ Compute the cell's mass
 
-        Sum the mass of all species not stored in an extracellular compartment.
+        Sum the mass of all `DynamicCompartment`s that are not extracellular.
         Assumes compartment volumes are in L and concentrations in mol/L.
 
-        Args:
-            extracellular_compartments (:obj:`list`): all extracellular compartments
+        Returns:
+            :obj:`float`: the cell's mass (g)
+        """
+        return sum([dynamic_compartment.mass() for dynamic_compartment in self.cellular_compartments])
+
+    def cell_dry_weight(self):
+        """ Compute the cell's dry weight
 
         Returns:
-            :obj:`float`: the cell's initial mass (g)
+            :obj:`float`: the cell's dry weight (g)
         """
-        # sum over all initial concentrations in intracellular compartments
-        total_mw = 0
-        for concentration in self.model.get_concentrations():
-            if concentration.species.compartment.id in extracellular_compartments:
-                continue
-            species_type = SpeciesType.objects.get_one(id=concentration.species.species_type.id)
-            total_mw += concentration.value * \
-                species_type.molecular_weight * \
-                concentration.species.compartment.initial_volume
-        return total_mw/Avogadro
+        if self.water_in_model:
+            return self.fraction_dry_weight * self.cell_mass()
+        else:
+            return self.cell_mass()
 
     def get_species_count_array(self, now):
         """ Map current species counts into an np array

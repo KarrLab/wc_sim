@@ -103,14 +103,25 @@ class SSASubmodel(DynamicSubmodel):
         message_types.GivePopulation,
         message_types.ExecuteSsaReaction]
 
-    def __init__(self, id, reactions, species, parameters, dynamic_compartment,
+    def __init__(self, id, reactions, species, parameters, dynamic_compartments,
         local_species_population, default_center_of_mass=None):
-        """Initialize an SSA submodel object.
+        """ Initialize an SSA submodel object.
 
         Args:
-            default_center_of_mass (type): the center_of_mass for the ExponentialMovingAverage
+            id (:obj:`str`): unique id of this dynamic SSA submodel
+            reactions (:obj:`list` of `Reaction`): the reactions modeled by this SSA submodel
+            species (:obj:`list` of `Species`): the species that participate in the reactions modeled
+                by this SSA submodel, with their initial concentrations
+            parameters (:obj:`list` of `Parameter`): the model's parameters
+            dynamic_compartments (:obj:`list` of `DynamicCompartment`): the dynamic compartments containing
+                species that participate in reactions that this SSA submodel models, including adjacent
+                compartments used by its transfer reactions
+            local_species_population (:obj:`LocalSpeciesPopulation`): the store that maintains this
+                SSA submodel's species population
+            default_center_of_mass (:obj:`float`, optional): the center_of_mass for the
+                ExponentialMovingAverage
         """
-        super().__init__(id, reactions, species, parameters, dynamic_compartment, local_species_population)
+        super().__init__(id, reactions, species, parameters, dynamic_compartments, local_species_population)
 
         self.num_SsaWaits=0
         # The 'initial_ssa_wait_ema' must be positive, as otherwise an infinite sequence of SsaWait
@@ -125,16 +136,16 @@ class SSASubmodel(DynamicSubmodel):
             center_of_mass=default_center_of_mass)
         self.random_state = RandomStateManager.instance()
 
-        self.log_with_time("init: name: {}".format(name))
-        self.log_with_time("init: species: {}".format(str([s.serialize() for s in species])))
+        self.log_with_time("init: id: {}".format(id))
+        self.log_with_time("init: species: {}".format(str([s.id() for s in species])))
 
     def send_initial_events(self):
-        """Send this SSA submodel's initial events
+        """ Send this SSA submodel's initial events
         """
         self.schedule_next_events()
 
     def determine_reaction_propensities(self):
-        """Determine the current reaction propensities for this submodel.
+        """ Determine the current reaction propensities for this submodel.
 
         Method:
         1. calculate concentrations
@@ -162,7 +173,7 @@ class SSASubmodel(DynamicSubmodel):
         return (propensities, total_propensities)
 
     def schedule_SsaWait(self):
-        """Schedule an SsaWait.
+        """ Schedule an SsaWait.
         """
         self.send_event(self.ema_of_inter_event_time.get_value(), self, message_types.SsaWait())
         self.num_SsaWaits += 1
@@ -171,7 +182,7 @@ class SSASubmodel(DynamicSubmodel):
         # solution: a) if sequence of SsaWait occurs, increase EMA delay
 
     def schedule_ExecuteSsaReaction(self, dt, reaction_index):
-        """Schedule an ExecuteSsaReaction.
+        """ Schedule an ExecuteSsaReaction.
         """
         self.send_event(dt, self, message_types.ExecuteSsaReaction(reaction_index))
 
@@ -179,7 +190,7 @@ class SSASubmodel(DynamicSubmodel):
         self.ema_of_inter_event_time.add_value(dt)
 
     def schedule_next_SSA_reaction(self):
-        """Schedule the next SSA reaction for this SSA submodel.
+        """ Schedule the next SSA reaction for this SSA submodel.
 
         If the sum of propensities is positive, schedule a reaction, otherwise schedule a wait. The
         delay until the next reaction is an exponential sample with mean 1/sum(propensities).
@@ -211,7 +222,7 @@ class SSASubmodel(DynamicSubmodel):
         return dt
 
     def schedule_next_events(self):
-        """Schedule the next events for this submodel"""
+        """ Schedule the next events for this submodel"""
 
         # schedule next SSA reaction, or a SSA wait if no reaction is ready to fire
         time_to_next_reaction = self.schedule_next_SSA_reaction()
@@ -221,15 +232,15 @@ class SSASubmodel(DynamicSubmodel):
             self.access_species_pop.prefetch(time_to_next_reaction, self.get_species_ids())
 
     def execute_SSA_reaction(self, reaction_index):
-        """Execute a reaction now.
+        """ Execute a reaction now.
         """
         self.log_with_time("submodel: {} "
-            "executing reaction {}".format(self.name, self.reactions[reaction_index].id))
+            "executing reaction {}".format(self.id, self.reactions[reaction_index].id))
         self.execute_reaction(self.reactions[reaction_index])
 
     # todo: restructure
     def handle_event(self, event_list):
-        """Handle a SSASubmodel simulation event.
+        """ Handle a SSASubmodel simulation event.
 
         Args:
             event_list: list of event messages to process
@@ -238,7 +249,7 @@ class SSASubmodel(DynamicSubmodel):
         SimulationObject.handle_event(self, event_list)
         if not self.num_events % config_multialgorithm['ssa_event_logging_spacing']:
             # TODO(Arthur): perhaps log this msg to console
-            self.log_with_time("submodel {}, event {}".format(self.name, self.num_events))
+            self.log_with_time("submodel {}, event {}".format(self.id, self.num_events))
 
         for event in event_list:
             if isclass_by_name(event.message, message_types.GivePopulation):
@@ -263,7 +274,7 @@ class SSASubmodel(DynamicSubmodel):
                     (propensities, total_propensities) = self.determine_reaction_propensities()
                     if total_propensities == 0:
                         self.log_with_time("submodel: {}: no reaction to execute".format(
-                            self.name))
+                            self.id))
                         self.schedule_SsaWait()
                         continue
 
