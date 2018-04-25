@@ -100,7 +100,6 @@ species copy number changes through shared population.
 """
 
 
-# TODO (Arthur): also create a DynamicModel
 # TODO (Arthur): put in config file
 DEFAULT_VALUES = dict(
     shared_specie_store='SHARED_SPECIE_STORE'
@@ -124,6 +123,10 @@ class MultialgorithmSimulation(object):
         private_species (:obj: `dict` of `set`): map from `DynamicSubmodel` to a set of the species
                 modeled by only the submodel
         shared_species (:obj: `set`): the shared species
+        local_species_population (:obj: `LocalSpeciesPopulation`): a shared species population for the
+            multialgorithm simulation
+        dynamic_compartments (:obj: `dict`): the simulation's `DynamicCompartment`, one for each
+            compartment in `model`
     """
 
     def __init__(self, model, args, shared_specie_store_name=DEFAULT_VALUES['shared_specie_store']):
@@ -140,7 +143,20 @@ class MultialgorithmSimulation(object):
         self.simulation_submodels = {}
         self.species_pop_objs = {}
         self.shared_specie_store_name = shared_specie_store_name
-        self.dynamic_model = DynamicModel(model)
+        self.local_species_population = self.make_local_species_pop(self.model)
+        self.dynamic_compartments = self.create_dynamic_compartments(self.model, self.local_species_population)
+
+    def build_simulation(self):
+        """ Build a simulation
+
+        Returns:
+            :obj:`tuple` of (`SimulationEngine`, `DynamicModel`): an initialized simulation and its
+                dynamic model
+        """
+        self.partition_species()
+        self.dynamic_model = DynamicModel(self.model, self.dynamic_compartments)
+        self.simulation_submodels = self.create_dynamic_submodels()
+        return (self.simulation, self.dynamic_model)
 
     def partition_species(self):
         """ Partition species populations for this model's submodels
@@ -149,16 +165,6 @@ class MultialgorithmSimulation(object):
         self.private_species = ModelUtilities.find_private_species(self.model, return_ids=True)
         self.shared_species = ModelUtilities.find_shared_species(self.model, return_ids=True)
         self.species_pop_objs = self.create_shared_species_pop_objs()
-
-    def build_simulation(self):
-        """ Build a simulation
-
-        Returns:
-            :obj:`SimulationEngine`: an initialized simulation
-        """
-        self.partition_species()
-        self.sub_models = self.create_submodels()
-        return self.simulation
 
     def molecular_weights_for_species(self, species):
         """ Obtain the molecular weights for specified species ids
@@ -244,14 +250,11 @@ class MultialgorithmSimulation(object):
                     int(specie.concentration.value * specie.compartment.initial_volume * Avogadro)
         return init_populations
 
-    @staticmethod
-    def create_dynamic_compartments_for_submodel(submodel, local_species_pop):
-        """ Create the `DynamicCompartment`s that a `DynamicSubmodel` will use
+    def get_dynamic_compartments(self, submodel):
+        """ Get the `DynamicCompartment`s for Submodel `submodel`
 
         Args:
             submodel (:obj:`Submodel`): the `wc_lang` submodel being compiled into a `DynamicSubmodel`
-            local_species_pop (:obj:`LocalSpeciesPopulation`): the store that maintains the
-                species population for the `DynamicCompartment`(s)
 
         Returns:
             :obj:`dict`: mapping: compartment id -> `DynamicCompartment` for the
@@ -262,13 +265,28 @@ class MultialgorithmSimulation(object):
             for participant in rxn.participants:
                 compartments.append(participant.species.compartment)
         compartments = det_dedupe(compartments)
-        # TODO(Arthur): log this
-        # print("submodel {} needs these DynamicCompartment(s): {}".format(submodel.id, [c.id for c in compartments]))
-
-        # make DynamicCompartments
         dynamic_compartments = {}
         for comp in compartments:
-            dynamic_compartments[comp.id] = DynamicCompartment(comp, local_species_pop)
+            dynamic_compartments[comp.id] = self.dynamic_compartments[comp.id]
+        return dynamic_compartments
+
+    @staticmethod
+    def create_dynamic_compartments(model, local_species_pop):
+        """ Create the `DynamicCompartment`s for this simulation
+
+        Args:
+            model (:obj:`Model`): a `wc_lang` model
+            local_species_pop (:obj:`LocalSpeciesPopulation`): the store that maintains the
+                species population for the `DynamicCompartment`(s)
+
+        Returns:
+            :obj:`dict`: mapping: compartment id -> `DynamicCompartment` for the
+                `DynamicCompartment`(s) used by this multialgorithmic simulation
+        """
+        # make DynamicCompartments
+        dynamic_compartments = {}
+        for compartment in model.get_compartments():
+            dynamic_compartments[compartment.id] = DynamicCompartment(compartment, local_species_pop)
         return dynamic_compartments
 
     @staticmethod
@@ -309,42 +327,40 @@ class MultialgorithmSimulation(object):
             initial_fluxes=initial_fluxes,
             retain_history=retain_history)
 
-    def create_submodels(self):
-        """ Create submodels that contain private species and access shared species
+    def create_dynamic_submodels(self):
+        """ Create dynamic submodels that access shared species
 
         Returns:
-            dict mapping submodel.id to `DynamicSubmodel`: the simulation's submodels
+            :obj:`dict`: mapping `submodel.id` to `DynamicSubmodel`: the simulation's dynamic submodels
 
         Raises:
             :obj:`MultialgorithmError`: if a submodel cannot be created
         """
-        local_species_population = self.make_local_species_pop(self.model)
 
         # make the simulation's submodels
-        simulation_submodels = {}
+        simulation_submodels = []
         for lang_submodel in self.model.get_submodels():
 
             if lang_submodel.algorithm == SubmodelAlgorithm.ssa:
-                simulation_submodels[lang_submodel.id] = SSASubmodel(
+                simulation_submodel = SSASubmodel(
                     lang_submodel.id,
                     list(lang_submodel.reactions),
                     lang_submodel.get_species(),
                     lang_submodel.parameters,
-                    local_species_population,
-                    self.create_dynamic_compartments_for_submodel(lang_submodel, local_species_population)
-                )
+                    self.local_species_population,
+                    self.get_dynamic_compartments(lang_submodel))
 
             elif lang_submodel.algorithm == SubmodelAlgorithm.dfba:
                 # TODO(Arthur): make DFBA submodels work
                 continue
 
-                simulation_submodels[lang_submodel.id] = FbaSubmodel(
+                simulation_submodel = FbaSubmodel(
                     lang_submodel.id,
                     list(lang_submodel.reactions),
                     lang_submodel.get_species(),
                     lang_submodel.parameters,
-                    local_species_population,
-                    self.create_dynamic_compartments_for_submodel(lang_submodel, local_species_population),
+                    self.local_species_population,
+                    self.get_dynamic_compartments(lang_submodel),
                     self.args.FBA_time_step)
 
             elif lang_submodel.algorithm == SubmodelAlgorithm.ode:
@@ -353,7 +369,9 @@ class MultialgorithmSimulation(object):
             else:
                 raise MultialgorithmError("Unsupported lang_submodel algorithm '{}'".format(lang_submodel.algorithm))
 
+            simulation_submodels.append(simulation_submodel)
+
             # add the submodel to the simulation
-            self.simulation.add_object(simulation_submodels[lang_submodel.id])
+            self.simulation.add_object(simulation_submodel)
 
         return simulation_submodels

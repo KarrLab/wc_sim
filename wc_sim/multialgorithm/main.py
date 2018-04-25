@@ -93,7 +93,7 @@ class RunSimulation(object):
         # todo: have MultialgorithmSimulation take kwargs, not Namespace args
         multialgorithm_simulation = MultialgorithmSimulation(model, args)
         multialgorithm_simulation.initialize()
-        simulation_engine = multialgorithm_simulation.build_simulation()
+        simulation_engine, dynamic_model = multialgorithm_simulation.build_simulation()
 
         # run simulation(s)
         for run_index in range(args.num_simulations):

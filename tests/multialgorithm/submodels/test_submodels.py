@@ -34,16 +34,14 @@ def prepare_model(model):
     CheckModel(model).run()
 
 def make_dynamic_submodel_params(model, lang_submodel):
-    local_species_pop = MultialgorithmSimulation.make_local_species_pop(model)
-    dynamic_compartments = MultialgorithmSimulation.create_dynamic_compartments_for_submodel(
-        lang_submodel,
-        local_species_pop)
+    multialgorithm_simulation = MultialgorithmSimulation(model, None)
+
     return (lang_submodel.id,
             lang_submodel.reactions,
             lang_submodel.get_species(),
             model.get_parameters(),
-            dynamic_compartments,
-            local_species_pop)
+            multialgorithm_simulation.get_dynamic_compartments(lang_submodel),
+            multialgorithm_simulation.local_species_population)
 
 
 class TestDynamicSubmodel(unittest.TestCase):

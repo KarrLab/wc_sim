@@ -11,7 +11,6 @@ import math
 import numpy as np
 from scipy.constants import Avogadro
 
-from wc_sim.multialgorithm.dynamic_components import DynamicModel
 from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation
 from wc_sim.multialgorithm.model_utilities import ModelUtilities
 from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
@@ -34,7 +33,6 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         self.model = Reader().run(self.MODEL_FILENAME)
         args = Namespace(FBA_time_step=1)
         self.multialgorithm_simulation = MultialgorithmSimulation(self.model, args)
-        self.dynamic_model = DynamicModel(self.model)
 
     def test_molecular_weights_for_species(self):
         multi_alg_sim = self.multialgorithm_simulation
@@ -56,6 +54,16 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         expected_shared_species = set(['specie_2[c]', 'specie_3[c]', 'H2O[e]', 'H2O[c]'])
         self.assertEqual(self.multialgorithm_simulation.shared_species, expected_shared_species)
 
+    def test_dynamic_compartments(self):
+        expected_compartments = dict(
+            submodel_1=['c', 'e'],
+            submodel_2=['c']
+        )
+        for submodel_id in ['submodel_1', 'submodel_2']:
+            submodel = Submodel.objects.get_one(id=submodel_id)
+            submodel_dynamic_compartments = self.multialgorithm_simulation.get_dynamic_compartments(submodel)
+            self.assertEqual(set(submodel_dynamic_compartments.keys()), set(expected_compartments[submodel_id]))
+
     def test_static_methods(self):
         initial_species_population = MultialgorithmSimulation.get_initial_species_pop(self.model)
         specie_wo_init_conc = 'specie_3[c]'
@@ -67,18 +75,8 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         local_species_population = MultialgorithmSimulation.make_local_species_pop(self.model)
         self.assertEqual(local_species_population.read_one(0, specie_wo_init_conc), 0)
 
-        expected_compartments = dict(
-            submodel_1=['c', 'e'],
-            submodel_2=['c']
-        )
-        for submodel_id in ['submodel_1', 'submodel_2']:
-            submodel = Submodel.objects.get_one(id=submodel_id)
-            dynamic_compartments = MultialgorithmSimulation.create_dynamic_compartments_for_submodel(
-                submodel, local_species_population)
-            self.assertEqual(set(dynamic_compartments.keys()), set(expected_compartments[submodel_id]))
-
     def test_build_simulation(self):
-        self.simulation_engine = self.multialgorithm_simulation.build_simulation()
+        self.simulation_engine, _ = self.multialgorithm_simulation.build_simulation()
         self.assertEqual(len(self.simulation_engine.simulation_objects.keys()), 2)
         for name,simulation_obj in self.simulation_engine.simulation_objects.items():
             print("\n{}: {} event queue:".format(simulation_obj.__class__.__name__, name))

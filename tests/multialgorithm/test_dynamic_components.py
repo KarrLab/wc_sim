@@ -15,6 +15,7 @@ from wc_lang.io import Reader
 from wc_lang.core import (Submodel, Compartment, Reaction, SpeciesType)
 from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation
 from wc_sim.multialgorithm.dynamic_components import DynamicModel, DynamicCompartment
+from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 
 
@@ -56,7 +57,6 @@ class TestDynamicCompartment(unittest.TestCase):
             DynamicCompartment(compartment, local_species_pop, species_ids)
 
 
-@unittest.skip("skip until decide how to initialize DynamicModel.cellular_compartments")
 class TestDynamicModel(unittest.TestCase):
 
     MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_model.xlsx')
@@ -69,17 +69,18 @@ class TestDynamicModel(unittest.TestCase):
     def read_model(self, model_filename):
         # read and initialize a model
         self.model = Reader().run(model_filename)
-        self.dynamic_model = DynamicModel(self.model)
+        multialgorithm_simulation = MultialgorithmSimulation(self.model, None)
+        dynamic_compartments = list(multialgorithm_simulation.dynamic_compartments.values())
+
+        self.dynamic_model = DynamicModel(self.model, dynamic_compartments)
 
     def test_initialize_dynamic_model(self):
         self.read_model(self.MODEL_FILENAME)
-        self.dynamic_model.initialize()
         self.assertEqual(self.dynamic_model.fraction_dry_weight, 0.3)
         self.assertAlmostEqual(self.dynamic_model.cell_mass(), 1.562E-42)
-        self.assertAlmostEqual(self.dynamic_model.dry_weight, 4.688E-43)
+        self.assertAlmostEqual(self.dynamic_model.cell_dry_weight(), 4.688E-43)
 
     def test_dry_dynamic_model(self):
         self.read_model(self.DRY_MODEL_FILENAME)
-        self.dynamic_model.initialize()
-        self.assertEqual(self.dynamic_model.cell_mass(), self.dynamic_model.dry_weight)
+        self.assertEqual(self.dynamic_model.cell_mass(), self.dynamic_model.cell_dry_weight())
 

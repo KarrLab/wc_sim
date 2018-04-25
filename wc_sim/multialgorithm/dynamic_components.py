@@ -94,13 +94,11 @@ class DynamicCompartment(object):
         values.append("Fold change volume: {}".format(self.volume()/self.init_volume))
         return "DynamicCompartment:\n{}".format('\n'.join(values))
 
-
 # TODO(Arthur): define these in config data, which may come from wc_lang
 EXTRACELLULAR_COMPARTMENT_ID = 'e'
 WATER_ID = 'H2O'
 
 
-# TODO(Arthur): figure out what goes in a DynamicModel
 class DynamicModel(object):
     """ Represent the aggregate dynamics of a whole-cell model simulation
 
@@ -109,24 +107,26 @@ class DynamicModel(object):
     dynamic compartments.
 
     Attributes:
-        # TODO(Arthur): initialize cellular_compartments
-        cellular_compartments (:obj:`list` of `DynamicCompartment`): the cell's
-            cellular compartments
+        dynamic_compartments (:obj:`list` of `DynamicCompartment`): the cell's
+            dynamic cellular compartments
         fraction_dry_weight (:obj:`float`): fraction of the cell's weight which is not water
             a constant
         water_in_model (:obj:`bool`): if set, the model represents water
         growth (:obj:`float`): growth in cell/s, relative to the cell's initial volume
     """
 
-    def __init__(self, model):
+    def __init__(self, model, dynamic_compartments):
         """ Prepare a `DynamicModel` for a discrete-event simulation
 
         Args:
             model (:obj:`Model`): the description of the whole-cell model in `wc_lang`
+            dynamic_compartments (:obj:`list` of `DynamicCompartment`): the cell's
+                dynamic cellular compartments
         """
         # Classify compartments into extracellular and cellular
         # Compartments which are not extracellular are cellular
         # Assumes exactly one extracellular compartment
+        '''
         extracellular_compartment = utils.get_component_by_id(model.get_compartments(),
             EXTRACELLULAR_COMPARTMENT_ID)
 
@@ -135,6 +135,8 @@ class DynamicModel(object):
             if compartment.id == EXTRACELLULAR_COMPARTMENT_ID:
                 continue
             cellular_compartments.append(compartment)
+        '''
+        self.dynamic_compartments = dynamic_compartments
 
         # Does the model represent water?
         self.water_in_model = True
@@ -160,7 +162,7 @@ class DynamicModel(object):
         Returns:
             :obj:`float`: the cell's mass (g)
         """
-        return sum([dynamic_compartment.mass() for dynamic_compartment in self.cellular_compartments])
+        return sum([dynamic_compartment.mass() for dynamic_compartment in self.dynamic_compartments])
 
     def cell_dry_weight(self):
         """ Compute the cell's dry weight
@@ -173,7 +175,7 @@ class DynamicModel(object):
         else:
             return self.cell_mass()
 
-    def get_species_count_array(self, now):
+    def get_species_count_array(self, now):     # pragma no cover   not used
         """ Map current species counts into an np array
 
         Args:
@@ -182,7 +184,6 @@ class DynamicModel(object):
         Returns:
             numpy array, #species x # compartments, containing count of specie in compartment
         """
-        # TODO(Arthur): avoid wastefully converting between dictionary and array representations of copy numbers
         species_counts = np.zeros((len(model.species), len(model.compartments)))
         for species in model.species:
             for compartment in model.compartments:

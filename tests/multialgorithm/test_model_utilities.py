@@ -11,7 +11,6 @@ from argparse import Namespace
 from wc_lang.io import Reader
 from wc_lang.core import RateLawEquation, RateLaw, Reaction, Submodel, Species
 from obj_model import utils
-from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.multialgorithm.model_utilities import ModelUtilities
 
 
