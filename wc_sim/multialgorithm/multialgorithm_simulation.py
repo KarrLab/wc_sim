@@ -308,6 +308,7 @@ class MultialgorithmSimulation(object):
         molecular_weights = {}
         for specie in model.get_species():
             (specie_type_id, _) = ModelUtilities.parse_specie_id(specie.id())
+            # TODO(Arthur): make get_one more robust, or do linear search
             molecular_weights[specie.id()] = SpeciesType.objects.get_one(id=specie_type_id).molecular_weight
 
         # Species used by continuous time submodels (like DFBA and ODE) need initial fluxes
