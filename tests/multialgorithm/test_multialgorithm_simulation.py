@@ -5,7 +5,8 @@
 :License: MIT
 """
 
-import os, unittest
+import unittest
+import os
 from argparse import Namespace
 import math
 import re
@@ -14,7 +15,7 @@ from scipy.constants import Avogadro
 
 from obj_model import utils
 from wc_utils.util.enumerate import CaseInsensitiveEnum
-from wc_lang.io import Reader
+from wc_lang.io import Reader, Writer
 from wc_lang.core import (Model, Submodel,  SpeciesType, SpeciesTypeType, Species,
                           Reaction, Observable, Compartment,
                           SpeciesCoefficient, ObservableCoefficient, Parameter,
@@ -126,48 +127,49 @@ class TestRunSimulation(unittest.TestCase):
     def make_test_model(self, model_type):
         """ Create a test model
         """
+        # TODO(Arthur): NEXT, specify species amounts in copy numbers
         num_species, num_reactions, reversible, rate_law_type = self.get_model_type_params(model_type)
-        if 2<num_species or 1<num_reactions:
-            raise ValueError("too many species or reactions")
+        if (2<num_species or 1<num_reactions or
+            (0<num_reactions and num_species==0) or
+            (rate_law_type == RateLawType.product_pop and num_species != 2)):
+            raise ValueError("invalid combination of num_species ({}), num_reactions ({}), rate_law_type ({})".format(
+                num_species, num_reactions, rate_law_type.name))
 
         # Model
-        self.model = Model(id='test_model', wc_lang_version='0.0.1')
+        model = Model(id='test_model', version='0.0.0', wc_lang_version='0.0.1')
         # Compartment
-        self.comp = self.model.compartments.create(id='c', initial_volume=1.25)
+        comp = model.compartments.create(id='c', initial_volume=1.25)
 
         # SpeciesTypes, Species and Concentrations
-        self.species = []
+        species = []
         for i in range(num_species):
-            spec_type = self.model.species_types.create(
+            spec_type = model.species_types.create(
                 id='spec_type_{}'.format(i),
                 type=SpeciesTypeType.protein,
                 molecular_weight=10)
-            spec = self.comp.species.create(species_type=spec_type)
-            self.species.append(spec)
+            spec = comp.species.create(species_type=spec_type)
+            species.append(spec)
             Concentration(species=spec, value=3)
         # Submodel
-        submodel = self.model.submodels.create(id='test_submodel', algorithm=SubmodelAlgorithm.ssa,
-            compartment=self.comp)
+        submodel = model.submodels.create(id='test_submodel', algorithm=SubmodelAlgorithm.ssa,
+            compartment=comp)
 
         # Reactions and RateLaws
         if num_species:
-            backward_product = forward_reactant = self.species[0]
+            backward_product = forward_reactant = species[0]
             if 1<num_species:
-                backward_reactant = forward_product = self.species[1]
+                backward_reactant = forward_product = species[1]
 
-        # TODO: to simplify logic, constrain allowed num_reactions,num_species,rate_law_type combinations above
         # ignore modifiers, which aren't used by the simulator
-        if num_reactions and 1<=num_species:
+        if num_reactions:
             reaction = submodel.reactions.create(id='test_reaction_1', reversible=reversible)
             reaction.participants.create(species=forward_reactant, coefficient=-1)
-            if 1<=num_species:
-                if rate_law_type == RateLawType.constant:
-                    equation=RateLawEquation(expression='1')
-                if rate_law_type == RateLawType.reactant_pop:
-                    equation=RateLawEquation(expression=forward_reactant.id())
-            if num_species == 2:
-                if rate_law_type == RateLawType.product_pop:
-                    equation=RateLawEquation(expression=forward_product.id())
+            if rate_law_type.name =='constant':
+                equation=RateLawEquation(expression='1')
+            if rate_law_type.name == 'reactant_pop':
+                equation=RateLawEquation(expression=forward_reactant.id())
+            if rate_law_type.name == 'product_pop':
+                equation=RateLawEquation(expression=forward_product.id())
             reaction.rate_laws.create(direction=RateLawDirection.forward, equation=equation)
 
             if num_species == 2:
@@ -176,37 +178,34 @@ class TestRunSimulation(unittest.TestCase):
             if reversible:
                 # make backward rate law
                 # RateLawEquations identical to the above must be recreated so backreferences work
-                if 1<=num_species:
-                    if rate_law_type == RateLawType.constant:
-                        equation=RateLawEquation(expression='1')
-                    if rate_law_type == RateLawType.reactant_pop:
-                        equation=RateLawEquation(expression=backward_reactant.id())
-                if num_species == 2:
-                    if rate_law_type == RateLawType.product_pop:
-                        equation=RateLawEquation(expression=backward_product.id())
+                if rate_law_type.name == 'constant':
+                    equation=RateLawEquation(expression='1')
+                if rate_law_type.name == 'reactant_pop':
+                    equation=RateLawEquation(expression=backward_reactant.id())
+                if rate_law_type.name == 'product_pop':
+                    equation=RateLawEquation(expression=backward_product.id())
 
                 rate_law = RateLaw(direction=RateLawDirection.backward, equation=equation)
                 reaction.rate_laws.add(rate_law)
 
         # Parameters
-        self.model.parameters.create(id='fractionDryWeight', value=0.3)
-        self.model.parameters.create(id='carbonExchangeRate', value=12, units='mmol/gDCW/h')
-        self.model.parameters.create(id='nonCarbonExchangeRate', value=20, units='mmol/gDCW/h')
+        model.parameters.create(id='fractionDryWeight', value=0.3)
+        model.parameters.create(id='carbonExchangeRate', value=12, units='mmol/gDCW/h')
+        model.parameters.create(id='nonCarbonExchangeRate', value=20, units='mmol/gDCW/h')
 
         # prepare & check the model
-        SplitReversibleReactionsTransform().run(self.model)
-        PrepareModel(self.model).run()
+        SplitReversibleReactionsTransform().run(model)
+        PrepareModel(model).run()
         # check model transcodes the rate law expressions
-        CheckModel(self.model).run()
-
+        CheckModel(model).run()
         '''
-        self.model.pprint(max_depth=2)
+        model.pprint(max_depth=2)
         # pprint(show=['', '', ]
         if num_reactions:
-            self.model.submodels[0].reactions[0].pprint(max_depth=2)
-            for part in self.model.submodels[0].reactions[0].participants:
+            model.submodels[0].reactions[0].pprint(max_depth=2)
+            for part in model.submodels[0].reactions[0].participants:
                 part.pprint(max_depth=1)
-            for ratelaw in self.model.submodels[0].reactions[0].rate_laws:
+            for ratelaw in model.submodels[0].reactions[0].rate_laws:
                 ratelaw.pprint(max_depth=2)
         '''
 
@@ -214,6 +213,8 @@ class TestRunSimulation(unittest.TestCase):
         # TODO(Arthur): should be automated in a finalize() method
         for base_model in [Submodel,  SpeciesType, Reaction, Observable, Compartment, Parameter]:
             base_model.get_manager().insert_all_new()
+
+        self.model = model
 
     def test_make_test_model(self):
         '''
@@ -250,12 +251,17 @@ class TestRunSimulation(unittest.TestCase):
             self.assertEqual(params, expected_params)
 
         # test make_test_model
-        # self.make_test_model(model_types[0])
+        '''
         for model_type in model_types:
-            # print('\n', model_type, ':')
             self.make_test_model(model_type)
+            # if necessary, write model to spreadsheet
+            file = model_type.replace(' ', '_')
+            filename = os.path.join(os.path.dirname(__file__), 'tmp', file+'.xlsx')
+            Writer().run(self.model, filename)
+            print('wrote model to:', filename)
+        '''
         # TODO(Arthur): NEXT, unittest one of the models made
-        # TODO(Arthur): NEXT, write the models to spreadsheets and review them
+        self.make_test_model(model_types[4])
         # TODO(Arthur): NEXT, run SSA with '1 species, 1 reaction'
 
     def setUp(self):
