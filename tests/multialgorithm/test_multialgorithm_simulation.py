@@ -98,6 +98,8 @@ class TestRunSimulation(unittest.TestCase):
 
     @staticmethod
     def get_model_type_params(model_type):
+        """ Given a model type, generate params for creating the model
+        """
         num_species = 0
         result = re.search(r'(\d) species', model_type)
         if result:
@@ -122,7 +124,12 @@ class TestRunSimulation(unittest.TestCase):
         return (num_species, num_reactions, reversible, rate_law_type)
 
     def make_test_model(self, model_type):
+        """ Create a test model
+
+        """
         num_species, num_reactions, reversible, rate_law_type = self.get_model_type_params(model_type)
+        if 2<num_species or 1<num_reactions:
+            raise ValueError("too many species or reactions")
 
         # Model
         self.model = Model(id='test_model', wc_lang_version='0.0.1')
@@ -134,21 +141,54 @@ class TestRunSimulation(unittest.TestCase):
         for i in range(num_species):
             spec_type = self.model.species_types.create(
                 id='spec_type_{}'.format(i),
-                molecular_weight=10 * (i + 1))
+                type=SpeciesTypeType.protein,
+                molecular_weight=10)
             spec = self.comp.species.create(species_type=spec_type)
             self.species.append(spec)
             Concentration(species=spec, value=3)
         # Submodel
-        self.submodel = self.model.submodels.create(id='test_submodel', algorithm=SubmodelAlgorithm.ssa,
+        submodel = self.model.submodels.create(id='test_submodel', algorithm=SubmodelAlgorithm.ssa,
             compartment=self.comp)
+
         # Reactions and RateLaws
-        self.reaction = self.submodel.reactions.create(id='test_reaction1', reversible=True)
-        self.reaction.participants.create(species=self.species[0], coefficient=1)
-        self.reaction.participants.create(species=self.species[1], coefficient=-1)
-        self.reaction.rate_laws.create(direction=RateLawDirection.forward,
-            equation=RateLawEquation(expression='1', transcoded='1'))
-        self.reaction.rate_laws.create(direction=RateLawDirection.backward,
-            equation=RateLawEquation(expression='1', transcoded='1'))
+        if num_species:
+            backward_product = forward_reactant = self.species[0]
+            if 1<num_species:
+                backward_reactant = forward_product = self.species[1]
+
+        # TODO: to simplify logic, constrain allowed num_reactions,num_species,rate_law_type combinations above
+        # ignore modifiers, which aren't used by the simulator
+        if num_reactions and 1<=num_species:
+            reaction = submodel.reactions.create(id='test_reaction_1', reversible=reversible)
+            reaction.participants.create(species=forward_reactant, coefficient=-1)
+            if 1<=num_species:
+                if rate_law_type == RateLawType.constant:
+                    equation=RateLawEquation(expression='1')
+                if rate_law_type == RateLawType.reactant_pop:
+                    equation=RateLawEquation(expression=forward_reactant.id())
+            if num_species == 2:
+                if rate_law_type == RateLawType.product_pop:
+                    equation=RateLawEquation(expression=forward_product.id())
+            reaction.rate_laws.create(direction=RateLawDirection.forward, equation=equation)
+
+            if num_species == 2:
+                reaction.participants.create(species=forward_product, coefficient=1)
+
+            if reversible:
+                # make backward rate law
+                # RateLawEquations identical to the above must be recreated so backreferences work
+                if 1<=num_species:
+                    if rate_law_type == RateLawType.constant:
+                        equation=RateLawEquation(expression='1')
+                    if rate_law_type == RateLawType.reactant_pop:
+                        equation=RateLawEquation(expression=backward_reactant.id())
+                if num_species == 2:
+                    if rate_law_type == RateLawType.product_pop:
+                        equation=RateLawEquation(expression=backward_product.id())
+
+                rate_law = RateLaw(direction=RateLawDirection.backward, equation=equation)
+                reaction.rate_laws.add(rate_law)
+
         # Parameters
         self.model.parameters.create(id='fractionDryWeight', value=0.3)
         self.model.parameters.create(id='carbonExchangeRate', value=12, units='mmol/gDCW/h')
@@ -157,13 +197,24 @@ class TestRunSimulation(unittest.TestCase):
         # prepare & check the model
         SplitReversibleReactionsTransform().run(self.model)
         PrepareModel(self.model).run()
+        # check model transcodes the rate law expressions
         CheckModel(self.model).run()
 
-        # self.model.pprint(max_depth=3)
+        '''
+        self.model.pprint(max_depth=2)
+        # pprint(show=['', '', ]
+        if num_reactions:
+            self.model.submodels[0].reactions[0].pprint(max_depth=2)
+            for part in self.model.submodels[0].reactions[0].participants:
+                part.pprint(max_depth=1)
+            for ratelaw in self.model.submodels[0].reactions[0].rate_laws:
+                ratelaw.pprint(max_depth=2)
+        '''
+
         # create Manager indices
         # TODO(Arthur): should be automated in a finalize() method
-        for model in [Submodel,  SpeciesType, Reaction, Observable, Compartment, Parameter]:
-            model.get_manager().insert_all_new()
+        for base_model in [Submodel,  SpeciesType, Reaction, Observable, Compartment, Parameter]:
+            base_model.get_manager().insert_all_new()
 
     def test_make_test_model(self):
         '''
@@ -185,6 +236,8 @@ class TestRunSimulation(unittest.TestCase):
             '2 species, a pair of symmetrical reactions rates given by reactant population',
             '2 species, a pair of symmetrical reactions rates given by product population',
         ]
+
+        # test get_model_type_params
         expected_params_list = [
             (0, 0, False, RateLawType.constant),
             (1, 1, False, RateLawType.constant),
@@ -197,11 +250,21 @@ class TestRunSimulation(unittest.TestCase):
             params = self.get_model_type_params(model_type)
             self.assertEqual(params, expected_params)
 
+        # test make_test_model
+        # self.make_test_model(model_types[0])
+        for model_type in model_types:
+            print('\n', model_type, ':')
+            self.make_test_model(model_type)
+        # TODO(Arthur): NEXT, unittest one of the models made
+        # TODO(Arthur): NEXT, write the models to spreadsheets
+        # TODO(Arthur): NEXT, run SSA with '1 species, 1 reaction'
+
     def setUp(self):
         for base_model in [Submodel, Species, SpeciesType]:
             base_model.objects.reset()
         ### make simple model ###
-        self.make_test_model('2 species, 1 reaction')
+        return
+        self.make_test_model('1 species, 1 reaction')
         args = Namespace(FBA_time_step=1)
         self.multialgorithm_simulation = MultialgorithmSimulation(self.model, args)
 
