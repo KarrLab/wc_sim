@@ -68,7 +68,7 @@ class TestDynamicModel(unittest.TestCase):
 
     def read_model(self, model_filename):
         # read and initialize a model
-        self.model = Reader().run(model_filename)
+        self.model = Reader().run(model_filename, strict=False)
         multialgorithm_simulation = MultialgorithmSimulation(self.model, None)
         dynamic_compartments = list(multialgorithm_simulation.dynamic_compartments.values())
 

@@ -52,7 +52,7 @@ class TestDynamicSubmodel(unittest.TestCase):
 
         self.MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures',
             'test_submodel_no_shared_species.xlsx')
-        self.model = Reader().run(self.MODEL_FILENAME)
+        self.model = Reader().run(self.MODEL_FILENAME, strict=False)
         prepare_model(self.model)
         self.dynamic_submodels = {}
         self.misconfigured_dynamic_submodels = {}
@@ -150,7 +150,7 @@ class TestSkeletonSubmodel(unittest.TestCase):
         warnings.simplefilter("ignore")
         self.MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures',
             'test_submodel_no_shared_species.xlsx')
-        self.model = Reader().run(self.MODEL_FILENAME)
+        self.model = Reader().run(self.MODEL_FILENAME, strict=False)
         prepare_model(self.model)
 
     def make_sim_w_skeleton_submodel(self, lang_submodel, behavior):

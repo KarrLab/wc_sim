@@ -28,7 +28,7 @@ class TestSsaSubmodel(unittest.TestCase):
         SimulationEngine.reset()
         self.MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_model.xlsx')
         # make a model
-        self.model = Reader().run(self.MODEL_FILENAME)
+        self.model = Reader().run(self.MODEL_FILENAME, strict=False)
         ExecutableModel.set_up_simulation(self.model)
 
     @unittest.skip("skip")

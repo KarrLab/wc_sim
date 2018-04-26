@@ -64,7 +64,7 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
         '''
 
         # make a model
-        self.model = Reader().run(model_file)
+        self.model = Reader().run(model_file, strict=False)
 
         # make SpeciesPopSimObjects
         self.private_species = ModelUtilities.find_private_species(self.model, return_ids=True)

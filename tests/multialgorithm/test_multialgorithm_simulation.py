@@ -37,7 +37,7 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         for base_model in [Submodel, Species, SpeciesType]:
             base_model.objects.reset()
         # read and initialize a model
-        self.model = Reader().run(self.MODEL_FILENAME)
+        self.model = Reader().run(self.MODEL_FILENAME, strict=False)
         args = Namespace(FBA_time_step=1)
         self.multialgorithm_simulation = MultialgorithmSimulation(self.model, args)
 
@@ -125,7 +125,6 @@ class TestRunSimulation(unittest.TestCase):
 
     def make_test_model(self, model_type):
         """ Create a test model
-
         """
         num_species, num_reactions, reversible, rate_law_type = self.get_model_type_params(model_type)
         if 2<num_species or 1<num_reactions:
@@ -256,7 +255,7 @@ class TestRunSimulation(unittest.TestCase):
             # print('\n', model_type, ':')
             self.make_test_model(model_type)
         # TODO(Arthur): NEXT, unittest one of the models made
-        # TODO(Arthur): NEXT, write the models to spreadsheets
+        # TODO(Arthur): NEXT, write the models to spreadsheets and review them
         # TODO(Arthur): NEXT, run SSA with '1 species, 1 reaction'
 
     def setUp(self):

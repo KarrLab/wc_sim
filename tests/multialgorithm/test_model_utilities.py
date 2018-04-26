@@ -24,7 +24,7 @@ class TestModelUtilities(unittest.TestCase):
     def setUp(self):
         # read a model
         Submodel.objects.reset()
-        self.model = Reader().run(self.MODEL_FILENAME)
+        self.model = Reader().run(self.MODEL_FILENAME, strict=False)
 
     def test_find_private_species(self):
         # since set() operations are being used, this test does not ensure that the methods being
