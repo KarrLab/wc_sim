@@ -260,8 +260,45 @@ class TestRunSimulation(unittest.TestCase):
             Writer().run(self.model, filename)
             print('wrote model to:', filename)
         '''
-        # TODO(Arthur): NEXT, unittest one of the models made
+        # unittest one of the models made
         self.make_test_model(model_types[4])
+        self.assertEqual(self.model.id, 'test_model')
+        comp = self.model.compartments[0]
+        self.assertEqual(comp.id, 'c')
+        species_type_ids = set([st.id for st in self.model.species_types])
+        self.assertEqual(species_type_ids, set(['spec_type_0', 'spec_type_1']))
+        species_ids = set([s.id() for s in comp.species])
+        self.assertEqual(species_ids, set(['spec_type_0[c]', 'spec_type_1[c]']))
+        submodel = self.model.submodels[0]
+        self.assertEqual(self.model.submodels[0].compartment, comp)
+
+        # reaction was split by SplitReversibleReactionsTransform
+        ratelaw_elements = set()
+        for r in submodel.reactions:
+            self.assertFalse(r.reversible)
+            rl = r.rate_laws[0]
+            ratelaw_elements.add((rl.direction, rl.equation.expression))
+        expected_rate_laws = set([
+            # direction, equation expression
+            (RateLawDirection.forward, 'spec_type_0[c]'),   # forward
+            (RateLawDirection.forward, 'spec_type_1[c]'),   # backward, but reversed
+        ])
+        self.assertEqual(ratelaw_elements, expected_rate_laws)
+
+        participant_elements = set()
+        for r in submodel.reactions:
+            r_list = []
+            for part in r.participants:
+                r_list.append((part.species.id(), part.coefficient))
+            participant_elements.add(tuple(sorted(r_list)))
+        expected_participants = set([
+            # id, coefficient
+            tuple(sorted((('spec_type_0[c]', -1), ('spec_type_1[c]',  1)))),    # forward
+            tuple(sorted((('spec_type_1[c]', -1), ('spec_type_0[c]',  1)))),    # reversed
+        ])
+        self.assertEqual(participant_elements, expected_participants)
+        self.assertIn('fractionDryWeight', [p.id for p in self.model.get_parameters()])
+
         # TODO(Arthur): NEXT, run SSA with '1 species, 1 reaction'
 
     def setUp(self):
