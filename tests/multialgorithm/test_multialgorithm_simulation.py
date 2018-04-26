@@ -253,7 +253,7 @@ class TestRunSimulation(unittest.TestCase):
         # test make_test_model
         # self.make_test_model(model_types[0])
         for model_type in model_types:
-            print('\n', model_type, ':')
+            # print('\n', model_type, ':')
             self.make_test_model(model_type)
         # TODO(Arthur): NEXT, unittest one of the models made
         # TODO(Arthur): NEXT, write the models to spreadsheets
@@ -263,7 +263,6 @@ class TestRunSimulation(unittest.TestCase):
         for base_model in [Submodel, Species, SpeciesType]:
             base_model.objects.reset()
         ### make simple model ###
-        return
         self.make_test_model('1 species, 1 reaction')
         args = Namespace(FBA_time_step=1)
         self.multialgorithm_simulation = MultialgorithmSimulation(self.model, args)
