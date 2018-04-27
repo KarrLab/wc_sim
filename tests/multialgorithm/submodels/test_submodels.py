@@ -10,8 +10,6 @@ import os, sys
 import numpy as np
 import warnings
 
-from scipy.constants import Avogadro
-
 from wc_lang.io import Reader
 from wc_lang.core import Reaction, SpeciesType, Species
 from wc_lang.prepare import PrepareModel, CheckModel

@@ -124,10 +124,20 @@ class TestRunSimulation(unittest.TestCase):
 
         return (num_species, num_reactions, reversible, rate_law_type)
 
-    def make_test_model(self, model_type):
+    @staticmethod
+    def convert_pop_conc(specie_copy_number, vol):
+        return specie_copy_number/(vol*Avogadro)
+
+    def make_test_model(self, model_type, specie_copy_number=1000000, init_vol=1E-16):
         """ Create a test model
+
+        Args:
+            model_type (:obj:`str`): model type description
+            specie_copy_number (:obj:`int`): population of each species in its compartment
         """
-        # TODO(Arthur): NEXT, specify species amounts in copy numbers
+        concentration = self.convert_pop_conc(specie_copy_number, init_vol)
+        print('concentration', concentration)
+
         num_species, num_reactions, reversible, rate_law_type = self.get_model_type_params(model_type)
         if (2<num_species or 1<num_reactions or
             (0<num_reactions and num_species==0) or
@@ -138,7 +148,7 @@ class TestRunSimulation(unittest.TestCase):
         # Model
         model = Model(id='test_model', version='0.0.0', wc_lang_version='0.0.1')
         # Compartment
-        comp = model.compartments.create(id='c', initial_volume=1.25)
+        comp = model.compartments.create(id='c', initial_volume=init_vol)
 
         # SpeciesTypes, Species and Concentrations
         species = []
@@ -149,7 +159,7 @@ class TestRunSimulation(unittest.TestCase):
                 molecular_weight=10)
             spec = comp.species.create(species_type=spec_type)
             species.append(spec)
-            Concentration(species=spec, value=3)
+            Concentration(species=spec, value=concentration)
         # Submodel
         submodel = model.submodels.create(id='test_submodel', algorithm=SubmodelAlgorithm.ssa,
             compartment=comp)
@@ -251,9 +261,9 @@ class TestRunSimulation(unittest.TestCase):
             self.assertEqual(params, expected_params)
 
         # test make_test_model
-        '''
         for model_type in model_types:
             self.make_test_model(model_type)
+        '''
             # if necessary, write model to spreadsheet
             file = model_type.replace(' ', '_')
             filename = os.path.join(os.path.dirname(__file__), 'tmp', file+'.xlsx')
