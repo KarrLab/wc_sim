@@ -53,7 +53,7 @@ class DynamicSubmodel(ApplicationSimulationObject):
         self.local_species_population = local_species_population
         super().__init__(id)
 
-    # The next 3 methods implement the abstract ApplicationSimulationObject methods
+    # The next 3 methods implement the abstract methods in ApplicationSimulationObject
     def send_initial_events(self):
         pass    # pragma: no cover
 

@@ -13,33 +13,22 @@ from wc_sim.multialgorithm.submodels.ssa import SSASubmodel
 from wc_sim.multialgorithm.message_types import GivePopulation, ExecuteSsaReaction
 
 
-def obj_2_str(obj):
-    if isinstance(obj,list):
-        return( [obj_2_str(e) for e in obj] )
-    if hasattr(obj, '__dict__'):
-        return(", ".join(["{}='{}'".format(k,str(v)) for k,v in obj.__dict__.items()]))
-    else:
-        return str(obj)
-
-@unittest.skip("skip until updated")
+@unittest.skip("still broken")
 class TestSsaSubmodel(unittest.TestCase):
 
     def setUp(self):
+        '''
         SimulationEngine.reset()
         self.MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_model.xlsx')
         # make a model
         self.model = Reader().run(self.MODEL_FILENAME, strict=False)
         ExecutableModel.set_up_simulation(self.model)
+        '''
+        self.ssa_submodel = SSASubmodel(
+            
+        )
 
-    @unittest.skip("skip")
-    def test_SSA_submodel_predictions(self):
-        pass
-    '''
-    TODO(Arthur): make stochastic tests of SSA
-    perform a monte Carlo simulation of a trivial model, and compare means of SSA's predictions with expected means
-    '''
-
-    @unittest.skip("skip until species state issue addressed")
+    #TODO(Arthur): make stochastic tests of SSA
     def test_SSA_submodel_methods(self):
         for submodel_spec in self.model.submodels:
             if submodel_spec.name == 'RNA degradation':

@@ -39,7 +39,7 @@ class SSASubmodel(DynamicSubmodel):
     # TODO(Arthur): ensure that this doc string formats properly
     Algorithm::
 
-        implement the 'direct' method, except under unusual circumstances.
+        implement the 'direct' method, except under unusual circumstances
 
         determine_reaction_propensities():
             determine reactant concentrations
@@ -52,20 +52,12 @@ class SSASubmodel(DynamicSubmodel):
             if total_propensities == 0: **
                 schedule_SsaWait() **
             else:
-                reaction delay = random sample of exp(1/sum(propensities))
+                reaction delay = random sample of exp(1/total_propensities)
                 select and schedule the next reaction
 
         execute_reaction():
             if scheduled reaction is stoichiometrically enabled:
                 execute it
-            else: *
-                determine_reaction_propensities()
-                if total_propensities == 0: **
-                    schedule_SsaWait() **
-                    return
-                else:
-                    select and schedule a reaction
-
             schedule_next_event()
 
         *   avoid reactions that are not stoichiometrically enabled
