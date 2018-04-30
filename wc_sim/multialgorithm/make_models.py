@@ -65,17 +65,19 @@ class MakeModels(object):
     def convert_pop_conc(specie_copy_number, vol):
         return specie_copy_number/(vol*Avogadro)
 
-    def make_test_model(self, model_type, specie_copy_number=1000000, init_vol=1E-16):
+    def make_test_model(self, model_type, default_specie_copy_number=1000000, specie_copy_numbers=None,
+        init_vol=1E-16):
         """ Create a test model
 
         Args:
             model_type (:obj:`str`): model type description
-            specie_copy_number (:obj:`int`): population of each species in its compartment
+            default_specie_copy_number (:obj:`int`): default population of all species in their compartments
+            specie_copy_numbers (:obj:`dict`): populations for particular species, which overrides `default_specie_copy_number`
 
         Returns:
             :obj:`Model`: a `wc_lang` model
         """
-        concentration = self.convert_pop_conc(specie_copy_number, init_vol)
+        default_concentration = self.convert_pop_conc(default_specie_copy_number, init_vol)
 
         num_species, num_reactions, reversible, rate_law_type = self.get_model_type_params(model_type)
         if (2<num_species or 1<num_reactions or
@@ -98,7 +100,11 @@ class MakeModels(object):
                 molecular_weight=10)
             spec = comp.species.create(species_type=spec_type)
             species.append(spec)
-            Concentration(species=spec, value=concentration)
+            if specie_copy_numbers is not None and spec_type.id in specie_copy_numbers:
+                concentration = self.convert_pop_conc(specie_copy_numbers[spec_type.id], init_vol)
+                Concentration(species=spec, value=concentration)
+            else:
+                Concentration(species=spec, value=default_concentration)
         # Submodel
         submodel = model.submodels.create(id='test_submodel', algorithm=SubmodelAlgorithm.ssa,
             compartment=comp)
