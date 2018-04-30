@@ -125,7 +125,7 @@ class MultialgorithmSimulation(object):
         shared_species (:obj: `set`): the shared species
         local_species_population (:obj: `LocalSpeciesPopulation`): a shared species population for the
             multialgorithm simulation
-        dynamic_compartments (:obj: `dict`): the simulation's `DynamicCompartment`, one for each
+        dynamic_compartments (:obj: `dict`): the simulation's `DynamicCompartment`s, one for each
             compartment in `model`
     """
 

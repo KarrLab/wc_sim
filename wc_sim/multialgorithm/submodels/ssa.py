@@ -9,9 +9,8 @@
 import sys
 import math
 import numpy as np
-from scipy.constants import Avogadro as N_AVOGADRO
-
 from scipy.constants import Avogadro
+
 from wc_utils.util.rand import RandomStateManager
 from wc_utils.util.misc import isclass_by_name
 from wc_utils.util.stats import ExponentialMovingAverage
@@ -44,13 +43,13 @@ class SSASubmodel(DynamicSubmodel):
         determine_reaction_propensities():
             determine reactant concentrations
             determine propensities
-            eliminate reactions that are not stoichiometrically enabled *
+            eliminate reactions that are not stoichiometrically enabled
             return propensities, total_propensities
 
         schedule_next_event():
             determine_reaction_propensities()
-            if total_propensities == 0: **
-                schedule_SsaWait() **
+            if total_propensities == 0: *
+                schedule_SsaWait()      *
             else:
                 reaction delay = random sample of exp(1/total_propensities)
                 select and schedule the next reaction
@@ -60,8 +59,7 @@ class SSASubmodel(DynamicSubmodel):
                 execute it
             schedule_next_event()
 
-        *   avoid reactions that are not stoichiometrically enabled
-        **  2nd order recovery because other submodels can modify shared species counts
+        *  2nd order recovery because other submodels can modify shared species counts
 
     Attributes:
         random: a numpy RandomState() instance object; private PRNG; may be reproducible, as
@@ -105,9 +103,9 @@ class SSASubmodel(DynamicSubmodel):
             species (:obj:`list` of `Species`): the species that participate in the reactions modeled
                 by this SSA submodel, with their initial concentrations
             parameters (:obj:`list` of `Parameter`): the model's parameters
-            dynamic_compartments (:obj:`list` of `DynamicCompartment`): the dynamic compartments containing
-                species that participate in reactions that this SSA submodel models, including adjacent
-                compartments used by its transfer reactions
+            dynamic_compartments (:obj: `dict`): `DynamicCompartment`s, keyed by id, that contain
+                species which participate in reactions that this SSA submodel models, including
+                adjacent compartments used by its transfer reactions
             local_species_population (:obj:`LocalSpeciesPopulation`): the store that maintains this
                 SSA submodel's species population
             default_center_of_mass (:obj:`float`, optional): the center_of_mass for the
@@ -123,7 +121,7 @@ class SSASubmodel(DynamicSubmodel):
         if config_multialgorithm['initial_ssa_wait_ema'] <= 0:
             raise ValueError("'initial_ssa_wait_ema' must be positive to avoid infinite sequence of "
             "SsaWait messages, but it is {}".format(config_multialgorithm['initial_ssa_wait_ema']))
-        self.ema_of_inter_event_time=ExponentialMovingAverage(
+        self.ema_of_inter_event_time = ExponentialMovingAverage(
             config_multialgorithm['initial_ssa_wait_ema'],
             center_of_mass=default_center_of_mass)
         self.random_state = RandomStateManager.instance()
@@ -150,28 +148,26 @@ class SSASubmodel(DynamicSubmodel):
             reaction (propensities, total_propensities)
         """
 
-        # TODO(Arthur): optimization: only calculate new reaction rates for species whose
-        # speciesConcentrations (counts) have changed
-        # TODO(Arthur): IMPORTANT: provide volume for model; probably via get_volume(self.model)
-        # DC: use DC volume
-        propensities = self.model.volume * Avogadro * np.maximum(0,
-            DynamicSubmodel.calc_reaction_rates(self.reactions))
+        # TODO(Arthur): optimization: only calculate new reaction rates only for species whose counts have changed
+        # propensities can be proportional because only relative values are considered
+        # thus, they don't need to be multiplied by volume * Avogadro
+        proportional_propensities = np.maximum(0, self.calc_reaction_rates())
 
         # avoid reactions with inadequate specie counts
         # TODO(Arthur): incorporate generalization in the COPASI paper
         enabled_reactions = self.identify_enabled_reactions()
-        propensities = enabled_reactions * propensities
-        total_propensities = np.sum(propensities)
-        return (propensities, total_propensities)
+        proportional_propensities = enabled_reactions * proportional_propensities
+        total_proportional_propensities = np.sum(proportional_propensities)
+        return (proportional_propensities, total_proportional_propensities)
 
     def schedule_SsaWait(self):
         """ Schedule an SsaWait.
         """
-        self.send_event(self.ema_of_inter_event_time.get_value(), self, message_types.SsaWait())
+        self.send_event(self.ema_of_inter_event_time.get_ema(), self, message_types.SsaWait())
         self.num_SsaWaits += 1
-        # TODO(Arthur): IMPORTANT: avoid arbitrarily slow progress which arises when 1) no reactions
+        # TODO(Arthur): avoid arbitrarily slow progress which arises when 1) no reactions
         # are enabled & 2) EMA of the time between ExecuteSsaReaction events is arbitrarily small
-        # solution: a) if sequence of SsaWait occurs, increase EMA delay
+        # Solution(s): a) if sequence of SsaWait occurs, increase EMA delay, or b) terminate
 
     def schedule_ExecuteSsaReaction(self, dt, reaction_index):
         """ Schedule an ExecuteSsaReaction.
@@ -290,4 +286,4 @@ class SSASubmodel(DynamicSubmodel):
 
         self.log_with_time("EMA of inter event time: "
             "{:3.2f}; num_events: {}; num_SsaWaits: {}".format(
-                self.ema_of_inter_event_time.get_value(), self.num_events, self.num_SsaWaits))
+                self.ema_of_inter_event_time.get_ema(), self.num_events, self.num_SsaWaits))

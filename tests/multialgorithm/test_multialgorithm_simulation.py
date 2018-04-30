@@ -14,7 +14,6 @@ import numpy as np
 from scipy.constants import Avogadro
 
 from obj_model import utils
-from wc_utils.util.enumerate import CaseInsensitiveEnum
 from wc_lang.io import Reader, Writer
 from wc_lang.core import (Model, Submodel,  SpeciesType, SpeciesTypeType, Species,
                           Reaction, Observable, Compartment,
@@ -24,7 +23,7 @@ from wc_lang.core import (Model, Submodel,  SpeciesType, SpeciesTypeType, Specie
 from wc_lang.prepare import PrepareModel, CheckModel
 from wc_lang.transform import SplitReversibleReactionsTransform
 from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation
-from wc_sim.multialgorithm.make_models import MakeModels, RateLawType
+from wc_sim.multialgorithm.make_models import MakeModels
 from wc_sim.multialgorithm.model_utilities import ModelUtilities
 from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.multialgorithm.config import core as config_core_multialgorithm
@@ -89,16 +88,7 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         self.assertEqual(len(self.simulation_engine.simulation_objects.keys()), 2)
 
 
-class RateLawType(int, CaseInsensitiveEnum):
-    """ Rate law typ """
-    constant = 1
-    reactant_pop = 2
-    product_pop = 3
-
-
 class TestRunSimulation(unittest.TestCase):
-
-    # TODO(Arthur): NEXT, run SSA with '1 species, 1 reaction'
 
     def setUp(self):
         for base_model in [Submodel, Species, SpeciesType]:
@@ -117,3 +107,6 @@ class TestRunSimulation(unittest.TestCase):
             print(simulation_obj.render_event_queue())
         self.simulation_engine.initialize()
         self.simulation_engine.run(6)
+
+    # TODO(Arthur): NEXT, run SSA with '1 species, 1 reaction'
+    #TODO(Arthur): make stochastic tests of SSA

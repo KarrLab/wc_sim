@@ -107,8 +107,8 @@ class DynamicModel(object):
     dynamic compartments.
 
     Attributes:
-        dynamic_compartments (:obj:`list` of `DynamicCompartment`): the cell's
-            dynamic cellular compartments
+        dynamic_compartments (:obj: `dict`): the simulation's `DynamicCompartment`s, one for each
+            compartment in `model`
         fraction_dry_weight (:obj:`float`): fraction of the cell's weight which is not water
             a constant
         water_in_model (:obj:`bool`): if set, the model represents water
@@ -120,8 +120,8 @@ class DynamicModel(object):
 
         Args:
             model (:obj:`Model`): the description of the whole-cell model in `wc_lang`
-            dynamic_compartments (:obj:`list` of `DynamicCompartment`): the cell's
-                dynamic cellular compartments
+            dynamic_compartments (:obj: `dict`): the simulation's `DynamicCompartment`s, one for each
+                compartment in `model`
         """
         # Classify compartments into extracellular and cellular
         # Compartments which are not extracellular are cellular
@@ -162,7 +162,7 @@ class DynamicModel(object):
         Returns:
             :obj:`float`: the cell's mass (g)
         """
-        return sum([dynamic_compartment.mass() for dynamic_compartment in self.dynamic_compartments])
+        return sum([dynamic_compartment.mass() for dynamic_compartment in self.dynamic_compartments.values()])
 
     def cell_dry_weight(self):
         """ Compute the cell's dry weight
