@@ -348,8 +348,9 @@ class MultialgorithmSimulation(object):
                     list(lang_submodel.reactions),
                     lang_submodel.get_species(),
                     lang_submodel.parameters,
-                    self.local_species_population,
-                    self.get_dynamic_compartments(lang_submodel))
+                    self.get_dynamic_compartments(lang_submodel),
+                    self.local_species_population
+                )
 
             elif lang_submodel.algorithm == SubmodelAlgorithm.dfba:
                 # TODO(Arthur): make DFBA submodels work
@@ -360,9 +361,10 @@ class MultialgorithmSimulation(object):
                     list(lang_submodel.reactions),
                     lang_submodel.get_species(),
                     lang_submodel.parameters,
-                    self.local_species_population,
                     self.get_dynamic_compartments(lang_submodel),
-                    self.args.FBA_time_step)
+                    self.local_species_population,
+                    self.args.FBA_time_step
+                )
 
             elif lang_submodel.algorithm == SubmodelAlgorithm.ode:
                 # TODO(Arthur): incorporate an ODE lang_submodel; perhaps the one Eric & Catherine wrote

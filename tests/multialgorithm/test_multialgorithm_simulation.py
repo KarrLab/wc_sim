@@ -88,25 +88,36 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         self.assertEqual(len(self.simulation_engine.simulation_objects.keys()), 2)
 
 
-class TestRunSimulation(unittest.TestCase):
+class TestRunSSASimulation(unittest.TestCase):
 
-    def setUp(self):
+    def make_model_and_simulation(self, model_type, specie_copy_numbers=None):
+        # reset indices
         for base_model in [Submodel, Species, SpeciesType]:
             base_model.objects.reset()
-        ### make simple model ###
+        # make simple model
+        model = self.make_models.make_test_model(model_type, specie_copy_numbers=specie_copy_numbers)
+        args = Namespace()
+        multialgorithm_simulation = MultialgorithmSimulation(model, args)
+        simulation_engine, _ = multialgorithm_simulation.build_simulation()
+        return (model, multialgorithm_simulation, simulation_engine)
+
+    def setUp(self):
         self.make_models = MakeModels()
-        self.model = self.make_models.make_test_model('1 species, 1 reaction')
-        args = Namespace(FBA_time_step=1)
-        self.multialgorithm_simulation = MultialgorithmSimulation(self.model, args)
 
-    @unittest.skip("still broken")
-    def test_run_simulation(self):
-        self.simulation_engine, _ = self.multialgorithm_simulation.build_simulation()
-        for name,simulation_obj in self.simulation_engine.simulation_objects.items():
-            print("\n{}: {} event queue:".format(simulation_obj.__class__.__name__, name))
-            print(simulation_obj.render_event_queue())
-        self.simulation_engine.initialize()
-        self.simulation_engine.run(6)
+    def test_run_ssa(self):
+        initial_pop = 3000
+        specie = 'spec_type_0[c]'
+        for i in range(5):
+            _, multialgorithm_simulation, simulation_engine = self.make_model_and_simulation(
+                '1 species, 1 reaction',
+                specie_copy_numbers={specie: initial_pop})
+            simulation_engine.initialize()
+            run_time = 1000
+            num_events_handled = simulation_engine.run(run_time)
+            specie_counts = multialgorithm_simulation.simulation_submodels[0].get_specie_counts()
+            # print(specie_counts, abs(initial_pop - specie_counts[specie]))
+            self.assertAlmostEqual(run_time, initial_pop - specie_counts[specie], delta=100)
 
-    # TODO(Arthur): NEXT, run SSA with '1 species, 1 reaction'
-    #TODO(Arthur): make stochastic tests of SSA
+    # TODO(Arthur): make stochastic tests of SSA
+    # TODO(Arthur): catch MultialgorithmErrors from get_specie_concentrations, and elsewhere
+    # TODO(Arthur): how does performance compare with and without Docker

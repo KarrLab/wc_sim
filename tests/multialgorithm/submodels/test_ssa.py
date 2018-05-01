@@ -58,8 +58,8 @@ class TestSsaSubmodel(unittest.TestCase):
         SpeciesType.objects.reset()
         spec_type_0_cn = 1000000
         specie_copy_numbers={
-            'spec_type_0':spec_type_0_cn,
-            'spec_type_1':2*spec_type_0_cn
+            'spec_type_0[c]':spec_type_0_cn,
+            'spec_type_1[c]':2*spec_type_0_cn
         }
         # with constant reaction rates, all propensities are equal
         model = self.make_models.make_test_model(

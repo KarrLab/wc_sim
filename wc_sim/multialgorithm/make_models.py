@@ -100,8 +100,8 @@ class MakeModels(object):
                 molecular_weight=10)
             spec = comp.species.create(species_type=spec_type)
             species.append(spec)
-            if specie_copy_numbers is not None and spec_type.id in specie_copy_numbers:
-                concentration = self.convert_pop_conc(specie_copy_numbers[spec_type.id], init_vol)
+            if specie_copy_numbers is not None and spec.id() in specie_copy_numbers:
+                concentration = self.convert_pop_conc(specie_copy_numbers[spec.id()], init_vol)
                 Concentration(species=spec, value=concentration)
             else:
                 Concentration(species=spec, value=default_concentration)

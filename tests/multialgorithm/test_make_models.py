@@ -105,7 +105,7 @@ class TestMakeModels(unittest.TestCase):
         spec_type_0_cn = 100000
         init_vol = 1E-13
         model = self.make_models.make_test_model(model_types[4], default_specie_copy_number=default_cn,
-            specie_copy_numbers={'spec_type_0':spec_type_0_cn}, init_vol=init_vol)
+            specie_copy_numbers={'spec_type_0[c]':spec_type_0_cn}, init_vol=init_vol)
         concentrations = []
         for concentration in model.get_concentrations():
             concentrations.append((concentration.species.species_type.id, concentration.value))
@@ -114,6 +114,7 @@ class TestMakeModels(unittest.TestCase):
             ('spec_type_0', MakeModels.convert_pop_conc(spec_type_0_cn, init_vol)),
             ('spec_type_1', MakeModels.convert_pop_conc(default_cn, init_vol)),
         )
+        self.assertEqual(concentrations, expected_concentrations)
 
         # test exception
         with self.assertRaises(ValueError):

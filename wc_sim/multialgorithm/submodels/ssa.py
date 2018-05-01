@@ -17,6 +17,7 @@ from wc_utils.util.stats import ExponentialMovingAverage
 
 from wc_sim.core.config import core as config_core_core
 from wc_sim.core.simulation_object import SimulationObject
+from wc_sim.core.event import Event
 from wc_sim.multialgorithm import message_types
 from wc_sim.multialgorithm.config import core as config_core_multialgorithm
 from wc_sim.multialgorithm.submodels.dynamic_submodel import DynamicSubmodel
@@ -71,13 +72,6 @@ class SSASubmodel(DynamicSubmodel):
             is used as the time between SsaWait events
         Plus see superclasses.
 
-    Event messages:
-        ExecuteSsaReaction
-        SsaWait
-        # messages after future enhancement
-        AdjustPopulationByDiscreteSubmodel
-        GetPopulation
-        GivePopulation
     """
 
     # message types sent by SSASubmodel
@@ -87,11 +81,19 @@ class SSASubmodel(DynamicSubmodel):
         message_types.GetPopulation,
         message_types.SsaWait]
 
+    # register the message types sent
+    messages_sent = SENT_MESSAGE_TYPES
+
     # at any time instant, process messages in this order
     MESSAGE_TYPES_BY_PRIORITY = [
         message_types.SsaWait,
         message_types.GivePopulation,
         message_types.ExecuteSsaReaction]
+
+    # todo: report a compile time error if messages_sent or event_handlers is undefined
+    # todo: make example with multiple event handlers
+    event_handlers = [(sim_msg_type, 'handle_{}_msg'.format(sim_msg_type.__name__))
+        for sim_msg_type in MESSAGE_TYPES_BY_PRIORITY]
 
     def __init__(self, id, reactions, species, parameters, dynamic_compartments,
         local_species_population, default_center_of_mass=None):
@@ -215,74 +217,95 @@ class SSASubmodel(DynamicSubmodel):
         # schedule next SSA reaction, or a SSA wait if no reaction is ready to fire
         time_to_next_reaction = self.schedule_next_SSA_reaction()
 
+        return
+
         # prefetch into cache
-        if not (math.isnan(time_to_next_reaction) or self.access_species_pop is None):
+        if not (math.isnan(time_to_next_reaction) or self.access_species_pop is None):  # pragma: no cover
+        # TODO(Arthur): cover after MVP wc_sim done
             self.access_species_pop.prefetch(time_to_next_reaction, self.get_species_ids())
 
     def execute_SSA_reaction(self, reaction_index):
         """ Execute a reaction now.
+
+        Args:
+            event (:obj:`Event`): a simulation event
         """
         self.log_with_time("submodel: {} "
             "executing reaction {}".format(self.id, self.reactions[reaction_index].id))
         self.execute_reaction(self.reactions[reaction_index])
 
-    # todo: restructure
-    def handle_event(self, event_list):
-        """ Handle a SSASubmodel simulation event.
+    def handle_SsaWait_msg(self, event):
+        """ Handle an event containing a SsaWait message
 
         Args:
-            event_list: list of event messages to process
+            event (:obj:`Event`): a simulation event
         """
-        # call handle_event() in class SimulationObject which performs generic tasks on the event list
-        SimulationObject.handle_event(self, event_list)
-        if not self.num_events % config_multialgorithm['ssa_event_logging_spacing']:
-            # TODO(Arthur): perhaps log this msg to console
-            self.log_with_time("submodel {}, event {}".format(self.id, self.num_events))
+        self.log_event(event)
+        # TODO(Arthur): generate WARNING(s) if SsaWaits are numerous, or a high fraction of events
+        # no reaction to execute
+        self.schedule_next_events()
 
-        for event in event_list:
-            if isclass_by_name(event.message, message_types.GivePopulation):
+    def handle_GivePopulation_msg(self, event): # pragma: no cover
+        # TODO(Arthur): cover after MVP wc_sim done
+        """ Handle an event containing a GivePopulation message
+        """
+        self.log_event(event)
 
-                # population_values is a GivePopulation body attribute
-                population_values = event.message.population
-                # store population_values in the AccessSpeciesPopulations cache
-                self.access_species_pop.species_population_cache.cache_population(self.now,
-                    population_values)
+        # population_values is a GivePopulation body attribute
+        population_values = event.message.population
+        # store population_values in the AccessSpeciesPopulations cache
+        self.access_species_pop.species_population_cache.cache_population(self.now,
+            population_values)
 
-                self.log_with_time("GivePopulation: {}".format(str(event.message)))
+        self.log_with_time("GivePopulation: {}".format(str(event.message)))
 
-            elif isclass_by_name(event.message, message_types.ExecuteSsaReaction):
+    def handle_ExecuteSsaReaction_msg(self, event):
+        """ Handle an event containing a ExecuteSsaReaction message
 
-                reaction_index = event.message.reaction_index
+        Args:
+            event (:obj:`Event`): a simulation event
+        """
+        self.log_event(event)
 
-                # if the selected reaction is still enabled execute it, otherwise try to choose another
-                if self.enabled_reaction(self.reactions[reaction_index]):
-                    self.execute_SSA_reaction(reaction_index)
+        reaction_index = event.message.reaction_index
 
-                else:
-                    (propensities, total_propensities) = self.determine_reaction_propensities()
-                    if total_propensities == 0:
-                        self.log_with_time("submodel: {}: no reaction to execute".format(
-                            self.id))
-                        self.schedule_SsaWait()
-                        continue
+        # if the selected reaction is still enabled execute it, otherwise try to choose another
+        if self.enabled_reaction(self.reactions[reaction_index]):
+            self.execute_SSA_reaction(reaction_index)
 
-                    else:
-                        # select a reaction
-                        reaction_index = self.random_state.choice(len(propensities),
-                            p = propensities/total_propensities)
-                        self.execute_SSA_reaction(reaction_index)
-
-                self.schedule_next_events()
-
-            elif isclass_by_name(event.message, message_types.SsaWait):
-
-                # TODO(Arthur): generate WARNING(s) if SsaWaits are numerous, or a high fraction of events
-                # no reaction to execute
-                self.schedule_next_events()
+        else:
+            (propensities, total_propensities) = self.determine_reaction_propensities()
+            if total_propensities == 0:
+                self.log_with_time("submodel: {}: no reaction to execute".format(self.id))
+                self.schedule_SsaWait()
+                return
 
             else:
-                assert False, "Error: the 'if' statement should handle " \
-                "event.message '{}'".format(event.message)
+                # select a reaction
+                reaction_index = self.random_state.choice(len(propensities),
+                    p = propensities/total_propensities)
+                self.execute_SSA_reaction(reaction_index)
+
+        self.schedule_next_events()
+
+    def log_event(self, event):
+        """ Log a SSASubmodel simulation event.
+
+
+        Args:
+            event (:obj:`Event`): a simulation event
+        """
+        # TODO(Arthur): provide this function at a higher level, in DynamicSubmodel or SimulationObject
+        # TODO(Arthur): get logging to work
+        if not self.num_events % config_multialgorithm['ssa_event_logging_spacing']:
+            '''
+            print("time {:.2f} submodel {}, event {}, message type {}".format(self.time, self.id, self.num_events,
+                    event.message.__class__.__name__))
+            print(self.get_specie_counts())
+            '''
+            # TODO(Arthur): perhaps log this msg to console
+            self.log_with_time("submodel {}, event {}, message type {}".format(self.id, self.num_events,
+                event.message.__class__.__name__))
 
         self.log_with_time("EMA of inter event time: "
             "{:3.2f}; num_events: {}; num_SsaWaits: {}".format(

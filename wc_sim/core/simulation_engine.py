@@ -8,6 +8,7 @@
 
 import datetime
 import pprint
+import sys
 
 from wc_sim.core.simulation_object import EventQueue, SimulationObject
 from wc_sim.core.errors import SimulatorError
@@ -204,37 +205,40 @@ class SimulationEngine(object):
         num_events_handled = 0
         self.log_with_time("Simulation to {} starting".format(end_time))
         # TODO(Arthur): add optional logical termation condition(s)
-        while self.time <= end_time:
+        try:
+            while self.time <= end_time:
 
-            # TODO(Arthur): provide dynamic control
-            # self.log_simulation_state()
+                # TODO(Arthur): provide dynamic control
+                # self.log_simulation_state()
 
-            # get the earliest next event in the simulation
-            self.log_with_time('Simulation Engine launching next object')
-            # get parameters of next event from self.event_queue
-            next_time = self.event_queue.next_event_time()
-            next_sim_obj = self.event_queue.next_event_obj()
+                # get the earliest next event in the simulation
+                self.log_with_time('Simulation Engine launching next object')
+                # get parameters of next event from self.event_queue
+                next_time = self.event_queue.next_event_time()
+                next_sim_obj = self.event_queue.next_event_obj()
 
-            if float('inf') == next_time:
-                self.log_with_time(" No events remain")
-                break
+                if float('inf') == next_time:
+                    self.log_with_time(" No events remain")
+                    break
 
-            if end_time < next_time:
-                self.log_with_time(" End time exceeded")
-                break
+                if end_time < next_time:
+                    self.log_with_time(" End time exceeded")
+                    break
 
-            num_events_handled += 1
+                num_events_handled += 1
 
-            self.time = next_time
+                self.time = next_time
 
-            # assertion won't be violated unless init message sent to negative time or
-            # objects decrease their time.
-            assert next_sim_obj.time <= next_time, ("Dispatching '{}', but find object time "
-                "{} > event time {}.".format(next_sim_obj.name, next_sim_obj.time, next_time))
+                # assertion won't be violated unless init message sent to negative time or
+                # objects decrease their time.
+                assert next_sim_obj.time <= next_time, ("Dispatching '{}', but find object time "
+                    "{} > event time {}.".format(next_sim_obj.name, next_sim_obj.time, next_time))
 
-            # dispatch object that's ready to execute next event
-            next_sim_obj.time = next_time
-            next_sim_obj.__handle_event_list(self.event_queue.next_events())
+                # dispatch object that's ready to execute next event
+                next_sim_obj.time = next_time
+                next_sim_obj.__handle_event_list(self.event_queue.next_events())
+        except SimulatorError as e:
+            print('Simulation ended with error:', e, file=sys.stderr)
 
         return num_events_handled
 

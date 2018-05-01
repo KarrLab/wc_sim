@@ -97,7 +97,8 @@ class DynamicSubmodel(ApplicationSimulationObject):
             :obj:`dict`: a map: species_id -> species concentration
 
         Raises:
-            :obj:`MultialgorithmError:` if a dynamic compartment cannot be found for a specie being modeled
+            :obj:`MultialgorithmError:` if a dynamic compartment cannot be found for a specie being modeled,
+                or if the compartments volume is 0
         """
         counts = self.get_specie_counts()
         concentrations = {}
@@ -107,6 +108,9 @@ class DynamicSubmodel(ApplicationSimulationObject):
                 raise MultialgorithmError("dynamic submodel '{}' lacks dynamic compartment '{}' for specie '{}'".format(
                     self.id, compartment_id, specie_id))
             dynamic_compartment = self.dynamic_compartments[compartment_id]
+            if dynamic_compartment.volume() == 0:
+                raise MultialgorithmError("submodel '{}' cannot compute concentration in compartment '{}' "
+                    "with volume=0".format(self.id, compartment_id))
             concentrations[specie_id] = counts[specie_id]/(dynamic_compartment.volume()*Avogadro)
         return concentrations
 
