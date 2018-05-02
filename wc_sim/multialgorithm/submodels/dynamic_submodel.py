@@ -126,6 +126,7 @@ class DynamicSubmodel(ApplicationSimulationObject):
             :obj:`np.ndarray`: a numpy array of reaction rates, indexed by reaction index
         """
         rates = np.full(len(self.reactions), np.nan)
+        # TODO(Arthur): get concentrations only for modifiers in the reactions
         species_concentrations = self.get_specie_concentrations()
         for idx_reaction, rxn in enumerate(self.reactions):
             if rxn.rate_laws:

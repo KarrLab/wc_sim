@@ -295,14 +295,8 @@ class SSASubmodel(DynamicSubmodel):
         Args:
             event (:obj:`Event`): a simulation event
         """
-        # TODO(Arthur): provide this function at a higher level, in DynamicSubmodel or SimulationObject
-        # TODO(Arthur): get logging to work
+        # TODO(Arthur): provide a similar function at a higher level, in DynamicSubmodel or SimulationObject
         if not self.num_events % config_multialgorithm['ssa_event_logging_spacing']:
-            '''
-            print("time {:.2f} submodel {}, event {}, message type {}".format(self.time, self.id, self.num_events,
-                    event.message.__class__.__name__))
-            print(self.get_specie_counts())
-            '''
             # TODO(Arthur): perhaps log this msg to console
             self.log_with_time("submodel {}, event {}, message type {}".format(self.id, self.num_events,
                 event.message.__class__.__name__))

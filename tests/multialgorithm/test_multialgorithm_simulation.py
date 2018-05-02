@@ -104,20 +104,52 @@ class TestRunSSASimulation(unittest.TestCase):
     def setUp(self):
         self.make_models = MakeModels()
 
-    def test_run_ssa(self):
-        initial_pop = 3000
-        specie = 'spec_type_0[c]'
-        for i in range(5):
-            _, multialgorithm_simulation, simulation_engine = self.make_model_and_simulation(
-                '1 species, 1 reaction',
-                specie_copy_numbers={specie: initial_pop})
-            simulation_engine.initialize()
-            run_time = 1000
-            num_events_handled = simulation_engine.run(run_time)
-            specie_counts = multialgorithm_simulation.simulation_submodels[0].get_specie_counts()
-            # print(specie_counts, abs(initial_pop - specie_counts[specie]))
-            self.assertAlmostEqual(run_time, initial_pop - specie_counts[specie], delta=100)
-
     # TODO(Arthur): make stochastic tests of SSA
     # TODO(Arthur): catch MultialgorithmErrors from get_specie_concentrations, and elsewhere
     # TODO(Arthur): how does performance compare with and without Docker
+
+    def perform_ssa_test_run(self, model_type, run_time, initial_specie_copy_numbers,
+        expected_mean_copy_numbers, delta, iterations=5):
+        """ Test SSA by comparing expeccted and actual simulation copy numbers
+
+        Args:
+            model_type (:obj:`str`): model type description
+            run_time (:obj:`float`): duration of the simulation run
+            initial_specie_copy_numbers (:obj:`dict`): initial specie counts, with IDs as keys and counts as values
+            expected_mean_copy_numbers (:obj:`str`): expected final mean specie counts, in same format as
+                `initial_specie_copy_numbers`
+            delta (:obj:`int`): threshold difference between expected and actual counts
+            iterations (:obj:`int`): number of simulation runs
+        """
+        # todo: analytically determine the values for delta
+        # todo: invariants (:obj:`list`): list of invariant relationships, to be eval'ed
+        final_specie_counts = []
+        for i in range(iterations):
+            _, multialgorithm_simulation, simulation_engine = self.make_model_and_simulation(
+                model_type,
+                specie_copy_numbers=initial_specie_copy_numbers)
+            simulation_engine.initialize()
+            num_events_handled = simulation_engine.run(run_time)
+            final_specie_counts.append(multialgorithm_simulation.simulation_submodels[0].get_specie_counts())
+            print(i, final_specie_counts[-1])
+
+        mean_final_specie_counts = dict.fromkeys(list(initial_specie_copy_numbers.keys()), 0)
+        # todo: use numpy to more compactly compile the mean final specie counts
+        for final_specie_count in final_specie_counts:
+            for k,v in final_specie_count.items():
+                mean_final_specie_counts[k] += v
+        for k,v in mean_final_specie_counts.items():
+            mean_final_specie_counts[k] = v/iterations
+            self.assertAlmostEqual(mean_final_specie_counts[k], expected_mean_copy_numbers[k], delta=delta)
+
+    def test_run_ssa_suite(self):
+        self.perform_ssa_test_run('1 species, 1 reaction',
+            run_time=1000,
+            initial_specie_copy_numbers={'spec_type_0[c]':3000},
+            expected_mean_copy_numbers={'spec_type_0[c]':2000},
+            delta=50)
+        self.perform_ssa_test_run('2 species, 1 reaction',
+            run_time=1000,
+            initial_specie_copy_numbers={'spec_type_0[c]':3000, 'spec_type_1[c]':0},
+            expected_mean_copy_numbers={'spec_type_0[c]':2000,  'spec_type_1[c]':1000},
+            delta=50)
