@@ -109,8 +109,8 @@ class DynamicSubmodel(ApplicationSimulationObject):
                     self.id, compartment_id, specie_id))
             dynamic_compartment = self.dynamic_compartments[compartment_id]
             if dynamic_compartment.volume() == 0:
-                raise MultialgorithmError("submodel '{}' cannot compute concentration in compartment '{}' "
-                    "with volume=0".format(self.id, compartment_id))
+                raise MultialgorithmError("dynamic submodel '{}' cannot compute concentration in "
+                    "compartment '{}' with volume=0".format(self.id, compartment_id))
             concentrations[specie_id] = counts[specie_id]/(dynamic_compartment.volume()*Avogadro)
         return concentrations
 

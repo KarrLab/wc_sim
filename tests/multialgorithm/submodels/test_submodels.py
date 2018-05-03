@@ -21,6 +21,7 @@ from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimula
 from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation
 from wc_sim.multialgorithm import message_types, distributed_properties
 from wc_sim.multialgorithm.utils import get_species_and_compartment_from_name
+from wc_sim.multialgorithm.make_models import MakeModels
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm.submodels.skeleton_submodel import SkeletonSubmodel
 from obj_model.utils import get_component_by_id
@@ -78,11 +79,22 @@ class TestDynamicSubmodel(unittest.TestCase):
             for specie_id,v in dynamic_submodel.get_specie_concentrations().items():
                 if specie_id in expected_conc:
                     self.assertAlmostEqual(expected_conc[specie_id], v)
+
         for dynamic_submodel in self.misconfigured_dynamic_submodels.values():
             with self.assertRaises(MultialgorithmError) as context:
                 dynamic_submodel.get_specie_concentrations()
             self.assertRegex(str(context.exception),
                 "dynamic submodel .* lacks dynamic compartment .* for specie .*")
+
+        # test volume=0 exception; must create model with 0<mass and then decrease counts
+        model = MakeModels().make_test_model('1 species, 1 reaction',
+            specie_copy_numbers={'spec_type_0[c]': 1})
+        dynamic_submodel = DynamicSubmodel(*make_dynamic_submodel_params(model, model.submodels[0]))
+        dynamic_submodel.local_species_population.adjust_discretely(0, {'spec_type_0[c]': -1})
+        with self.assertRaises(MultialgorithmError) as context:
+            dynamic_submodel.get_specie_concentrations()
+        self.assertRegex(str(context.exception),
+            "dynamic submodel .* cannot compute concentration in compartment .* with volume=0")
 
     def test_calc_reaction_rates(self):
         expected_rates = {'reaction_2': 0.0, 'reaction_4': 2.0}

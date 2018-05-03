@@ -131,7 +131,6 @@ class TestRunSSASimulation(unittest.TestCase):
             simulation_engine.initialize()
             num_events_handled = simulation_engine.run(run_time)
             final_specie_counts.append(multialgorithm_simulation.simulation_submodels[0].get_specie_counts())
-            print(i, final_specie_counts[-1])
 
         mean_final_specie_counts = dict.fromkeys(list(initial_specie_copy_numbers.keys()), 0)
         # todo: use numpy to more compactly compile the mean final specie counts

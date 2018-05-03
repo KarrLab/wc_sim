@@ -13,7 +13,7 @@ from wc_lang.io import Writer
 from wc_lang.core import RateLawDirection
 from wc_sim.multialgorithm.make_models import MakeModels, RateLawType
 
-
+# TODO:(Arthur): fully cover MakeModels
 class TestMakeModels(unittest.TestCase):
 
     def test_make_test_model(self):
@@ -54,6 +54,7 @@ class TestMakeModels(unittest.TestCase):
         for model_type in model_types:
             model = self.make_models.make_test_model(model_type)
             '''
+            # TODO:(Arthur): test round tripping here
             # if desired, write model to spreadsheet
             file = model_type.replace(' ', '_')
             filename = os.path.join(os.path.dirname(__file__), 'tmp', file+'.xlsx')

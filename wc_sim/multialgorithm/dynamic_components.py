@@ -68,6 +68,13 @@ class DynamicCompartment(object):
         Returns:
             :obj:`float`: this compartment's current volume (L)
         """
+        # TODO(Arthur): decide what to do if self.constant_density == 0; suggest this
+        '''
+        if self.constant_density == 0:
+            return self.init_volume
+        # and, upon initialization
+        warn("DynamicCompartment '{}': with initial mass of 0 constant_density is 0, and volume will remain constant".format())
+        '''
         return self.mass()/self.constant_density
 
     def density(self):

@@ -245,9 +245,9 @@ class MultialgorithmSimulation(object):
             if specie.concentration is None:
                 init_populations[specie.id()] = 0
             else:
-                # TODO(Arthur): confirm that rounding down is OK here
+                # population must be rounded to the closest integer to avoid truncating small populations
                 init_populations[specie.id()] = \
-                    int(specie.concentration.value * specie.compartment.initial_volume * Avogadro)
+                    int(round(specie.concentration.value * specie.compartment.initial_volume * Avogadro))
         return init_populations
 
     def get_dynamic_compartments(self, submodel):
