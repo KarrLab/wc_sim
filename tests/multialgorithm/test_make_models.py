@@ -47,12 +47,12 @@ class TestMakeModels(unittest.TestCase):
             (2, 1, True, RateLawType.product_pop)
         ]
         for model_type,expected_params in zip(model_types, expected_params_list):
-            params = self.make_models.get_model_type_params(model_type)
+            params = MakeModels.get_model_type_params(model_type)
             self.assertEqual(params, expected_params)
 
         # test make_test_model
         for model_type in model_types:
-            model = self.make_models.make_test_model(model_type)
+            model = MakeModels.make_test_model(model_type)
             '''
             # TODO:(Arthur): test round tripping here
             # if desired, write model to spreadsheet
@@ -63,7 +63,7 @@ class TestMakeModels(unittest.TestCase):
             '''
 
         # unittest one of the models made
-        model = self.make_models.make_test_model(model_types[4])
+        model = MakeModels.make_test_model(model_types[4])
         self.assertEqual(model.id, 'test_model')
         comp = model.compartments[0]
         self.assertEqual(comp.id, 'c')
@@ -105,7 +105,7 @@ class TestMakeModels(unittest.TestCase):
         default_cn = 2000000
         spec_type_0_cn = 100000
         init_vol = 1E-13
-        model = self.make_models.make_test_model(model_types[4], default_specie_copy_number=default_cn,
+        model = MakeModels.make_test_model(model_types[4], default_specie_copy_number=default_cn,
             specie_copy_numbers={'spec_type_0[c]':spec_type_0_cn}, init_vol=init_vol)
         concentrations = []
         for concentration in model.get_concentrations():
@@ -119,10 +119,9 @@ class TestMakeModels(unittest.TestCase):
 
         # test exception
         with self.assertRaises(ValueError):
-            self.make_models.make_test_model('3 reactions')
+            MakeModels.make_test_model('3 reactions')
 
     def setUp(self):
-        self.make_models = MakeModels()
         self.tmp_dir = os.path.join(os.path.dirname(__file__), 'tmp')
         if not os.path.exists(self.tmp_dir):
             os.mkdir(self.tmp_dir)

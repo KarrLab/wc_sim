@@ -65,7 +65,8 @@ class MakeModels(object):
     def convert_pop_conc(specie_copy_number, vol):
         return specie_copy_number/(vol*Avogadro)
 
-    def make_test_model(self, model_type, default_specie_copy_number=1000000, specie_copy_numbers=None,
+    @staticmethod
+    def make_test_model(model_type, default_specie_copy_number=1000000, specie_copy_numbers=None,
         init_vol=1E-16):
         """ Create a test model
 
@@ -77,9 +78,9 @@ class MakeModels(object):
         Returns:
             :obj:`Model`: a `wc_lang` model
         """
-        default_concentration = self.convert_pop_conc(default_specie_copy_number, init_vol)
+        default_concentration = MakeModels.convert_pop_conc(default_specie_copy_number, init_vol)
 
-        num_species, num_reactions, reversible, rate_law_type = self.get_model_type_params(model_type)
+        num_species, num_reactions, reversible, rate_law_type = MakeModels.get_model_type_params(model_type)
         if (2<num_species or 1<num_reactions or
             (0<num_reactions and num_species==0) or
             (rate_law_type == RateLawType.product_pop and num_species != 2)):
@@ -101,7 +102,7 @@ class MakeModels(object):
             spec = comp.species.create(species_type=spec_type)
             species.append(spec)
             if specie_copy_numbers is not None and spec.id() in specie_copy_numbers:
-                concentration = self.convert_pop_conc(specie_copy_numbers[spec.id()], init_vol)
+                concentration = MakeModels.convert_pop_conc(specie_copy_numbers[spec.id()], init_vol)
                 Concentration(species=spec, value=concentration)
             else:
                 Concentration(species=spec, value=default_concentration)
@@ -159,5 +160,4 @@ class MakeModels(object):
         for base_model in [Submodel,  SpeciesType, Reaction, Observable, Compartment, Parameter]:
             base_model.get_manager().insert_all_new()
 
-        self.model = model
         return model

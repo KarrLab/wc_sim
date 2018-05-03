@@ -95,18 +95,14 @@ class TestRunSSASimulation(unittest.TestCase):
         for base_model in [Submodel, Species, SpeciesType]:
             base_model.objects.reset()
         # make simple model
-        model = self.make_models.make_test_model(model_type, specie_copy_numbers=specie_copy_numbers)
+        model = MakeModels.make_test_model(model_type, specie_copy_numbers=specie_copy_numbers)
         args = Namespace()
         multialgorithm_simulation = MultialgorithmSimulation(model, args)
         simulation_engine, _ = multialgorithm_simulation.build_simulation()
         return (model, multialgorithm_simulation, simulation_engine)
 
-    def setUp(self):
-        self.make_models = MakeModels()
-
     # TODO(Arthur): make stochastic tests of SSA
     # TODO(Arthur): catch MultialgorithmErrors from get_specie_concentrations, and elsewhere
-    # TODO(Arthur): how does performance compare with and without Docker
 
     def perform_ssa_test_run(self, model_type, run_time, initial_specie_copy_numbers,
         expected_mean_copy_numbers, delta, iterations=5):
