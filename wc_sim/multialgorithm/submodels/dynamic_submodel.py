@@ -125,6 +125,7 @@ class DynamicSubmodel(ApplicationSimulationObject):
         Returns:
             :obj:`np.ndarray`: a numpy array of reaction rates, indexed by reaction index
         """
+        # TODO(Arthur): optimization: since len(self.reactions) is constant, preallocate this array
         rates = np.full(len(self.reactions), np.nan)
         # TODO(Arthur): get concentrations only for modifiers in the reactions
         species_concentrations = self.get_specie_concentrations()

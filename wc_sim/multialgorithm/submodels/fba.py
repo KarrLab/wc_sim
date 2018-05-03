@@ -20,6 +20,7 @@ with warnings.catch_warnings():
 
 from wc_sim.core.simulation_object import SimulationObject
 from wc_sim.multialgorithm import message_types
+from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm.submodels.dynamic_submodel import DynamicSubmodel
 from wc_utils.util.misc import isclass_by_name
 
@@ -77,6 +78,8 @@ class FbaSubmodel(DynamicSubmodel):
         """
         super().__init__(id, reactions, species, parameters, dynamic_compartment, local_species_population)
         self.algorithm = 'FBA'
+        if time_step <= 0:
+            raise MultialgorithmError("time_step must be positive, but is {}".format(time_step))
         self.time_step = time_step
 
         # log initialization data

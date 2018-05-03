@@ -90,22 +90,20 @@ class TestMultialgorithmSimulation(unittest.TestCase):
 
 class TestRunSSASimulation(unittest.TestCase):
 
-    def make_model_and_simulation(self, model_type, specie_copy_numbers=None):
+    def make_model_and_simulation(self, model_type, specie_copy_numbers=None, init_vol=None):
         # reset indices
         for base_model in [Submodel, Species, SpeciesType]:
             base_model.objects.reset()
         # make simple model
-        model = MakeModels.make_test_model(model_type, specie_copy_numbers=specie_copy_numbers)
+        model = MakeModels.make_test_model(model_type, specie_copy_numbers=specie_copy_numbers,
+            init_vol=init_vol)
         args = Namespace()
         multialgorithm_simulation = MultialgorithmSimulation(model, args)
         simulation_engine, _ = multialgorithm_simulation.build_simulation()
         return (model, multialgorithm_simulation, simulation_engine)
 
-    # TODO(Arthur): make stochastic tests of SSA
-    # TODO(Arthur): catch MultialgorithmErrors from get_specie_concentrations, and elsewhere
-
     def perform_ssa_test_run(self, model_type, run_time, initial_specie_copy_numbers,
-        expected_mean_copy_numbers, delta, iterations=5):
+        expected_mean_copy_numbers, delta, iterations=5, init_vol=None):
         """ Test SSA by comparing expeccted and actual simulation copy numbers
 
         Args:
@@ -115,7 +113,8 @@ class TestRunSSASimulation(unittest.TestCase):
             expected_mean_copy_numbers (:obj:`str`): expected final mean specie counts, in same format as
                 `initial_specie_copy_numbers`
             delta (:obj:`int`): threshold difference between expected and actual counts
-            iterations (:obj:`int`): number of simulation runs
+            iterations (:obj:`int`, optional): number of simulation runs
+            init_vol (:obj:`float`, optional): initial volume of compartment
         """
         # todo: analytically determine the values for delta
         # todo: invariants (:obj:`list`): list of invariant relationships, to be eval'ed
@@ -123,7 +122,8 @@ class TestRunSSASimulation(unittest.TestCase):
         for i in range(iterations):
             _, multialgorithm_simulation, simulation_engine = self.make_model_and_simulation(
                 model_type,
-                specie_copy_numbers=initial_specie_copy_numbers)
+                specie_copy_numbers=initial_specie_copy_numbers,
+                init_vol=init_vol)
             simulation_engine.initialize()
             num_events_handled = simulation_engine.run(run_time)
             final_specie_counts.append(multialgorithm_simulation.simulation_submodels[0].get_specie_counts())
@@ -148,3 +148,18 @@ class TestRunSSASimulation(unittest.TestCase):
             initial_specie_copy_numbers={'spec_type_0[c]':3000, 'spec_type_1[c]':0},
             expected_mean_copy_numbers={'spec_type_0[c]':2000,  'spec_type_1[c]':1000},
             delta=50)
+        # test reaction with rate determined by reactant population; decrease volume to increase rates
+        init_spec_type_0_pop = 2000
+        self.perform_ssa_test_run('2 species, 1 reaction, with rates given by reactant population',
+            run_time=1000,
+            initial_specie_copy_numbers={'spec_type_0[c]':init_spec_type_0_pop, 'spec_type_1[c]':0},
+            expected_mean_copy_numbers={'spec_type_0[c]':0,  'spec_type_1[c]':init_spec_type_0_pop},
+            delta=0,
+            init_vol=1E-22)
+
+    # TODO(Arthur): catch MultialgorithmErrors from get_specie_concentrations, and elsewhere
+    # TODO(Arthur): record population history
+    # TODO(Arthur): plot population history
+    # TODO(Arthur): fit exponential to reaction, with rates given by reactant population
+    # TODO(Arthur): have identify_enabled_reactions() return a disabled reaction
+    # TODO(Arthur): have if self.enabled_reaction(self.reactions[reaction_index]) do else branch

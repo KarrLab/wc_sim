@@ -12,7 +12,6 @@ import numpy as np
 from scipy.constants import Avogadro
 
 from wc_utils.util.rand import RandomStateManager
-from wc_utils.util.misc import isclass_by_name
 from wc_utils.util.stats import ExponentialMovingAverage
 
 from wc_sim.core.config import core as config_core_core
@@ -196,9 +195,10 @@ class SSASubmodel(DynamicSubmodel):
         5. schedule the next reaction
 
         Returns:
-            float: the delay until the next SSA reaction, or NaN if no reaction is scheduled
+            float: the delay until the next SSA reaction, or `NaN` if no reaction is scheduled
         """
         (propensities, total_propensities) = self.determine_reaction_propensities()
+        # TODO(Arthur): raise exception if total_propensities < 0
         if total_propensities <= 0:
             self.schedule_SsaWait()
             return float('NaN')
@@ -207,21 +207,24 @@ class SSASubmodel(DynamicSubmodel):
         dt = self.random_state.exponential(1/total_propensities)
 
         # schedule next reaction
-        reaction_index = self.random_state.choice(len(propensities), p = propensities/total_propensities)
+        # dividing propensities by total_propensities isn't needed -- it wouldn't change relative propensities
+        # however, numpy choice() requires valid probabilities for p
+        # TODO(Arthur): consider using Python's random.choice() which accepts weights
+        reaction_index = self.random_state.choice(len(propensities), p=propensities/total_propensities)
         self.schedule_ExecuteSsaReaction(dt, reaction_index)
         return dt
 
     def schedule_next_events(self):
-        """ Schedule the next events for this submodel"""
+        """ Schedule the next events for this submodel
+        """
 
         # schedule next SSA reaction, or a SSA wait if no reaction is ready to fire
         time_to_next_reaction = self.schedule_next_SSA_reaction()
 
-        return
+        return  # TODO(Arthur): cover after MVP wc_sim done
 
         # prefetch into cache
         if not (math.isnan(time_to_next_reaction) or self.access_species_pop is None):  # pragma: no cover
-        # TODO(Arthur): cover after MVP wc_sim done
             self.access_species_pop.prefetch(time_to_next_reaction, self.get_species_ids())
 
     def execute_SSA_reaction(self, reaction_index):
@@ -282,15 +285,13 @@ class SSASubmodel(DynamicSubmodel):
 
             else:
                 # select a reaction
-                reaction_index = self.random_state.choice(len(propensities),
-                    p = propensities/total_propensities)
+                reaction_index = self.random_state.choice(len(propensities), p=propensities/total_propensities)
                 self.execute_SSA_reaction(reaction_index)
 
         self.schedule_next_events()
 
     def log_event(self, event):
         """ Log a SSASubmodel simulation event.
-
 
         Args:
             event (:obj:`Event`): a simulation event

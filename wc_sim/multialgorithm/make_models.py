@@ -67,17 +67,19 @@ class MakeModels(object):
 
     @staticmethod
     def make_test_model(model_type, default_specie_copy_number=1000000, specie_copy_numbers=None,
-        init_vol=1E-16):
+        init_vol=None):
         """ Create a test model
 
         Args:
             model_type (:obj:`str`): model type description
             default_specie_copy_number (:obj:`int`): default population of all species in their compartments
             specie_copy_numbers (:obj:`dict`): populations for particular species, which overrides `default_specie_copy_number`
+            init_vol (:obj:`float`, optional): initial volume of the compartment; default=1E-16
 
         Returns:
             :obj:`Model`: a `wc_lang` model
         """
+        init_vol = 1E-16 if init_vol is None else init_vol
         default_concentration = MakeModels.convert_pop_conc(default_specie_copy_number, init_vol)
 
         num_species, num_reactions, reversible, rate_law_type = MakeModels.get_model_type_params(model_type)
