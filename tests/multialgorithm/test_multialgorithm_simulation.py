@@ -30,6 +30,37 @@ from wc_sim.multialgorithm.config import core as config_core_multialgorithm
 config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 
 
+# TODO(Arthur): transcode & eval invariants
+class Invariant(object):
+    """ Support invariant expressions on species concentrations for model testing
+
+    Attributes:
+        original_value (:obj:`str`): the original, readable representation of the invariant
+        transcoded (:obj:`str`): a representation of the invariant that's ready to be evaluated
+    """
+
+    def __init__(self, original_value):
+        """
+        Args:
+            original_value (:obj:`str`): the original, readable representation of the invariant
+        """
+        self.original_value = original_value
+        self.transcoded = None
+
+    def transcode(self):
+        """ Transcode the invariant into a form that can be evaluated
+        """
+        pass
+
+    def eval(self):
+        """ Evaluate the invariant
+
+        Returns:
+            :obj:`bool`: value returned by the invariant
+        """
+        return True
+
+
 class TestMultialgorithmSimulation(unittest.TestCase):
 
     MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_model.xlsx')
@@ -103,7 +134,7 @@ class TestRunSSASimulation(unittest.TestCase):
         return (model, multialgorithm_simulation, simulation_engine)
 
     def perform_ssa_test_run(self, model_type, run_time, initial_specie_copy_numbers,
-        expected_mean_copy_numbers, delta, iterations=5, init_vol=None):
+        expected_mean_copy_numbers, delta, invariants=None, iterations=5, init_vol=None):
         """ Test SSA by comparing expeccted and actual simulation copy numbers
 
         Args:
@@ -113,11 +144,13 @@ class TestRunSSASimulation(unittest.TestCase):
             expected_mean_copy_numbers (:obj:`str`): expected final mean specie counts, in same format as
                 `initial_specie_copy_numbers`
             delta (:obj:`int`): threshold difference between expected and actual counts
+            invariants (:obj:`list`, optional): list of invariant relationships, to be tested
             iterations (:obj:`int`, optional): number of simulation runs
             init_vol (:obj:`float`, optional): initial volume of compartment
         """
-        # todo: analytically determine the values for delta
-        # todo: invariants (:obj:`list`): list of invariant relationships, to be eval'ed
+        # TODO(Arthur): analytically determine the values for delta
+        invariant_objs = [] if invariants is None else [Invariant(value) for value in invariants]
+
         final_specie_counts = []
         for i in range(iterations):
             _, multialgorithm_simulation, simulation_engine = self.make_model_and_simulation(
@@ -129,13 +162,15 @@ class TestRunSSASimulation(unittest.TestCase):
             final_specie_counts.append(multialgorithm_simulation.simulation_submodels[0].get_specie_counts())
 
         mean_final_specie_counts = dict.fromkeys(list(initial_specie_copy_numbers.keys()), 0)
-        # todo: use numpy to more compactly compile the mean final specie counts
+        # TODO(Arthur): use numpy to more compactly compile the mean final specie counts
         for final_specie_count in final_specie_counts:
             for k,v in final_specie_count.items():
                 mean_final_specie_counts[k] += v
         for k,v in mean_final_specie_counts.items():
             mean_final_specie_counts[k] = v/iterations
             self.assertAlmostEqual(mean_final_specie_counts[k], expected_mean_copy_numbers[k], delta=delta)
+        for invariant_obj in invariant_objs:
+            self.assertTrue(invariant_obj.eval())
 
     def test_run_ssa_suite(self):
         self.perform_ssa_test_run('1 species, 1 reaction',
