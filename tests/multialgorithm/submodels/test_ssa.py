@@ -38,16 +38,15 @@ class TestSsaSubmodel(unittest.TestCase):
 
     def setUp(self):
         SpeciesType.objects.reset()
-        self.make_models = MakeModels()
 
     def test_SSA_submodel_init(self):
-        model = self.make_models.make_test_model('1 species, 1 reaction')
+        model = MakeModels.make_test_model('1 species, 1 reaction')
         ssa_submodel = self.make_ssa_submodel(model, default_center_of_mass=20)
         self.assertTrue(isinstance(ssa_submodel, SSASubmodel))
 
     def test_static_SSA_submodel_methods(self):
         # static tests of ssa methods
-        model = self.make_models.make_test_model('1 species, 1 reaction')
+        model = MakeModels.make_test_model('1 species, 1 reaction')
         ssa_submodel = self.make_ssa_submodel(model)
         self.assertEqual(ssa_submodel.num_SsaWaits, 0)
         self.assertTrue(0<ssa_submodel.ema_of_inter_event_time.get_ema())
@@ -62,7 +61,7 @@ class TestSsaSubmodel(unittest.TestCase):
             'spec_type_1[c]':2*spec_type_0_cn
         }
         # with constant reaction rates, all propensities are equal
-        model = self.make_models.make_test_model(
+        model = MakeModels.make_test_model(
             '2 species, a pair of symmetrical reactions with constant rates',
             specie_copy_numbers=specie_copy_numbers)
         ssa_submodel = self.make_ssa_submodel(model)
@@ -71,7 +70,7 @@ class TestSsaSubmodel(unittest.TestCase):
 
         # with rates given by reactant population, propensities proportional to copy number
         SpeciesType.objects.reset()
-        model = self.make_models.make_test_model(
+        model = MakeModels.make_test_model(
             '2 species, a pair of symmetrical reactions rates given by reactant population',
             specie_copy_numbers=specie_copy_numbers)
         ssa_submodel = self.make_ssa_submodel(model)
