@@ -27,6 +27,7 @@ class CheckpointLogTest(unittest.TestCase):
 
     def tearDown(self):
         shutil.rmtree(self.checkpoint_dir)
+        shutil.rmtree(self.out_dir)
 
     def test_constructor_creates_checkpoint_dir(self):
         checkpoint_dir = os.path.join(self.checkpoint_dir, 'checkpoint')
@@ -63,9 +64,12 @@ class CheckpointLogTest(unittest.TestCase):
             decimal=1)
 
         # check checkpoints have correct data
-        chkpt = wc_sim.log.checkpoint.Checkpoint.get_checkpoint(dirname=checkpoint_dir, time=2)
+        checkpoint_time = 5
+        chkpt = wc_sim.log.checkpoint.Checkpoint.get_checkpoint(dirname=checkpoint_dir, time=checkpoint_time)
+        self.assertIn('time:', str(chkpt))
+        self.assertIn('state:', str(chkpt))
         self.assertEqual(chkpt.metadata, dict(time_max=time_max))
-        self.assertGreaterEqual(chkpt.time, 2)
+        self.assertLessEqual(chkpt.time, checkpoint_time)
 
         chkpt = wc_sim.log.checkpoint.Checkpoint.get_checkpoint(dirname=checkpoint_dir)
         self.assertEqual(chkpt.metadata, dict(time_max=time_max))

@@ -56,7 +56,7 @@ class Invariant(object):
         """ Evaluate the invariant
 
         Returns:
-            :obj:`bool`: value returned by the invariant
+            :obj:`object`: value returned by the invariant, usually a `bool`
         """
         return True
 

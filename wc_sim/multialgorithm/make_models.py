@@ -70,6 +70,11 @@ class MakeModels(object):
         init_vol=None):
         """ Create a test model
 
+        * 1 compartment
+        * 1 submodel
+        * 1 or 2 species
+        * 1 or 2 reactions
+
         Args:
             model_type (:obj:`str`): model type description
             default_specie_copy_number (:obj:`int`): default population of all species in their compartments

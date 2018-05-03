@@ -8,6 +8,7 @@
 
 import math
 import numpy
+from bisect import bisect
 import os
 import pickle
 import re
@@ -47,16 +48,22 @@ class Checkpoint(object):
 
     @staticmethod
     def get_checkpoint(dirname, time=None):
-        """ Get most recent checkpoint before time `time` from the checkpoint directory `dirname`.
-        For example if `time` = 1.99 s and there are checkpoints at 1.0 s, 1.5 s, and 2.0 s,
-        return the checkpoint from 1.5 s.
+        """ Get the latest checkpoint in directory `dirname` with time before or equal to `time`
+
+        For example, consider checkpoints at 1.0 s, 1.5 s, and 2.0 s. If `time` = 1.5 s, then
+        return the checkpoint from 1.5 s. Return the same checkpoint if `time` = 1.9 s.
+        If no checkpoint with time <= `time` exists, then return the first checkpoint. E.g., if
+        `time` = 0.9 s, the checkpoint from 1.0 s would be returned.
+        Finally, if `time` is `None`, return the last checkpoint.
 
         Args:
             dirname (:obj:`str`): directory to read/write checkpoint data
-            time (:obj:`float`): time in seconds of desired checkpoint
+            time (:obj:`float`, optional): time in seconds of desired checkpoint; if not provided,
+                the most recent checkpoint is returned 
 
         Returns:
-            :obj:`Checkpoint`: most recent checkpoint before time `time`
+            :obj:`Checkpoint`: the most recent checkpoint before time `time`, or the most recent
+                checkpoint if `time` is not provided
         """
 
         # get list of checkpoints
@@ -66,7 +73,9 @@ class Checkpoint(object):
         if time is None:
             nearest_time = checkpoint_times[-1]
         else:
-            nearest_time = checkpoint_times[numpy.argmax(numpy.array(checkpoint_times) < time)]
+            index = bisect(checkpoint_times, time) - 1
+            index = max(index, 0)
+            nearest_time = checkpoint_times[index]
 
         file_name = Checkpoint.get_file_name(dirname, nearest_time)
 
@@ -111,6 +120,18 @@ class Checkpoint(object):
         """
 
         return os.path.join(dirname, '{:0.6f}.pickle'.format(math.floor(time * 1e6) / 1e6))
+
+    def __str__(self):
+        """ Provide a human readable representation of this `Checkpoint`
+
+        Returns:
+            :obj:`str`: a human readable representation of this `Checkpoint`
+        """
+
+        rv = []
+        for attr in ['time', 'metadata', 'state', 'random_state']:
+            rv.append("{}: {}".format(attr, str(getattr(self, attr))))
+        return '\n'.join(rv)
 
 
 class CheckpointLogger(object):
@@ -163,7 +184,7 @@ class CheckpointLogger(object):
         Args:
             time (:obj:`float`): simulation time in seconds
             state (:obj:`object`): simulated state (e.g. species counts)
-            random_state (:obj:`numpy.random.RandState`): random number generator state
+            random_state (:obj:`numpy.random.RandomState`): random number generator state
         """
 
         Checkpoint.set_checkpoint(self.dirname, Checkpoint(self.metadata, time, state, random_state.get_state()))

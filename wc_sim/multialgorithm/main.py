@@ -29,7 +29,7 @@ from wc_lang.prepare import PrepareModel, CheckModel
 DEFAULTS = dict(
     prediction_recording_interval=1,
     FBA_time_step=1,
-    results_dir='wc_sim_results'
+    results_dir='to_be_determined'
 )
 class RunSimulation(object):
 
