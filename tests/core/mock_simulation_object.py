@@ -14,7 +14,7 @@ from wc_sim.core.simulation_object import SimulationObject, ApplicationSimulatio
 # TODO(Arthur): get coverage reports of the test_mock_simulation_object.py test of this module
 # the obvious ways using 'coverage' or 'pytest' do not work
 class MockSimulationObject(ApplicationSimulationObject):
-    """ An object to help test simulation objects
+    """ An object that helps test simulation objects
     """
 
     def __init__(self, name, test_case, **kwargs):
@@ -33,4 +33,6 @@ class MockSimulationObject(ApplicationSimulationObject):
         (self.test_case, self.kwargs) = (test_case, kwargs)
         super().__init__(name)
 
+    # use 'abstract' to indicate that this class should not be instantiated
+    abstract = True
     messages_sent = []

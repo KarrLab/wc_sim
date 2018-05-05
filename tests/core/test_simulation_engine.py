@@ -15,6 +15,7 @@ import cProfile
 import pstats
 import copy
 import random
+import warnings
 
 from wc_sim.core.errors import SimulatorError
 from wc_sim.core.simulation_message import SimulationMessage
@@ -28,20 +29,6 @@ from wc_sim.core.debug_logs import logs, config
 
 
 ALL_MESSAGE_TYPES = [InitMsg, Eg1]
-
-
-class InactiveSimulationObject(ApplicationSimulationObject):
-
-    def __init__(self):
-        SimulationObject.__init__(self, 'inactive')
-
-    def send_initial_events(self): pass
-
-    def get_state(self): pass
-
-    event_handlers = []
-
-    messages_sent = []
 
 
 class BasicExampleSimulationObject(ApplicationSimulationObject):
@@ -243,8 +230,23 @@ class TestSimulationEngine(unittest.TestCase):
         self.make_cyclical_messaging_network_sim(10)
         self.simulator.initialize()
         self.simulator.simulate(20)
+        # todo: this method doesn't contain tests
 
     def test_message_queues(self):
+        warnings.simplefilter("ignore")
+        class InactiveSimulationObject(ApplicationSimulationObject):
+
+            def __init__(self):
+                SimulationObject.__init__(self, 'inactive')
+
+            def send_initial_events(self): pass
+
+            def get_state(self): pass
+
+            event_handlers = []
+
+            messages_sent = [InitMsg]
+
         self.make_cyclical_messaging_network_sim(4)
         self.simulator.add_object(InactiveSimulationObject())
         self.simulator.initialize()

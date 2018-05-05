@@ -11,7 +11,7 @@ import warnings
 
 from wc_sim.core.errors import SimulatorError
 from wc_sim.core.simulation_object import (EventQueue, SimulationObject, ApplicationSimulationObject,
-    ApplicationSimulationObjMeta)
+    ApplicationSimulationObjMeta, ApplicationSimulationObjectMetadata)
 from wc_sim.core.simulation_engine import SimulationEngine
 from tests.core.some_message_types import InitMsg, Eg1, MsgWithAttrs, UnregisteredMsg
 from tests.core.example_simulation_objects import (ALL_MESSAGE_TYPES, TEST_SIM_OBJ_STATE,
@@ -150,93 +150,133 @@ class TestEventQueue(unittest.TestCase):
         self.assertEqual(len(self.event_queue.render(sim_obj=receiver2, as_list=True)), len(times)+1)
 
 
-class ExampleSimulationObjectSubclass(ExampleSimulationObject):
+class ASOwithoutEventHandlers(ExampleSimulationObject):
     # register the message types sent
     messages_sent = [MsgWithAttrs]
 
 
-class ASOwithMessages(ApplicationSimulationObject):
-    # register the message types sent
-    messages_sent = [MsgWithAttrs]
+class ASOwithoutMessagesSent(ExampleSimulationObject):
+    def handler(self, event): pass
+    event_handlers = [(InitMsg, 'handler')]
 
 
-class FullASO(ApplicationSimulationObject):
-    messages_sent = [MsgWithAttrs]
-    def my_handler(self, event): pass
-    event_handlers = [(Eg1, my_handler)]
+class TestApplicationSimulationObjMeta(unittest.TestCase):
 
+    def test_correct_code(self):
+        warnings.simplefilter("ignore")
 
-class TestSimulationObjectRegistration(unittest.TestCase):
+        # test short circuit
+        self.assertFalse(hasattr(ApplicationSimulationObject, 'metadata'))
 
-    def test_define_app_sim_obj(self):
-        # test heritability
-        self.assertEqual(ExampleSimulationObjectSubclass.messages_sent, [MsgWithAttrs])
-        self.assertEqual(ExampleSimulationObjectSubclass.event_handlers, ExampleSimulationObject.event_handlers)
+        # test metadata presence
+        self.assertTrue(hasattr(ASOwithoutEventHandlers, 'metadata'))
+        self.assertTrue(isinstance(getattr(ASOwithoutEventHandlers, 'metadata'), ApplicationSimulationObjectMetadata))
 
-        full_ASO = FullASO('name')
-        self.assertEqual(full_ASO.send_initial_events(), None)
-        self.assertEqual(full_ASO.get_state(), '')
+        # test abstract
+        class AbstractASO(ApplicationSimulationObject):
+            abstract = True
+        metadata = AbstractASO.metadata
+        self.assertFalse(metadata.event_handlers_dict)
+        self.assertFalse(metadata.message_types_sent)
 
+        # test correct event_handlers and messages_sent declarations in an ApplicationSimulationObject
+        ExampleSimObj = ExampleSimulationObject
+        self.assertTrue(isinstance(getattr(ExampleSimObj, 'metadata'), ApplicationSimulationObjectMetadata))
+        metadata = ExampleSimObj.metadata
+        expected_event_handlers = {InitMsg:ExampleSimObj.handler, Eg1:ExampleSimObj.handler}
+        self.assertEqual(metadata.event_handlers_dict, expected_event_handlers)
+        event_handler_priorities = metadata.event_handler_priorities
+        self.assertTrue(metadata.event_handler_priorities[InitMsg] < metadata.event_handler_priorities[Eg1])
+        self.assertEqual(metadata.event_handler_priorities[InitMsg], 0)
+        self.assertEqual(metadata.message_types_sent, set(ALL_MESSAGE_TYPES))
+
+        # test no messages_sent
+        class ChildOfASOwithoutMessagesSent(ApplicationSimulationObject):
+            def handler(self, event): pass
+            event_handlers = [(InitMsg, 'handler')]
+        metadata = ChildOfASOwithoutMessagesSent.metadata
+        self.assertEqual(metadata.message_types_sent, set())
+
+        # test inherited event_handlers
+        metadata = ASOwithoutEventHandlers.metadata
+        self.assertEqual(metadata.event_handlers_dict, expected_event_handlers)
+
+        # test inherited messages_sent
+        metadata = ASOwithoutMessagesSent.metadata
+        self.assertEqual(metadata.message_types_sent, set(ALL_MESSAGE_TYPES))
+
+    def test_errors(self):
+        warnings.simplefilter("ignore")
+
+        # missing event_handlers and messages_sent
+        expected_error = "ApplicationSimulationObject.*definition must inherit or provide a non-empty '{}' or '{}'".format(
+                EVENT_HANDLERS, MESSAGES_SENT)
         with self.assertRaises(SimulatorError) as context:
-            method_name = 'my_handler'
-            class ASOwithBoth(ASOwithMessages):
-                event_handlers = [(Eg1, method_name)]
-        self.assertIn("ApplicationSimulationObject 'ASOwithBoth' definition must define '{}'.".format(method_name),
-            str(context.exception))
-
+            class EmptyASO(ApplicationSimulationObject): pass
+        self.assertRegex(str(context.exception), expected_error)
         with self.assertRaises(SimulatorError) as context:
-            class UnRegisteredSimulationObject(ApplicationSimulationObject):
-                pass
-        self.assertIn("ApplicationSimulationObject 'UnRegisteredSimulationObject' definition must provide",
-            str(context.exception))
+            class BadASO1(ApplicationSimulationObject): event_handlers = []
+        self.assertRegex(str(context.exception), expected_error)
+        with self.assertRaises(SimulatorError) as context:
+            class BadASO2(ApplicationSimulationObject): messages_sent = []
+        self.assertRegex(str(context.exception), expected_error)
 
+        # no such handler
+        with self.assertRaises(SimulatorError) as context:
+            class BadASO3(ApplicationSimulationObject): event_handlers = [(InitMsg, 'no_such_handler')]
+
+        # handler not callable
+        with self.assertRaises(SimulatorError) as context:
+            class BadASO4(ApplicationSimulationObject):
+                handler_not_callable = 2
+                event_handlers = [(InitMsg, 'handler_not_callable')]
+
+        # message must be a subclass of SimulationMessage
+        class Obj(object): pass
+        with self.assertRaises(SimulatorError) as context:
+            class BadASO5(ApplicationSimulationObject):
+                def handler(self, event): pass
+                event_handlers = [(Obj, 'handler')]
+
+        # event_handlers isn't iterable over pairs
+        with self.assertRaises(SimulatorError) as context:
+            class BadASO6(ApplicationSimulationObject):
+                def handler(self, event): pass
+                event_handlers = (InitMsg, 'handler')
+
+        # message in messages_sent must be a subclass of SimulationMessage
+        with self.assertRaises(SimulatorError) as context:
+            class BadASO7(ApplicationSimulationObject):
+                messages_sent = [Obj]
+
+        # messages_sent isn't iterable
+        with self.assertRaises(SimulatorError) as context:
+            class BadASO8(ApplicationSimulationObject):
+                messages_sent = Obj
+
+    def test_warnings(self):
+
+        # missing event_handlers
         with warnings.catch_warnings(record=True) as w:
-            class UnRegisteredSimulationObject(ApplicationSimulationObject):
+            class PartlyRegisteredSimulationObject1(ApplicationSimulationObject):
                 messages_sent = [InitMsg]
             self.assertEqual(str(w[-1].message),
-                "ApplicationSimulationObject 'UnRegisteredSimulationObject' definition does not provide '{}'.".format(
-                    EVENT_HANDLERS))
-            self.assertTrue(InitMsg in UnRegisteredSimulationObject.metadata.message_types_sent)
-            self.assertFalse(UnRegisteredSimulationObject.metadata.event_handlers)
+                "ApplicationSimulationObject 'PartlyRegisteredSimulationObject1' definition does not inherit "
+                    "or provide a non-empty '{}'.".format(EVENT_HANDLERS))
+            self.assertTrue(InitMsg in PartlyRegisteredSimulationObject1.metadata.message_types_sent)
+            self.assertFalse(PartlyRegisteredSimulationObject1.metadata.event_handlers_dict)
 
+        # missing messages_sent
         with warnings.catch_warnings(record=True) as w:
-            class UnRegisteredSimulationObject(ApplicationSimulationObject):
+            class PartlyRegisteredSimulationObject2(ApplicationSimulationObject):
                 event_handlers = [(InitMsg, 'handler')]
                 def handler(self): pass
             self.assertEqual(str(w[-1].message),
-                "ApplicationSimulationObject 'UnRegisteredSimulationObject' definition does not provide '{}'.".format(
-                    MESSAGES_SENT))
-            self.assertTrue(InitMsg in UnRegisteredSimulationObject.metadata.event_handlers)
-            self.assertEqual(UnRegisteredSimulationObject.metadata.event_handlers[InitMsg],
-                UnRegisteredSimulationObject.handler)
-
-        warnings.simplefilter("ignore")
-        class UnRegisteredSimulationObject(ApplicationSimulationObject):
-            def handler(self): pass
-            event_handlers = [(InitMsg, handler)]
-        self.assertTrue(InitMsg in UnRegisteredSimulationObject.metadata.event_handlers)
-
-        with self.assertRaises(SimulatorError) as context:
-            class UnRegisteredSimulationObject(ApplicationSimulationObject):
-                def handler(self): pass
-                event_handlers = [(InitMsg, 3)]
-        self.assertIn("ApplicationSimulationObject 'UnRegisteredSimulationObject' handler_name '3' must",
-            str(context.exception))
-
-        with self.assertRaises(SimulatorError) as context:
-            # attempt to register the same message type multiple times
-            class UnRegisteredSimulationObject(ApplicationSimulationObject):
-                def handler(self): pass
-                event_handlers = [(InitMsg, handler), (InitMsg, handler)]
-        self.assertEqual(str(context.exception), "message type '{}' appears repeatedly".format(
-            most_qual_cls_name(InitMsg)))
-
-        with self.assertRaises(SimulatorError) as context:
-            # attempt to register the same message type multiple times
-            class UnRegisteredSimulationObject(ApplicationSimulationObject):
-                not_callable = 'xxx'
-                event_handlers = [(InitMsg, 'not_callable')]
-        self.assertEqual(str(context.exception), "handler 'xxx' must be callable")
+                "ApplicationSimulationObject 'PartlyRegisteredSimulationObject2' definition does not inherit "
+                    "or provide a non-empty '{}'.".format(MESSAGES_SENT))
+            self.assertTrue(InitMsg in PartlyRegisteredSimulationObject2.metadata.event_handlers_dict)
+            self.assertEqual(PartlyRegisteredSimulationObject2.metadata.event_handlers_dict[InitMsg],
+                PartlyRegisteredSimulationObject2.handler)
 
 
 class TestSimulationObject(unittest.TestCase):
