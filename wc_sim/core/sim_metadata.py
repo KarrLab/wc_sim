@@ -1,6 +1,7 @@
 """ Classes to represent the metadata of a simulation run
 
 :Author: Jonathan Karr <karr@mssm.edu>
+:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
 :Date: 2017-08-18
 :Copyright: 2016-2018, Karr Lab
 :License: MIT
@@ -13,7 +14,7 @@ import wc_sim.sim_config
 import wc_utils.util.git
 
 
-class Metadata(object):
+class SimulationMetadata(object):
     """ Represents the metadata of a simulation run
 
     Attributes:
@@ -30,6 +31,36 @@ class Metadata(object):
         self.simulation = simulation
         self.run = run
         self.author = author
+
+    def __eq__(self, other):
+        """ Compare two simulation metadata objects
+
+        Args:
+            other (:obj:`SimulationMetadata`): other simulation metadata object
+
+        Returns:
+            :obj:`bool`: true if simulation metadata objects are semantically equal
+        """
+        if other.__class__ is not self.__class__:
+            return False
+
+        attrs = 'model simulation run author'.split()
+        for attr in attrs:
+            if getattr(other, attr) != getattr(self, attr):
+                return False
+
+        return True
+
+    def __ne__(self, other):
+        """ Compare two simulation metadata objects
+
+        Args:
+            other (:obj:`SimulationMetadata`): other simulation metadata object
+
+        Returns:
+            :obj:`bool`: true if simulation metadata objects are semantically unequal
+        """
+        return not self.__eq__(other)
 
 
 class ModelMetadata(object):
@@ -65,6 +96,36 @@ class ModelMetadata(object):
 
         md = wc_utils.util.git.get_repo_metadata(repo_path)
         return ModelMetadata(md.url, md.branch, md.revision)
+
+    def __eq__(self, other):
+        """ Compare two model metadata objects
+
+        Args:
+            other (:obj:`ModelMetadata`): other model metadata object
+
+        Returns:
+            :obj:`bool`: true if model metadata objects are semantically equal
+        """
+        if other.__class__ is not self.__class__:
+            return False
+
+        attrs = 'url branch revision'.split()
+        for attr in attrs:
+            if getattr(other, attr) != getattr(self, attr):
+                return False
+
+        return True
+
+    def __ne__(self, other):
+        """ Compare two model metadata objects
+
+        Args:
+            other (:obj:`ModelMetadata`): other model metadata object
+
+        Returns:
+            :obj:`bool`: true if model metadata objects are semantically unequal
+        """
+        return not self.__eq__(other)
 
 
 Simulation = wc_sim.sim_config.SimulationConfig
@@ -102,6 +163,36 @@ class RunMetadata(object):
     def record_ip_address(self):
         self.ip_address = socket.gethostbyname(socket.gethostname())
 
+    def __eq__(self, other):
+        """ Compare two run metadata objects
+
+        Args:
+            other (:obj:`RunMetadata`): other run metadata object
+
+        Returns:
+            :obj:`bool`: true if run metadata objects are semantically equal
+        """
+        if other.__class__ is not self.__class__:
+            return False
+
+        attrs = 'start_time run_time ip_address'.split()
+        for attr in attrs:
+            if getattr(other, attr) != getattr(self, attr):
+                return False
+
+        return True
+
+    def __ne__(self, other):
+        """ Compare two run metadata objects
+
+        Args:
+            other (:obj:`RunMetadata`): other run metadata object
+
+        Returns:
+            :obj:`bool`: true if run metadata objects are semantically unequal
+        """
+        return not self.__eq__(other)
+
 
 class AuthorMetadata(object):
     """ Represents a simulation's author
@@ -127,3 +218,33 @@ class AuthorMetadata(object):
         self.email = email
         self.organization = organization
         self.ip_address = ip_address
+
+    def __eq__(self, other):
+        """ Compare two author metadata objects
+
+        Args:
+            other (:obj:`AuthorMetadata`): other author metadata object
+
+        Returns:
+            :obj:`bool`: true if author metadata objects are semantically equal
+        """
+        if other.__class__ is not self.__class__:
+            return False
+
+        attrs = ['name', 'email', 'organization', 'ip_address']
+        for attr in attrs:
+            if getattr(other, attr) != getattr(self, attr):
+                return False
+
+        return True
+
+    def __ne__(self, other):
+        """ Compare two author metadata objects
+
+        Args:
+            other (:obj:`AuthorMetadata`): other author metadata object
+
+        Returns:
+            :obj:`bool`: true if author metadata objects are semantically unequal
+        """
+        return not self.__eq__(other)
