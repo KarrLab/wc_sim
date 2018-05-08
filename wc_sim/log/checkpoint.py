@@ -13,17 +13,18 @@ import os
 import pickle
 import re
 
-# .. todo :: use hdf rather than pickle
+from wc_sim.core.sim_metadata import SimulationMetadata
 
+# .. todo :: use hdf rather than pickle
 
 class Checkpoint(object):
     """ Represents a simulation checkpoint
 
     Attributes:
-        metadata (:obj:`wc.sim.metadata.Metadata`):
-        time (:obj:`float`):
-        state (:obj:`object`): simulated state
-        random_state (:obj:`object`): state of random number generator
+        metadata (:obj:`SimulationMetadata`): static metadata that describes the simulatino
+        time (:obj:`float`): the checkpoint's simulated time, in sec
+        state (:obj:`object`): the simulated model's state at time `time`
+        random_state (:obj:`object`): the state of the simulator's random number generator at time `time`
     """
 
     def __init__(self, metadata, time, state, random_state):
@@ -133,6 +134,45 @@ class Checkpoint(object):
             rv.append("{}: {}".format(attr, str(getattr(self, attr))))
         return '\n'.join(rv)
 
+    # TODO(Arthur): test comprehensively
+    def __eq__(self, other):
+        """ Compare two checkpoints
+
+        Assumes that state objects implement the equality comparison operation `__eq__()`
+
+        Args:
+            other (:obj:`checkpoint`): other checkpoint
+
+        Returns:
+            :obj:`bool`: true if checkpoints are semantically equal
+        """
+        if other.__class__ is not self.__class__:
+            return False
+
+        if other.metadata != self.metadata:
+            return False
+
+        if other.time != self.time:
+            return False
+
+        if other.state != self.state:
+            return False
+
+        if other.random_state != self.random_state:
+            return False
+
+        return True
+
+    def __ne__(self, other):
+        """ Compare two checkpoints
+
+        Args:
+            other (:obj:`checkpoint`): other checkpoint
+
+        Returns:
+            :obj:`bool`: true if checkpoints are semantically unequal
+        """
+        return not self.__eq__(other)
 
 class CheckpointLogger(object):
     """ Checkpoint logger
@@ -141,7 +181,7 @@ class CheckpointLogger(object):
         dirname (:obj:`str`): directory to write checkpoint data
         step (:obj:`float`): simulation time between checkpoints in seconds
         _next_checkpoint (:obj:`float`): time in seconds of next checkpoint
-        metadata (:obj:`wc.sim.metadata.Metadata`): simulation run metadata
+        metadata (:obj:`SimulationMetadata`): simulation run metadata
     """
 
     def __init__(self, dirname, step, initial_time, metadata):
@@ -150,7 +190,7 @@ class CheckpointLogger(object):
             dirname (:obj:`str`): directory to write checkpoint data
             step (:obj:`float`): simulation time between checkpoints in seconds
             initial_time (:obj:`float`): starting simulation time
-            metadata (:obj:`wc.sim.metadata.Metadata`): simulation run metadata
+            metadata (:obj:`SimulationMetadata`): simulation run metadata
         """
 
         next_checkpoint = math.ceil(initial_time / step) * step
