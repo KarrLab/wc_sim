@@ -1,4 +1,5 @@
-"""
+""" Test the simulation checkpoint objects
+
 :Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
 :Date: 2018-05-03
 :Copyright: 2017-2018, Karr Lab
@@ -6,25 +7,31 @@
 """
 
 import unittest
+import shutil
+import tempfile
+from math import ceil
 
 from wc_sim.core.simulation_engine import SimulationEngine
-from wc_sim.core.simulation_checkpoint_object import CheckpointSimulationObject
+from wc_sim.core.simulation_checkpoint_object import (AbstractCheckpointSimulationObject,
+    CheckpointSimulationObject)
 from wc_sim.core.simulation_message import SimulationMessage
 from wc_sim.core.simulation_object import ApplicationSimulationObject
+from wc_sim.core.errors import SimulatorError
+from wc_sim.log.checkpoint import Checkpoint
 
 
-class PeriodicCheckpointSimuObj(CheckpointSimulationObject):
+class PeriodicCheckpointSimuObj(AbstractCheckpointSimulationObject):
     """ Test checkpointing by simplistically saving them to a list
     """
 
-    def __init__(self, name, checkpoint_period, checkpoint_dir, simulation_state,
+    def __init__(self, name, checkpoint_period, simulation_state,
         shared_checkpoints):
         self.simulation_state = simulation_state
         self.shared_checkpoints = shared_checkpoints
-        super().__init__(name, checkpoint_period, checkpoint_dir)
+        super().__init__(name, checkpoint_period)
 
     def create_checkpoint(self):
-        self.shared_checkpoints.append((self.time, self.simulation_state.get()))
+        self.shared_checkpoints.append((self.time, self.simulation_state.get_state()))
 
 
 class MessageSentToSelf(SimulationMessage):
@@ -46,7 +53,7 @@ class PeriodicLinearUpdatingSimuObj(ApplicationSimulationObject):
         self.send_event(self.delay, self, MessageSentToSelf())
 
     def handle_simulation_event(self, event):
-        self.simulation_state.set(self.a*self.time + self.b)
+        self.simulation_state.set(self.a * self.time + self.b)
         self.send_event(self.delay, self, MessageSentToSelf())
 
     def get_state(self): return ''
@@ -64,38 +71,91 @@ class SharedValue(object):
     def set(self, val):
         self.value = val
 
-    def get(self):
+    def get_state(self):
         return self.value
 
+    def __eq__(self, other):
+        if other.__class__ is not self.__class__:
+            return False
+        return other.value == self.value
 
-class TestCheckpointSimulationObject(unittest.TestCase):
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
-    def test_checkpoint_simulation_object(self):
+
+class TestCheckpointSimulationObjects(unittest.TestCase):
+
+    def setUp(self):
+        self.checkpoint_dir = tempfile.mkdtemp()
+
+        self.simulator = SimulationEngine()
+        self.a = 4
+        self.b = 3
+        self.state = SharedValue(self.b)
+        self.update_period = 3
+        self.updating_obj = PeriodicLinearUpdatingSimuObj('self.updating_obj', self.update_period,
+            self.state, self.a, self.b)
+        self.checkpoint_period = 11
+
+    def tearDown(self):
+        shutil.rmtree(self.checkpoint_dir)
+
+    def test_abstract_checkpoint_simulation_object(self):
         '''
-        Run a simulation with a subclass of CheckpointSimulationObject and another object.
+        Run a simulation with a subclass of AbstractCheckpointSimulationObject and another object.
         Take checkpoints and test them.
         '''
-        self.simulator = SimulationEngine()
-        a = 4
-        b = 3
-        state = SharedValue(b)
-        update_period = 3
-        updating_obj = PeriodicLinearUpdatingSimuObj('updating_obj', update_period, state, a, b)
 
         checkpoints = []
-        checkpoint_period = 10
-        checkpointing_obj = PeriodicCheckpointSimuObj('checkpointing_obj', checkpoint_period, None,
-            state, checkpoints)
-        self.simulator.add_objects([updating_obj, checkpointing_obj])
+        checkpointing_obj = PeriodicCheckpointSimuObj('checkpointing_obj', self.checkpoint_period,
+            self.state, checkpoints)
+        self.simulator.add_objects([self.updating_obj, checkpointing_obj])
         self.simulator.initialize()
         run_time = 100
         self.simulator.run(run_time)
         checkpointing_obj.create_checkpoint()
-        for i in range(1 + int(run_time/checkpoint_period)):
+        for i in range(1 + int(run_time/self.checkpoint_period)):
             time, value = checkpoints[i]
-            self.assertEqual(time, i*checkpoint_period)
-            # updating_obj sets the shared value to a*time + b, at the instants 0, update_period, 2*update_period, ...
+            self.assertEqual(time, i * self.checkpoint_period)
+            # updating_obj sets the shared value to a * time + b, at the instants 0, update_period, 2 * update_period, ...
             # checkpointing_obj samples the value at times unsynchronized with updating_obj
-            # therefore, for 0<a, the sampled values are at most a*update_period less than the line a*time + b
-            linear_prediction = a*checkpoint_period*i + b
-            self.assertTrue(linear_prediction - a*update_period <= value <= linear_prediction)
+            # therefore, for 0<a, the sampled values are at most a * update_period less than the line a * time + b
+            linear_prediction = self.a * self.checkpoint_period * i + self.b
+            self.assertTrue(linear_prediction - self.a * self.update_period <= value <= linear_prediction)
+
+    def test_checkpoint_simulation_object(self):
+        '''
+        Run a simulation with CheckpointSimulationObject and another object. 
+        Take checkpoints and test them.
+        '''
+        # prepare
+        metadata = {'test_metadata': 'value'}
+        checkpointing_obj = CheckpointSimulationObject('checkpointing_obj', self.checkpoint_period,
+            self.checkpoint_dir, metadata, self.state)
+        self.simulator.add_objects([self.updating_obj, checkpointing_obj])
+        self.simulator.initialize()
+
+        # run
+        run_time = 241
+        expected_num_events = int(run_time/self.update_period) + int(run_time/self.checkpoint_period)
+        num_events = self.simulator.run(run_time)
+
+        # check results
+        self.assertEqual(expected_num_events, num_events)
+        expected_checkpoint_times = [float(t) for t in 
+            range(0, self.checkpoint_period * int(run_time/self.checkpoint_period) + 1, self.checkpoint_period)]
+        checkpoints = Checkpoint.list_checkpoints(self.checkpoint_dir)
+        self.assertEqual(expected_checkpoint_times, checkpoints)
+        checkpoint = Checkpoint.get_checkpoint(self.checkpoint_dir)
+        self.assertEqual(checkpoint, Checkpoint.get_checkpoint(self.checkpoint_dir, time=run_time))
+
+        for i in range(1 + int(run_time/self.checkpoint_period)):
+            time = i * self.checkpoint_period
+            state_value = Checkpoint.get_checkpoint(self.checkpoint_dir, time=time).state
+            max_value = self.a * self.checkpoint_period * i + self.b
+            self.assertTrue(max_value - self.a * self.update_period <= state_value <= max_value)
+
+    def test_checkpoint_simulation_object_exception(self):
+        with self.assertRaises(SimulatorError) as context:
+            PeriodicCheckpointSimuObj('', 0, None, None)
+    

@@ -9,23 +9,27 @@ import sys
 
 from wc_sim.core.simulation_message import SimulationMessage
 from wc_sim.core.simulation_object import ApplicationSimulationObject
+from wc_sim.core.errors import SimulatorError
+from wc_sim.log.checkpoint import Checkpoint
+from wc_sim.core.sim_metadata import SimulationMetadata
+
 
 class NextCheckpoint(SimulationMessage):
     "Schedule the next checkpoint"
 
 
 # TODO(Arthur): a factory that generates self-clocking ApplicationSimulationObjects would be handy
-class CheckpointSimulationObject(ApplicationSimulationObject):
-    """ Create periodic checkpoints
+class AbstractCheckpointSimulationObject(ApplicationSimulationObject):
+    """ Abstract class that creates periodic checkpoints
 
     Attributes:
         checkpoint_period (:obj:`float`): interval between checkpoints, in simulated seconds
-        checkpoint_dir (:obj:`str`): the directory in which to save checkpoints
     """
 
-    def __init__(self, name, checkpoint_period, checkpoint_dir):
+    def __init__(self, name, checkpoint_period):
+        if checkpoint_period <= 0:
+            raise SimulatorError("checkpoint period must be positive, but is {}".format(checkpoint_period))
         self.checkpoint_period = checkpoint_period
-        self.checkpoint_dir = checkpoint_dir
         super().__init__(name)
 
     def schedule_next_checkpoint(self):
@@ -34,7 +38,7 @@ class CheckpointSimulationObject(ApplicationSimulationObject):
         self.send_event(self.checkpoint_period, self, NextCheckpoint())
 
     def create_checkpoint(self):
-        """ Create a checkpoint in the directory `self.checkpoint_dir`
+        """ Create a checkpoint
 
         Derived classes must override this method and actually create a checkpoint
         """
@@ -50,9 +54,34 @@ class CheckpointSimulationObject(ApplicationSimulationObject):
         self.schedule_next_checkpoint()
 
     def get_state(self):
-        return ''    # pragma: no cover     # must be overridden
+        return ''    # pragma: no cover
 
     event_handlers = [(NextCheckpoint, handle_simulation_event)]
 
     # register the message type sent
     messages_sent = [NextCheckpoint]
+
+
+class CheckpointSimulationObject(AbstractCheckpointSimulationObject):
+    """ Create periodic checkpoints to files
+
+    Uses the `wc_sim.log` checkpoint implementation
+
+    Attributes:
+        checkpoint_dir (:obj:`str`): the directory in which to save checkpoints
+        metadata (:obj:`SimulationMetadata`): simulation run metadata
+        access_state_obj (:obj:`object`): an object whose `get_state()` returns the simulation's state
+    """
+
+    def __init__(self, name, checkpoint_period, checkpoint_dir, metadata, access_state_obj):
+        self.checkpoint_dir = checkpoint_dir
+        self.metadata = metadata
+        self.access_state_obj = access_state_obj
+        super().__init__(name, checkpoint_period)
+
+    def create_checkpoint(self):
+        """ Create a checkpoint in the directory `self.checkpoint_dir`
+        """
+        # TODO(Arthur): include the random state
+        Checkpoint.set_checkpoint(self.checkpoint_dir,
+            Checkpoint(self.metadata, self.time, self.access_state_obj.get_state(), None))
