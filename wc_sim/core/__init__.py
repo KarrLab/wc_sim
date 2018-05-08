@@ -7,3 +7,4 @@ from . import simulation_engine
 from . import simulation_message
 from . import simulation_object
 from . import utilities
+from . import sim_metadata
