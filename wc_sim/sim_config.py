@@ -16,6 +16,7 @@ import numpy
 import warnings
 
 
+# TODO(Arthur): move to core/
 class SimulationConfig(object):
     """ Represents and applies simulation configurations:
 
