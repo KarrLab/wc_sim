@@ -62,6 +62,7 @@ class AbstractCheckpointSimulationObject(ApplicationSimulationObject):
     messages_sent = [NextCheckpoint]
 
 
+# TODO(Arthur): `access_state_obj` objects should be derived from an ABC that enforces a `get_checkpoint_state(time)` method
 class CheckpointSimulationObject(AbstractCheckpointSimulationObject):
     """ Create periodic checkpoints to files
 
@@ -84,4 +85,4 @@ class CheckpointSimulationObject(AbstractCheckpointSimulationObject):
         """
         # TODO(Arthur): include the random state
         Checkpoint.set_checkpoint(self.checkpoint_dir,
-            Checkpoint(self.metadata, self.time, self.access_state_obj.get_state(), None))
+            Checkpoint(self.metadata, self.time, self.access_state_obj.get_checkpoint_state(self.time), None))
