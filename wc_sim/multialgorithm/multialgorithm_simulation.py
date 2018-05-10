@@ -27,6 +27,8 @@ from wc_sim.multialgorithm.submodels.dynamic_submodel import DynamicSubmodel
 from wc_sim.multialgorithm.submodels.ssa import SSASubmodel
 from wc_sim.multialgorithm.submodels.fba import FbaSubmodel
 from wc_sim.multialgorithm.species_populations import LOCAL_POP_STORE, Specie, SpeciesPopSimObject
+from wc_sim.multialgorithm.multialgorithm_checkpointing import MultialgorithmicCheckpointingSimObj
+from wc_sim.core.sim_metadata import SimulationMetadata
 
 from wc_sim.multialgorithm.config import core as config_core_multialgorithm
 config_multialgorithm = \
@@ -102,7 +104,8 @@ species copy number changes through shared population.
 
 # TODO (Arthur): put in config file
 DEFAULT_VALUES = dict(
-    shared_specie_store='SHARED_SPECIE_STORE'
+    shared_specie_store='SHARED_SPECIE_STORE',
+    checkpointing_sim_obj = 'CHECKPOINTING_SIM_OBJ'
 )
 class MultialgorithmSimulation(object):
     """ Initialize a multialgorithm simulation from a language model and run-time parameters
@@ -111,11 +114,13 @@ class MultialgorithmSimulation(object):
 
     Attributes:
         model (:obj:`Model`): a model description
-        args (:obj:`Namespace`): parameters for the simulation
+        args (:obj:`dict`): parameters for the simulation
         init_populations (:obj: dict from species id to population): the initial populations of
             species, as specified by `model`
         simulation (:obj: `SimulationEngine`): the initialized simulation
-        simulation_submodels (:obj: list of `DynamicSubmodel`): the simulation's submodels
+        simulation_submodels (:obj: `list` of `DynamicSubmodel`): the simulation's submodels
+        checkpointing_sim_obj (:obj: `MultialgorithmicCheckpointingSimObj`): the checkpointing object;
+            `None` if absent
         species_pop_objs (:obj: `dict` of `SpeciesPopSimObject`): shared species
             populations stored in `SimulationObject`'s
         shared_specie_store_name (:obj:`str`): the name for the shared specie store
@@ -133,7 +138,7 @@ class MultialgorithmSimulation(object):
         """
         Args:
             model (:obj:`Model`): the model being simulated
-            args (:obj:`Namespace`): parameters for the simulation
+            args (:obj:`dict`): parameters for the simulation
             shared_specie_store_name (:obj:`str`, optional): the name of the shared species store
         """
         self.model = model
@@ -141,6 +146,7 @@ class MultialgorithmSimulation(object):
         self.init_populations = {}
         self.simulation = SimulationEngine()
         self.simulation_submodels = {}
+        self.checkpointing_sim_obj = None
         self.species_pop_objs = {}
         self.shared_specie_store_name = shared_specie_store_name
         self.local_species_population = self.make_local_species_pop(self.model)
@@ -153,6 +159,11 @@ class MultialgorithmSimulation(object):
             :obj:`tuple` of (`SimulationEngine`, `DynamicModel`): an initialized simulation and its
                 dynamic model
         """
+        if 'checkpoint_dir' in self.args and self.args['checkpoint_dir']:
+            self.checkpointing_sim_obj = self.create_multialgorithm_checkpointing(
+                self.args['checkpoint_dir'],
+                self.args['checkpoint_period'],
+                self.args['metadata'])
         self.partition_species()
         self.dynamic_model = DynamicModel(self.model, self.dynamic_compartments)
         self.simulation_submodels = self.create_dynamic_submodels()
@@ -328,6 +339,25 @@ class MultialgorithmSimulation(object):
             initial_fluxes=initial_fluxes,
             retain_history=retain_history)
 
+    def create_multialgorithm_checkpointing(self, checkpoint_dir, checkpoint_period, metadata):
+        """ Create a multialgorithm checkpointing object for this simulation
+
+        Args:
+            checkpoint_dir (:obj:`str`): the directory in which to save checkpoints
+            checkpoint_period (:obj:`float`): interval between checkpoints, in simulated seconds
+            metadata (:obj:`SimulationMetadata`): simulation run metadata
+
+        Returns:
+            :obj:`MultialgorithmicCheckpointingSimObj`: the checkpointing object
+        """
+        multialgorithm_checkpointing_sim_obj = MultialgorithmicCheckpointingSimObj(
+            DEFAULT_VALUES['checkpointing_sim_obj'], checkpoint_period, checkpoint_dir,
+            metadata, self.local_species_population)
+
+        # add the multialgorithm checkpointing object to the simulation
+        self.simulation.add_object(multialgorithm_checkpointing_sim_obj)
+        return multialgorithm_checkpointing_sim_obj
+
     def create_dynamic_submodels(self):
         """ Create dynamic submodels that access shared species
 
@@ -363,7 +393,7 @@ class MultialgorithmSimulation(object):
                     lang_submodel.parameters,
                     self.get_dynamic_compartments(lang_submodel),
                     self.local_species_population,
-                    self.args.FBA_time_step
+                    self.args['FBA_time_step']
                 )
 
             elif lang_submodel.algorithm == SubmodelAlgorithm.ode:

@@ -623,21 +623,20 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             :obj:`SpeciesPopulationError`: if a specie in `species` is being accessed at a time earlier
                 than a prior access.
         """
-        if species is None:
-            return
-        if not isinstance(species, set):
-            raise SpeciesPopulationError("species '{}' must be a set".format(species))
-        unknown_species = species - self._all_species()
-        if unknown_species:
-            # raise exception if some species are non-existent
-            raise SpeciesPopulationError("request for population of unknown specie(s): {}".format(
-                ', '.join(map(lambda x: "'{}'".format(str(x)), unknown_species))))
-        early_accesses = list(filter(lambda s: time < self.last_access_time[s], species))
-        if early_accesses:
-            raise SpeciesPopulationError("access at time {} is an earlier access of specie(s) {} than at {}".format(
-                time, early_accesses, [self.last_access_time[s] for s in early_accesses]))
+        if not species is None:
+            if not isinstance(species, set):
+                raise SpeciesPopulationError("species '{}' must be a set".format(species))
+            unknown_species = species - self._all_species()
+            if unknown_species:
+                # raise exception if some species are non-existent
+                raise SpeciesPopulationError("request for population of unknown specie(s): {}".format(
+                    ', '.join(map(lambda x: "'{}'".format(str(x)), unknown_species))))
+            early_accesses = list(filter(lambda s: time < self.last_access_time[s], species))
+            if early_accesses:
+                raise SpeciesPopulationError("access at time {} is an earlier access of specie(s) {} than at {}".format(
+                    time, early_accesses, [self.last_access_time[s] for s in early_accesses]))
 
-    def __update_access_times(self, time, species=None):
+    def _update_access_times(self, time, species=None):
         """ Update the access time to `time` for all species_ids in `species`
 
         Args:
@@ -665,7 +664,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         specie_id_in_set = {specie_id}
         self._check_species(time, specie_id_in_set)
         self.time = time
-        self.__update_access_times(time, specie_id_in_set)
+        self._update_access_times(time, specie_id_in_set)
         return self._population[specie_id].get_population(time)
 
     def get_checkpoint_state(self, time):
@@ -698,7 +697,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             species = self._all_species()
         self._check_species(time, species)
         self.time = time
-        self.__update_access_times(time, species)
+        self._update_access_times(time, species)
         return {specie:self._population[specie].get_population(time) for specie in species}
 
     def adjust_discretely(self, time, adjustments):
@@ -720,7 +719,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         for specie in adjustments:
             try:
                 self._population[specie].discrete_adjustment(adjustments[specie], self.time)
-                self.__update_access_times(time, {specie})
+                self._update_access_times(time, {specie})
                 self.log_event('discrete_adjustment', self._population[specie])
             except NegativePopulationError as e:
                 errors.append(str(e))
@@ -751,7 +750,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         for specie,(adjustment,flux) in adjustments.items():
             try:
                 self._population[specie].continuous_adjustment(adjustment, time, flux)
-                self.__update_access_times(time, [specie])
+                self._update_access_times(time, [specie])
                 self.log_event('continuous_adjustment', self._population[specie])
             except (SpeciesPopulationError, NegativePopulationError) as e:
                 errors.append(str(e))

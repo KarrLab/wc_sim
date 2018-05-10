@@ -277,6 +277,11 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         self.assertEqual(self.local_species_pop_no_init_flux.read(0), self.init_populations)
         self.assertEqual(self.local_species_pop_no_init_flux.read(2), self.init_populations)
         self.assertEqual(self.local_species_pop_no_init_flux.get_checkpoint_state(3), self.init_populations)
+        self.assertEqual(self.local_species_pop_no_init_flux._check_species(0, species=None), None)
+        t = 3
+        self.local_species_pop_no_init_flux._update_access_times(t, species=None)
+        for specie_id in self.local_species_pop_no_init_flux._all_species():
+            self.assertEqual(self.local_species_pop_no_init_flux.last_access_time[specie_id], t)
 
     def test_read_one(self):
         test_specie = 'specie_2[c2]'
