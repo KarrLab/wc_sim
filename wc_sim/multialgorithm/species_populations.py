@@ -600,15 +600,22 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self.last_access_time[specie_id] = self.time
         self._add_to_history(specie_id)
 
-    # TODO(Arthur): perhaps make species optional, and read all species if not supplied
-    def _check_species(self, time, species):
+    def _all_species(self):
+        """ Return the IDs species known by this LocalSpeciesPopulation
+
+        Returns:
+            :obj:`set`: the species known by this LocalSpeciesPopulation
+        """
+        return set(list(self._population.keys()))
+
+    def _check_species(self, time, species=None):
         """ Check whether the species are a set, or not known by this LocalSpeciesPopulation
 
         Also checks whether the species are being accessed in time order.
 
         Args:
             time (:obj:`float`): the time at which the population might be accessed
-            species (set): set of species_ids.
+            species (:obj:`set`, optional): set of species_ids; if not supplied, read all species
 
         Raises:
             :obj:`SpeciesPopulationError`: if species is not a set
@@ -616,9 +623,11 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             :obj:`SpeciesPopulationError`: if a specie in `species` is being accessed at a time earlier
                 than a prior access.
         """
+        if species is None:
+            return
         if not isinstance(species, set):
             raise SpeciesPopulationError("species '{}' must be a set".format(species))
-        unknown_species = species - set(list(self._population.keys()))
+        unknown_species = species - self._all_species()
         if unknown_species:
             # raise exception if some species are non-existent
             raise SpeciesPopulationError("request for population of unknown specie(s): {}".format(
@@ -628,14 +637,15 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             raise SpeciesPopulationError("access at time {} is an earlier access of specie(s) {} than at {}".format(
                 time, early_accesses, [self.last_access_time[s] for s in early_accesses]))
 
-    # TODO(Arthur): perhaps make species optional, and read all species if not supplied
-    def __update_access_times(self, time, species):
+    def __update_access_times(self, time, species=None):
         """ Update the access time to `time` for all species_ids in `species`
 
         Args:
             time (:obj:`float`): the access time which should be set for the species
-            species (set): a set of species_ids.
+            species (:obj:`set`, optional): a set of species_ids; if not provided, read all species
         """
+        if species is None:
+            species = self._all_species()
         for specie_id in species:
             self.last_access_time[specie_id] = time
 
@@ -658,21 +668,34 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self.__update_access_times(time, specie_id_in_set)
         return self._population[specie_id].get_population(time)
 
-    # TODO(Arthur): perhaps make species optional, and read all species if not supplied; need to change the interface
-    def read(self, time, species):
+    def get_checkpoint_state(self, time):
+        """ Read the predicted population of all species at simulation time `time`
+
+        Args:
+            time (:obj:`float`): the time at which the population should be estimated
+
+        Returns:
+            species counts: dict: species_id -> copy_number; the predicted copy number of all
+            species at `time`
+        """
+        return self.read(time)
+
+    def read(self, time, species=None):
         """ Read the predicted population of a list of species at simulation time `time`
 
         Args:
             time (:obj:`float`): the time at which the population should be estimated
-            species (set): identifiers of the species to read.
+            species (:obj:`set`, optional): identifiers of the species to read; if not supplied, read all species
 
         Returns:
             species counts: dict: species_id -> copy_number; the predicted copy number of each
-            requested species at `time`.
+            requested species at `time`
 
         Raises:
             :obj:`SpeciesPopulationError`: if the population of unknown specie(s) are requested
         """
+        if species is None:
+            species = self._all_species()
         self._check_species(time, species)
         self.time = time
         self.__update_access_times(time, species)
@@ -1012,6 +1035,7 @@ class SpeciesPopSimObject(LocalSpeciesPopulation, ApplicationSimulationObject,
     messages_sent = [message_types.GivePopulation, message_types.GiveProperty]
 
 
+# TODO(Arthur): rename to DynamicSpecies
 class Specie(object):
     """ Specie tracks the population of a single specie in a multi-algorithmic model
 

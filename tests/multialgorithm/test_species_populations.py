@@ -54,63 +54,6 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
         self.an_ASP = AccessSpeciesPopulations(None, remote_pop_stores)
         self.simulator = SimulationEngine()
 
-    """
-    todo: replace this code with calls to MultialgorithmSimulation().initialize()
-    def set_up_simulation(self, model_file):
-        '''Set up a simulation from a test model.
-
-        Create two SkeletonSubmodels, a LocalSpeciesPopulation for each, and
-        a SpeciesPopSimObject that they share.
-        '''
-
-        # make a model
-        self.model = Reader().run(model_file, strict=False)
-
-        # make SpeciesPopSimObjects
-        self.private_species = ModelUtilities.find_private_species(self.model, return_ids=True)
-        self.shared_species = ModelUtilities.find_shared_species(self.model, return_ids=True)
-
-        self.init_populations={}
-        for species in self.model.get_species():
-            sc_id = species.serialize()
-            self.init_populations[sc_id] = \
-                int(species.concentration.value * species.compartment.initial_volume * Avogadro)
-
-        self.shared_pop_sim_obj = {}
-        SHARED_STORE_ID = 'shared_store_1'
-        self.shared_pop_sim_obj[SHARED_STORE_ID] = SpeciesPopSimObject(SHARED_STORE_ID,
-            {specie_id:self.init_populations[specie_id] for specie_id in self.shared_species})
-        self.simulator.add_object(self.shared_pop_sim_obj[SHARED_STORE_ID])
-
-        # make submodels and their parts
-        self.submodels={}
-        for submodel in self.model.get_submodels():
-
-            # make LocalSpeciesPopulations
-            local_species_population = LocalSpeciesPopulation(
-                submodel.id.replace('_', '_lsp_'),
-                {specie_id:self.init_populations[specie_id] for specie_id in
-                    self.private_species[submodel.id]},
-                initial_fluxes={specie_id:0 for specie_id in self.private_species[submodel.id]})
-
-            # make AccessSpeciesPopulations objects
-            # TODO(Arthur): stop giving all SpeciesPopSimObjects to each AccessSpeciesPopulations
-            access_species_population = AccessSpeciesPopulations(local_species_population, self.shared_pop_sim_obj)
-
-            # make SkeletonSubmodels
-            behavior = {'INTER_REACTION_TIME':1}
-            self.submodels[submodel.id] = SkeletonSubmodel(behavior, self.model, submodel.id,
-                access_species_population, submodel.reactions, submodel.get_species(), submodel.parameters)
-            self.simulator.add_object(self.submodels[submodel.id])
-            # connect AccessSpeciesPopulations object to its affiliated SkeletonSubmodels
-            access_species_population.set_submodel(self.submodels[submodel.id])
-
-            # make access_species_population.species_locations
-            access_species_population.add_species_locations(LOCAL_POP_STORE,
-                self.private_species[submodel.id])
-            access_species_population.add_species_locations('shared_store_1', self.shared_species)
-    """
-
     def test_add_species_locations(self):
 
         self.an_ASP.add_species_locations(store_i(1), species_ids[:2])
@@ -307,6 +250,7 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
             'test', self.init_populations, self.molecular_weights)
 
     def test_init(self):
+        self.assertEqual(self.local_species_pop_no_init_flux._all_species(), set(self.species_ids))
         an_LSP = LocalSpeciesPopulation('test', {}, {}, retain_history=False)
         an_LSP.init_cell_state_specie('s1', 2)
         self.assertEqual(an_LSP.read(0, {'s1'}), {'s1': 2})
@@ -328,6 +272,11 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
             LocalSpeciesPopulation('test', {'s1': 2, 's2': 1}, {})
         self.assertIn("Cannot init LocalSpeciesPopulation because some species are missing weights",
             str(context.exception))
+
+    def test_optional_species_argument(self):
+        self.assertEqual(self.local_species_pop_no_init_flux.read(0), self.init_populations)
+        self.assertEqual(self.local_species_pop_no_init_flux.read(2), self.init_populations)
+        self.assertEqual(self.local_species_pop_no_init_flux.get_checkpoint_state(3), self.init_populations)
 
     def test_read_one(self):
         test_specie = 'specie_2[c2]'
