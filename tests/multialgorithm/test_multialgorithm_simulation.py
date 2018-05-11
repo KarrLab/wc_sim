@@ -226,6 +226,7 @@ class TestRunSSASimulation(unittest.TestCase):
             init_vol=1E-22)
 
     # TODO(Arthur): test multiple ssa submodels
+    # TODO(Arthur): test ssa submodel with reactions that cannot run
     # TODO(Arthur): extract population history as numpy matrix
     # TODO(Arthur): plot population history
     # TODO(Arthur): catch MultialgorithmErrors from get_specie_concentrations, and elsewhere
