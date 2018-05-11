@@ -207,7 +207,7 @@ class TestRunSSASimulation(unittest.TestCase):
 
     def test_run_ssa_suite(self):
         self.perform_ssa_test_run('1 species, 1 reaction',
-            run_time=999,   # tests checkpoint history in which the last checkpoint time < run time
+            run_time=999,       # tests checkpoint history in which the last checkpoint time < run time
             initial_specie_copy_numbers={'spec_type_0[c]':3000},
             expected_mean_copy_numbers={'spec_type_0[c]':2000},
             delta=50)
@@ -225,8 +225,10 @@ class TestRunSSASimulation(unittest.TestCase):
             delta=0,
             init_vol=1E-22)
 
-    # TODO(Arthur): catch MultialgorithmErrors from get_specie_concentrations, and elsewhere
+    # TODO(Arthur): test multiple ssa submodels
+    # TODO(Arthur): extract population history as numpy matrix
     # TODO(Arthur): plot population history
+    # TODO(Arthur): catch MultialgorithmErrors from get_specie_concentrations, and elsewhere
     # TODO(Arthur): fit exponential to reaction, with rates given by reactant population
     # TODO(Arthur): have identify_enabled_reactions() return a disabled reaction
     # TODO(Arthur): have if self.enabled_reaction(self.reactions[reaction_index]) do else branch
