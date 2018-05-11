@@ -10,7 +10,7 @@ import unittest
 import sys
 from copy import copy
 
-from wc_sim.multialgorithm.wc_sim import RunSimulation
+from wc_sim.multialgorithm.wc_simulate import RunSimulation
 
 
 class TestRunSimulation(unittest.TestCase):

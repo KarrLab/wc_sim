@@ -9,7 +9,6 @@ import unittest
 import os
 import numpy as np
 
-from wc_lang.io import Reader
 from wc_lang.core import (Model, Submodel,  SpeciesType, Species, Reaction, Compartment,
                           SpeciesCoefficient, Parameter, RateLaw, RateLawEquation,
                           SubmodelAlgorithm, Concentration)

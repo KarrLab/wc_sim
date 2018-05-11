@@ -96,7 +96,7 @@ class MakeModels(object):
                 num_species, num_reactions, rate_law_type.name))
 
         # Model
-        model = Model(id='test_model', version='0.0.0', wc_lang_version='0.0.1')
+        model = Model(id='test_model', name=model_type, version='0.0.0', wc_lang_version='0.0.1')
         # Compartment
         comp = model.compartments.create(id='c', initial_volume=init_vol)
 
