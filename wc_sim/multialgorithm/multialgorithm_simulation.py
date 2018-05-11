@@ -114,7 +114,8 @@ class MultialgorithmSimulation(object):
 
     Attributes:
         model (:obj:`Model`): a model description
-        args (:obj:`dict`): parameters for the simulation
+        args (:obj:`dict`): parameters for the simulation; if checkpoint_dir is provided, then also
+            must include checkpoint_period and metadata
         init_populations (:obj: dict from species id to population): the initial populations of
             species, as specified by `model`
         simulation (:obj: `SimulationEngine`): the initialized simulation
