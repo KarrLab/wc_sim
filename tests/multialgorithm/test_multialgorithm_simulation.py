@@ -7,10 +7,11 @@
 
 import unittest
 import os
-from argparse import Namespace
 import math
 import re
 import numpy as np
+import shutil
+import tempfile
 from scipy.constants import Avogadro
 
 from obj_model import utils
@@ -27,6 +28,9 @@ from wc_sim.multialgorithm.make_models import MakeModels
 from wc_sim.multialgorithm.model_utilities import ModelUtilities
 from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.multialgorithm.config import core as config_core_multialgorithm
+from wc_sim.multialgorithm.multialgorithm_checkpointing import MultialgorithmicCheckpointingSimObj
+from wc_sim.log.checkpoint import Checkpoint
+
 config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 
 
@@ -70,8 +74,9 @@ class TestMultialgorithmSimulation(unittest.TestCase):
             base_model.objects.reset()
         # read and initialize a model
         self.model = Reader().run(self.MODEL_FILENAME, strict=False)
-        args = Namespace(FBA_time_step=1)
-        self.multialgorithm_simulation = MultialgorithmSimulation(self.model, args)
+        self.args = dict(FBA_time_step=1,
+            checkpoint_dir=None)
+        self.multialgorithm_simulation = MultialgorithmSimulation(self.model, self.args)
 
     def test_molecular_weights_for_species(self):
         multi_alg_sim = self.multialgorithm_simulation
@@ -114,12 +119,27 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         local_species_population = MultialgorithmSimulation.make_local_species_pop(self.model)
         self.assertEqual(local_species_population.read_one(0, specie_wo_init_conc), 0)
 
+        checkpointing_sim_obj = self.multialgorithm_simulation.create_multialgorithm_checkpointing(
+            None, 1, {})
+        self.assertEqual(type(checkpointing_sim_obj), MultialgorithmicCheckpointingSimObj)
+
     def test_build_simulation(self):
         self.simulation_engine, _ = self.multialgorithm_simulation.build_simulation()
+        self.assertIs(self.multialgorithm_simulation.checkpointing_sim_obj, None)
         self.assertEqual(len(self.simulation_engine.simulation_objects.keys()), 2)
 
 
 class TestRunSSASimulation(unittest.TestCase):
+
+    def setUp(self):
+        self.checkpoint_dir = tempfile.mkdtemp()
+        self.args = dict(FBA_time_step=1,
+            checkpoint_dir=self.checkpoint_dir,
+            checkpoint_period=10,
+            metadata={})
+
+    def tearDown(self):
+        shutil.rmtree(self.checkpoint_dir)
 
     def make_model_and_simulation(self, model_type, specie_copy_numbers=None, init_vol=None):
         # reset indices
@@ -128,14 +148,22 @@ class TestRunSSASimulation(unittest.TestCase):
         # make simple model
         model = MakeModels.make_test_model(model_type, specie_copy_numbers=specie_copy_numbers,
             init_vol=init_vol)
-        args = Namespace()
-        multialgorithm_simulation = MultialgorithmSimulation(model, args)
+        multialgorithm_simulation = MultialgorithmSimulation(model, self.args)
         simulation_engine, _ = multialgorithm_simulation.build_simulation()
         return (model, multialgorithm_simulation, simulation_engine)
 
+    def checkpoint_times(self, run_time):
+        checkpoint_period = self.args['checkpoint_period']
+        checkpoint_times = []
+        t = 0
+        while t <= run_time:
+            checkpoint_times.append(t)
+            t += checkpoint_period
+        return checkpoint_times
+
     def perform_ssa_test_run(self, model_type, run_time, initial_specie_copy_numbers,
         expected_mean_copy_numbers, delta, invariants=None, iterations=5, init_vol=None):
-        """ Test SSA by comparing expeccted and actual simulation copy numbers
+        """ Test SSA by comparing expected and actual simulation copy numbers
 
         Args:
             model_type (:obj:`str`): model type description
@@ -149,6 +177,7 @@ class TestRunSSASimulation(unittest.TestCase):
             init_vol (:obj:`float`, optional): initial volume of compartment
         """
         # TODO(Arthur): analytically determine the values for delta
+        # TODO(Arthur): provide some invariant_objs
         invariant_objs = [] if invariants is None else [Invariant(value) for value in invariants]
 
         final_specie_counts = []
@@ -157,9 +186,10 @@ class TestRunSSASimulation(unittest.TestCase):
                 model_type,
                 specie_copy_numbers=initial_specie_copy_numbers,
                 init_vol=init_vol)
+            local_species_pop = multialgorithm_simulation.local_species_population
             simulation_engine.initialize()
             num_events_handled = simulation_engine.run(run_time)
-            final_specie_counts.append(multialgorithm_simulation.simulation_submodels[0].get_specie_counts())
+            final_specie_counts.append(local_species_pop.get_checkpoint_state(run_time))
 
         mean_final_specie_counts = dict.fromkeys(list(initial_specie_copy_numbers.keys()), 0)
         # TODO(Arthur): use numpy to more compactly compile the mean final specie counts
@@ -172,9 +202,12 @@ class TestRunSSASimulation(unittest.TestCase):
         for invariant_obj in invariant_objs:
             self.assertTrue(invariant_obj.eval())
 
+        # check the checkpoint times
+        self.assertEqual(Checkpoint.list_checkpoints(self.checkpoint_dir), self.checkpoint_times(run_time))
+
     def test_run_ssa_suite(self):
         self.perform_ssa_test_run('1 species, 1 reaction',
-            run_time=1000,
+            run_time=999,   # tests checkpoint history in which the last checkpoint time < run time
             initial_specie_copy_numbers={'spec_type_0[c]':3000},
             expected_mean_copy_numbers={'spec_type_0[c]':2000},
             delta=50)
@@ -193,7 +226,6 @@ class TestRunSSASimulation(unittest.TestCase):
             init_vol=1E-22)
 
     # TODO(Arthur): catch MultialgorithmErrors from get_specie_concentrations, and elsewhere
-    # TODO(Arthur): record population history
     # TODO(Arthur): plot population history
     # TODO(Arthur): fit exponential to reaction, with rates given by reactant population
     # TODO(Arthur): have identify_enabled_reactions() return a disabled reaction

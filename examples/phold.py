@@ -86,11 +86,11 @@ class PholdSimulationObject(ApplicationSimulationObject):
 class RunPhold(object):
 
     @staticmethod
-    def parse_args(cli_args=None):
+    def parse_args(cli_args):
         """ Parse command line arguments
 
         Args:
-            cli_args (:obj:`list`, optional): if provided, use to test command line parsing
+            cli_args (:obj:`list`): command line arguments
 
         Returns:
             :obj:`argparse.Namespace`: parsed command line arguements
@@ -105,10 +105,8 @@ class RunPhold(object):
         parser.add_argument('frac_self_events', type=float, help="Fraction of events sent to self")
         parser.add_argument('end_time', type=float, help="End time for the simulation")
         parser.add_argument('--seed', '-s', type=int, help='Random number seed')
-        if cli_args is not None:
-            args = parser.parse_args(cli_args)
-        else:    # pragma: no cover     # reachable only from command line
-            args = parser.parse_args()
+        args = parser.parse_args(cli_args)
+
         if args.num_phold_procs < 1:    # pragma: no cover     # unittest cannot catch parser.error
             parser.error("Must create at least 1 PHOLD process.")
         if args.frac_self_events < 0:    # pragma: no cover
@@ -138,7 +136,7 @@ class RunPhold(object):
 
 if __name__ == '__main__':  # pragma: no cover     # reachable only from command line
     try:
-        args = RunPhold.parse_args()
+        args = RunPhold.parse_args(sys.argv[1:])
         RunPhold.main(args)
     except KeyboardInterrupt:
         pass

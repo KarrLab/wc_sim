@@ -15,8 +15,8 @@ import re
 
 from wc_sim.core.sim_metadata import SimulationMetadata
 
-# .. todo :: use hdf rather than pickle
 
+# .. todo :: use hdf rather than pickle
 class Checkpoint(object):
     """ Represents a simulation checkpoint
 

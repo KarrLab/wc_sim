@@ -1,4 +1,5 @@
 """ Make simple models for testing
+
 :Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
 :Date: 2018-04-27
 :Copyright: 2018, Karr Lab

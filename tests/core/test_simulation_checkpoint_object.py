@@ -21,17 +21,16 @@ from wc_sim.log.checkpoint import Checkpoint
 
 
 class PeriodicCheckpointSimuObj(AbstractCheckpointSimulationObject):
-    """ Test checkpointing by simplistically saving them to a list
+    """ Test checkpointing by simplistically saving checkpoints to a list
     """
 
-    def __init__(self, name, checkpoint_period, simulation_state,
-        shared_checkpoints):
+    def __init__(self, name, checkpoint_period, simulation_state, shared_checkpoints):
         self.simulation_state = simulation_state
         self.shared_checkpoints = shared_checkpoints
         super().__init__(name, checkpoint_period)
 
     def create_checkpoint(self):
-        self.shared_checkpoints.append((self.time, self.simulation_state.get_state()))
+        self.shared_checkpoints.append((self.time, self.simulation_state.get_checkpoint_state(self.time)))
 
 
 class MessageSentToSelf(SimulationMessage):
@@ -71,7 +70,7 @@ class SharedValue(object):
     def set(self, val):
         self.value = val
 
-    def get_state(self):
+    def get_checkpoint_state(self, time):
         return self.value
 
     def __eq__(self, other):
