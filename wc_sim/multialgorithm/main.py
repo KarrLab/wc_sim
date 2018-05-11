@@ -8,19 +8,19 @@
 
 import argparse
 import os
+import sys
 import datetime
-# ignore 'setting concentration' warnings
 import warnings
-warnings.filterwarnings('ignore', '.*setting concentration.*', )
 
 from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_lang.io import Reader
 from wc_lang.prepare import PrepareModel, CheckModel
 
+# ignore 'setting concentration' warnings
+warnings.filterwarnings('ignore', '.*setting concentration.*', )
+
 '''
-* Other inputs
-    * results directory
 * Outputs
     * Simulation results
     * Error report(s)
@@ -34,11 +34,11 @@ DEFAULTS = dict(
 class RunSimulation(object):
 
     @staticmethod
-    def parse_args(cli_args=None):
+    def parse_args(cli_args):
         """ Parse command line arguments
 
         Args:
-            cli_args (:obj:`list`, optional): if provided, use to test command line parsing
+            cli_args (:obj:`list`): command line args
 
         Returns:
             :obj:`argparse.Namespace`: parsed command line arguements
@@ -54,10 +54,7 @@ class RunSimulation(object):
         parser.add_argument('--FBA_time_step', type=float,
             default=DEFAULTS['FBA_time_step'], help="Timestep for FBA submodel(s) (sec)")
         parser.add_argument('--num_simulations', type=int, default=1, help="Number of simulation runs")
-        if cli_args is not None:
-            args = parser.parse_args(cli_args)
-        else:    # pragma: no cover     # reachable only from command line
-            args = parser.parse_args()
+        args = parser.parse_args(cli_args)
 
         # validate args
         if args.end_time <= 0:
@@ -129,7 +126,7 @@ class RunSimulation(object):
 
 if __name__ == '__main__':  # pragma: no cover     # reachable only from command line
     try:
-        args = RunSimulation.parse_args()
+        args = RunSimulation.parse_args(sys.argv[1:])
         RunSimulation.run(args)
     except KeyboardInterrupt:
         pass
