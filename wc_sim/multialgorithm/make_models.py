@@ -68,7 +68,7 @@ class MakeModels(object):
 
     @staticmethod
     def make_test_model(model_type, default_specie_copy_number=1000000, specie_copy_numbers=None,
-        init_vol=None):
+        init_vol=None, transform_prep_and_check=True):
         """ Create a test model
 
         * 1 compartment
@@ -81,6 +81,7 @@ class MakeModels(object):
             default_specie_copy_number (:obj:`int`): default population of all species in their compartments
             specie_copy_numbers (:obj:`dict`): populations for particular species, which overrides `default_specie_copy_number`
             init_vol (:obj:`float`, optional): initial volume of the compartment; default=1E-16
+            transform_prep_and_check (:obj:`bool`, optional): whether to transform, prepare and check the model
 
         Returns:
             :obj:`Model`: a `wc_lang` model
@@ -131,9 +132,9 @@ class MakeModels(object):
             if rate_law_type.name =='constant':
                 equation=RateLawEquation(expression='1')
             if rate_law_type.name == 'reactant_pop':
-                equation=RateLawEquation(expression=forward_reactant.id())
+                equation=RateLawEquation(expression=forward_reactant.id(), modifiers=[forward_reactant])
             if rate_law_type.name == 'product_pop':
-                equation=RateLawEquation(expression=forward_product.id())
+                equation=RateLawEquation(expression=forward_product.id(), modifiers=[forward_product])
             reaction.rate_laws.create(direction=RateLawDirection.forward, equation=equation)
 
             if num_species == 2:
@@ -145,9 +146,9 @@ class MakeModels(object):
                 if rate_law_type.name == 'constant':
                     equation=RateLawEquation(expression='1')
                 if rate_law_type.name == 'reactant_pop':
-                    equation=RateLawEquation(expression=backward_reactant.id())
+                    equation=RateLawEquation(expression=backward_reactant.id(), modifiers=[backward_reactant])
                 if rate_law_type.name == 'product_pop':
-                    equation=RateLawEquation(expression=backward_product.id())
+                    equation=RateLawEquation(expression=backward_product.id(), modifiers=[backward_product])
 
                 rate_law = RateLaw(direction=RateLawDirection.backward, equation=equation)
                 reaction.rate_laws.add(rate_law)
@@ -157,11 +158,12 @@ class MakeModels(object):
         model.parameters.create(id='carbonExchangeRate', value=12, units='mmol/gDCW/h')
         model.parameters.create(id='nonCarbonExchangeRate', value=20, units='mmol/gDCW/h')
 
-        # prepare & check the model
-        SplitReversibleReactionsTransform().run(model)
-        PrepareModel(model).run()
-        # check model transcodes the rate law expressions
-        CheckModel(model).run()
+        if transform_prep_and_check:
+            # prepare & check the model
+            SplitReversibleReactionsTransform().run(model)
+            PrepareModel(model).run()
+            # check model transcodes the rate law expressions
+            CheckModel(model).run()
 
         # create Manager indices
         # TODO(Arthur): should be automated in a finalize() method
