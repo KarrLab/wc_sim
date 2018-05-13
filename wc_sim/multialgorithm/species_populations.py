@@ -762,6 +762,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             raise SpeciesPopulationError("adjust_continuously error(s) at time {}:\n{}".format(
                 time, '\n'.join(errors)))
 
+    # TODO(Arthur): probably don't need compartment_id, because compartment is part of the species_ids
     def compartmental_mass(self, compartment_id, species_ids=None):
         """ Compute the current mass of some, or all, species in a compartment
 
