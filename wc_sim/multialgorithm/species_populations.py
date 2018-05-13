@@ -669,18 +669,6 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self._update_access_times(time, specie_id_in_set)
         return self._population[specie_id].get_population(time)
 
-    def get_checkpoint_state(self, time):
-        """ Read the predicted population of all species at simulation time `time`
-
-        Args:
-            time (:obj:`float`): the time at which the population should be estimated
-
-        Returns:
-            species counts: dict: species_id -> copy_number; the predicted copy number of all
-            species at `time`
-        """
-        return self.read(time)
-
     def read(self, time, species=None):
         """ Read the predicted population of a list of species at simulation time `time`
 

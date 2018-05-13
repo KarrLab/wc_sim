@@ -77,6 +77,10 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         self.args = dict(FBA_time_step=1,
             checkpoint_dir=None)
         self.multialgorithm_simulation = MultialgorithmSimulation(self.model, self.args)
+        self.checkpoint_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.checkpoint_dir)
 
     def test_molecular_weights_for_species(self):
         multi_alg_sim = self.multialgorithm_simulation
@@ -119,14 +123,17 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         local_species_population = MultialgorithmSimulation.make_local_species_pop(self.model)
         self.assertEqual(local_species_population.read_one(0, specie_wo_init_conc), 0)
 
-        checkpointing_sim_obj = self.multialgorithm_simulation.create_multialgorithm_checkpointing(
-            None, 1, {})
-        self.assertEqual(type(checkpointing_sim_obj), MultialgorithmicCheckpointingSimObj)
-
     def test_build_simulation(self):
-        self.simulation_engine, _ = self.multialgorithm_simulation.build_simulation()
-        self.assertIs(self.multialgorithm_simulation.checkpointing_sim_obj, None)
-        self.assertEqual(len(self.simulation_engine.simulation_objects.keys()), 2)
+        args = dict(FBA_time_step=1,
+            checkpoint_dir=self.checkpoint_dir,
+            checkpoint_period=10,
+            metadata={})
+        multialgorithm_simulation = MultialgorithmSimulation(self.model, args)
+        simulation_engine, _ = multialgorithm_simulation.build_simulation()
+        # 3 objects: 2 submodels, and the checkpointing obj:
+        self.assertEqual(len(simulation_engine.simulation_objects.keys()), 3)
+        self.assertEqual(type(multialgorithm_simulation.checkpointing_sim_obj),
+            MultialgorithmicCheckpointingSimObj)
 
 
 class TestRunSSASimulation(unittest.TestCase):
@@ -189,7 +196,7 @@ class TestRunSSASimulation(unittest.TestCase):
             local_species_pop = multialgorithm_simulation.local_species_population
             simulation_engine.initialize()
             num_events_handled = simulation_engine.run(run_time)
-            final_specie_counts.append(local_species_pop.get_checkpoint_state(run_time))
+            final_specie_counts.append(local_species_pop.read(run_time))
 
         mean_final_specie_counts = dict.fromkeys(list(initial_specie_copy_numbers.keys()), 0)
         # TODO(Arthur): use numpy to more compactly compile the mean final specie counts
@@ -225,10 +232,11 @@ class TestRunSSASimulation(unittest.TestCase):
             delta=0,
             init_vol=1E-22)
 
-    # TODO(Arthur): test multiple ssa submodels
-    # TODO(Arthur): test ssa submodel with reactions that cannot run
+    # TODO(Arthur): test saving aggregate values from DynamicModel in checkpoints
     # TODO(Arthur): extract population history as numpy matrix
     # TODO(Arthur): plot population history
+    # TODO(Arthur): test multiple ssa submodels
+    # TODO(Arthur): test ssa submodel with reactions that cannot run
     # TODO(Arthur): catch MultialgorithmErrors from get_specie_concentrations, and elsewhere
     # TODO(Arthur): fit exponential to reaction, with rates given by reactant population
     # TODO(Arthur): have identify_enabled_reactions() return a disabled reaction

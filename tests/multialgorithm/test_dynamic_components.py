@@ -78,7 +78,6 @@ class TestDynamicModel(unittest.TestCase):
     # TODO(Arthur): move this proportional test to a utility & use it instead of assertAlmostEqual everywhere
     def almost_equal_test(self, a, b, frac_diff=1/100):
         delta = min(a, b) * frac_diff
-        print('a, b', a, b)
         self.assertAlmostEqual(a, b, delta=delta)
 
     def compare_aggregate_states(self, expected_aggregate_state, computed_aggregate_state):

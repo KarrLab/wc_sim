@@ -276,7 +276,6 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
     def test_optional_species_argument(self):
         self.assertEqual(self.local_species_pop_no_init_flux.read(0), self.init_populations)
         self.assertEqual(self.local_species_pop_no_init_flux.read(2), self.init_populations)
-        self.assertEqual(self.local_species_pop_no_init_flux.get_checkpoint_state(3), self.init_populations)
         self.assertEqual(self.local_species_pop_no_init_flux._check_species(0, species=None), None)
         t = 3
         self.local_species_pop_no_init_flux._update_access_times(t, species=None)

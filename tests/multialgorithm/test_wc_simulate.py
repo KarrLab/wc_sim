@@ -46,6 +46,7 @@ class TestRunSimulation(unittest.TestCase):
             FBA_time_step = [-2, 0, arguments['end_time'] + 1],
             num_simulations = [-1],
         )
+        # TODO(Arthur): capture the stderr, and stop printing to stdout
         print('\n--- testing RunSimulation.parse_args() error handling ---', file=sys.stderr)
         for arg,error_vals in errors.items():
             for error_val in error_vals:

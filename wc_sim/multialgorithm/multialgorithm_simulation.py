@@ -160,13 +160,13 @@ class MultialgorithmSimulation(object):
             :obj:`tuple` of (`SimulationEngine`, `DynamicModel`): an initialized simulation and its
                 dynamic model
         """
+        self.partition_species()
+        self.dynamic_model = DynamicModel(self.model, self.dynamic_compartments)
         if 'checkpoint_dir' in self.args and self.args['checkpoint_dir']:
             self.checkpointing_sim_obj = self.create_multialgorithm_checkpointing(
                 self.args['checkpoint_dir'],
                 self.args['checkpoint_period'],
                 self.args['metadata'])
-        self.partition_species()
-        self.dynamic_model = DynamicModel(self.model, self.dynamic_compartments)
         self.simulation_submodels = self.create_dynamic_submodels()
         return (self.simulation, self.dynamic_model)
 
@@ -353,7 +353,7 @@ class MultialgorithmSimulation(object):
         """
         multialgorithm_checkpointing_sim_obj = MultialgorithmicCheckpointingSimObj(
             DEFAULT_VALUES['checkpointing_sim_obj'], checkpoint_period, checkpoint_dir,
-            metadata, self.local_species_population)
+            metadata, self.local_species_population, self.dynamic_model)
 
         # add the multialgorithm checkpointing object to the simulation
         self.simulation.add_object(multialgorithm_checkpointing_sim_obj)

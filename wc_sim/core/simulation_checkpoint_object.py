@@ -6,6 +6,7 @@
 :License: MIT
 """
 import sys
+import abc
 
 from wc_sim.core.simulation_message import SimulationMessage
 from wc_sim.core.simulation_object import ApplicationSimulationObject
@@ -62,7 +63,20 @@ class AbstractCheckpointSimulationObject(ApplicationSimulationObject):
     messages_sent = [NextCheckpoint]
 
 
-# TODO(Arthur): `access_state_obj` objects should be derived from an ABC that enforces a `get_checkpoint_state(time)` method
+class AccessStateObjectInterface(metaclass=abc.ABCMeta):  # pragma: no cover
+    """ An abstract base class that all access state objects must support
+    """
+
+    @abc.abstractmethod
+    def get_checkpoint_state(self, time):
+        """ Get the checkpoint state of the simulation at time `time`
+
+        Returns:
+            :obj:`object`: the checkpoint state of the simulation at time `time`
+        """
+        pass
+
+
 class CheckpointSimulationObject(AbstractCheckpointSimulationObject):
     """ Create periodic checkpoints to files
 
@@ -71,7 +85,9 @@ class CheckpointSimulationObject(AbstractCheckpointSimulationObject):
     Attributes:
         checkpoint_dir (:obj:`str`): the directory in which to save checkpoints
         metadata (:obj:`SimulationMetadata`): simulation run metadata
-        access_state_obj (:obj:`object`): an object whose `get_state()` returns the simulation's state
+        access_state_obj (:obj:`AccessStateObjectInterface`): an object whose `get_checkpoint_state(time)`
+            returns the simulation's state at time `time`; `access_state_obj` objects should be derived from
+            `AccessStateObjectInterface`
     """
 
     def __init__(self, name, checkpoint_period, checkpoint_dir, metadata, access_state_obj):
