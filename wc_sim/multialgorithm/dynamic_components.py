@@ -18,7 +18,8 @@ class DynamicCompartment(object):
     """ A dynamic compartment
 
     A `DynamicCompartment` tracks the dynamic aggregate state of a compartment, primarily its
-    mass and volume. A `DynamicCompartment` is created for each `wc_lang` `Compartment`.
+    mass and volume. A `DynamicCompartment` is created for each `wc_lang` `Compartment` in a whole-cell
+    model.
 
     Attributes:
         id (:obj:`str`): id of this `DynamicCompartment`, copied from the corresponding `Compartment`
@@ -48,8 +49,8 @@ class DynamicCompartment(object):
         self.species_population = species_population
         self.species_ids = species_ids
         if self.init_volume<=0:
-            raise MultialgorithmError("DynamicCompartment: init_volume must be a positive number, "
-                "but it is '{}'".format(self.init_volume))
+            raise MultialgorithmError("DynamicCompartment: init_volume ({}) must be a positive number.".format(
+                self.init_volume))
         self.constant_density = self.mass()/self.init_volume
 
     def mass(self):
@@ -58,7 +59,7 @@ class DynamicCompartment(object):
         Returns:
             :obj:`float`: this compartment's total current mass (g)
         """
-        return self.species_population.mass(species_ids=self.species_ids)
+        return self.species_population.compartmental_mass(self.id)
 
     def volume(self):
         """ Provide the current volume of this `DynamicCompartment`
@@ -114,12 +115,12 @@ class DynamicModel(object):
     dynamic compartments.
 
     Attributes:
-        dynamic_compartments (:obj: `dict`): the simulation's `DynamicCompartment`s, one for each
-            compartment in `model`
+        dynamic_compartments (:obj: `dict`): map from compartment ID to `DynamicCompartment`; the simulation's
+            `DynamicCompartment`s, one for each compartment in `model`
+        cellular_dyn_compartments (:obj:`list`): list of the cellular compartments
         fraction_dry_weight (:obj:`float`): fraction of the cell's weight which is not water
             a constant
         water_in_model (:obj:`bool`): if set, the model represents water
-        growth (:obj:`float`): growth in cell/s, relative to the cell's initial volume
     """
 
     def __init__(self, model, dynamic_compartments):
@@ -130,20 +131,18 @@ class DynamicModel(object):
             dynamic_compartments (:obj: `dict`): the simulation's `DynamicCompartment`s, one for each
                 compartment in `model`
         """
-        # Classify compartments into extracellular and cellular
-        # Compartments which are not extracellular are cellular
-        # Assumes exactly one extracellular compartment
-        '''
+        self.dynamic_compartments = dynamic_compartments
+
+        # Classify compartments into extracellular and cellular; those which are not extracellular are cellular
+        # Assumes at most one extracellular compartment
         extracellular_compartment = utils.get_component_by_id(model.get_compartments(),
             EXTRACELLULAR_COMPARTMENT_ID)
 
-        cellular_compartments = []
-        for compartment in model.get_compartments():
-            if compartment.id == EXTRACELLULAR_COMPARTMENT_ID:
+        self.cellular_dyn_compartments = []
+        for dynamic_compartment in dynamic_compartments.values():
+            if dynamic_compartment.id == EXTRACELLULAR_COMPARTMENT_ID:
                 continue
-            cellular_compartments.append(compartment)
-        '''
-        self.dynamic_compartments = dynamic_compartments
+            self.cellular_dyn_compartments.append( dynamic_compartment)
 
         # Does the model represent water?
         self.water_in_model = True
@@ -157,9 +156,6 @@ class DynamicModel(object):
         self.fraction_dry_weight = utils.get_component_by_id(model.get_parameters(),
             'fractionDryWeight').value
 
-        # growth
-        self.growth = np.nan
-
     def cell_mass(self):
         """ Compute the cell's mass
 
@@ -169,7 +165,19 @@ class DynamicModel(object):
         Returns:
             :obj:`float`: the cell's mass (g)
         """
-        return sum([dynamic_compartment.mass() for dynamic_compartment in self.dynamic_compartments.values()])
+        # TODO(Arthur): how should water be treated in mass calculations?
+        return sum([dynamic_compartment.mass() for dynamic_compartment in self.cellular_dyn_compartments])
+
+    def cell_volume(self):
+        """ Compute the cell's volume
+
+        Sum the volume of all `DynamicCompartment`s that are not extracellular.
+
+        Returns:
+            :obj:`float`: the cell's volume (L)
+        """
+        # todo: test independently
+        return sum([dynamic_compartment.volume() for dynamic_compartment in self.cellular_dyn_compartments])
 
     def cell_dry_weight(self):
         """ Compute the cell's dry weight
@@ -181,6 +189,36 @@ class DynamicModel(object):
             return self.fraction_dry_weight * self.cell_mass()
         else:
             return self.cell_mass()
+
+    def get_growth(self):
+        """ Report the cell's growth in cell/s, relative to the cell's initial volume
+
+        Returns:
+            (:obj:`float`): growth in cell/s, relative to the cell's initial volume
+        """
+        # TODO(Arthur): implement growth
+        pass
+
+    def get_aggregate_state(self):
+        """ Report the cell's aggregate state
+
+        Returns:
+            :obj:`dict`: the cell's aggregate state
+        """
+        aggregate_state = {
+            'cell mass': self.cell_mass(),
+            'cell volume': self.cell_volume()
+        }
+
+        compartments = {}
+        for dynamic_compartment in self.cellular_dyn_compartments:
+            compartments[dynamic_compartment.id] = {
+                'name': dynamic_compartment.name,
+                'mass': dynamic_compartment.mass(),
+                'volume': dynamic_compartment.volume(),
+            }
+        aggregate_state['compartments'] = compartments
+        return aggregate_state
 
     def get_species_count_array(self, now):     # pragma no cover   not used
         """ Map current species counts into an np array
