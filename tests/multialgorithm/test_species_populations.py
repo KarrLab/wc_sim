@@ -390,21 +390,26 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
             self.assertEqual(species_counts_hist[0, 0, time_idx], first_specie_history[time_idx])
 
     def test_mass(self):
-        total_mass = sum([self.init_populations[specie_id]*self.molecular_weights[specie_id]/Avogadro
-            for specie_id in self.species_ids])
-        self.assertAlmostEqual(self.local_species_pop.mass(), total_mass, places=37)
+        self.assertEqual(self.local_species_pop.compartmental_mass('no_such_compartment'), 0)
+        # 'specie_1[c1]' is not in compartment 'c2'
+        self.assertEqual(self.local_species_pop.compartmental_mass('c2', species_ids=['specie_1[c1]']), 0)
 
-        all_but_1st_species = self.species_ids[1:]
-        mass_of_all_but_1st_species = sum([self.init_populations[specie_id]*self.molecular_weights[specie_id]/Avogadro
-            for specie_id in all_but_1st_species])
-        self.assertAlmostEqual(self.local_species_pop.mass(species_ids=all_but_1st_species),
-            mass_of_all_but_1st_species, places=37)
+        total_mass_c1 = 0
+        for species_id in self.species_ids:
+            if '[c1]' in species_id:
+                total_mass_c1 += self.init_populations[species_id] * self.molecular_weights[species_id]
+        total_mass_c1 = total_mass_c1 / Avogadro
+        self.assertAlmostEqual(self.local_species_pop.compartmental_mass('c1'), total_mass_c1, places=30)
 
-        removed_specie = self.species_ids[0]
-        del self.local_species_pop._molecular_weights[removed_specie]
+        mass_of_specie_1_in_c1 = \
+            self.init_populations['specie_1[c1]'] * self.molecular_weights['specie_1[c1]'] / Avogadro
+        self.assertAlmostEqual(self.local_species_pop.compartmental_mass('c1', species_ids=['specie_1[c1]']),
+            mass_of_specie_1_in_c1, places=30)
+
+        unknown_species = 'specie_x[c1]'
         with self.assertRaises(SpeciesPopulationError) as context:
-            self.local_species_pop.mass()
-        self.assertIn("molecular weight not available for '{}'".format(removed_specie),
+            self.local_species_pop.compartmental_mass('c1', species_ids=[unknown_species])
+        self.assertIn("molecular weight not available for '{}'".format(unknown_species),
             str(context.exception))
 
     """

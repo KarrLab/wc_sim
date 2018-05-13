@@ -24,6 +24,7 @@ from wc_sim.multialgorithm.debug_logs import logs as debug_logs
 from wc_sim.multialgorithm.model_utilities import ModelUtilities
 from wc_sim.multialgorithm.multialgorithm_errors import NegativePopulationError, SpeciesPopulationError
 from wc_sim.multialgorithm import distributed_properties
+from wc_sim.multialgorithm.utils import get_species_and_compartment_from_name
 from wc_utils.util.dict import DictUtil
 from wc_utils.util.rand import RandomStateManager
 
@@ -499,7 +500,7 @@ debug_log = debug_logs.get_log('wc.debug.file')
 class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
     """ Maintain the population of a set of species
 
-    LocalSpeciesPopulation tracks the population of a set of species. Population values (copy numbers)
+    `LocalSpeciesPopulation` tracks the population of a set of species. Population values (copy numbers)
     can be read or modified (adjusted). To enable multi-algorithmic modeling, it supports writes to
     a specie's population by both discrete time and continuous time submodels.
 
@@ -517,7 +518,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
 
     Attributes:
         name (:obj:`str`): the name of this object.
-        time (:obj:`float`): the time of the current operation
+        time (:obj:`float`): the time of the most recent access to this `LocalSpeciesPopulation`
         _population (:obj:`dict` of :obj:`Specie`): map: specie_id -> Specie(); the species whose
             counts are stored, represented by Specie objects.
         _molecular_weights (:obj:`dict` of `float`): map: specie_id -> molecular_weight; the
@@ -531,6 +532,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
     # in the simulation
     # TODO(Arthur): report an error if a Specie is updated by multiple continuous submodels
     # because each of them assumes that they model all changes to its population over their time step
+    # TODO(Arthur): molecular_weights should provide MW of each species type, as that's what the model has
     def __init__(self, name, initial_population, molecular_weights, initial_fluxes=None,
         retain_history=True):
         """ Initialize a `LocalSpeciesPopulation` object
@@ -606,7 +608,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         Returns:
             :obj:`set`: the species known by this LocalSpeciesPopulation
         """
-        return set(list(self._population.keys()))
+        return set(self._population.keys())
 
     def _check_species(self, time, species=None):
         """ Check whether the species are a set, or not known by this LocalSpeciesPopulation
@@ -760,29 +762,32 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             raise SpeciesPopulationError("adjust_continuously error(s) at time {}:\n{}".format(
                 time, '\n'.join(errors)))
 
-    def mass(self, species_ids=None):
-        """ Compute the current mass of some, or all, species in this `LocalSpeciesPopulation`
+    def compartmental_mass(self, compartment_id, species_ids=None):
+        """ Compute the current mass of some, or all, species in a compartment
 
         Args:
+            compartment_id (:obj:`str`): the ID of the compartment
             species_ids (:obj:`list` of `str`, optional): identifiers of the species whose mass will be obtained;
-                if not provided, then the mass of all species is obtained
+                if not provided, then compute the mass of all species in the compartment
 
         Returns:
-            :obj:`float`: the current total mass (grams) of some, or all, species in this `LocalSpeciesPopulation`
+            :obj:`float`: the current total mass of the specified species in compartment `compartment_id`, in grams
 
         Raises:
             :obj:`SpeciesPopulationError`: if a specie's molecular weight is unavailable
         """
-        mass = 0.
         if species_ids is None:
-            species_ids = self._population.keys()
+            species_ids = self._all_species()
+        mass = 0.
         for specie_id in species_ids:
-            try:
-                mass += (self._molecular_weights[specie_id]*self.read_one(self.time, specie_id))/Avogadro
-            except KeyError as e:
-                raise SpeciesPopulationError("molecular weight not available for '{}'".format(
-                    specie_id))
-        return mass
+            _, comp = get_species_and_compartment_from_name(specie_id)
+            if comp == compartment_id:
+                try:
+                    mass += self._molecular_weights[specie_id] * self.read_one(self.time, specie_id)
+                except KeyError as e:
+                    raise SpeciesPopulationError("molecular weight not available for '{}'".format(
+                        specie_id))
+        return mass/Avogadro
 
     def log_event(self, message, specie):
         """ Log an event that modifies a specie's population
@@ -843,7 +848,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             raise SpeciesPopulationError("time of previous _record_history() ({}) not less than current time ({})".format(
                 self._history['time'][-1], self.time))
         self._history['time'].append(self.time)
-        for specie_id, population in self.read(self.time, set(self._population.keys())).items():
+        for specie_id, population in self.read(self.time, self._all_species()).items():
             self._history['population'][specie_id].append(population)
 
     # TODO(Arthur): fix this docstring
