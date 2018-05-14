@@ -99,7 +99,7 @@ class MakeModels(object):
         # Model
         model = Model(id='test_model', name=model_type, version='0.0.0', wc_lang_version='0.0.1')
         # Compartment
-        comp = model.compartments.create(id='c', initial_volume=init_vol)
+        comp = model.compartments.create(id='c', name='compartment c', initial_volume=init_vol)
 
         # SpeciesTypes, Species and Concentrations
         species = []
