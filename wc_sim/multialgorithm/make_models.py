@@ -68,7 +68,7 @@ class MakeModels(object):
 
     @staticmethod
     def make_test_model(model_type, default_specie_copy_number=1000000, specie_copy_numbers=None,
-        init_vol=None, transform_prep_and_check=True):
+                        init_vol=None, transform_prep_and_check=True):
         """ Create a test model
 
         * 1 compartment
@@ -90,9 +90,9 @@ class MakeModels(object):
         default_concentration = MakeModels.convert_pop_conc(default_specie_copy_number, init_vol)
 
         num_species, num_reactions, reversible, rate_law_type = MakeModels.get_model_type_params(model_type)
-        if (2<num_species or 1<num_reactions or
-            (0<num_reactions and num_species==0) or
-            (rate_law_type == RateLawType.product_pop and num_species != 2)):
+        if (2 < num_species or 1 < num_reactions or
+            (0 < num_reactions and num_species == 0) or
+                (rate_law_type == RateLawType.product_pop and num_species != 2)):
             raise ValueError("invalid combination of num_species ({}), num_reactions ({}), rate_law_type ({})".format(
                 num_species, num_reactions, rate_law_type.name))
 
@@ -117,24 +117,32 @@ class MakeModels(object):
                 Concentration(species=spec, value=default_concentration)
         # Submodel
         submodel = model.submodels.create(id='test_submodel', algorithm=SubmodelAlgorithm.ssa,
-            compartment=comp)
+                                          compartment=comp)
 
         # Reactions and RateLaws
         if num_species:
             backward_product = forward_reactant = species[0]
-            if 1<num_species:
+            if 1 < num_species:
                 backward_reactant = forward_product = species[1]
 
         # ignore modifiers, which aren't used by the simulator
+        equations = {}
         if num_reactions:
             reaction = submodel.reactions.create(id='test_reaction_1', reversible=reversible)
             reaction.participants.create(species=forward_reactant, coefficient=-1)
-            if rate_law_type.name =='constant':
-                equation=RateLawEquation(expression='1')
+            if rate_law_type.name == 'constant':
+                expression = '1'
+                modifiers = []
             if rate_law_type.name == 'reactant_pop':
-                equation=RateLawEquation(expression=forward_reactant.id(), modifiers=[forward_reactant])
+                expression = forward_reactant.id()
+                modifiers = [forward_reactant]
             if rate_law_type.name == 'product_pop':
-                equation=RateLawEquation(expression=forward_product.id(), modifiers=[forward_product])
+                expression = forward_product.id()
+                modifiers = [forward_product]
+            equation = equations.get(expression, None)
+            if not equation:
+                equation = RateLawEquation(expression=expression, modifiers=modifiers)
+                equations[expression] = equation
             reaction.rate_laws.create(direction=RateLawDirection.forward, equation=equation)
 
             if num_species == 2:
@@ -144,14 +152,19 @@ class MakeModels(object):
                 # make backward rate law
                 # RateLawEquations identical to the above must be recreated so backreferences work
                 if rate_law_type.name == 'constant':
-                    equation=RateLawEquation(expression='1')
+                    expression = '1'
+                    modifiers = []
                 if rate_law_type.name == 'reactant_pop':
-                    equation=RateLawEquation(expression=backward_reactant.id(), modifiers=[backward_reactant])
+                    expression = backward_reactant.id()
+                    modifiers = [backward_reactant]
                 if rate_law_type.name == 'product_pop':
-                    equation=RateLawEquation(expression=backward_product.id(), modifiers=[backward_product])
-
-                rate_law = RateLaw(direction=RateLawDirection.backward, equation=equation)
-                reaction.rate_laws.add(rate_law)
+                    expression = backward_product.id()
+                    modifiers = [backward_product]
+                equation = equations.get(expression, None)
+                if not equation:
+                    equation = RateLawEquation(expression=expression, modifiers=modifiers)
+                    equations[expression] = equation
+                reaction.rate_laws.create(direction=RateLawDirection.backward, equation=equation)
 
         # Parameters
         model.parameters.create(id='fractionDryWeight', value=0.3)
