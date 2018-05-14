@@ -186,7 +186,6 @@ class TestRunSSASimulation(unittest.TestCase):
             iterations (:obj:`int`, optional): number of simulation runs
             init_vol (:obj:`float`, optional): initial volume of compartment; if reaction rates depend
                 on concentration, use a smaller volume to increase rates
-                
         """
         # TODO(Arthur): analytically determine the values for delta
         # TODO(Arthur): provide some invariant_objs

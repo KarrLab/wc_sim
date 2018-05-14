@@ -125,7 +125,6 @@ class MakeModels(object):
             if 1 < num_species:
                 backward_reactant = forward_product = species[1]
 
-        # ignore modifiers, which aren't used by the simulator
         equations = {}
         if num_reactions:
             reaction = submodel.reactions.create(id='test_reaction_1', reversible=reversible)
