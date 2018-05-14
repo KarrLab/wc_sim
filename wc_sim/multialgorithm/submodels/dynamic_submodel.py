@@ -114,6 +114,17 @@ class DynamicSubmodel(ApplicationSimulationObject):
             concentrations[specie_id] = counts[specie_id]/(dynamic_compartment.volume()*Avogadro)
         return concentrations
 
+    def get_parameter_values(self):
+        """ Get the current parameter values for this dynamic submodel
+
+        Returns:
+            :obj:`dict`: a map: parameter_id -> parameter value
+        """
+        vals = {}
+        for param in self.parameters:
+            vals[param.id] = param.value
+        return vals
+
     def calc_reaction_rates(self):
         """ Calculate the rates for this dynamic submodel's reactions
 
@@ -129,9 +140,10 @@ class DynamicSubmodel(ApplicationSimulationObject):
         rates = np.full(len(self.reactions), np.nan)
         # TODO(Arthur): get concentrations only for modifiers in the reactions
         species_concentrations = self.get_specie_concentrations()
-        for idx_reaction, rxn in enumerate(self.reactions):
+        for idx_reaction, rxn in enumerate(self.reactions):            
             if rxn.rate_laws:
-                rates[idx_reaction] = RateLawUtils.eval_rate_law(rxn.rate_laws[0], species_concentrations)
+                parameter_values = {param.id: param.value for param in rxn.rate_laws[0].equation.parameters}
+                rates[idx_reaction] = RateLawUtils.eval_rate_law(rxn.rate_laws[0], species_concentrations, parameter_values)
         return rates
 
     # These methods - enabled_reaction, identify_enabled_reactions, execute_reaction - are used
