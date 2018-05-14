@@ -13,7 +13,7 @@ import numpy as np
 import shutil
 import tempfile
 from scipy.constants import Avogadro
-from pprint import pprint
+import pandas
 
 from obj_model import utils
 from wc_lang.io import Reader, Writer
@@ -29,8 +29,11 @@ from wc_sim.multialgorithm.make_models import MakeModels
 from wc_sim.multialgorithm.model_utilities import ModelUtilities
 from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.multialgorithm.config import core as config_core_multialgorithm
-from wc_sim.multialgorithm.multialgorithm_checkpointing import MultialgorithmicCheckpointingSimObj
-from wc_sim.log.checkpoint import Checkpoint
+from wc_sim.multialgorithm.multialgorithm_checkpointing import (MultialgorithmicCheckpointingSimObj,
+    MultialgorithmCheckpoint)
+
+from wc_sim.core.simulation_checkpoint_object import (AbstractCheckpointSimulationObject,
+    CheckpointSimulationObject)
 
 config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 
@@ -214,7 +217,17 @@ class TestRunSSASimulation(unittest.TestCase):
             self.assertTrue(invariant_obj.eval())
 
         # check the checkpoint times
-        self.assertEqual(Checkpoint.list_checkpoints(self.checkpoint_dir), self.checkpoint_times(run_time))
+        self.assertEqual(MultialgorithmCheckpoint.list_checkpoints(self.checkpoint_dir), self.checkpoint_times(run_time))
+
+        # check the dataframe representation
+        pred_species_pops = MultialgorithmCheckpoint.convert_checkpoints(self.checkpoint_dir)
+        self.assertEqual(type(pred_species_pops), pandas.DataFrame)
+        self.assertEqual(list(pred_species_pops.index), self.checkpoint_times(run_time))
+        for species_id, population in initial_specie_copy_numbers.items():
+            self.assertEqual(pred_species_pops.loc[0.0, species_id], population)
+        pred_species_pops.plot()
+        # figsize=(15, 10)
+
 
     def test_run_ssa_suite(self):
         specie = 'spec_type_0[c]'
@@ -225,8 +238,8 @@ class TestRunSSASimulation(unittest.TestCase):
             delta=50)
         # species counts, and cell mass and volume steadily decline
         previous_ckpt = None
-        for time in Checkpoint.list_checkpoints(self.checkpoint_dir):
-            ckpt = Checkpoint.get_checkpoint(self.checkpoint_dir, time=time)
+        for time in MultialgorithmCheckpoint.list_checkpoints(self.checkpoint_dir):
+            ckpt = MultialgorithmCheckpoint.get_checkpoint(self.checkpoint_dir, time=time)
             if previous_ckpt:
                 previous_species_pops, previous_aggregate_state = previous_ckpt.state
                 species_pops, aggregate_state = ckpt.state
@@ -250,10 +263,9 @@ class TestRunSSASimulation(unittest.TestCase):
             delta=0,
             init_vol=1E-22)
 
-    # TODO(Arthur): test saving aggregate values from DynamicModel in checkpoints
-    # TODO(Arthur): extract population history as numpy matrix
     # TODO(Arthur): plot population history
     # TODO(Arthur): include the random state in checkpoints
+    # TODO(Arthur): use invariants to test saving aggregate values from DynamicModel in checkpoints
 
     # TODO(Arthur): test multiple ssa submodels
     # TODO(Arthur): test ssa submodel with reactions that cannot run

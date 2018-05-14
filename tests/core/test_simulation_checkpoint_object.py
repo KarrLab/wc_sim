@@ -13,7 +13,7 @@ from math import ceil
 
 from wc_sim.core.simulation_engine import SimulationEngine
 from wc_sim.core.simulation_checkpoint_object import (AbstractCheckpointSimulationObject,
-    CheckpointSimulationObject)
+    CheckpointSimulationObject, MultialgorithmCheckpoint)
 from wc_sim.core.simulation_message import SimulationMessage
 from wc_sim.core.simulation_object import ApplicationSimulationObject
 from wc_sim.core.errors import SimulatorError
