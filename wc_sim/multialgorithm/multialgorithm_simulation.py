@@ -16,7 +16,6 @@ import tokenize, token
 from obj_model import utils
 from wc_utils.util.list import difference, det_dedupe
 from wc_lang import SubmodelAlgorithm, Model, SpeciesType, Species, RateLawEquation
-from wc_lang.rate_law_utils import RateLawUtils
 from wc_sim.multialgorithm.dynamic_components import DynamicModel, DynamicCompartment
 from wc_sim.core.simulation_engine import SimulationEngine
 from wc_sim.multialgorithm import message_types
