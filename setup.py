@@ -38,6 +38,11 @@ setuptools.setup(
             'examples/config/debug.default.cfg',            
         ],
     },
+    entry_points={
+        'console_scripts': [
+            'wc_sim = wc_sim.__main__:main',
+        ],
+    },
     install_requires=md.install_requires,
     extras_require=md.extras_require,
     tests_require=md.tests_require,
