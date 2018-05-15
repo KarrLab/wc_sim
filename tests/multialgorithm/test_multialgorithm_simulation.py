@@ -13,6 +13,7 @@ import numpy as np
 import shutil
 import tempfile
 from scipy.constants import Avogadro
+import pandas
 
 from obj_model import utils
 from wc_lang.io import Reader, Writer
@@ -28,8 +29,11 @@ from wc_sim.multialgorithm.make_models import MakeModels
 from wc_sim.multialgorithm.model_utilities import ModelUtilities
 from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.multialgorithm.config import core as config_core_multialgorithm
-from wc_sim.multialgorithm.multialgorithm_checkpointing import MultialgorithmicCheckpointingSimObj
-from wc_sim.log.checkpoint import Checkpoint
+from wc_sim.multialgorithm.multialgorithm_checkpointing import (MultialgorithmicCheckpointingSimObj,
+    MultialgorithmCheckpoint)
+
+from wc_sim.core.simulation_checkpoint_object import (AbstractCheckpointSimulationObject,
+    CheckpointSimulationObject)
 
 config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 
@@ -160,6 +164,8 @@ class TestRunSSASimulation(unittest.TestCase):
         return (model, multialgorithm_simulation, simulation_engine)
 
     def checkpoint_times(self, run_time):
+        """ Provide expected checkpoint times for a simulation
+        """
         checkpoint_period = self.args['checkpoint_period']
         checkpoint_times = []
         t = 0
@@ -181,7 +187,8 @@ class TestRunSSASimulation(unittest.TestCase):
             delta (:obj:`int`): threshold difference between expected and actual counts
             invariants (:obj:`list`, optional): list of invariant relationships, to be tested
             iterations (:obj:`int`, optional): number of simulation runs
-            init_vol (:obj:`float`, optional): initial volume of compartment
+            init_vol (:obj:`float`, optional): initial volume of compartment; if reaction rates depend
+                on concentration, use a smaller volume to increase rates
         """
         # TODO(Arthur): analytically determine the values for delta
         # TODO(Arthur): provide some invariant_objs
@@ -210,19 +217,43 @@ class TestRunSSASimulation(unittest.TestCase):
             self.assertTrue(invariant_obj.eval())
 
         # check the checkpoint times
-        self.assertEqual(Checkpoint.list_checkpoints(self.checkpoint_dir), self.checkpoint_times(run_time))
+        self.assertEqual(MultialgorithmCheckpoint.list_checkpoints(self.checkpoint_dir), self.checkpoint_times(run_time))
+
+        # check the dataframe representation
+        pred_species_pops = MultialgorithmCheckpoint.convert_checkpoints(self.checkpoint_dir)
+        self.assertEqual(type(pred_species_pops), pandas.DataFrame)
+        self.assertEqual(list(pred_species_pops.index), self.checkpoint_times(run_time))
+        for species_id, population in initial_specie_copy_numbers.items():
+            self.assertEqual(pred_species_pops.loc[0.0, species_id], population)
+        pred_species_pops.plot()
+        # figsize=(15, 10)
+
 
     def test_run_ssa_suite(self):
+        specie = 'spec_type_0[c]'
         self.perform_ssa_test_run('1 species, 1 reaction',
             run_time=999,       # tests checkpoint history in which the last checkpoint time < run time
-            initial_specie_copy_numbers={'spec_type_0[c]':3000},
-            expected_mean_copy_numbers={'spec_type_0[c]':2000},
+            initial_specie_copy_numbers={specie:3000},
+            expected_mean_copy_numbers={specie:2000},
             delta=50)
+        # species counts, and cell mass and volume steadily decline
+        previous_ckpt = None
+        for time in MultialgorithmCheckpoint.list_checkpoints(self.checkpoint_dir):
+            ckpt = MultialgorithmCheckpoint.get_checkpoint(self.checkpoint_dir, time=time)
+            if previous_ckpt:
+                previous_species_pops, previous_aggregate_state = previous_ckpt.state
+                species_pops, aggregate_state = ckpt.state
+                self.assertTrue(species_pops[specie] < previous_species_pops[specie])
+                self.assertTrue(aggregate_state['cell mass'] < previous_aggregate_state['cell mass'])
+                self.assertTrue(aggregate_state['cell volume'] < previous_aggregate_state['cell volume'])
+            previous_ckpt = ckpt
+
         self.perform_ssa_test_run('2 species, 1 reaction',
             run_time=1000,
             initial_specie_copy_numbers={'spec_type_0[c]':3000, 'spec_type_1[c]':0},
             expected_mean_copy_numbers={'spec_type_0[c]':2000,  'spec_type_1[c]':1000},
             delta=50)
+
         # test reaction with rate determined by reactant population; decrease volume to increase rates
         init_spec_type_0_pop = 2000
         self.perform_ssa_test_run('2 species, 1 reaction, with rates given by reactant population',
@@ -232,9 +263,10 @@ class TestRunSSASimulation(unittest.TestCase):
             delta=0,
             init_vol=1E-22)
 
-    # TODO(Arthur): test saving aggregate values from DynamicModel in checkpoints
-    # TODO(Arthur): extract population history as numpy matrix
     # TODO(Arthur): plot population history
+    # TODO(Arthur): include the random state in checkpoints
+    # TODO(Arthur): use invariants to test saving aggregate values from DynamicModel in checkpoints
+
     # TODO(Arthur): test multiple ssa submodels
     # TODO(Arthur): test ssa submodel with reactions that cannot run
     # TODO(Arthur): catch MultialgorithmErrors from get_specie_concentrations, and elsewhere

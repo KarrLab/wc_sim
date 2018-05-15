@@ -1,4 +1,4 @@
-""" Configuration
+""" wc_sim core configuration
 
 :Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2016-09-19
@@ -6,7 +6,6 @@
 :License: MIT
 """
 
-# TODO(Arthur): simplify this; see paths.py in wc_utils/tests/config/fixtures/paths.py
 import configobj
 import os
 import pkg_resources

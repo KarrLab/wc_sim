@@ -99,7 +99,7 @@ class MakeModels(object):
         # Model
         model = Model(id='test_model', name=model_type, version='0.0.0', wc_lang_version='0.0.1')
         # Compartment
-        comp = model.compartments.create(id='c', initial_volume=init_vol)
+        comp = model.compartments.create(id='c', name='compartment c', initial_volume=init_vol)
 
         # SpeciesTypes, Species and Concentrations
         species = []
@@ -125,7 +125,6 @@ class MakeModels(object):
             if 1 < num_species:
                 backward_reactant = forward_product = species[1]
 
-        # ignore modifiers, which aren't used by the simulator
         equations = {}
         if num_reactions:
             reaction = submodel.reactions.create(id='test_reaction_1', reversible=reversible)

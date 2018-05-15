@@ -14,7 +14,7 @@ from wc_lang.io import Writer, Reader
 from wc_lang.core import RateLawDirection
 from wc_sim.multialgorithm.make_models import MakeModels, RateLawType
 
-# TODO:(Arthur): fully cover MakeModels
+
 class TestMakeModels(unittest.TestCase):
 
     def setUp(self):
@@ -69,7 +69,7 @@ class TestMakeModels(unittest.TestCase):
             filename = os.path.join(self.test_dir, file+'.xlsx')
             Writer().run(model, filename, set_repo_metadata_from_path=False)
             round_trip_model = Reader().run(filename)
-            self.assertEqual(round_trip_model.validate(), None)                
+            self.assertEqual(round_trip_model.validate(), None)
             self.assertTrue(round_trip_model.is_equal(model))
             self.assertEqual(model.difference(round_trip_model), '')
 
