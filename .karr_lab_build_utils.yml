@@ -1,5 +1,6 @@
 downstream_dependencies:
   - mycoplasma_pneumoniae
+  - wc_test
 email_notifications:
   - jonrkarr@gmail.com
   - arthur.p.goldberg@mssm.edu
