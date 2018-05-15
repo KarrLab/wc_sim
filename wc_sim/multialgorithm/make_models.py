@@ -112,9 +112,9 @@ class MakeModels(object):
             species.append(spec)
             if specie_copy_numbers is not None and spec.id() in specie_copy_numbers:
                 concentration = MakeModels.convert_pop_conc(specie_copy_numbers[spec.id()], init_vol)
-                Concentration(species=spec, value=concentration)
+                Concentration(species=spec, value=concentration, units='M')
             else:
-                Concentration(species=spec, value=default_concentration)
+                Concentration(species=spec, value=default_concentration, units='M')
         # Submodel
         submodel = model.submodels.create(id='test_submodel', algorithm=SubmodelAlgorithm.ssa,
                                           compartment=comp)

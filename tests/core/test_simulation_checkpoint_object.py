@@ -13,7 +13,9 @@ from math import ceil
 
 from wc_sim.core.simulation_engine import SimulationEngine
 from wc_sim.core.simulation_checkpoint_object import (AbstractCheckpointSimulationObject,
-    CheckpointSimulationObject)
+                                                      CheckpointSimulationObject)
+from wc_sim.multialgorithm.multialgorithm_checkpointing import MultialgorithmCheckpoint
+>>>>>>> abc31fb2bf7705cd329f8d3ed42b0337e5755237
 from wc_sim.core.simulation_message import SimulationMessage
 from wc_sim.core.simulation_object import ApplicationSimulationObject
 from wc_sim.core.errors import SimulatorError
@@ -93,7 +95,7 @@ class TestCheckpointSimulationObjects(unittest.TestCase):
         self.state = SharedValue(self.b)
         self.update_period = 3
         self.updating_obj = PeriodicLinearUpdatingSimuObj('self.updating_obj', self.update_period,
-            self.state, self.a, self.b)
+                                                          self.state, self.a, self.b)
         self.checkpoint_period = 11
 
     def tearDown(self):
@@ -107,7 +109,7 @@ class TestCheckpointSimulationObjects(unittest.TestCase):
 
         checkpoints = []
         checkpointing_obj = PeriodicCheckpointSimuObj('checkpointing_obj', self.checkpoint_period,
-            self.state, checkpoints)
+                                                      self.state, checkpoints)
         self.simulator.add_objects([self.updating_obj, checkpointing_obj])
         self.simulator.initialize()
         run_time = 100
@@ -130,7 +132,7 @@ class TestCheckpointSimulationObjects(unittest.TestCase):
         # prepare
         metadata = {'test_metadata': 'value'}
         checkpointing_obj = CheckpointSimulationObject('checkpointing_obj', self.checkpoint_period,
-            self.checkpoint_dir, metadata, self.state)
+                                                       self.checkpoint_dir, metadata, self.state)
         self.simulator.add_objects([self.updating_obj, checkpointing_obj])
         self.simulator.initialize()
 
@@ -141,8 +143,8 @@ class TestCheckpointSimulationObjects(unittest.TestCase):
 
         # check results
         self.assertEqual(expected_num_events, num_events)
-        expected_checkpoint_times = [float(t) for t in 
-            range(0, self.checkpoint_period * int(run_time/self.checkpoint_period) + 1, self.checkpoint_period)]
+        expected_checkpoint_times = [float(t) for t in
+                                     range(0, self.checkpoint_period * int(run_time/self.checkpoint_period) + 1, self.checkpoint_period)]
         checkpoints = Checkpoint.list_checkpoints(self.checkpoint_dir)
         self.assertEqual(expected_checkpoint_times, checkpoints)
         checkpoint = Checkpoint.get_checkpoint(self.checkpoint_dir)
@@ -157,4 +159,3 @@ class TestCheckpointSimulationObjects(unittest.TestCase):
     def test_checkpoint_simulation_object_exception(self):
         with self.assertRaises(SimulatorError) as context:
             PeriodicCheckpointSimuObj('', 0, None, None)
-    

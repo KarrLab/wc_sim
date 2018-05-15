@@ -52,6 +52,9 @@ Thumbs.db
 # distributions
 *.egg-info
 
+# test reports
+tests/reports/
+
 # coverage files
 .coverage
 htmlcov
@@ -66,3 +69,6 @@ docs/_build
 
 # files for PyPI
 README.rst
+
+# temporary files
+.~lock*
