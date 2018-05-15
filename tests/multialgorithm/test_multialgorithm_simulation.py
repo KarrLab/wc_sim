@@ -226,8 +226,6 @@ class TestRunSSASimulation(unittest.TestCase):
         for species_id, population in initial_specie_copy_numbers.items():
             self.assertEqual(pred_species_pops.loc[0.0, species_id], population)
         pred_species_pops.plot()
-        # figsize=(15, 10)
-
 
     def test_run_ssa_suite(self):
         specie = 'spec_type_0[c]'
@@ -264,6 +262,7 @@ class TestRunSSASimulation(unittest.TestCase):
             init_vol=1E-22)
 
     # TODO(Arthur): plot population history
+    # TODO(Arthur): see todos in text file
     # TODO(Arthur): include the random state in checkpoints
     # TODO(Arthur): use invariants to test saving aggregate values from DynamicModel in checkpoints
 
