@@ -9,6 +9,7 @@
 import unittest
 import sys
 from copy import copy
+from capturer import CaptureOutput
 
 from wc_sim.multialgorithm.wc_simulate import RunSimulation
 
@@ -46,16 +47,16 @@ class TestRunSimulation(unittest.TestCase):
             FBA_time_step = [-2, 0, arguments['end_time'] + 1],
             num_simulations = [-1],
         )
-        # TODO(Arthur): capture the stderr, and stop print()ing to stdout; unfortunately capturer does not work
-        print('\n--- testing RunSimulation.parse_args() error handling ---', file=sys.stderr)
-        for arg,error_vals in errors.items():
-            for error_val in error_vals:
-                arguments2 = copy(arguments)
-                arguments2[arg] = error_val
-                args = self.make_args(arguments2)
-                with self.assertRaises(SystemExit):
-                    RunSimulation.parse_args(args)
-        print('--- done testing RunSimulation.parse_args() error handling ---', file=sys.stderr)
+        with CaptureOutput(relay=False):
+            print('\n--- testing RunSimulation.parse_args() error handling ---', file=sys.stderr)
+            for arg,error_vals in errors.items():
+                for error_val in error_vals:
+                    arguments2 = copy(arguments)
+                    arguments2[arg] = error_val
+                    args = self.make_args(arguments2)
+                    with self.assertRaises(SystemExit):
+                        RunSimulation.parse_args(args)
+            print('--- done testing RunSimulation.parse_args() error handling ---', file=sys.stderr)
 
     # TODO(Arthur)
     def test_run(self):
