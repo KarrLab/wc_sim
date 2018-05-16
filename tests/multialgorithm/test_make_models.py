@@ -37,8 +37,7 @@ class TestMakeModels(unittest.TestCase):
             ** ring of futile reactions with balanced rates: maintain steady state, on average
         '''
         model_types = ['no reactions',
-            # TODO:(Arthur): restore when ReactionParticipantAttribute.deserialize() fixed
-            # '1 species, 1 reaction',
+            '1 species, 1 reaction',
             '2 species, 1 reaction',
             '2 species, a pair of symmetrical reactions with constant rates',
             '2 species, a pair of symmetrical reactions rates given by reactant population',
@@ -48,8 +47,7 @@ class TestMakeModels(unittest.TestCase):
         # test get_model_type_params
         expected_params_list = [
             (0, 0, False, RateLawType.constant),
-            # TODO:(Arthur): restore when ReactionParticipantAttribute.deserialize() fixed
-            # (1, 1, False, RateLawType.constant),
+            (1, 1, False, RateLawType.constant),
             (2, 1, False, RateLawType.constant),
             (2, 1, True, RateLawType.constant),
             (2, 1, True, RateLawType.reactant_pop),
