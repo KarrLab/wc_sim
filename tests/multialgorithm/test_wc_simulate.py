@@ -55,7 +55,7 @@ class TestRunSimulation(unittest.TestCase):
             checkpoint_period = [-2, 0, arguments['end_time'] + 1],
             FBA_time_step = [-2, 0, arguments['end_time'] + 1],
         )
-        with CaptureOutput(relay=True):
+        with CaptureOutput(relay=False):
             print('\n--- testing RunSimulation.parse_args() error handling ---', file=sys.stderr)
             for arg,error_vals in errors.items():
                 for error_val in error_vals:
@@ -82,9 +82,8 @@ class TestRunSimulation(unittest.TestCase):
             end_time=10,
             checkpoint_period=3,
             checkpoints_dir=self.checkpoints_dir,
-            dataframe_file=None,
-            # dataframe_file='test_file.h5',
-            # dataframe_file=os.path.join(self.checkpoints_dir, 'dataframe_file.h5'),
+            # dataframe_file=None,
+            dataframe_file=os.path.join(self.checkpoints_dir, 'dataframe_file.h5'),
             FBA_time_step=5.5
         )
         print('args', args)
