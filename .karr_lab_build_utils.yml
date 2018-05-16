@@ -1,5 +1,6 @@
 downstream_dependencies:
   - mycoplasma_pneumoniae
+  - wc
   - wc_test
 email_notifications:
   - jonrkarr@gmail.com
