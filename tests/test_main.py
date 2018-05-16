@@ -21,6 +21,12 @@ class CliTestCase(unittest.TestCase):
                 __main__.main()
                 self.assertRegexpMatches(context.Exception, 'usage: wc_sim')
 
+        with mock.patch('sys.argv', ['wc_sim']):
+            with abduct.captured(abduct.out(), abduct.err()) as (stdout, stderr):
+                __main__.main()
+                self.assertRegexpMatches(stdout.getvalue().strip(), 'usage: wc_sim')
+                self.assertEqual(stderr.getvalue(), '')
+
     def test_get_version(self):
         with abduct.captured(abduct.out(), abduct.err()) as (stdout, stderr):
             with __main__.App(argv=['-v']) as app:
