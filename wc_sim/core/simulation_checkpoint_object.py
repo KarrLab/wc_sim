@@ -13,30 +13,18 @@ from wc_sim.core.simulation_object import ApplicationSimulationObject
 from wc_sim.core.errors import SimulatorError
 from wc_sim.log.checkpoint import Checkpoint
 from wc_sim.core.sim_metadata import SimulationMetadata
+from wc_sim.core.template_sim_objs import TemplateCheckpointSimulationObject
 
 
-class NextCheckpoint(SimulationMessage):
-    "Schedule the next checkpoint"
-
-
-# TODO(Arthur): a factory that generates self-clocking ApplicationSimulationObjects would be handy
-class AbstractCheckpointSimulationObject(ApplicationSimulationObject):
+class AbstractCheckpointSimulationObject(TemplateCheckpointSimulationObject):
     """ Abstract class that creates periodic checkpoints
 
     Attributes:
         checkpoint_period (:obj:`float`): interval between checkpoints, in simulated seconds
     """
 
-    def __init__(self, name, checkpoint_period):
-        if checkpoint_period <= 0:
-            raise SimulatorError("checkpoint period must be positive, but is {}".format(checkpoint_period))
-        self.checkpoint_period = checkpoint_period
-        super().__init__(name)
-
-    def schedule_next_checkpoint(self):
-        """ Schedule the next checkpoint in `self.checkpoint_period` simulated seconds
-        """
-        self.send_event(self.checkpoint_period, self, NextCheckpoint())
+    def handle_event(self):
+        self.create_checkpoint()
 
     def create_checkpoint(self):
         """ Create a checkpoint
@@ -44,23 +32,6 @@ class AbstractCheckpointSimulationObject(ApplicationSimulationObject):
         Derived classes must override this method and actually create a checkpoint
         """
         pass    # pragma: no cover     # must be overridden
-
-    def send_initial_events(self):
-        # create the initial checkpoint
-        self.create_checkpoint()
-        self.schedule_next_checkpoint()
-
-    def handle_simulation_event(self, event):
-        self.create_checkpoint()
-        self.schedule_next_checkpoint()
-
-    def get_state(self):
-        return ''    # pragma: no cover
-
-    event_handlers = [(NextCheckpoint, handle_simulation_event)]
-
-    # register the message type sent
-    messages_sent = [NextCheckpoint]
 
 
 class AccessStateObjectInterface(metaclass=abc.ABCMeta):  # pragma: no cover

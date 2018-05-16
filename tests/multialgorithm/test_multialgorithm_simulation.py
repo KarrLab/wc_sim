@@ -261,14 +261,15 @@ class TestRunSSASimulation(unittest.TestCase):
             delta=0,
             init_vol=1E-22)
 
-    # TODO(Arthur): plot population history
-    # TODO(Arthur): see todos in text file
-    # TODO(Arthur): include the random state in checkpoints
-    # TODO(Arthur): use invariants to test saving aggregate values from DynamicModel in checkpoints
-
+    # TODO(Arthur): include the random state, metadata in checkpoints
     # TODO(Arthur): test multiple ssa submodels
     # TODO(Arthur): test ssa submodel with reactions that cannot run
+    # TODO(Arthur): handle concentration units: 2D conc, 3D conc, molecules
+    # TODO(Arthur): use invariants to test saving aggregate values from DynamicModel in checkpoints
+    # TODO(Arthur): three tuple for dataframe
+
     # TODO(Arthur): catch MultialgorithmErrors from get_specie_concentrations, and elsewhere
     # TODO(Arthur): fit exponential to reaction, with rates given by reactant population
     # TODO(Arthur): have identify_enabled_reactions() return a disabled reaction
     # TODO(Arthur): have if self.enabled_reaction(self.reactions[reaction_index]) do else branch
+    # TODO(Arthur): perhaps raise warning for high concentration / molecule species like H20 in rate laws
