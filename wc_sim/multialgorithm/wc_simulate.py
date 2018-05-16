@@ -110,26 +110,16 @@ class RunSimulation(object):
         # run simulation
         multialgorithm_simulation = MultialgorithmSimulation(model, simulation_args)
         simulation_engine, dynamic_model = multialgorithm_simulation.build_simulation()
-        # print("Simulating '{}'".format(model.name))
         simulation_engine.initialize()
         # run simulation
         num_events = simulation_engine.simulate(args.end_time)
-        # print("{} events".format(num_events))
 
         if args.dataframe_file:
             pred_species_pops = MultialgorithmCheckpoint.convert_checkpoints(res_dirname)
-            '''
-            print('pred_species_pops\n', pred_species_pops)
-            print(pred_species_pops.shape)
-            print(pred_species_pops.dtypes)
-            '''
             store = pandas.HDFStore(args.dataframe_file)
-            print('store', store)
-            # store['dataframe'] = pred_species_pops
-            # print("Wrote dataframe to '{}'".format(args.dataframe_file))
+            store['dataframe'] = pred_species_pops
             store.close()
 
-        # print("Results in '{}'".format(res_dirname))
         return (res_dirname, num_events)
 
     @staticmethod
