@@ -82,8 +82,8 @@ class TestRunSimulation(unittest.TestCase):
             end_time=10,
             checkpoint_period=3,
             checkpoints_dir=self.checkpoints_dir,
-            # dataframe_file=None,
-            dataframe_file=os.path.join(self.checkpoints_dir, 'dataframe_file.h5'),
+            dataframe_file=None,
+            # dataframe_file=os.path.join(self.checkpoints_dir, 'dataframe_file.h5'),
             FBA_time_step=5.5
         )
         print('args', args)
