@@ -32,8 +32,7 @@ class TestRunSimulation(unittest.TestCase):
         self.checkpoints_dir = tempfile.mkdtemp()
 
     def tearDown(self):
-        # shutil.rmtree(self.checkpoints_dir)
-        pass
+        shutil.rmtree(self.checkpoints_dir)
 
     def test_parse_args(self):
         arguments = dict(
@@ -82,12 +81,10 @@ class TestRunSimulation(unittest.TestCase):
             end_time=10,
             checkpoint_period=3,
             checkpoints_dir=self.checkpoints_dir,
-            dataframe_file=None,
-            # dataframe_file=os.path.join(self.checkpoints_dir, 'dataframe_file.h5'),
+            dataframe_file=os.path.join(self.checkpoints_dir, 'dataframe_file.h5'),
             FBA_time_step=5.5
         )
-        print('args', args)
         res_dirname, num_events = RunSimulation.run(args)
-        print('res_dirname, num_events', res_dirname, num_events)
+        # TODO(Arthur): test more extensively
         self.assertTrue(0 < num_events)
         self.assertTrue(res_dirname.startswith(self.checkpoints_dir))
