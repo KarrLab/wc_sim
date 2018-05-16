@@ -107,11 +107,11 @@ class RunPhold(object):
         parser.add_argument('--seed', '-s', type=int, help='Random number seed')
         args = parser.parse_args(cli_args)
 
-        if args.num_phold_procs < 1:    # pragma: no cover
+        if args.num_phold_procs < 1:
             parser.error("Must create at least 1 PHOLD process.")
-        if args.frac_self_events < 0:    # pragma: no cover
+        if args.frac_self_events < 0:
             parser.error("Fraction of events sent to self ({}) should be >= 0.".format(args.frac_self_events))
-        if 1 < args.frac_self_events:    # pragma: no cover
+        if 1 < args.frac_self_events:
             parser.error("Fraction of events sent to self ({}) should be <= 1.".format(args.frac_self_events))
         if args.seed:
             random.seed(args.seed)

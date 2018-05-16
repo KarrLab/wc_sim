@@ -6,11 +6,15 @@
 """
 
 import os
+import sys
 import unittest
 import warnings
 import random
 from argparse import Namespace
 from capturer import CaptureOutput
+from copy import copy
+
+from tests.utilities_for_testing import make_args
 
 # turn off logging by changing config to raise the 'wc.debug.console', 'level' above DEBUG, to ERROR
 # share this with phold by setting a temporary config environ variable & then importing phold which imports debug_logs
@@ -56,6 +60,28 @@ class TestPhold(unittest.TestCase):
         args = RunPhold.parse_args(cli_args=cl.split())
         self.assertEqual(args.seed, seed)
 
-    # TODO(Arthur): test parser error handling as done in test_wc_simulate.py
+    required = ['num_phold_procs', 'frac_self_events', 'end_time']
+
     def test_phold_parse_args_errors(self):
-        pass
+        arguments = dict(
+            num_phold_procs=2,
+            frac_self_events=0.3,
+            end_time=10,
+        )
+
+        args = make_args(arguments, self.required, [])
+        # test parser error handling
+        errors = dict(
+            num_phold_procs = [-2, 0],
+            frac_self_events = [-1, 1.1]
+        )
+        with CaptureOutput(relay=False):
+            print('\n--- testing RunPhold.parse_args() error handling ---', file=sys.stderr)
+            for arg,error_vals in errors.items():
+                for error_val in error_vals:
+                    arguments2 = copy(arguments)
+                    arguments2[arg] = error_val
+                    args = make_args(arguments2, self.required, [])
+                    with self.assertRaises(SystemExit):
+                        RunPhold.parse_args(args)
+            print('--- done testing RunPhold.parse_args() error handling ---', file=sys.stderr)

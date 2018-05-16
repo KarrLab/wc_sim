@@ -1,7 +1,7 @@
 """ Test wc_sim main program
 
 :Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
-:Date: 20180511
+:Date: 2018-05-11
 :Copyright: 2018, Karr Lab
 :License: MIT
 """
@@ -12,19 +12,13 @@ from copy import copy
 from capturer import CaptureOutput
 
 from wc_sim.multialgorithm.wc_simulate import RunSimulation
+from tests.utilities_for_testing import make_args
 
 
 class TestRunSimulation(unittest.TestCase):
     
-    def make_args(self, args_dict, include=None):
-        options = ['checkpoint_period', 'checkpoints_dir', 'FBA_time_step', 'num_simulations']
-        args = []
-        for opt in options:
-            if opt in args_dict:
-                args.append('--' + opt)
-                args.append(str(args_dict[opt]))
-        args.extend([args_dict['model_file'], str(args_dict['end_time'])])
-        return args
+    required = ['model_file', 'end_time']
+    options = ['checkpoint_period', 'checkpoints_dir', 'FBA_time_step', 'num_simulations']
 
     def test_parse_args(self):
         arguments = dict(
@@ -35,7 +29,7 @@ class TestRunSimulation(unittest.TestCase):
             FBA_time_step=5.5,
             num_simulations=3,
         )
-        args = self.make_args(arguments)
+        args = make_args(arguments, self.required, self.options)
         parsed_args = RunSimulation.parse_args(args)
         for arg,value in arguments.items():
             self.assertEqual(getattr(parsed_args, arg), value)
@@ -53,7 +47,7 @@ class TestRunSimulation(unittest.TestCase):
                 for error_val in error_vals:
                     arguments2 = copy(arguments)
                     arguments2[arg] = error_val
-                    args = self.make_args(arguments2)
+                    args = make_args(arguments2, self.required, self.options)
                     with self.assertRaises(SystemExit):
                         RunSimulation.parse_args(args)
             print('--- done testing RunSimulation.parse_args() error handling ---', file=sys.stderr)
