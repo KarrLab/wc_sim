@@ -1,22 +1,67 @@
 """ Checkpointing log tests
 
 :Author: Jonathan Karr <karr@mssm.edu>
+:Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2017-08-30
 :Copyright: 2016-2018, Karr Lab
 :License: MIT
 """
 
 from numpy import random
-from wc_sim.log import checkpoint
 import numpy
 import os
 import shutil
 import tempfile
 import unittest
-import wc_sim.sim_config
+import copy
+
 from wc_sim.core.sim_metadata import SimulationMetadata
+from wc_sim.log.checkpoint import Checkpoint, CheckpointLogger
+import wc_sim.sim_config
 import wc_lang.core
 import wc_utils.util.types
+
+
+class TestCheckpoint(unittest.TestCase):
+
+    def setUp(self):
+        self.empty_checkpoint1 = Checkpoint(None, None, None, None)
+        self.empty_checkpoint2 = Checkpoint(None, None, None, None)
+
+        # Checkpoint(metadata, time, state, random_state)
+        metadata = {'time_max': 10}
+        time = 2
+        state = [[1, 2], 3]
+        random_state = random.RandomState(seed=0)
+        attrs = dict(metadata=metadata, time=time, state=state, random_state=random_state)
+        self.non_empty_checkpoint1 = Checkpoint(metadata, time, state, random_state)
+        self.non_empty_checkpoint2 = self.non_empty_checkpoint1
+
+        # make Checkpoints that differ
+        diff_metadata = {'time_max': 11}
+        diff_time = 3
+        diff_state = [[1, 2], 3, 4]
+        diff_random_state = random.RandomState(seed=1)
+        diff_attrs = dict(metadata=diff_metadata, time=diff_time, state=diff_state,
+            random_state=diff_random_state)
+        self.diff_checkpoints = []
+        for attr in ['metadata', 'time', 'state', 'random_state']:
+            args = copy.deepcopy(attrs)
+            args[attr] = copy.deepcopy(diff_attrs[attr])
+            self.diff_checkpoints.append(Checkpoint(**args))
+
+    def test_equality(self):
+        obj = object()
+        self.assertEqual(self.empty_checkpoint1, self.empty_checkpoint1)
+        self.assertEqual(self.empty_checkpoint1, self.empty_checkpoint2)
+        self.assertNotEqual(self.empty_checkpoint1, obj)
+        self.assertTrue(self.empty_checkpoint1 != None)
+
+        self.assertEqual(self.non_empty_checkpoint1, self.non_empty_checkpoint1)
+        self.assertEqual(self.non_empty_checkpoint1, self.non_empty_checkpoint2)
+        self.assertNotEqual(self.non_empty_checkpoint1, obj)
+        for ckpt in self.diff_checkpoints:
+            self.assertNotEqual(self.non_empty_checkpoint1, ckpt)
 
 
 class CheckpointLogTest(unittest.TestCase):
@@ -34,7 +79,7 @@ class CheckpointLogTest(unittest.TestCase):
         checkpoint_step = 2
         init_time = 0
         metadata = {'time_max': 10}
-        wc_sim.log.checkpoint.CheckpointLogger(checkpoint_dir, checkpoint_step, init_time, metadata)
+        CheckpointLogger(checkpoint_dir, checkpoint_step, init_time, metadata)
         self.assertTrue(os.path.isdir(checkpoint_dir))
 
     def test_mock_simulator(self):
@@ -45,7 +90,7 @@ class CheckpointLogTest(unittest.TestCase):
         time_max = 20
         metadata = dict(time_max=time_max)
         final_time, final_state, final_random_state = mock_simulate(metadata=metadata, checkpoint_step=checkpoint_step)
-        self.assertEqual([], wc_sim.log.checkpoint.Checkpoint.list_checkpoints(dirname=checkpoint_dir))
+        self.assertEqual([], Checkpoint.list_checkpoints(dirname=checkpoint_dir))
         self.assertGreater(final_time, time_max)
 
         # run simulation to check checkpointing
@@ -57,26 +102,26 @@ class CheckpointLogTest(unittest.TestCase):
         self.assertGreater(time, time_max)
 
         # check checkpoints created
-        self.assertTrue(sorted(wc_sim.log.checkpoint.Checkpoint.list_checkpoints(dirname=checkpoint_dir)))
+        self.assertTrue(sorted(Checkpoint.list_checkpoints(dirname=checkpoint_dir)))
         numpy.testing.assert_array_almost_equal(
-            wc_sim.log.checkpoint.Checkpoint.list_checkpoints(dirname=checkpoint_dir),
+            Checkpoint.list_checkpoints(dirname=checkpoint_dir),
             numpy.linspace(checkpoint_step, time_max - checkpoint_step, time_max / checkpoint_step - 1),
             decimal=1)
 
         # check checkpoints have correct data
         checkpoint_time = 5
-        chkpt = wc_sim.log.checkpoint.Checkpoint.get_checkpoint(dirname=checkpoint_dir, time=checkpoint_time)
+        chkpt = Checkpoint.get_checkpoint(dirname=checkpoint_dir, time=checkpoint_time)
         self.assertIn('time:', str(chkpt))
         self.assertIn('state:', str(chkpt))
         self.assertEqual(chkpt.metadata, dict(time_max=time_max))
         self.assertLessEqual(chkpt.time, checkpoint_time)
 
-        chkpt = wc_sim.log.checkpoint.Checkpoint.get_checkpoint(dirname=checkpoint_dir)
+        chkpt = Checkpoint.get_checkpoint(dirname=checkpoint_dir)
         self.assertEqual(chkpt.metadata, dict(time_max=time_max))
         self.assertLessEqual(chkpt.time, time_max)
 
         # resume simulation
-        chkpt = wc_sim.log.checkpoint.Checkpoint.get_checkpoint(dirname=checkpoint_dir)
+        chkpt = Checkpoint.get_checkpoint(dirname=checkpoint_dir)
 
         time_max = 20
         metadata = dict(time_max=time_max)
@@ -89,14 +134,14 @@ class CheckpointLogTest(unittest.TestCase):
         wc_utils.util.types.assert_value_equal(random_state, final_random_state, check_iterable_ordering=True)
 
         # check checkpoints created
-        self.assertTrue(sorted(wc_sim.log.checkpoint.Checkpoint.list_checkpoints(dirname=checkpoint_dir)))
+        self.assertTrue(sorted(Checkpoint.list_checkpoints(dirname=checkpoint_dir)))
         numpy.testing.assert_array_almost_equal(
-            wc_sim.log.checkpoint.Checkpoint.list_checkpoints(dirname=checkpoint_dir),
+            Checkpoint.list_checkpoints(dirname=checkpoint_dir),
             numpy.linspace(checkpoint_step, time_max - checkpoint_step, time_max / checkpoint_step - 1),
             decimal=1)
 
         # check checkpoints have correct data
-        chkpt = wc_sim.log.checkpoint.Checkpoint.get_checkpoint(dirname=checkpoint_dir)
+        chkpt = Checkpoint.get_checkpoint(dirname=checkpoint_dir)
         self.assertEqual(chkpt.metadata, dict(time_max=time_max))
         self.assertLessEqual(chkpt.time, final_time)
 
@@ -138,7 +183,7 @@ class CheckpointLogTest(unittest.TestCase):
         final_growth = simulator.model.state.growth
         final_random_state = simulator.model.random_state.get_state()
 
-        self.assertEqual([], wc_sim.log.checkpoint.Checkpoint.list_checkpoints(dirname=checkpoint_dir))
+        self.assertEqual([], Checkpoint.list_checkpoints(dirname=checkpoint_dir))
         self.assertEqual(final_time, time_max)
 
         # run simulation to check checkpointing
@@ -146,24 +191,24 @@ class CheckpointLogTest(unittest.TestCase):
         sim_config = wc_sim.sim_config.SimulationConfig(time_max=time_max, time_step=time_step, random_seed=random_seed)
         options['log']['checkpoint']['enabled'] = True
         wc.sim.core.Simulator(model, options).run(sim_config, out_dir=out_dir)
-        chkpt = wc_sim.log.checkpoint.Checkpoint.get_checkpoint(dirname=checkpoint_dir)
+        chkpt = Checkpoint.get_checkpoint(dirname=checkpoint_dir)
         self.assertEqual(chkpt.time, time_max)
 
         # check checkpoints created
-        self.assertTrue(sorted(wc_sim.log.checkpoint.Checkpoint.list_checkpoints(dirname=checkpoint_dir)))
+        self.assertTrue(sorted(Checkpoint.list_checkpoints(dirname=checkpoint_dir)))
         numpy.testing.assert_equal(
-            wc_sim.log.checkpoint.Checkpoint.list_checkpoints(dirname=checkpoint_dir),
+            Checkpoint.list_checkpoints(dirname=checkpoint_dir),
             numpy.linspace(checkpoint_step, time_max, time_max / checkpoint_step))
 
         # check checkpoints have correct data
-        chkpt = wc_sim.log.checkpoint.Checkpoint.get_checkpoint(dirname=checkpoint_dir, time=2.)
+        chkpt = Checkpoint.get_checkpoint(dirname=checkpoint_dir, time=2.)
         wc_utils.util.types.assert_value_equal(
             chkpt.metadata,
             SimulationMetadata(None, sim_config, None, None),
             check_iterable_ordering=True)
         self.assertEqual(chkpt.time, 2)
 
-        chkpt = wc_sim.log.checkpoint.Checkpoint.get_checkpoint(dirname=checkpoint_dir)
+        chkpt = Checkpoint.get_checkpoint(dirname=checkpoint_dir)
         wc_utils.util.types.assert_value_equal(
             chkpt.metadata,
             SimulationMetadata(None, sim_config, None, None),
@@ -171,7 +216,7 @@ class CheckpointLogTest(unittest.TestCase):
         self.assertEqual(chkpt.time, time_max)
 
         # resume simulation
-        chkpt = wc_sim.log.checkpoint.Checkpoint.get_checkpoint(dirname=checkpoint_dir)
+        chkpt = Checkpoint.get_checkpoint(dirname=checkpoint_dir)
 
         time_max = 20
         sim_config = wc_sim.sim_config.SimulationConfig(time_max=time_max, time_step=time_step, random_seed=random_seed)
@@ -189,13 +234,13 @@ class CheckpointLogTest(unittest.TestCase):
         numpy.testing.assert_equal(random_state, final_random_state)
 
         # check checkpoints created
-        self.assertTrue(sorted(wc_sim.log.checkpoint.Checkpoint.list_checkpoints(dirname=checkpoint_dir)))
+        self.assertTrue(sorted(Checkpoint.list_checkpoints(dirname=checkpoint_dir)))
         numpy.testing.assert_equal(
-            wc_sim.log.checkpoint.Checkpoint.list_checkpoints(dirname=checkpoint_dir),
+            Checkpoint.list_checkpoints(dirname=checkpoint_dir),
             numpy.linspace(checkpoint_step, time_max, time_max / checkpoint_step))
 
         # check checkpoints have correct data
-        chkpt = wc_sim.log.checkpoint.Checkpoint.get_checkpoint(dirname=checkpoint_dir)
+        chkpt = Checkpoint.get_checkpoint(dirname=checkpoint_dir)
         wc_utils.util.types.assert_value_equal(
             chkpt.metadata,
             SimulationMetadata(None, sim_config, None, None),
@@ -259,7 +304,7 @@ def mock_simulate(metadata, init_time=0, init_state=None, init_random_state=None
     time = init_time
 
     if checkpoint_dir:
-        logger = wc_sim.log.checkpoint.CheckpointLogger(checkpoint_dir, checkpoint_step, init_time, metadata)
+        logger = CheckpointLogger(checkpoint_dir, checkpoint_step, init_time, metadata)
 
     while time < metadata['time_max']:
         dt = random_state.exponential(1. / 100.)

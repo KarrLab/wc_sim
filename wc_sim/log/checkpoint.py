@@ -1,6 +1,7 @@
 """ Checkpointing log
 
 :Author: Jonathan Karr <karr@mssm.edu>
+:Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2017-08-30
 :Copyright: 2016-2018, Karr Lab
 :License: MIT
@@ -134,7 +135,6 @@ class Checkpoint(object):
             rv.append("{}: {}".format(attr, str(getattr(self, attr))))
         return '\n'.join(rv)
 
-    # TODO(Arthur): test comprehensively
     def __eq__(self, other):
         """ Compare two checkpoints
 
