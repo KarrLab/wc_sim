@@ -123,7 +123,8 @@ class RunSimulation(object):
                 pred_species_pops = MultialgorithmCheckpoint.convert_checkpoints(res_dirname)
                 store = pandas.HDFStore(args.dataframe_file)
                 store['dataframe'] = pred_species_pops
-                print("wrote dataframe to '{}'".format(args.dataframe_file))
+                print("Wrote dataframe to '{}'".format(args.dataframe_file))
+                store.close()
 
         elif 1 < args.num_simulations:
             for run_index in range(args.num_simulations):

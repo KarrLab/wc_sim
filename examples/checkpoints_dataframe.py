@@ -7,10 +7,11 @@
 :License: MIT
 """
 
-import argparse
 import pandas
 
-dataframe_file = '../../wc_sim/wc_sim/multialgorithm/dataframe_file.h5'
+# TODO(Arthur): make general purpose
+dataframe_file = '/Users/arthur_at_sinai/gitOnMyLaptopLocal/wc_sim/wc_sim/multialgorithm/dataframe_file.h5'
 store = pandas.HDFStore(dataframe_file)
 predictions = store.get('dataframe')
 print(predictions)
+store.close()
