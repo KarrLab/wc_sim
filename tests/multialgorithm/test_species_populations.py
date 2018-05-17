@@ -485,7 +485,6 @@ class TestSpeciesPopulationCache(unittest.TestCase):
 class TestSpecie(unittest.TestCase):
 
     def setUp(self):
-        RandomStateManager.initialize()
         self.random_state = RandomStateManager.instance()
 
     def test_specie(self):
@@ -746,7 +745,6 @@ class TestSpeciesPopSimObject(unittest.TestCase):
 
     def setUp(self):
         self.simulator = SimulationEngine()
-        RandomStateManager.initialize()
         self.species_ids = 's1 s2 s3'.split()
         self.initial_population = dict(zip(self.species_ids, range(3)))
         self.molecular_weight = dict(zip(self.species_ids, [10]*3))
