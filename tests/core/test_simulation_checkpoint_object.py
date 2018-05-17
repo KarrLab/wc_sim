@@ -11,9 +11,11 @@ import shutil
 import tempfile
 from math import ceil
 
+from wc_utils.util.rand import RandomStateManager
 from wc_sim.core.simulation_engine import SimulationEngine
 from wc_sim.core.simulation_checkpoint_object import (AbstractCheckpointSimulationObject,
-                                                      CheckpointSimulationObject)
+                                                      CheckpointSimulationObject,
+                                                      AccessStateObjectInterface)
 from wc_sim.multialgorithm.multialgorithm_checkpointing import MultialgorithmCheckpoint
 from wc_sim.core.simulation_message import SimulationMessage
 from wc_sim.core.simulation_object import ApplicationSimulationObject
@@ -63,16 +65,20 @@ class PeriodicLinearUpdatingSimuObj(ApplicationSimulationObject):
     messages_sent = [MessageSentToSelf]
 
 
-class SharedValue(object):
+class SharedValue(AccessStateObjectInterface):
 
     def __init__(self, init_val):
         self.value = init_val
+        self.random_state = RandomStateManager.instance()
 
     def set(self, val):
         self.value = val
 
     def get_checkpoint_state(self, time):
         return self.value
+
+    def get_random_state(self):
+        return self.random_state.get_state()
 
     def __eq__(self, other):
         if other.__class__ is not self.__class__:

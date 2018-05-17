@@ -352,7 +352,7 @@ class MultialgorithmSimulation(object):
         """
         multialgorithm_checkpointing_sim_obj = MultialgorithmicCheckpointingSimObj(
             DEFAULT_VALUES['checkpointing_sim_obj'], checkpoint_period, checkpoint_dir,
-            metadata, self.local_species_population, self.dynamic_model)
+            metadata, self.local_species_population, self.dynamic_model, self)
 
         # add the multialgorithm checkpointing object to the simulation
         self.simulation.add_object(multialgorithm_checkpointing_sim_obj)

@@ -149,6 +149,7 @@ class CheckpointLogTest(unittest.TestCase):
                             wc_utils.util.types.cast_to_builtins(final_random_state))
         wc_utils.util.types.assert_value_not_equal(chkpt.random_state, final_random_state, check_iterable_ordering=True)
 
+    # TODO: remove as unnecesary, I think
     @unittest.skip('Update to test wc_sim')
     def test_simulator(self):
         time_step = 1

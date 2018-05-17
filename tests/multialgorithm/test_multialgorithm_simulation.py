@@ -261,11 +261,15 @@ class TestRunSSASimulation(unittest.TestCase):
             delta=0,
             init_vol=1E-22)
 
-    # TODO(Arthur): include the random state, metadata in checkpoints
+    # TODO(Arthur): check the random state in checkpoints
+    # TODO(Arthur): include metadata in checkpoints
+    # TODO(Arthur): review the cement programs
+    # TODO(Arthur): put specie pop, random state, time, and metadata in the dataframe
     # TODO(Arthur): graphs of a variety of models
     # TODO(Arthur): test multiple ssa submodels
     # TODO(Arthur): test ssa submodel with reactions that cannot run
     # TODO(Arthur): handle concentration units: 2D conc, 3D conc, molecules
+    # TODO(Arthur): restore and restart a simulation from a checkpoint
     # TODO(Arthur): use invariants to test saving aggregate values from DynamicModel in checkpoints
     # TODO(Arthur): three tuple for dataframe
 

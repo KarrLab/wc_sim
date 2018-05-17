@@ -34,18 +34,27 @@ class AbstractCheckpointSimulationObject(TemplateCheckpointSimulationObject):
         pass    # pragma: no cover     # must be overridden
 
 
-class AccessStateObjectInterface(metaclass=abc.ABCMeta):  # pragma: no cover
+class AccessStateObjectInterface(metaclass=abc.ABCMeta):
     """ An abstract base class that all access state objects must support
     """
 
     @abc.abstractmethod
     def get_checkpoint_state(self, time):
-        """ Get the checkpoint state of the simulation at time `time`
+        """ Obtain a checkpoint of the simulation's model state at time `time`
 
         Returns:
-            :obj:`object`: the checkpoint state of the simulation at time `time`
+            :obj:`object`: a checkpoint of the simulation's model state
         """
-        pass
+        pass  # pragma: no cover
+
+    @abc.abstractmethod
+    def get_random_state(self):
+        """ Obtain a checkpoint of the state of the simulation's random number generator(s)
+
+        Returns:
+            :obj:`object`: the state of the simulation's random number generator(s)
+        """
+        pass  # pragma: no cover
 
 
 class CheckpointSimulationObject(AbstractCheckpointSimulationObject):
@@ -70,6 +79,6 @@ class CheckpointSimulationObject(AbstractCheckpointSimulationObject):
     def create_checkpoint(self):
         """ Create a checkpoint in the directory `self.checkpoint_dir`
         """
-        # TODO(Arthur): include the random state
         Checkpoint.set_checkpoint(self.checkpoint_dir,
-            Checkpoint(self.metadata, self.time, self.access_state_obj.get_checkpoint_state(self.time), None))
+            Checkpoint(self.metadata, self.time, self.access_state_obj.get_checkpoint_state(self.time),
+                self.access_state_obj.get_random_state()))

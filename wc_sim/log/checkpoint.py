@@ -158,8 +158,15 @@ class Checkpoint(object):
         if other.state != self.state:
             return False
 
-        if other.random_state != self.random_state:
+        try:
+            numpy.testing.assert_equal(other.random_state, self.random_state)
+        except AssertionError:
             return False
+
+        '''
+        for other,this in zip(other.random_state, self.random_state):
+            if numpy.any(other.random_state != self.random_state):
+        '''
 
         return True
 
@@ -173,6 +180,7 @@ class Checkpoint(object):
             :obj:`bool`: true if checkpoints are semantically unequal
         """
         return not self.__eq__(other)
+
 
 class CheckpointLogger(object):
     """ Checkpoint logger
@@ -211,7 +219,7 @@ class CheckpointLogger(object):
         Args:
             time (:obj:`float`): simulation time in seconds
             state (:obj:`object`): simulated state (e.g. species counts)
-            random_state (:obj:`numpy.random.RandState`): random number generator state
+            random_state (:obj:`numpy.random.RandomState`): random number generator state
         """
 
         if time >= self._next_checkpoint:
