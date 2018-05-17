@@ -1,7 +1,8 @@
-""" Test wc_sim main program
+""" Test multialgorithm main program
 
-:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
-:Date: 2018-05-11
+:Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
+:Author: Jonathan Karr <jonrkarr@gmail.com>
+:Date: 2018-05-17
 :Copyright: 2018, Karr Lab
 :License: MIT
 """
@@ -11,12 +12,12 @@ import re
 import shutil
 import tempfile
 import unittest
-from wc_sim import __main__
 from argparse import Namespace
 from capturer import CaptureOutput
 from copy import copy
 from wc_lang.core import SpeciesType
-from wc_sim.multialgorithm.wc_simulate import SimController
+from wc_sim import __main__
+from wc_sim.multialgorithm.__main__ import SimController
 
 
 class SimControllerTestCase(unittest.TestCase):

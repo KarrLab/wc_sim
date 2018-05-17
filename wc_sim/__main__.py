@@ -6,7 +6,7 @@
 :License: MIT
 """
 
-from .multialgorithm.wc_simulate import handlers as multialgorithm_handlers
+from .multialgorithm.__main__ import handlers as multialgorithm_handlers
 from cement.core.foundation import CementApp
 from cement.core.controller import CementBaseController, expose
 import wc_sim
