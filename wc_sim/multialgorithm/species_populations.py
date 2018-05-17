@@ -10,7 +10,7 @@
 # TODO(Arthur): analyze accuracy with and without interpolation
 
 import abc
-import numpy as np
+import numpy
 import sys
 from collections import defaultdict
 from scipy.constants import Avogadro
@@ -527,6 +527,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             which the specie was accessed.
         history (:obj:`dict`) nested dict; an optional history of the species' state. The population
             history is recorded at each continuous adjustment.
+        random_state (:obj:`numpy.random.RandomState`): a PRNG used by all `Species`
     """
     # TODO(Arthur): support tracking the population history of species added at any time
     # in the simulation
@@ -557,6 +558,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self.time = 0
         self._population = {}
         self.last_access_time = {}
+        self.random_state = RandomStateManager.instance()
 
         if retain_history:
             self._initialize_history()
@@ -598,7 +600,8 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         if specie_id in self._population:
             raise SpeciesPopulationError("specie_id '{}' already stored by this "
                 "LocalSpeciesPopulation".format(specie_id))
-        self._population[specie_id] = Specie(specie_id, population, initial_flux=initial_flux_given)
+        self._population[specie_id] = Specie(specie_id, self.random_state, population,
+            initial_flux=initial_flux_given)
         self.last_access_time[specie_id] = self.time
         self._add_to_history(specie_id)
 
@@ -869,8 +872,8 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             if specie_type_ids is None or compartment_ids is None:
                 raise SpeciesPopulationError(
                     "specie_type_ids and compartment_ids must be provided if numpy_format is set")
-            time_hist = np.asarray(self._history['time'])
-            species_counts_hist = np.zeros((len(specie_type_ids), len(compartment_ids),
+            time_hist = numpy.asarray(self._history['time'])
+            species_counts_hist = numpy.zeros((len(specie_type_ids), len(compartment_ids),
                 len(self._history['time'])))
             for specie_type_index,specie_type_id in list(enumerate(specie_type_ids)):
                 for comp_index,compartment_id in list(enumerate(compartment_ids)):
@@ -1087,6 +1090,7 @@ class Specie(object):
     Attributes:
         specie_name (:obj:`str`): the specie's name; not logically needed, but helpful for error
             reporting, logging, debugging, etc.
+        random_state (:obj:`numpy.random.RandomState`): a shared PRNG
         last_population (:obj:`float`): population after the most recent adjustment
         continuous_submodel (bool): whether one of the submodels modeling the species is a
             continuous submodel; must be set at initialization
@@ -1094,32 +1098,31 @@ class Specie(object):
             at initialization or by the most recent adjustment by a continuous model
         continuous_time (:obj:`float`): if a continuous submodel is modeling the specie, the simulation
             time of initialization (0) or the most recent adjustment by the continuous model
-
     """
     # use __slots__ to save space
-    __slots__ = ['specie_name', 'last_population', 'continuous_time', 'continuous_flux',
-        'random_state', 'continuous_submodel']
+    __slots__ = ['specie_name', 'last_population', 'continuous_submodel', 'continuous_flux', 'continuous_time',
+        'random_state']
 
-    def __init__(self, specie_name, initial_population, initial_flux=None):
+    def __init__(self, specie_name, random_state, initial_population, initial_flux=None):
         """ Initialize a specie object at simulation time 0
 
         Args:
             specie_name (:obj:`str`): the specie's name; not logically needed, but helpful for error
                 reporting, logging, debugging, etc.
+            random_state (:obj:`numpy.random.RandomState`): a shared PRNG
             initial_population (int): non-negative number; initial population of the specie
             initial_flux (number, optional): initial flux for the specie; required for species whose
                 population is estimated, at least in part, by a continuous model
         """
         assert 0 <= initial_population, '__init__(): population should be >= 0'
         self.specie_name = specie_name
+        self.random_state = random_state
         self.last_population = initial_population
         self.continuous_submodel = False
         if initial_flux is not None:
             self.continuous_submodel = True
             self.continuous_time = 0
             self.continuous_flux = initial_flux
-
-        self.random_state = RandomStateManager.instance()
 
     def discrete_adjustment(self, population_change, time):
         """ Make a discrete adjustment of the specie's population
