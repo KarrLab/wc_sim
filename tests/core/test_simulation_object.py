@@ -96,8 +96,6 @@ class TestEventQueue(unittest.TestCase):
         for event in next_events:
             self.assertEqual(event.receiving_object, self.receiver2)
 
-        # TODO(Arthur): concurrent events to one object with same and different events
-
     def test_exceptions(self):
         eq = EventQueue()
         with self.assertRaises(SimulatorError) as context:

@@ -21,8 +21,7 @@ class Event(object):
     As per David Jefferson's thinking, the event queue is ordered by data provided by the
     simulation application, in particular (event time, receiving object name).
     This is implemented by the comparison operators for Event below. This ordering achieves
-    deterministic and reproducible simulations.
-    # TODO(Arthur): cite lecture at LLNL, and other sources
+    deterministic and reproducible simulations. (See Jefferson's LLNL course.)
 
     Attributes:
         creation_time (:obj:`float`): simulation time when the event is created (aka `send_time`)

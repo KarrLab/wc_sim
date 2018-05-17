@@ -89,9 +89,6 @@ class TestSimulationMessageInterface(unittest.TestCase):
         with self.assertRaises(TypeError) as context:
             sim_msg_1_bad_a < sim_msg_1_bad_b
 
-        # TODO(Arthur): have simulator catch type errors
-        # TODO(Arthur): test same type name declared in different modules
-
 
 class TestSimulationMessageMeta(unittest.TestCase):
 
