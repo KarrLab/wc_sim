@@ -54,7 +54,7 @@ class SimController(CementBaseController):
                 help="File for storing Pandas DataFrame of checkpoints; written in HDF5; requires checkpoints_dir")),
             (['--fba-time-step'], dict(
                 type=float,
-                default=config['default_fba_time_step'],
+                default=config['fba_time_step'],
                 help="Timestep for FBA submodel(s) (sec)")),
         ]
 
