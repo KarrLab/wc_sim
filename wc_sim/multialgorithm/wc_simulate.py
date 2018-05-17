@@ -14,6 +14,8 @@ import datetime
 import warnings
 import pandas
 
+from .config.core import get_config
+from cement.core.controller import CementBaseController, expose
 from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_lang.io import Reader
@@ -23,63 +25,82 @@ from wc_sim.multialgorithm.multialgorithm_checkpointing import MultialgorithmChe
 # ignore 'setting concentration' warnings
 warnings.filterwarnings('ignore', '.*setting concentration.*', )
 
-# TODO(Arthur): move to config data
-DEFAULTS = dict(
-    checkpoint_period=10,
-    FBA_time_step=1,
-)
+# get config
+config = get_config()['wc_sim']['multialgorithm']
 
 
-class RunSimulation(object):
+class SimController(CementBaseController):
+    class Meta:
+        label = 'sim'
+        description = 'Simulate model'
+        stacked_on = 'base'
+        stacked_type = 'nested'
+        arguments = [
+            (['model_file'], dict(
+                type=str,
+                help="wc_lang model: File containing Excel model, or glob matching tab- or comma-delimited model")),
+            (['end_time'], dict(
+                type=float,
+                help="End time for the simulation (sec)")),
+            (['--checkpoint-period'], dict(
+                type=float,
+                default=config['checkpoint_period'],
+                help="Checkpointing period (sec)")),
+            (['--checkpoints-dir'], dict(
+                type=str,
+                help="Store simulation results; if provided, a timestamped sub-directory will hold results")),
+            (['--dataframe-file'], dict(
+                type=str,
+                help="File for storing Pandas DataFrame of checkpoints; written in HDF5; requires checkpoints_dir")),
+            (['--fba-time-step'], dict(
+                type=float,
+                default=config['default_fba_time_step'],
+                help="Timestep for FBA submodel(s) (sec)")),
+        ]
+
+    @expose(hide=True)
+    def default(self):
+        args = self.app.pargs
+        self.process_and_validate_args(args)
+        self.simulate(args)
 
     @staticmethod
-    def parse_args(cli_args):
-        """ Parse command line arguments
+    def process_and_validate_args(args):
+        """ Process and validate command line arguments
 
         Args:
-            cli_args (:obj:`list`): command line args
+            args (:obj:`object`): parsed command line arguments
 
-        Returns:
-            :obj:`argparse.Namespace`: parsed command line arguements
+        Raises:
+            :obj:`ValueError`: if any fo the command line arguments are invalid
         """
-        parser = argparse.ArgumentParser(description="Multialgorithmic whole-cell simulation")
-        parser.add_argument('model_file', type=str, help="wc_lang model: "
-            "File containing Excel model, or glob matching tab- or comma-delimited model")
-        parser.add_argument('end_time', type=float, help="End time for the simulation (sec)")
-        parser.add_argument('--checkpoint_period', type=float,
-            default=DEFAULTS['checkpoint_period'], help="Checkpointing period (sec)")
-        parser.add_argument('--checkpoints_dir', type=str,
-            help="Store simulation results; if provided, a timestamped sub-directory will hold results")
-        parser.add_argument('--dataframe_file', type=str,
-            help="File for storing Pandas DataFrame of checkpoints; written in HDF5; requires checkpoints_dir")
-        parser.add_argument('--FBA_time_step', type=float,
-            default=DEFAULTS['FBA_time_step'], help="Timestep for FBA submodel(s) (sec)")
-        args = parser.parse_args(cli_args)
 
+        # process dataframe_file
         if args.dataframe_file:
             if not args.dataframe_file.endswith('.h5'):
                 args.dataframe_file = args.dataframe_file + '.h5'
 
         # validate args
         if args.end_time <= 0:
-            parser.error("End time ({}) must be positive".format(args.end_time))
-        if args.checkpoint_period <= 0 or args.end_time < args.checkpoint_period:
-            parser.error("Checkpointing period ({}) must be positive and less than or equal to end time".format(
-                args.checkpoint_period))
-        if args.FBA_time_step <= 0.0 or args.end_time < args.FBA_time_step:
-            parser.error("Timestep for FBA submodels ({}) must be positive and less than or equal to end time".format(
-                args.FBA_time_step))
-        if args.dataframe_file and not args.checkpoints_dir:
-            parser.error("dataframe_file cannot be specified unless checkpoints_dir is provided")
+            raise ValueError("End time ({}) must be positive".format(args.end_time))
 
-        return args
+        if args.checkpoint_period <= 0 or args.end_time < args.checkpoint_period:
+            raise ValueError("Checkpointing period ({}) must be positive and less than or equal to end time".format(
+                args.checkpoint_period))
+
+        if args.fba_time_step <= 0.0 or args.end_time < args.fba_time_step:
+            raise ValueError("Timestep for FBA submodels ({}) must be positive and less than or equal to end time".format(
+                args.fba_time_step))
+
+        if args.dataframe_file and not args.checkpoints_dir:
+            raise ValueError("dataframe_file cannot be specified unless checkpoints_dir is provided")
 
     @staticmethod
-    def run(args):
-        """ Run multialgorithmic simulations of a wc_lang model
+    def simulate(args):
+        """ Run multialgorithmic simulation of a wc_lang model
 
         Args:
-            args (:obj:`argparse.Namespace`): parsed command line arguments
+            args (:obj:`object`): parsed command line arguments
 
         Raises:
             :obj:`MultialgorithmError`: if a model cannot be read from the model file, or ...
@@ -89,6 +110,7 @@ class RunSimulation(object):
         model = Reader().run(model_file, strict=False)
         if model is None:
             raise MultialgorithmError("No model found in model file '{}'".format(model_file))
+
         # prepare & check the model
         PrepareModel(model).run()
         CheckModel(model).run()
@@ -104,13 +126,14 @@ class RunSimulation(object):
             checkpoint_dir=res_dirname,
             checkpoint_period=args.checkpoint_period,
             # TODO(Arthur): provide metadata
-            metadata={}
+            metadata={},
         )
 
-        # run simulation
-        multialgorithm_simulation = MultialgorithmSimulation(model, simulation_args)
+        # run simulation        
+        multialgorithm_simulation = MultialgorithmSimulation(model, simulation_args)        
         simulation_engine, dynamic_model = multialgorithm_simulation.build_simulation()
-        simulation_engine.initialize()
+        simulation_engine.initialize()        
+
         # run simulation
         num_events = simulation_engine.simulate(args.end_time)
 
@@ -120,16 +143,9 @@ class RunSimulation(object):
             store['dataframe'] = pred_species_pops
             store.close()
 
-        return (res_dirname, num_events)
-
-    @staticmethod
-    def main():
-        args = RunSimulation.parse_args(sys.argv[1:])
-        RunSimulation.run(args)
+        print('Saved {} events to {}'.format(num_events, res_dirname))
 
 
-if __name__ == '__main__':  # pragma: no cover     # run from the command line
-    try:
-        RunSimulation.main()
-    except KeyboardInterrupt:
-        pass
+handlers = [
+    SimController,
+]

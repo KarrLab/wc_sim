@@ -6,6 +6,7 @@
 :License: MIT
 """
 
+from .multialgorithm.wc_simulate import handlers as multialgorithm_handlers
 from cement.core.foundation import CementApp
 from cement.core.controller import CementBaseController, expose
 import wc_sim
@@ -31,9 +32,7 @@ class App(CementApp):
     class Meta:
         label = 'wc_sim'
         base_controller = 'base'
-        handlers = [
-            BaseController,
-        ]
+        handlers = [BaseController,] + multialgorithm_handlers
 
 
 def main():
