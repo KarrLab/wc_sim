@@ -15,6 +15,8 @@ import math
 import numpy
 import warnings
 
+from wc_utils.util.misc import obj_to_str
+
 
 # TODO(Arthur): move to core/
 class SimulationConfig(object):
@@ -130,6 +132,16 @@ class SimulationConfig(object):
             :obj:`int`: number of simulation timesteps
         """
         return int((self.time_max - self.time_init) / self.time_step)
+
+    def __str__(self):
+        """ Provide a readable representation of this `SimulationConfig`
+
+        Returns:
+            :obj:`str`: a readable representation of this `SimulationConfig`
+        """
+
+        return obj_to_str(self, ['time_init', 'time_max', 'time_step', 'changes', 'perturbations',
+            'random_seed'])
 
 
 class Change(object):

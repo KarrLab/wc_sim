@@ -15,7 +15,7 @@ import pickle
 import re
 
 from wc_sim.core.sim_metadata import SimulationMetadata
-
+from wc_utils.util.misc import obj_to_str
 
 # .. todo :: use hdf rather than pickle
 class Checkpoint(object):
@@ -130,10 +130,7 @@ class Checkpoint(object):
             :obj:`str`: a human readable representation of this `Checkpoint`
         """
 
-        rv = []
-        for attr in ['time', 'metadata', 'state', 'random_state']:
-            rv.append("{}: {}".format(attr, str(getattr(self, attr))))
-        return '\n'.join(rv)
+        return obj_to_str(self, ['time', 'metadata', 'state', 'random_state'])
 
     def __eq__(self, other):
         """ Compare two checkpoints

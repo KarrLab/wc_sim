@@ -10,8 +10,10 @@
 import datetime
 import os
 import socket
+
 import wc_sim.sim_config
 import wc_utils.util.git
+from wc_utils.util.misc import obj_to_str
 
 
 class SimulationMetadata(object):
@@ -61,6 +63,15 @@ class SimulationMetadata(object):
             :obj:`bool`: true if simulation metadata objects are semantically unequal
         """
         return not self.__eq__(other)
+
+    def __str__(self):
+        """ Provide a readable representation of this `SimulationMetadata`
+
+        Returns:
+            :obj:`str`: a readable representation of this `SimulationMetadata`
+        """
+
+        return obj_to_str(self, ['model', 'simulation', 'run', 'author'])
 
 
 class ModelMetadata(object):
@@ -126,6 +137,15 @@ class ModelMetadata(object):
             :obj:`bool`: true if model metadata objects are semantically unequal
         """
         return not self.__eq__(other)
+
+    def __str__(self):
+        """ Provide a readable representation of this `ModelMetadata`
+
+        Returns:
+            :obj:`str`: a readable representation of this `ModelMetadata`
+        """
+
+        return obj_to_str(self, ['url', 'branch', 'revision',])
 
 
 Simulation = wc_sim.sim_config.SimulationConfig
@@ -193,6 +213,15 @@ class RunMetadata(object):
         """
         return not self.__eq__(other)
 
+    def __str__(self):
+        """ Provide a readable representation of this `RunMetadata`
+
+        Returns:
+            :obj:`str`: a readable representation of this `RunMetadata`
+        """
+
+        return obj_to_str(self, ['start_time', 'run_time', 'ip_address',])
+
 
 class AuthorMetadata(object):
     """ Represents a simulation's author
@@ -250,3 +279,12 @@ class AuthorMetadata(object):
             :obj:`bool`: true if author metadata objects are semantically unequal
         """
         return not self.__eq__(other)
+
+    def __str__(self):
+        """ Provide a readable representation of this `AuthorMetadata`
+
+        Returns:
+            :obj:`str`: a readable representation of this `AuthorMetadata`
+        """
+
+        return obj_to_str(self, ['name', 'email', 'username', 'organization', 'ip_address'])
