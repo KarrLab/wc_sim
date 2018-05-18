@@ -44,6 +44,11 @@ class SimControllerTestCase(unittest.TestCase):
         for arg, value in args.__dict__.items():
             self.assertEqual(getattr(original_args, arg), value)
 
+        args.dataframe_file = os.path.join(self.checkpoints_dir, 'dataframe_file_no_suffix')
+        original_args = copy(args)
+        SimController.process_and_validate_args(args)
+        self.assertEqual(args.dataframe_file, original_args.dataframe_file + '.h5')
+
         # test error detection
         errors = dict(
             end_time=[-3, 0],
@@ -66,7 +71,8 @@ class SimControllerTestCase(unittest.TestCase):
             checkpoints_dir=None,
             fba_time_step=10,
         )
-        with self.assertRaisesRegexp(ValueError, 'dataframe_file cannot be specified unless checkpoints_dir is provided'):
+        with self.assertRaisesRegexp(ValueError,
+            'dataframe_file cannot be specified unless checkpoints_dir is provided'):
             SimController.process_and_validate_args(args)
 
     def test_simulate(self):
@@ -77,14 +83,16 @@ class SimControllerTestCase(unittest.TestCase):
             '--checkpoint-period', '3',
             '--checkpoints-dir', self.checkpoints_dir,
             '--dataframe-file', os.path.join(self.checkpoints_dir, 'dataframe_file.h5'),
-            '--fba-time-step', '5.5',
+            '--fba-time-step', '5',
         ]
         with __main__.App(argv=argv) as app:
             with CaptureOutput() as capturer:
                 app.run()
-                match = re.match('^Saved (\d+) events to (.*?)$', capturer.get_text())
+                events = re.search('^Simulated (\d+) events', capturer.get_text())
+                checkpoints = re.search("Saved chcekpoints in '(.*?)'$", capturer.get_text())
 
-        num_events = int(match.group(1))
-        res_dirname = match.group(2)
+        num_events = int(events.group(1))
+        res_dirname = checkpoints.group(1)
+        # TODO(Arthur): stronger assertions
         self.assertTrue(0 < num_events)
         self.assertTrue(res_dirname.startswith(self.checkpoints_dir))
