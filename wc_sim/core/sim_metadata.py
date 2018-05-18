@@ -200,22 +200,24 @@ class AuthorMetadata(object):
     Attributes:
         name (:obj:`str`): authors' name
         email (:obj:`str`): author's email address
+        username (:obj:`str`): authors' username
         organization (:obj:`str`): author's organization
         ip_address (:obj:`str`): author's ip address
     """
 
-    def __init__(self, name, email, organization, ip_address):
+    def __init__(self, name, email, username, organization, ip_address):
         """ Construct a representation of the author of a simulation run
 
         Args:
             name (:obj:`str`): authors' name
             email (:obj:`str`): author's email address
+            username (:obj:`str`): authors' username
             organization (:obj:`str`): author's organization
             ip_address (:obj:`str`): author's ip address
         """
-
         self.name = name
         self.email = email
+        self.username = username
         self.organization = organization
         self.ip_address = ip_address
 
@@ -231,7 +233,7 @@ class AuthorMetadata(object):
         if other.__class__ is not self.__class__:
             return False
 
-        attrs = ['name', 'email', 'organization', 'ip_address']
+        attrs = ['name', 'email', 'username', 'organization', 'ip_address']
         for attr in attrs:
             if getattr(other, attr) != getattr(self, attr):
                 return False

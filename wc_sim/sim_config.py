@@ -76,7 +76,8 @@ class SimulationConfig(object):
             raise SimulationConfigError('time_step must be positive')
 
         if (time_max - time_init) / time_step % 1 != 0:
-            raise SimulationConfigError('(time_max - time_init) must be a multiple of time_step')
+            raise SimulationConfigError('(time_max - time_init) ({} - {}) must be a multiple of time_step ({})'.format(
+                time_max, time_init, time_step))
 
         # random_seed
         if random_seed is not None:

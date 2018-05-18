@@ -10,6 +10,7 @@ import pandas
 
 from wc_sim.log.checkpoint import Checkpoint
 from wc_sim.core.simulation_checkpoint_object import CheckpointSimulationObject, AccessStateObjectInterface
+from wc_sim.core.sim_metadata import SimulationMetadata
 from wc_sim.multialgorithm.submodels.ssa import SSASubmodel
 
 
@@ -98,7 +99,7 @@ class MultialgorithmicCheckpointingSimObj(CheckpointSimulationObject):
             name (:obj:`str`): name
             checkpoint_period (:obj:`float`): checkpoint period
             checkpoint_dir (:obj:`str`): checkpoint directory
-            metadata (:obj:``): metadata
+            metadata (:obj:`SimulationMetadata`): metadata
             local_species_population (:obj:`LocalSpeciesPopulation`): the `LocalSpeciesPopulation`
             dynamic_model (:obj:`DynamicModel`): the `DynamicModel`
             multialgorithm_simulation (:obj:`MultialgorithmSimulation`): the `MultialgorithmSimulation`

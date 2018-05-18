@@ -2,6 +2,7 @@
 """ Command line program for WC simulation
 
 :Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Author: Jonathan Karr <karr@mssm.edu>
 :Date: 2018-04-18
 :Copyright: 2018, Karr Lab
 :License: MIT
@@ -9,13 +10,16 @@
 
 import argparse
 import os
+import getpass
 import sys
+import socket
 import datetime
 import warnings
 import pandas
-
-from .config.core import get_config
 from cement.core.controller import CementBaseController, expose
+
+from wc_sim.core.sim_metadata import SimulationMetadata, ModelMetadata, AuthorMetadata, RunMetadata
+from wc_sim.sim_config import SimulationConfig
 from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_lang.io import Reader
@@ -26,6 +30,7 @@ from wc_sim.multialgorithm.multialgorithm_checkpointing import MultialgorithmChe
 warnings.filterwarnings('ignore', '.*setting concentration.*', )
 
 # get config
+from .config.core import get_config
 config = get_config()['wc_sim']['multialgorithm']
 
 
@@ -42,13 +47,13 @@ class SimController(CementBaseController):
             (['end_time'], dict(
                 type=float,
                 help="End time for the simulation (sec)")),
+            (['--checkpoints-dir'], dict(
+                type=str,
+                help="Store simulation results; if provided, a timestamped sub-directory will hold results")),
             (['--checkpoint-period'], dict(
                 type=float,
                 default=config['checkpoint_period'],
                 help="Checkpointing period (sec)")),
-            (['--checkpoints-dir'], dict(
-                type=str,
-                help="Store simulation results; if provided, a timestamped sub-directory will hold results")),
             (['--dataframe-file'], dict(
                 type=str,
                 help="File for storing Pandas DataFrame of checkpoints; written in HDF5; requires checkpoints_dir")),
@@ -72,13 +77,12 @@ class SimController(CementBaseController):
             args (:obj:`object`): parsed command line arguments
 
         Raises:
-            :obj:`ValueError`: if any fo the command line arguments are invalid
+            :obj:`ValueError`: if any of the command line arguments are invalid
         """
 
         # process dataframe_file
-        if args.dataframe_file:
-            if not args.dataframe_file.endswith('.h5'):
-                args.dataframe_file = args.dataframe_file + '.h5'
+        if args.dataframe_file and not args.dataframe_file.endswith('.h5'):
+            args.dataframe_file = args.dataframe_file + '.h5'
 
         # validate args
         if args.end_time <= 0:
@@ -96,6 +100,39 @@ class SimController(CementBaseController):
             raise ValueError("dataframe_file cannot be specified unless checkpoints_dir is provided")
 
     @staticmethod
+    def create_metadata(args):
+        """ Initialize metadata for this simulation run
+
+        Args:
+            args (:obj:`object`): parsed command line arguments
+        """
+        model = ModelMetadata.create_from_repository()
+
+        # author metadata
+        # TODO: collect more comprehensive and specific author information
+        ip_address = socket.gethostbyname(socket.gethostname())
+        try:
+            username = getpass.getuser() + '(username)'
+        except:
+            username = 'Unknown username'
+        author = AuthorMetadata(name='Unknown name', email='Unknown email', username=username,
+                                organization='Unknown organization', ip_address=ip_address)
+
+        # simulation config metadata
+        time_step = None
+        if args.fba_time_step:
+            time_step = args.fba_time_step
+        simulation_config = SimulationConfig(time_max=args.end_time, time_step=time_step)
+
+        # run metadata
+        run = RunMetadata()
+        run.record_start()
+        run.record_ip_address()
+
+        simulation_metadata = SimulationMetadata(model, simulation_config, run, author)
+        return simulation_metadata
+
+    @staticmethod
     def simulate(args):
         """ Run multialgorithmic simulation of a wc_lang model
 
@@ -103,7 +140,7 @@ class SimController(CementBaseController):
             args (:obj:`object`): parsed command line arguments
 
         Raises:
-            :obj:`MultialgorithmError`: if a model cannot be read from the model file, or ...
+            :obj:`MultialgorithmError`: if a model cannot be read from the model file
         """
         # read model
         model_file = os.path.abspath(os.path.expanduser(args.model_file))
@@ -116,26 +153,31 @@ class SimController(CementBaseController):
         CheckModel(model).run()
 
         # create results directory
-        results_sup_dir = os.path.abspath(os.path.expanduser(args.checkpoints_dir))
-        res_dirname = os.path.join(results_sup_dir, datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S'))
-        if not os.path.isdir(res_dirname):
-            os.makedirs(res_dirname)
+        res_dirname = None
+        if args.checkpoints_dir:
+            results_sup_dir = os.path.abspath(os.path.expanduser(args.checkpoints_dir))
+            res_dirname = os.path.join(results_sup_dir, datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S'))
+            if not os.path.isdir(res_dirname):
+                os.makedirs(res_dirname)
+
+        # create metadata
+        simulation_metadata = SimController.create_metadata(args)
 
         # create a multi-algorithmic simulator
         simulation_args = dict(
             checkpoint_dir=res_dirname,
             checkpoint_period=args.checkpoint_period,
-            # TODO(Arthur): provide metadata
-            metadata={},
+            metadata=simulation_metadata
         )
 
-        # run simulation        
-        multialgorithm_simulation = MultialgorithmSimulation(model, simulation_args)        
+        # run simulation
+        multialgorithm_simulation = MultialgorithmSimulation(model, simulation_args)
         simulation_engine, dynamic_model = multialgorithm_simulation.build_simulation()
-        simulation_engine.initialize()        
+        simulation_engine.initialize()
 
         # run simulation
         num_events = simulation_engine.simulate(args.end_time)
+        simulation_metadata.run.record_end()
 
         if args.dataframe_file:
             pred_species_pops = MultialgorithmCheckpoint.convert_checkpoints(res_dirname)
@@ -143,7 +185,9 @@ class SimController(CementBaseController):
             store['dataframe'] = pred_species_pops
             store.close()
 
-        print('Saved {} events to {}'.format(num_events, res_dirname))
+        print('Simulated {} events'.format(num_events))
+        if args.checkpoints_dir:
+            print("Saved chcekpoints in '{}'".format(res_dirname))
 
 
 handlers = [

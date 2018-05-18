@@ -36,7 +36,7 @@ class TestMetadata(unittest.TestCase):
 
         ip_address = socket.gethostbyname(socket.gethostname())
         self.author = author = AuthorMetadata(name='Test user', email='test@test.com',
-                                                organization='Test organization', ip_address=ip_address)
+            username='Test username', organization='Test organization', ip_address=ip_address)
 
         self.run = run = RunMetadata()
         run.record_start()
