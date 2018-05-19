@@ -15,9 +15,11 @@ import unittest
 from argparse import Namespace
 from capturer import CaptureOutput
 from copy import copy
+
 from wc_lang.core import SpeciesType
 from wc_sim import __main__
 from wc_sim.multialgorithm.__main__ import SimController
+from wc_sim.log.checkpoint import Checkpoint
 
 
 class SimControllerTestCase(unittest.TestCase):
@@ -75,7 +77,10 @@ class SimControllerTestCase(unittest.TestCase):
             'dataframe_file cannot be specified unless checkpoints_dir is provided'):
             SimController.process_and_validate_args(args)
 
-    def test_simulate(self):
+        # TODO(Arthur): test files specified relative to home directory
+
+    # @unittest.skip("Only works when simulation does not write to stdout")
+    def test_app_run(self):
         argv = [
             'sim',
             self.MODEL_FILENAME,
@@ -86,13 +91,38 @@ class SimControllerTestCase(unittest.TestCase):
             '--fba-time-step', '5',
         ]
         with __main__.App(argv=argv) as app:
-            with CaptureOutput() as capturer:
+            with CaptureOutput(relay=False) as capturer:
                 app.run()
                 events = re.search('^Simulated (\d+) events', capturer.get_text())
                 checkpoints = re.search("Saved chcekpoints in '(.*?)'$", capturer.get_text())
-
         num_events = int(events.group(1))
-        res_dirname = checkpoints.group(1)
-        # TODO(Arthur): stronger assertions
+        results_dir = checkpoints.group(1)
         self.assertTrue(0 < num_events)
-        self.assertTrue(res_dirname.startswith(self.checkpoints_dir))
+        self.assertTrue(results_dir.startswith(self.checkpoints_dir))
+
+    def run_simulate(self, args):
+        SimController.process_and_validate_args(args)
+        with CaptureOutput(relay=False):
+            return(SimController.simulate(args))
+
+    def test_simulate(self):
+        args = Namespace(checkpoint_period=4.0,
+            checkpoints_dir=self.checkpoints_dir,
+            dataframe_file=os.path.join(self.checkpoints_dir, 'dataframe_file.h5'),
+            debug=False,
+            end_time=10.0,
+            fba_time_step=5.0,
+            model_file=self.MODEL_FILENAME,
+            suppress_output=False)
+        num_events, results_dir = self.run_simulate(args)
+
+        # check time, and simulation config in checkpoints
+        for time in Checkpoint.list_checkpoints(results_dir):
+            ckpt = Checkpoint.get_checkpoint(results_dir, time=time)
+            self.assertEqual(time, ckpt.time)
+            self.assertEqual(ckpt.metadata.simulation.time_init, 0)
+            self.assertEqual(ckpt.metadata.simulation.time_max, args.end_time)
+            self.assertEqual(ckpt.metadata.simulation.time_step, args.fba_time_step)
+            self.assertTrue(ckpt.random_state != None)
+
+        # TODO(Arthur): check # of checkpoints, right aggregate and metadata in checkpoints & dataframe

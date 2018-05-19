@@ -260,7 +260,6 @@ class TestRunSSASimulation(unittest.TestCase):
             delta=0,
             init_vol=1E-22)
 
-    # TODO(Arthur): include metadata in checkpoints
     # TODO(Arthur): check the random state in checkpoints
     # TODO(Arthur): review the cement programs
     # TODO(Arthur): put specie pop, random state, time, and metadata in the dataframe
