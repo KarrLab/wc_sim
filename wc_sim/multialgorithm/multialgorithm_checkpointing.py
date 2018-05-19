@@ -8,6 +8,7 @@
 import numpy
 import pandas
 
+from wc_utils.util.misc import obj_to_str
 from wc_sim.log.checkpoint import Checkpoint
 from wc_sim.core.simulation_checkpoint_object import CheckpointSimulationObject, AccessStateObjectInterface
 from wc_sim.core.sim_metadata import SimulationMetadata
@@ -86,7 +87,7 @@ class AccessState(AccessStateObjectInterface):
 
 
 class MultialgorithmicCheckpointingSimObj(CheckpointSimulationObject):
-    """ A checkpointing simulation object for a multialgorithmic simulatino
+    """ A checkpointing simulation object for a multialgorithmic simulation
 
     Attributes:
         access_state_object (:obj:`AccessState`): an object that provides checkpoints
@@ -104,6 +105,17 @@ class MultialgorithmicCheckpointingSimObj(CheckpointSimulationObject):
             dynamic_model (:obj:`DynamicModel`): the `DynamicModel`
             multialgorithm_simulation (:obj:`MultialgorithmSimulation`): the `MultialgorithmSimulation`
         """
+
         self.access_state_object = AccessState(local_species_population, dynamic_model,
             multialgorithm_simulation)
         super().__init__(name, checkpoint_period, checkpoint_dir, metadata, self.access_state_object)
+
+    def __str__(self):
+        """ Provide a readable representation of this `MultialgorithmicCheckpointingSimObj`
+
+        Returns:
+            :obj:`str`: a readable representation of this `MultialgorithmicCheckpointingSimObj`
+        """
+
+        return obj_to_str(self, ['name', 'checkpoint_period', 'checkpoint_dir', 'metadata',
+            'local_species_population', 'dynamic_model'])
