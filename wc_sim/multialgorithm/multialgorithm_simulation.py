@@ -15,6 +15,7 @@ import tokenize, token
 
 from obj_model import utils
 from wc_utils.util.list import difference, det_dedupe
+from wc_utils.util.misc import obj_to_str
 from wc_lang import SubmodelAlgorithm, Model, SpeciesType, Species, RateLawEquation
 from wc_sim.multialgorithm.dynamic_components import DynamicModel, DynamicCompartment
 from wc_sim.core.simulation_engine import SimulationEngine
@@ -393,7 +394,7 @@ class MultialgorithmSimulation(object):
                     lang_submodel.parameters,
                     self.get_dynamic_compartments(lang_submodel),
                     self.local_species_population,
-                    self.args['FBA_time_step']
+                    self.args['fba_time_step']
                 )
 
             elif lang_submodel.algorithm == SubmodelAlgorithm.ode:
@@ -408,3 +409,14 @@ class MultialgorithmSimulation(object):
             self.simulation.add_object(simulation_submodel)
 
         return simulation_submodels
+
+    def __str__(self):
+        """ Provide a readable representation of this `MultialgorithmSimulation`
+
+        Returns:
+            :obj:`str`: a readable representation of this `MultialgorithmSimulation`
+        """
+
+        return obj_to_str(self, ['args', 'checkpointing_sim_obj', 'dynamic_compartments', 'dynamic_model',
+            'init_populations', 'local_species_population', 'model', 'private_species', 'shared_specie_store_name',
+            'shared_species', 'simulation', 'simulation_submodels', 'species_pop_objs'])
