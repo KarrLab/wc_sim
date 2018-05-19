@@ -32,8 +32,7 @@ from wc_sim.multialgorithm.config import core as config_core_multialgorithm
 from wc_sim.multialgorithm.multialgorithm_checkpointing import (MultialgorithmicCheckpointingSimObj,
     MultialgorithmCheckpoint)
 
-from wc_sim.core.simulation_checkpoint_object import (AbstractCheckpointSimulationObject,
-    CheckpointSimulationObject)
+from wc_sim.core.simulation_checkpoint_object import CheckpointSimulationObject
 
 config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 
@@ -78,7 +77,7 @@ class TestMultialgorithmSimulation(unittest.TestCase):
             base_model.objects.reset()
         # read and initialize a model
         self.model = Reader().run(self.MODEL_FILENAME, strict=False)
-        self.args = dict(FBA_time_step=1,
+        self.args = dict(fba_time_step=1,
             checkpoint_dir=None)
         self.multialgorithm_simulation = MultialgorithmSimulation(self.model, self.args)
         self.checkpoint_dir = tempfile.mkdtemp()
@@ -128,7 +127,7 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         self.assertEqual(local_species_population.read_one(0, specie_wo_init_conc), 0)
 
     def test_build_simulation(self):
-        args = dict(FBA_time_step=1,
+        args = dict(fba_time_step=1,
             checkpoint_dir=self.checkpoint_dir,
             checkpoint_period=10,
             metadata={})
@@ -144,7 +143,7 @@ class TestRunSSASimulation(unittest.TestCase):
 
     def setUp(self):
         self.checkpoint_dir = tempfile.mkdtemp()
-        self.args = dict(FBA_time_step=1,
+        self.args = dict(fba_time_step=1,
             checkpoint_dir=self.checkpoint_dir,
             checkpoint_period=10,
             metadata={})
@@ -265,13 +264,16 @@ class TestRunSSASimulation(unittest.TestCase):
     # TODO(Arthur): check the random state in checkpoints
     # TODO(Arthur): review the cement programs
     # TODO(Arthur): put specie pop, random state, time, and metadata in the dataframe
+    # TODO(Arthur): update Docker image; use pip 10, pip install wc_sim --process-dependency-links
     # TODO(Arthur): graphs of a variety of models
+    # TODO(Arthur): compare SSA submodel with published model
+    # TODO(Arthur): add __to_dict__ methods that use obj_to_dict
     # TODO(Arthur): test multiple ssa submodels
     # TODO(Arthur): test ssa submodel with reactions that cannot run
     # TODO(Arthur): handle concentration units: 2D conc, 3D conc, molecules
     # TODO(Arthur): restore and restart a simulation from a checkpoint
     # TODO(Arthur): use invariants to test saving aggregate values from DynamicModel in checkpoints
-    # TODO(Arthur): three tuple for dataframe
+    # TODO(Arthur): delete unused parts of CheckpointLogger
 
     # TODO(Arthur): catch MultialgorithmErrors from get_specie_concentrations, and elsewhere
     # TODO(Arthur): fit exponential to reaction, with rates given by reactant population
