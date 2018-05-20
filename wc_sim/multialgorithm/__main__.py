@@ -84,15 +84,19 @@ class SimController(CementBaseController):
         if args.dataframe_file and not args.checkpoints_dir:
             raise ValueError("dataframe_file cannot be specified unless checkpoints_dir is provided")
 
-        # TODO: convert files specified relative to home directory
+        # create results directory
+        if args.checkpoints_dir:
+            results_sup_dir = os.path.abspath(os.path.expanduser(args.checkpoints_dir))
+            args.checkpoints_dir = os.path.join(results_sup_dir, datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S'))
+            if not os.path.isdir(args.checkpoints_dir):
+                os.makedirs(args.checkpoints_dir)
 
-        # dataframe_file cannot be in checkpoints dir
-        if args.dataframe_file and not args.checkpoints_dir:
-            raise ValueError("dataframe_file cannot be specified unless checkpoints_dir is provided")
-
-        # suffix for HDF5 dataframe_file
-        if args.dataframe_file and not args.dataframe_file.endswith('.h5'):
-            args.dataframe_file = args.dataframe_file + '.h5'
+        # prepare dataframe file path
+        if args.dataframe_file:
+            args.dataframe_file = os.path.abspath(os.path.expanduser(args.dataframe_file))
+            # suffix for HDF5 dataframe_file
+            if not args.dataframe_file.endswith('.h5'):
+                args.dataframe_file = args.dataframe_file + '.h5'
 
         # validate args
         if args.end_time <= 0:
@@ -159,20 +163,12 @@ class SimController(CementBaseController):
         PrepareModel(model).run()
         CheckModel(model).run()
 
-        # create results directory
-        results_dir = None
-        if args.checkpoints_dir:
-            results_sup_dir = os.path.abspath(os.path.expanduser(args.checkpoints_dir))
-            results_dir = os.path.join(results_sup_dir, datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S'))
-            if not os.path.isdir(results_dir):
-                os.makedirs(results_dir)
-
         # create metadata
         simulation_metadata = SimController.create_metadata(args)
 
         # create a multi-algorithmic simulator
         simulation_args = dict(
-            checkpoint_dir=results_dir,
+            checkpoint_dir=args.checkpoints_dir,
             checkpoint_period=args.checkpoint_period,
             metadata=simulation_metadata
         )
@@ -187,16 +183,16 @@ class SimController(CementBaseController):
         simulation_metadata.run.record_end()
 
         if args.dataframe_file:
-            pred_species_pops = MultialgorithmCheckpoint.convert_checkpoints(results_dir)
+            pred_species_pops = MultialgorithmCheckpoint.convert_checkpoints(args.checkpoints_dir)
             store = pandas.HDFStore(args.dataframe_file)
             store['dataframe'] = pred_species_pops
             store.close()
 
         print('Simulated {} events'.format(num_events))
         if args.checkpoints_dir:
-            print("Saved chcekpoints in '{}'".format(results_dir))
+            print("Saved chcekpoints in '{}'".format(args.checkpoints_dir))
 
-        return (num_events, results_dir)
+        return (num_events, args.checkpoints_dir)
 
 handlers = [
     SimController,
