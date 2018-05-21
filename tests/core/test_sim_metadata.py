@@ -13,6 +13,7 @@ import copy
 
 import wc_sim.sim_config
 from wc_sim.core.sim_metadata import SimulationMetadata, ModelMetadata, AuthorMetadata, RunMetadata
+from wc_utils.util.misc import as_dict
 
 
 class TestMetadata(unittest.TestCase):
@@ -83,3 +84,10 @@ class TestMetadata(unittest.TestCase):
         self.assertEqual(self.author, self.author_equal)
         self.assertNotEqual(self.author, obj)
         self.assertNotEqual(self.author, self.author_different)
+
+    def test_as_dict(self):
+        d = as_dict(self.metadata)
+        self.assertEqual(d['author']['name'], self.metadata.author.name)
+        self.assertEqual(d['model']['branch'], self.metadata.model.branch)
+        self.assertEqual(d['run']['start_time'], self.metadata.run.start_time)
+        self.assertEqual(d['simulation']['changes'], self.metadata.simulation.changes)

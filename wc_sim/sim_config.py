@@ -39,6 +39,7 @@ class SimulationConfig(object):
         perturbations (:obj:`list`): list of desired simulated perturbations (e.g. set state to a value at a specified time or time range)
         random_seed (:obj:`int`): random number generator seed
     """
+    ATTRIBUTES = ['time_init', 'time_max', 'time_step', 'changes', 'perturbations', 'random_seed']
 
     def __init__(self, time_init=0, time_max=3600, time_step=1, changes=None, perturbations=None, random_seed=None):
         """ Construct simulation configuration
@@ -139,9 +140,7 @@ class SimulationConfig(object):
         Returns:
             :obj:`str`: a readable representation of this `SimulationConfig`
         """
-
-        return obj_to_str(self, ['time_init', 'time_max', 'time_step', 'changes', 'perturbations',
-            'random_seed'])
+        return obj_to_str(self, self.ATTRIBUTES)
 
 
 class Change(object):

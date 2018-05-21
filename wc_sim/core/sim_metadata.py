@@ -27,6 +27,7 @@ class SimulationMetadata(object):
         author (:obj:`AuthorMetadata`): Information about the person who ran the simulation
             (e.g. name, email)
     """
+    ATTRIBUTES = ['model', 'simulation', 'run', 'author']
 
     def __init__(self, model, simulation, run, author):
         self.model = model
@@ -70,8 +71,7 @@ class SimulationMetadata(object):
         Returns:
             :obj:`str`: a readable representation of this `SimulationMetadata`
         """
-
-        return obj_to_str(self, ['model', 'simulation', 'run', 'author'])
+        return obj_to_str(self, self.ATTRIBUTES)
 
 
 class ModelMetadata(object):
@@ -82,6 +82,7 @@ class ModelMetadata(object):
         branch (:obj:`str`): repository branch
         revision (:obj:`str`): repository revision
     """
+    ATTRIBUTES = ['url', 'branch', 'revision']
 
     def __init__(self, url, branch, revision):
         """ Construct a representation of a simulation model
@@ -144,8 +145,7 @@ class ModelMetadata(object):
         Returns:
             :obj:`str`: a readable representation of this `ModelMetadata`
         """
-
-        return obj_to_str(self, ['url', 'branch', 'revision',])
+        return obj_to_str(self, self.ATTRIBUTES)
 
 
 Simulation = wc_sim.sim_config.SimulationConfig
@@ -160,6 +160,7 @@ class RunMetadata(object):
         run_time (:obj:`float`): simulation run time in seconds
         ip_address (:obj:`str`): ip address of the machine that ran the simulation
     """
+    ATTRIBUTES = ['start_time', 'run_time', 'ip_address',]
 
     def __init__(self, start_time=None, run_time=None, ip_address=None):
         """ Construct a representation of simulation run
@@ -219,8 +220,7 @@ class RunMetadata(object):
         Returns:
             :obj:`str`: a readable representation of this `RunMetadata`
         """
-
-        return obj_to_str(self, ['start_time', 'run_time', 'ip_address',])
+        return obj_to_str(self, self.ATTRIBUTES)
 
 
 class AuthorMetadata(object):
@@ -233,6 +233,7 @@ class AuthorMetadata(object):
         organization (:obj:`str`): author's organization
         ip_address (:obj:`str`): author's ip address
     """
+    ATTRIBUTES = ['name', 'email', 'username', 'organization', 'ip_address']
 
     def __init__(self, name, email, username, organization, ip_address):
         """ Construct a representation of the author of a simulation run
@@ -286,5 +287,4 @@ class AuthorMetadata(object):
         Returns:
             :obj:`str`: a readable representation of this `AuthorMetadata`
         """
-
-        return obj_to_str(self, ['name', 'email', 'username', 'organization', 'ip_address'])
+        return obj_to_str(self, self.ATTRIBUTES)
