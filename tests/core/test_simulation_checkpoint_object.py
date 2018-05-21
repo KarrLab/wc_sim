@@ -16,7 +16,6 @@ from wc_sim.core.simulation_engine import SimulationEngine
 from wc_sim.core.simulation_checkpoint_object import (AbstractCheckpointSimulationObject,
                                                       CheckpointSimulationObject,
                                                       AccessStateObjectInterface)
-from wc_sim.multialgorithm.multialgorithm_checkpointing import MultialgorithmCheckpoint
 from wc_sim.core.simulation_message import SimulationMessage
 from wc_sim.core.simulation_object import ApplicationSimulationObject
 from wc_sim.core.errors import SimulatorError

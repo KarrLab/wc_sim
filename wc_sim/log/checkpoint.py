@@ -17,7 +17,6 @@ import re
 from wc_sim.core.sim_metadata import SimulationMetadata
 from wc_utils.util.misc import obj_to_str
 
-# .. todo :: use hdf rather than pickle
 # TODO(Arthur): make a simulation results obj; move metadata there
 # it doesn't belong in Checkpoint because 1) it's constant, and 2) run_time isn't known yet
 class Checkpoint(object):
@@ -161,11 +160,6 @@ class Checkpoint(object):
             numpy.testing.assert_equal(other.random_state, self.random_state)
         except AssertionError:
             return False
-
-        '''
-        for other,this in zip(other.random_state, self.random_state):
-            if numpy.any(other.random_state != self.random_state):
-        '''
 
         return True
 

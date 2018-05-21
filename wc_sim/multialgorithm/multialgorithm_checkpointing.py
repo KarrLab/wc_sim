@@ -5,20 +5,26 @@
 :Copyright: 2018, Karr Lab
 :License: MIT
 """
+
+# TODO(Arthur): discard when tossing convert_checkpoints
 import numpy
 import pandas
 
+import os
+
 from wc_utils.util.misc import obj_to_str
-from wc_sim.log.checkpoint import Checkpoint
+from wc_sim.log.checkpoint import Checkpoint    # TODO(Arthur): discard when tossing convert_checkpoints
 from wc_sim.core.simulation_checkpoint_object import CheckpointSimulationObject, AccessStateObjectInterface
 from wc_sim.core.sim_metadata import SimulationMetadata
 from wc_sim.multialgorithm.submodels.ssa import SSASubmodel
+from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 
 
 class MultialgorithmCheckpoint(Checkpoint):
     """ Checkpoint class that holds multialgorithmic checkpoints
     """
 
+    # TODO(Arthur): discard: superceded by RunResults
     @staticmethod
     def convert_checkpoints(dirname):
         """ Convert the species population in saved checkpoints into a pandas dataframe
