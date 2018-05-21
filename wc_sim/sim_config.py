@@ -150,6 +150,7 @@ class Change(object):
         target (:obj:`str`): id of the state/parameter to perturb
         value (:obj:`float`): desired value
     """
+    ATTRIBUTES = ['target', 'value']
 
     def __init__(self, target, value):
         self.target = target
@@ -169,6 +170,7 @@ class Perturbation(object):
         start_time (:obj:`float`): perturbation start time in seconds
         end_time (:obj:`float`): perturbation end time in seconds
     """
+    ATTRIBUTES = ['change', 'start_time', 'end_time']
 
     def __init__(self, change, start_time, end_time=float('nan')):
         """

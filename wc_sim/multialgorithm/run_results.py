@@ -8,6 +8,8 @@
 import numpy
 import os
 import pandas
+import pickle
+from pprint import pprint
 
 from wc_utils.util.misc import as_dict
 from wc_sim.log.checkpoint import Checkpoint
@@ -33,7 +35,7 @@ class RunResults(object):
     HDF5_FILENAME = 'run_results.h5'
 
     def __init__(self, results_dir, metadata=None):
-        """ Create a RunResults
+        """ Create a `RunResults`
 
         Args:
             results_dir (:obj:`str`): directory storing checkpoints and/or HDF5 file with
@@ -53,7 +55,8 @@ class RunResults(object):
             if metadata is None:
                 raise MultialgorithmError("'metadata' must be provided to create an HDF5 file")
 
-            population_df, aggregate_states_df, random_states_s = self.convert_checkpoints()
+            # TODO(Arthur): instead, use the metadata provided in __init__()
+            metadata, population_df, aggregate_states_df, random_states_s = self.convert_checkpoints()
 
             # create the HDF file containing the run results
             # populations
@@ -63,9 +66,9 @@ class RunResults(object):
             # random states
             random_states_s.to_hdf(self._hdf_file(), 'random_states')
             # metadata
-            # create temporary dummy metadata
-            dummy_metadata_s = pandas.Series('temporary dummy metadata', index=['test'])
-            dummy_metadata_s.to_hdf(self._hdf_file(), 'metadata')
+            metadata_dict = as_dict(metadata)
+            metadata_s = pandas.Series(metadata_dict)
+            metadata_s.to_hdf(self._hdf_file(), 'metadata')
 
             self._load_hdf_file()
 
@@ -111,6 +114,9 @@ class RunResults(object):
         # create pandas objects for species populations, aggregate states and simulation random states
         checkpoints = Checkpoint.list_checkpoints(self.results_dir)
         first_checkpoint = Checkpoint.get_checkpoint(self.results_dir, time=0)
+        # temporarily grab metadata from the first checkpoint
+        # TODO(Arthur): instead, use the metadata provided in __init__()
+        metadata = first_checkpoint.metadata
         species_pop, aggregate_state = first_checkpoint.state
 
         species_ids = species_pop.keys()
@@ -138,4 +144,4 @@ class RunResults(object):
 
             random_states_s[time] = pickle.dumps(checkpoint.random_state)
 
-        return (population_df, aggregate_states_df, random_states_s)
+        return (metadata, population_df, aggregate_states_df, random_states_s)
