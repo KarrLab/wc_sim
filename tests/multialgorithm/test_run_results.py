@@ -24,7 +24,7 @@ class TestRunResults(unittest.TestCase):
         self.checkpoints_copy = os.path.join(self.checkpoints_dir, 'checkpoints_copy')
         shutil.copytree(self.CHECKPOINTS_DIR, self.checkpoints_copy)
         self.metadata = {'test': 3}
-        
+
     def tearDown(self):
         shutil.rmtree(self.checkpoints_dir)
 

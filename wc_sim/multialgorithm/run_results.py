@@ -8,8 +8,8 @@
 import numpy
 import os
 import pandas
-import pickle
 
+from wc_utils.util.misc import as_dict
 from wc_sim.log.checkpoint import Checkpoint
 from wc_sim.core.sim_metadata import SimulationMetadata
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
@@ -47,14 +47,14 @@ class RunResults(object):
         # if the HDF file containing the run results exists, open it
         if os.path.isfile(self._hdf_file()):
             self._load_hdf_file()
-            
+
         # else create the HDF file from the sequence of checkpoints
         else:
             if metadata is None:
                 raise MultialgorithmError("'metadata' must be provided to create an HDF5 file")
 
             population_df, aggregate_states_df, random_states_s = self.convert_checkpoints()
-            
+
             # create the HDF file containing the run results
             # populations
             population_df.to_hdf(self._hdf_file(), 'populations')
@@ -63,13 +63,12 @@ class RunResults(object):
             # random states
             random_states_s.to_hdf(self._hdf_file(), 'random_states')
             # metadata
-            # TODO(Arthur): convert metadata to pandas objects and write it to self._hdf_file()
             # create temporary dummy metadata
             dummy_metadata_s = pandas.Series('temporary dummy metadata', index=['test'])
             dummy_metadata_s.to_hdf(self._hdf_file(), 'metadata')
 
             self._load_hdf_file()
-    
+
     def _hdf_file(self):
         """ Provide the pathname of the HDF5 file storing the combined results
 
@@ -77,7 +76,7 @@ class RunResults(object):
             :obj:`str`: the pathname of the HDF5 file storing the combined results
         """
         return os.path.join(self.results_dir, self.HDF5_FILENAME)
-    
+
     def _load_hdf_file(self):
         """ Load run results from the HDF file
         """
@@ -95,7 +94,7 @@ class RunResults(object):
                 this `RunResults`, as specified by `component`
 
         Raises:
-            :obj:`MultialgorithmError`: if `component` is not an element of `RunResults.COMPONENTS` 
+            :obj:`MultialgorithmError`: if `component` is not an element of `RunResults.COMPONENTS`
         """
         if component not in RunResults.COMPONENTS:
             raise MultialgorithmError("component '{}' is not an element of {}".format(component,
