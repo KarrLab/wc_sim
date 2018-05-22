@@ -205,7 +205,6 @@ class TestRunSSASimulation(unittest.TestCase):
             final_specie_counts.append(local_species_pop.read(run_time))
 
         mean_final_specie_counts = dict.fromkeys(list(initial_specie_copy_numbers.keys()), 0)
-        # TODO(Arthur): use numpy to more compactly compile the mean final specie counts
         for final_specie_count in final_specie_counts:
             for k,v in final_specie_count.items():
                 mean_final_specie_counts[k] += v
@@ -252,21 +251,19 @@ class TestRunSSASimulation(unittest.TestCase):
             delta=0,
             init_vol=1E-22)
 
-    # TODO(Arthur): review the cement programs
-    # TODO(Arthur): put specie pop, random state, time, and metadata in the dataframe
-    # TODO(Arthur): update Docker image; use pip 10, pip install wc_sim --process-dependency-links
     # TODO(Arthur): graphs of a variety of models
-    # TODO(Arthur): compare SSA submodel with published model
-    # TODO(Arthur): add __to_dict__ methods that use obj_to_dict
     # TODO(Arthur): test multiple ssa submodels
-    # TODO(Arthur): test ssa submodel with reactions that cannot run
+    # TODO(Arthur): compare SSA submodel with published model
+    # TODO(Arthur): test have identify_enabled_reactions() return a disabled reaction & ssa submodel with reactions that cannot run
+    # TODO(Arthur): have if self.enabled_reaction(self.reactions[reaction_index]) do else branch
+    # TODO(Arthur): review the cement programs
+    # TODO(Arthur): update Docker image; use pip 10, pip install wc_sim --process-dependency-links
     # TODO(Arthur): handle concentration units: 2D conc, 3D conc, molecules
     # TODO(Arthur): restore and restart a simulation from a checkpoint
     # TODO(Arthur): use invariants to test saving aggregate values from DynamicModel in checkpoints
     # TODO(Arthur): delete unused parts of CheckpointLogger
+    # TODO(Arthur): control pytest warnings
 
     # TODO(Arthur): catch MultialgorithmErrors from get_specie_concentrations, and elsewhere
     # TODO(Arthur): fit exponential to reaction, with rates given by reactant population
-    # TODO(Arthur): have identify_enabled_reactions() return a disabled reaction
-    # TODO(Arthur): have if self.enabled_reaction(self.reactions[reaction_index]) do else branch
     # TODO(Arthur): perhaps raise warning for high concentration / molecule species like H20 in rate laws
