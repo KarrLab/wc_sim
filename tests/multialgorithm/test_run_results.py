@@ -10,9 +10,11 @@ import os
 import unittest
 import shutil
 import tempfile
+from argparse import Namespace
 import warnings
 
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
+from wc_sim.multialgorithm.__main__ import SimController
 from wc_sim.multialgorithm.run_results import RunResults
 
 
@@ -23,14 +25,19 @@ class TestRunResults(unittest.TestCase):
         self.checkpoints_dir = tempfile.mkdtemp()
         self.checkpoints_copy = os.path.join(self.checkpoints_dir, 'checkpoints_copy')
         shutil.copytree(self.CHECKPOINTS_DIR, self.checkpoints_copy)
-        self.metadata = {'test': 3}
+        self.args = Namespace(
+            model_file='filename',
+            end_time=10,
+            checkpoint_period=3,
+            checkpoints_dir=self.checkpoints_dir,
+            fba_time_step=5
+        )
+        self.metadata = SimController.create_metadata(self.args)
 
     def tearDown(self):
         shutil.rmtree(self.checkpoints_dir)
 
     def test_run_results(self):
-        # ignore 'PerformanceWarning' warnings
-        warnings.simplefilter("ignore")
 
         run_results_1 = RunResults(self.checkpoints_copy, self.metadata)
         for component in RunResults.COMPONENTS:
@@ -42,7 +49,6 @@ class TestRunResults(unittest.TestCase):
             self.assertTrue(run_results_1.get(component).equals(run_results_2.get(component)))
 
     def test_run_results_errors(self):
-        warnings.simplefilter("ignore")
 
         with self.assertRaises(MultialgorithmError):
             RunResults(self.checkpoints_copy)

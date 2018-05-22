@@ -25,6 +25,7 @@ from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_lang.io import Reader
 from wc_lang.prepare import PrepareModel, CheckModel
 from wc_sim.multialgorithm.multialgorithm_checkpointing import MultialgorithmCheckpoint
+from wc_sim.multialgorithm.run_results import RunResults
 
 # ignore 'setting concentration' warnings
 warnings.filterwarnings('ignore', '.*setting concentration.*', )
@@ -49,14 +50,12 @@ class SimController(CementBaseController):
                 help="End time for the simulation (sec)")),
             (['--checkpoints-dir'], dict(
                 type=str,
-                help="Store simulation results; if provided, a timestamped sub-directory will hold results")),
+                help="Store simulation results; if provided, a timestamped sub-directory will hold results, "
+                "including an HDF5 file that can be accessed through a RunResults object")),
             (['--checkpoint-period'], dict(
                 type=float,
                 default=config['checkpoint_period'],
                 help="Checkpointing period (sec)")),
-            (['--dataframe-file'], dict(
-                type=str,
-                help="File for storing Pandas DataFrame of checkpoints; written in HDF5; requires checkpoints-dir")),
             (['--fba-time-step'], dict(
                 type=float,
                 default=config['fba_time_step'],
@@ -80,23 +79,12 @@ class SimController(CementBaseController):
             :obj:`ValueError`: if any of the command line arguments are invalid
         """
 
-        # process dataframe_file
-        if args.dataframe_file and not args.checkpoints_dir:
-            raise ValueError("dataframe_file cannot be specified unless checkpoints_dir is provided")
-
         # create results directory
         if args.checkpoints_dir:
             results_sup_dir = os.path.abspath(os.path.expanduser(args.checkpoints_dir))
             args.checkpoints_dir = os.path.join(results_sup_dir, datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S'))
             if not os.path.isdir(args.checkpoints_dir):
                 os.makedirs(args.checkpoints_dir)
-
-        # prepare dataframe file path
-        if args.dataframe_file:
-            args.dataframe_file = os.path.abspath(os.path.expanduser(args.dataframe_file))
-            # suffix for HDF5 dataframe_file
-            if not args.dataframe_file.endswith('.h5'):
-                args.dataframe_file = args.dataframe_file + '.h5'
 
         # validate args
         if args.end_time <= 0:
@@ -112,11 +100,16 @@ class SimController(CementBaseController):
 
     @staticmethod
     def create_metadata(args):
-        """ Initialize metadata for this simulation run
+        """ Record metadata for this simulation run
 
         Args:
-            args (:obj:`object`): parsed command line arguments
+            args (:obj:`Namespace`): parsed command line arguments for this simulation run
+
+        Returns:
+            :obj:`SimulationMetadata`: a metadata record for this simulation run, but missing
+                the simulation `run_time`
         """
+        # print('type(args)', type(args))
         model = ModelMetadata.create_from_repository()
 
         # author metadata
@@ -182,14 +175,11 @@ class SimController(CementBaseController):
         num_events = simulation_engine.simulate(args.end_time)
         simulation_metadata.run.record_end()
 
-        if args.dataframe_file:
-            pred_species_pops = MultialgorithmCheckpoint.convert_checkpoints(args.checkpoints_dir)
-            store = pandas.HDFStore(args.dataframe_file)
-            store['dataframe'] = pred_species_pops
-            store.close()
-
         print('Simulated {} events'.format(num_events))
         if args.checkpoints_dir:
+            # use RunResults to summarize results in an HDF5 file in args.checkpoints_dir
+            # print('type(simulation_metadata)', type(simulation_metadata))
+            RunResults(args.checkpoints_dir, simulation_metadata)
             print("Saved chcekpoints in '{}'".format(args.checkpoints_dir))
 
         return (num_events, args.checkpoints_dir)

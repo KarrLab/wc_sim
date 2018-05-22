@@ -6,14 +6,12 @@
 :License: MIT
 """
 
-# TODO(Arthur): discard when tossing convert_checkpoints
-import numpy
 import pandas
 
 import os
 
 from wc_utils.util.misc import obj_to_str
-from wc_sim.log.checkpoint import Checkpoint    # TODO(Arthur): discard when tossing convert_checkpoints
+from wc_sim.log.checkpoint import Checkpoint
 from wc_sim.core.simulation_checkpoint_object import CheckpointSimulationObject, AccessStateObjectInterface
 from wc_sim.core.sim_metadata import SimulationMetadata
 from wc_sim.multialgorithm.submodels.ssa import SSASubmodel
@@ -23,31 +21,7 @@ from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 class MultialgorithmCheckpoint(Checkpoint):
     """ Checkpoint class that holds multialgorithmic checkpoints
     """
-
-    # TODO(Arthur): discard: superceded by RunResults
-    @staticmethod
-    def convert_checkpoints(dirname):
-        """ Convert the species population in saved checkpoints into a pandas dataframe
-
-        Args:
-            dirname (:obj:`str`): directory containing the checkpoint data
-
-        Returns:
-            :obj:`pandas.DataFrame`: the species popuation in a simulation checkpoint history
-        """
-        # create an empty DataFrame
-        checkpoints = Checkpoint.list_checkpoints(dirname)
-        checkpoint = Checkpoint.get_checkpoint(dirname, time=0)
-        species_pop, _ = checkpoint.state
-        species_ids = species_pop.keys()
-        pred_species_pops = pandas.DataFrame(index=checkpoints, columns=species_ids, dtype=numpy.float64)
-
-        # load the DataFrame
-        for time in Checkpoint.list_checkpoints(dirname):
-            species_populations, _ = Checkpoint.get_checkpoint(dirname, time=time).state
-            for species_id,population in species_populations.items():
-                pred_species_pops.loc[time, species_id] = population
-        return pred_species_pops
+    pass
 
 
 class AccessState(AccessStateObjectInterface):

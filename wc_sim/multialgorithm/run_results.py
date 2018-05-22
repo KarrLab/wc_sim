@@ -55,8 +55,7 @@ class RunResults(object):
             if metadata is None:
                 raise MultialgorithmError("'metadata' must be provided to create an HDF5 file")
 
-            # TODO(Arthur): instead, use the metadata provided in __init__()
-            metadata, population_df, aggregate_states_df, random_states_s = self.convert_checkpoints()
+            population_df, aggregate_states_df, random_states_s = self.convert_checkpoints()
 
             # create the HDF file containing the run results
             # populations
@@ -114,9 +113,6 @@ class RunResults(object):
         # create pandas objects for species populations, aggregate states and simulation random states
         checkpoints = Checkpoint.list_checkpoints(self.results_dir)
         first_checkpoint = Checkpoint.get_checkpoint(self.results_dir, time=0)
-        # temporarily grab metadata from the first checkpoint
-        # TODO(Arthur): instead, use the metadata provided in __init__()
-        metadata = first_checkpoint.metadata
         species_pop, aggregate_state = first_checkpoint.state
 
         species_ids = species_pop.keys()
@@ -144,4 +140,4 @@ class RunResults(object):
 
             random_states_s[time] = pickle.dumps(checkpoint.random_state)
 
-        return (metadata, population_df, aggregate_states_df, random_states_s)
+        return (population_df, aggregate_states_df, random_states_s)

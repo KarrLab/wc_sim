@@ -218,14 +218,6 @@ class TestRunSSASimulation(unittest.TestCase):
         # check the checkpoint times
         self.assertEqual(MultialgorithmCheckpoint.list_checkpoints(self.checkpoint_dir), self.checkpoint_times(run_time))
 
-        # check the dataframe representation
-        pred_species_pops = MultialgorithmCheckpoint.convert_checkpoints(self.checkpoint_dir)
-        self.assertEqual(type(pred_species_pops), pandas.DataFrame)
-        self.assertEqual(list(pred_species_pops.index), self.checkpoint_times(run_time))
-        for species_id, population in initial_specie_copy_numbers.items():
-            self.assertEqual(pred_species_pops.loc[0.0, species_id], population)
-        pred_species_pops.plot()
-
     def test_run_ssa_suite(self):
         specie = 'spec_type_0[c]'
         self.perform_ssa_test_run('1 species, 1 reaction',

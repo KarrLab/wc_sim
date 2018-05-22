@@ -15,6 +15,7 @@ import unittest
 from argparse import Namespace
 from capturer import CaptureOutput
 from copy import copy
+import warnings
 
 from wc_lang.core import SpeciesType
 from wc_sim import __main__
@@ -39,7 +40,6 @@ class SimControllerTestCase(unittest.TestCase):
             end_time=100,
             checkpoint_period=3,
             checkpoints_dir=self.checkpoints_dir,
-            dataframe_file=os.path.join(self.checkpoints_dir, 'dataframe_file.h5'),
             fba_time_step=5
         )
 
@@ -52,27 +52,19 @@ class SimControllerTestCase(unittest.TestCase):
         SimController.process_and_validate_args(self.args)
         for arg in ['model_file', 'end_time', 'checkpoint_period', 'fba_time_step']:
             self.assertEqual(getattr(original_args, arg), self.args.__dict__[arg])
-        for arg in ['checkpoints_dir', 'dataframe_file']:
-            self.assertTrue(self.args.__dict__[arg].startswith(getattr(original_args, arg)))
-
-        self.args.dataframe_file = os.path.join(self.checkpoints_dir, 'dataframe_file_no_suffix')
-        original_args = copy(self.args)
-        SimController.process_and_validate_args(self.args)
-        self.assertEqual(self.args.dataframe_file, original_args.dataframe_file + '.h5')
+        self.assertTrue(self.args.checkpoints_dir.startswith(original_args.checkpoints_dir))
 
     def test_process_and_validate_args2(self):
         # test files specified relative to home directory
         relative_tmp_dir = os.path.join('~/tmp/', os.path.basename(self.user_tmp_dir))
         self.args.checkpoints_dir=relative_tmp_dir
-        self.args.dataframe_file=os.path.join(relative_tmp_dir, 'dataframe_file.h5')
         SimController.process_and_validate_args(self.args)
-        for arg in ['checkpoints_dir', 'dataframe_file']:
+        for arg in ['checkpoints_dir']:
             self.assertIn(getattr(self.args, arg).replace('~', ''), self.args.__dict__[arg])
 
     def test_process_and_validate_args3(self):
         # test no files
         self.args.checkpoints_dir=None
-        self.args.dataframe_file=None
         SimController.process_and_validate_args(self.args)
         for arg, value in self.args.__dict__.items():
             self.assertEqual(getattr(self.args, arg), value)
@@ -91,13 +83,6 @@ class SimControllerTestCase(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     SimController.process_and_validate_args(bad_args)
 
-    def test_process_and_validate_args5(self):
-        # test dataframe_file requires checkpoints_dir
-        self.args.checkpoints_dir=None
-        with self.assertRaisesRegexp(ValueError,
-            'dataframe_file cannot be specified unless checkpoints_dir is provided'):
-            SimController.process_and_validate_args(self.args)
-
     # @unittest.skip("Fails when simulation writes to stdout, as when debugging")
     def test_app_run(self):
         argv = [
@@ -106,7 +91,6 @@ class SimControllerTestCase(unittest.TestCase):
             '10',
             '--checkpoint-period', '3',
             '--checkpoints-dir', self.checkpoints_dir,
-            '--dataframe-file', os.path.join(self.checkpoints_dir, 'dataframe_file.h5'),
             '--fba-time-step', '5',
         ]
         with __main__.App(argv=argv) as app:
@@ -126,7 +110,6 @@ class SimControllerTestCase(unittest.TestCase):
 
     def test_simulate_wo_output_files(self):
         self.args.checkpoints_dir = None
-        self.args.dataframe_file = None
         num_events, results_dir = self.run_simulate(self.args)
         self.assertTrue(0 < num_events)
         self.assertEqual(results_dir, None)
