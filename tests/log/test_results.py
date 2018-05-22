@@ -14,7 +14,7 @@ import shutil
 import tempfile
 import unittest
 import wc_sim.log.results
-import wc_sim.sim_config
+import wc_sim.core.sim_config
 
 # .. todo :: test with the actual simulator
 
@@ -30,7 +30,7 @@ class TestLogging(unittest.TestCase):
 
     def test_ExampleSimulator(self):
         # build simulation configuration
-        sim_config = wc_sim.sim_config.SimulationConfig(time_max=10., time_step=1.)
+        sim_config = wc_sim.core.sim_config.SimulationConfig(time_max=10., time_step=1.)
 
         # run simulation and log results
         log_path = os.path.join(self.dir, 'log.pickle')

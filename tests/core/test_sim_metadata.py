@@ -11,7 +11,7 @@ import socket
 import unittest
 import copy
 
-import wc_sim.sim_config
+from wc_sim.core import sim_config
 from wc_sim.core.sim_metadata import SimulationMetadata, ModelMetadata, AuthorMetadata, RunMetadata
 from wc_utils.util.misc import as_dict
 
@@ -25,14 +25,14 @@ class TestMetadata(unittest.TestCase):
         self.model_different.branch = self.model_equal.branch + 'x'
 
         changes = [
-            wc_sim.sim_config.Change(target='rxn-1.km', value=1),
-            wc_sim.sim_config.Change(target='species-1', value=1),
+            sim_config.Change(target='rxn-1.km', value=1),
+            sim_config.Change(target='species-1', value=1),
         ]
         perturbations = [
-            wc_sim.sim_config.Perturbation(wc_sim.sim_config.Change(target='rxn-1.km', value=1), start_time=5),
-            wc_sim.sim_config.Perturbation(wc_sim.sim_config.Change(target='species-1', value=1), start_time=0, end_time=10),
+            sim_config.Perturbation(sim_config.Change(target='rxn-1.km', value=1), start_time=5),
+            sim_config.Perturbation(sim_config.Change(target='species-1', value=1), start_time=0, end_time=10),
         ]
-        simulation = wc_sim.sim_config.SimulationConfig(time_max=100, time_step=1, changes=changes,
+        simulation = sim_config.SimulationConfig(time_max=100, time_step=1, changes=changes,
                                                     perturbations=perturbations, random_seed=1)
 
         ip_address = socket.gethostbyname(socket.gethostname())

@@ -17,7 +17,7 @@ import copy
 
 from wc_sim.core.sim_metadata import SimulationMetadata
 from wc_sim.log.checkpoint import Checkpoint, CheckpointLogger
-import wc_sim.sim_config
+import wc_sim.core.sim_config
 import wc_lang.core
 import wc_utils.util.types
 

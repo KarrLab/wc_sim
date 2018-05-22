@@ -19,7 +19,7 @@ import pandas
 from cement.core.controller import CementBaseController, expose
 
 from wc_sim.core.sim_metadata import SimulationMetadata, ModelMetadata, AuthorMetadata, RunMetadata
-from wc_sim.sim_config import SimulationConfig
+from wc_sim.core.sim_config import SimulationConfig
 from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_lang.io import Reader

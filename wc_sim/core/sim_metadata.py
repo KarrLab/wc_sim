@@ -11,17 +11,16 @@ import datetime
 import os
 import socket
 
-import wc_sim.sim_config
 import wc_utils.util.git
 from wc_utils.util.misc import obj_to_str
-
+from wc_sim.core.sim_config import SimulationConfig
 
 class SimulationMetadata(object):
     """ Represents the metadata of a simulation run
 
     Attributes:
         model (:obj:`ModelMetadata`): Information about the simulated model (e.g. revision)
-        simulation (:obj:`wc_sim.sim_config.SimulationConfig`): Information about the simulation's
+        simulation (:obj:`SimulationConfig`): Information about the simulation's
             configuration (e.g. perturbations, random seed)
         run (:obj:`RunMetadata`): Information about the simulation's run (e.g. start time, duration)
         author (:obj:`AuthorMetadata`): Information about the person who ran the simulation
@@ -148,8 +147,8 @@ class ModelMetadata(object):
         return obj_to_str(self, self.ATTRIBUTES)
 
 
-Simulation = wc_sim.sim_config.SimulationConfig
-""" Alias for :obj:`wc_sim.sim_config.SimulationConfig` """
+Simulation = SimulationConfig
+""" Alias for :obj:`SimulationConfig` """
 
 
 class RunMetadata(object):

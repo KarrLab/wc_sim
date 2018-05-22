@@ -8,3 +8,4 @@ from . import simulation_message
 from . import simulation_object
 from . import utilities
 from . import sim_metadata
+from . import sim_config

@@ -6,7 +6,6 @@
 :License: MIT
 """
 
-from wc_sim import sim_config
 import libsedml
 import numpy
 import os
@@ -14,6 +13,9 @@ import pytest
 import tempfile
 import unittest
 import warnings
+
+from wc_sim.core import sim_config
+
 
 class TestSimulationConfig(unittest.TestCase):
     """ Test simulation configuration """

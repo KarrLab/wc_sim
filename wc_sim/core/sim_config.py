@@ -18,7 +18,6 @@ import warnings
 from wc_utils.util.misc import obj_to_str
 
 
-# TODO(Arthur): move to core/
 class SimulationConfig(object):
     """ Represents and applies simulation configurations:
 
@@ -200,7 +199,7 @@ class SedMl(object):
             file_name (:obj:`str`): path to SED-ML file from which to import simulation configuration
 
         Returns:
-            :obj:`wc.sim.config.SimulationConfig`: simulation configuration
+            :obj:`SimulationConfig`: simulation configuration
         """
 
         # initialize optional configuration
@@ -351,7 +350,7 @@ class SedMl(object):
         """ Exports simulation configuration to SED-ML file
 
         Args:
-            cfg (:obj:`wc.sim.config.SimulationConfig`): simulation configuration
+            cfg (:obj:`SimulationConfig`): simulation configuration
             file_name (:obj:`str`): path to write SED-ML file
         """
 
