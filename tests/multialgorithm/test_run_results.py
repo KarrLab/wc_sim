@@ -12,6 +12,7 @@ import shutil
 import tempfile
 from argparse import Namespace
 import warnings
+import pandas
 
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm.__main__ import SimController
@@ -40,13 +41,26 @@ class TestRunResults(unittest.TestCase):
     def test_run_results(self):
 
         run_results_1 = RunResults(self.checkpoints_copy, self.metadata)
-        for component in RunResults.COMPONENTS:
-            rv = run_results_1.get(component)
-            # TODO(Arthur): check contents of returned component
-            self.assertTrue(rv is not None)
+        # after run_results file created
         run_results_2 = RunResults(self.checkpoints_copy)
         for component in RunResults.COMPONENTS:
+            component_data = run_results_1.get(component)
             self.assertTrue(run_results_1.get(component).equals(run_results_2.get(component)))
+
+        expected_times = pandas.Float64Index([0., 3., 6., 9.])
+        for component in ['populations', 'aggregate_states', 'random_states']:
+            component_data = run_results_1.get(component)
+            self.assertTrue(component_data.index.equals(expected_times))
+
+        # total population is invariant
+        populations = run_results_1.get('populations')
+        pop_sum = populations.sum(axis='columns')
+        for time in expected_times:
+            self.assertEqual(pop_sum[time], pop_sum[0.])
+
+        metadata = run_results_1.get('metadata')
+        self.assertEqual(metadata['simulation']['time_max'], 10.)
+        self.assertEqual(metadata['author']['username'], 'root')
 
     def test_run_results_errors(self):
 
