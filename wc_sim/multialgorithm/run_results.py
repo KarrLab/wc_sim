@@ -9,7 +9,6 @@ import numpy
 import os
 import pandas
 import pickle
-from pprint import pprint
 
 from wc_utils.util.misc import as_dict
 from wc_sim.log.checkpoint import Checkpoint
