@@ -36,4 +36,4 @@ SimController.process_and_validate_args(args)
 num_events, results_dir = SimController.simulate(args)
 
 # view results
-# go to Jupyter notebook
+

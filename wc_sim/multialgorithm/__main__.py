@@ -79,12 +79,23 @@ class SimController(CementBaseController):
             :obj:`ValueError`: if any of the command line arguments are invalid
         """
 
-        # create results directory
+        # process results directory
         if args.checkpoints_dir:
             results_sup_dir = os.path.abspath(os.path.expanduser(args.checkpoints_dir))
-            args.checkpoints_dir = os.path.join(results_sup_dir, datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S'))
-            if not os.path.isdir(args.checkpoints_dir):
-                os.makedirs(args.checkpoints_dir)
+
+            # if results_sup_dir does not exist, make it
+            if not os.path.exists(results_sup_dir):
+                os.makedirs(results_sup_dir)
+
+            # if results_sup_dir is not an empty dir, raise error
+            if not (os.path.isdir(results_sup_dir) and not os.listdir(results_sup_dir)):
+                raise ValueError("checkpoints-dir ({}) must be an empty directory, or not exist".format(
+                    args.checkpoints_dir))
+
+            # make a time-stamped sub-dir
+            args.checkpoints_dir = os.path.join(results_sup_dir, datetime.datetime.now().strftime(
+                '%Y-%m-%d-%H-%M-%S'))
+            os.makedirs(args.checkpoints_dir)
 
         # validate args
         if args.end_time <= 0:
@@ -109,7 +120,6 @@ class SimController(CementBaseController):
             :obj:`SimulationMetadata`: a metadata record for this simulation run, but missing
                 the simulation `run_time`
         """
-        # print('type(args)', type(args))
         model = ModelMetadata.create_from_repository()
 
         # author metadata
@@ -178,9 +188,8 @@ class SimController(CementBaseController):
         print('Simulated {} events'.format(num_events))
         if args.checkpoints_dir:
             # use RunResults to summarize results in an HDF5 file in args.checkpoints_dir
-            # print('type(simulation_metadata)', type(simulation_metadata))
             RunResults(args.checkpoints_dir, simulation_metadata)
-            print("Saved chcekpoints in '{}'".format(args.checkpoints_dir))
+            print("Saved chcekpoints and run results in '{}'".format(args.checkpoints_dir))
 
         return (num_events, args.checkpoints_dir)
 
