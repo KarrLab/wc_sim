@@ -125,5 +125,3 @@ class SimControllerTestCase(unittest.TestCase):
             self.assertEqual(ckpt.metadata.simulation.time_max, self.args.end_time)
             self.assertEqual(ckpt.metadata.simulation.time_step, self.args.fba_time_step)
             self.assertTrue(ckpt.random_state != None)
-
-        # TODO(Arthur): check sequence of checkpoints, and checkpoint and dataframe contents
