@@ -39,28 +39,28 @@ config = get_config()['wc_sim']['multialgorithm']
 class SimController(CementBaseController):
     class Meta:
         label = 'sim'
-        description = 'Simulate model'
+        description = 'Simulate a wc-lang model'
         stacked_on = 'base'
         stacked_type = 'nested'
         arguments = [
             (['model_file'], dict(
                 type=str,
-                help="wc_lang model: File containing Excel model, or glob matching tab- or comma-delimited model")),
+                help="an Excel file containing a model, or a glob matching tab- or comma-delimited files storing a model")),
             (['end_time'], dict(
                 type=float,
-                help="End time for the simulation (sec)")),
+                help="end time for the simulation (sec)")),
             (['--checkpoints-dir'], dict(
                 type=str,
-                help="Store simulation results; if provided, a timestamped sub-directory will hold results, "
-                "including an HDF5 file that can be accessed through a RunResults object")),
+                help="store simulation results; a timestamped sub-directory of checkpoints-dir will hold results, "
+                "including an HDF5 file combining all run results")),
             (['--checkpoint-period'], dict(
                 type=float,
                 default=config['checkpoint_period'],
-                help="Checkpointing period (sec)")),
+                help="checkpointing period (sec)")),
             (['--fba-time-step'], dict(
                 type=float,
                 default=config['fba_time_step'],
-                help="Timestep for FBA submodel(s) (sec)")),
+                help="timestep for FBA submodel(s) (sec)")),
         ]
 
     @expose(hide=True)
