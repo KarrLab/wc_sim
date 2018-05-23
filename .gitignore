@@ -72,3 +72,8 @@ README.rst
 
 # temporary files
 .~lock*
+
+# Jupyter files #
+#################
+.ipynb_checkpoints
+
