@@ -9,6 +9,7 @@
 """
 
 import argparse
+from argparse import Namespace
 import os
 import getpass
 import sys
@@ -73,7 +74,7 @@ class SimController(CementBaseController):
         """ Process and validate command line arguments
 
         Args:
-            args (:obj:`object`): parsed command line arguments
+            args (:obj:`Namespace`): parsed command line arguments
 
         Raises:
             :obj:`ValueError`: if any of the command line arguments are invalid
@@ -105,7 +106,11 @@ class SimController(CementBaseController):
             raise ValueError("Checkpointing period ({}) must be positive and less than or equal to end time".format(
                 args.checkpoint_period))
 
-        if args.fba_time_step <= 0.0 or args.end_time < args.fba_time_step:
+        if args.end_time / args.checkpoint_period % 1 != 0:
+            raise ValueError('end_time ({}) must be a multiple of checkpoint_period ({})'.format(
+                args.end_time, args.checkpoint_period))
+
+        if args.fba_time_step is not None and (args.fba_time_step <= 0.0 or args.end_time < args.fba_time_step):
             raise ValueError("Timestep for FBA submodels ({}) must be positive and less than or equal to end time".format(
                 args.fba_time_step))
 
@@ -127,16 +132,16 @@ class SimController(CementBaseController):
         ip_address = socket.gethostbyname(socket.gethostname())
         try:
             username = getpass.getuser()
-        except:
+        except:     # pragma: no cover
             username = 'Unknown username'
         author = AuthorMetadata(name='Unknown name', email='Unknown email', username=username,
                                 organization='Unknown organization', ip_address=ip_address)
 
         # simulation config metadata
-        time_step = None
+        sim_args = {'time_max':args.end_time}
         if args.fba_time_step:
-            time_step = args.fba_time_step
-        simulation_config = SimulationConfig(time_max=args.end_time, time_step=time_step)
+            sim_args['time_step'] = args.fba_time_step
+        simulation_config = SimulationConfig(**sim_args)
 
         # run metadata
         run = RunMetadata()
@@ -151,7 +156,7 @@ class SimController(CementBaseController):
         """ Run multialgorithmic simulation of a wc_lang model
 
         Args:
-            args (:obj:`object`): parsed command line arguments
+            args (:obj:`Namespace`): parsed command line arguments
 
         Raises:
             :obj:`MultialgorithmError`: if a model cannot be read from the model file

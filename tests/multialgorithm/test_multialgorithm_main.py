@@ -22,6 +22,7 @@ from wc_sim import __main__
 from wc_sim.multialgorithm.__main__ import SimController
 from wc_sim.log.checkpoint import Checkpoint
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
+from wc_sim.core.sim_metadata import SimulationMetadata
 
 
 class SimControllerTestCase(unittest.TestCase):
@@ -38,7 +39,7 @@ class SimControllerTestCase(unittest.TestCase):
         self.args = Namespace(
             model_file=self.MODEL_FILENAME,
             end_time=100,
-            checkpoint_period=3,
+            checkpoint_period=4,
             checkpoints_dir=self.checkpoints_dir,
             fba_time_step=5
         )
@@ -62,6 +63,46 @@ class SimControllerTestCase(unittest.TestCase):
         SimController.process_and_validate_args(self.args)
         for arg in ['checkpoints_dir']:
             self.assertIn(getattr(self.args, arg).replace('~', ''), self.args.__dict__[arg])
+
+    def test_process_and_validate_args3(self):
+        self.args.checkpoint_period=7
+        with self.assertRaises(ValueError):
+            SimController.process_and_validate_args(self.args)
+
+    def test_process_and_validate_args4(self):
+        # test no files
+        self.args.checkpoints_dir=None
+        SimController.process_and_validate_args(self.args)
+        for arg, value in self.args.__dict__.items():
+            self.assertEqual(getattr(self.args, arg), value)
+
+    def test_process_and_validate_args5(self):
+        # test error detection
+        errors = dict(
+            end_time = [-3, 0],
+            checkpoint_period = [-2, 0, self.args.end_time + 1],
+            fba_time_step = [-2, 0, self.args.end_time + 1],
+        )
+        for arg, error_vals in errors.items():
+            for error_val in error_vals:
+                bad_args = copy(self.args)
+                setattr(bad_args, arg, error_val)
+                # need a good, empty checkpoints_dir for each call to process_and_validate_args
+                new_tmp_dir = tempfile.mkdtemp()
+                bad_args.checkpoints_dir = new_tmp_dir
+                with self.assertRaises(ValueError):
+                    SimController.process_and_validate_args(bad_args)
+                shutil.rmtree(new_tmp_dir)
+
+    def test_create_metadata(self):
+        simulation_metadata = SimController.create_metadata(self.args)
+        for attr in SimulationMetadata.ATTRIBUTES:
+            self.assertTrue(getattr(simulation_metadata, attr) is not None)
+
+        # no fba_time_step
+        self.args.fba_time_step = None
+        simulation_metadata = SimController.create_metadata(self.args)
+        self.assertEqual(simulation_metadata.simulation.time_step, 1)
 
     def test_ckpt_dir_processing_1(self):
         # checkpoints_dir does not exist
@@ -92,34 +133,13 @@ class SimControllerTestCase(unittest.TestCase):
         except FileExistsError:
            pass
 
-    def test_process_and_validate_args4(self):
-        # test no files
-        self.args.checkpoints_dir=None
-        SimController.process_and_validate_args(self.args)
-        for arg, value in self.args.__dict__.items():
-            self.assertEqual(getattr(self.args, arg), value)
-
-    def test_process_and_validate_args5(self):
-        # test error detection
-        errors = dict(
-            end_time=[-3, 0],
-            checkpoint_period=[-2, 0, self.args.end_time + 1],
-            fba_time_step=[-2, 0, self.args.end_time + 1],
-        )
-        for arg, error_vals in errors.items():
-            for error_val in error_vals:
-                bad_args = copy(self.args)
-                setattr(bad_args, arg, error_val)
-                with self.assertRaises(ValueError):
-                    SimController.process_and_validate_args(bad_args)
-
     # @unittest.skip("Fails when simulation writes to stdout, as when debugging")
     def test_app_run(self):
         argv = [
             'sim',
             self.MODEL_FILENAME,
             '10',
-            '--checkpoint-period', '3',
+            '--checkpoint-period', '2',
             '--checkpoints-dir', self.checkpoints_dir,
             '--fba-time-step', '5',
         ]
