@@ -110,7 +110,7 @@ class SimController(CementBaseController):
             raise ValueError('end_time ({}) must be a multiple of checkpoint_period ({})'.format(
                 args.end_time, args.checkpoint_period))
 
-        if args.fba_time_step is not None and (args.fba_time_step <= 0.0 or args.end_time < args.fba_time_step):
+        if hasattr(args, 'fba_time_step') and (args.fba_time_step <= 0.0 or args.end_time < args.fba_time_step):
             raise ValueError("Timestep for FBA submodels ({}) must be positive and less than or equal to end time".format(
                 args.fba_time_step))
 
@@ -139,7 +139,7 @@ class SimController(CementBaseController):
 
         # simulation config metadata
         sim_args = {'time_max':args.end_time}
-        if args.fba_time_step:
+        if  hasattr(args, 'fba_time_step') and args.fba_time_step:
             sim_args['time_step'] = args.fba_time_step
         simulation_config = SimulationConfig(**sim_args)
 
@@ -194,7 +194,7 @@ class SimController(CementBaseController):
         if args.checkpoints_dir:
             # use RunResults to summarize results in an HDF5 file in args.checkpoints_dir
             RunResults(args.checkpoints_dir, simulation_metadata)
-            print("Saved chcekpoints and run results in '{}'".format(args.checkpoints_dir))
+            print("Saved checkpoints and run results in '{}'".format(args.checkpoints_dir))
 
         return (num_events, args.checkpoints_dir)
 
