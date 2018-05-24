@@ -84,6 +84,8 @@ class ModelUtilities(object):
     def concentration_to_molecules(species):
         '''Provide the copy number of `species` from its concentration
 
+        Copy number is be rounded to the closest integer to avoid truncating small populations
+
         Args:
             species (:obj:`Species`): a `Species` instance
 
@@ -99,16 +101,14 @@ class ModelUtilities(object):
         else:
             units = conc.units
             if units is None:
-                units = ConcentrationUnit.M.name
-            if units not in ConcentrationUnit.__members__:
-                raise ValueError("unknown ConcentrationUnit '{}'".format(units))
-            if units == ConcentrationUnit['moles dm^-2'].name:
+                units = ConcentrationUnit.M.value
+            if units == ConcentrationUnit['moles dm^-2'].value:
                 raise ValueError("ConcentrationUnit 'moles dm^-2' not supported")
-            if units == ConcentrationUnit['molecules'].name:
+            if units == ConcentrationUnit['molecules'].value:
                 return conc.value
-            conc_unit = ConcentrationUnit[units]
-            unit_magnitudes = 3 * (conc_unit.value - ConcentrationUnit.M.value)
+            unit_magnitudes = 3 * (units - ConcentrationUnit.M.value)
             factor = 10 ** -unit_magnitudes
+            # population must be rounded to the closest integer to avoid truncating small populations
             return int(round(factor * conc.value * species.compartment.initial_volume * Avogadro))
 
     @staticmethod

@@ -101,9 +101,7 @@ class TestModelUtilities(unittest.TestCase):
         conc_value = 2.
         for key,specie in species.items():
             if key in ConcentrationUnit.__members__:
-                wc_lang.Concentration(species=specie, value=conc_value, units=key)
-            elif key == 'no_such_concentration_unit':
-                wc_lang.Concentration(species=specie, value=conc_value, units=key)
+                wc_lang.Concentration(species=specie, value=conc_value, units=ConcentrationUnit.__members__[key].value)
             elif key == 'no_units':
                 wc_lang.Concentration(species=specie, value=conc_value)
             elif key == 'no_concentration':
@@ -131,5 +129,3 @@ class TestModelUtilities(unittest.TestCase):
         self.assertEqual(copy_number, 0)
         with self.assertRaises(ValueError):
             ModelUtilities.concentration_to_molecules(species['moles dm^-2'])
-        with self.assertRaises(ValueError):
-            ModelUtilities.concentration_to_molecules(species['no_such_concentration_unit'])
