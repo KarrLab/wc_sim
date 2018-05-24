@@ -254,12 +254,7 @@ class MultialgorithmSimulation(object):
         """
         init_populations = {}
         for specie in model.get_species():
-            if specie.concentration is None:
-                init_populations[specie.id()] = 0
-            else:
-                # population must be rounded to the closest integer to avoid truncating small populations
-                init_populations[specie.id()] = \
-                    int(round(specie.concentration.value * specie.compartment.initial_volume * Avogadro))
+            init_populations[specie.id()] = ModelUtilities.concentration_to_molecules(specie)
         return init_populations
 
     def get_dynamic_compartments(self, submodel):

@@ -19,7 +19,7 @@ from wc_lang.core import (Model, Submodel,  SpeciesType, SpeciesTypeType, Specie
                           Reaction, Observable, Compartment,
                           SpeciesCoefficient, ObservableCoefficient, Parameter,
                           RateLaw, RateLawDirection, RateLawEquation, SubmodelAlgorithm, Concentration,
-                          BiomassComponent, BiomassReaction, StopCondition)
+                          BiomassComponent, BiomassReaction, StopCondition, ConcentrationUnit)
 from wc_lang.prepare import PrepareModel, CheckModel
 from wc_lang.transform import SplitReversibleReactionsTransform
 
@@ -112,9 +112,9 @@ class MakeModels(object):
             species.append(spec)
             if specie_copy_numbers is not None and spec.id() in specie_copy_numbers:
                 concentration = MakeModels.convert_pop_conc(specie_copy_numbers[spec.id()], init_vol)
-                Concentration(species=spec, value=concentration, units='M')
+                Concentration(species=spec, value=concentration, units=ConcentrationUnit.M.value)
             else:
-                Concentration(species=spec, value=default_concentration, units='M')
+                Concentration(species=spec, value=default_concentration, units=ConcentrationUnit.M.value)
         # Submodel
         submodel = model.submodels.create(id='test_submodel', algorithm=SubmodelAlgorithm.ssa,
                                           compartment=comp)
