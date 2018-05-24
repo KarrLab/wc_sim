@@ -7,7 +7,10 @@
 
 import unittest, os
 from argparse import Namespace
+from scipy.constants import Avogadro
 
+import wc_lang
+from wc_lang import ConcentrationUnit
 from wc_lang.io import Reader
 from wc_lang.core import RateLawEquation, RateLaw, Reaction, Submodel, Species
 from obj_model import utils
@@ -64,9 +67,9 @@ class TestModelUtilities(unittest.TestCase):
 
     def test_parse_specie_id(self):
         self.assertEqual(ModelUtilities.parse_specie_id('good_id[good_compt]'), ('good_id', 'good_compt'))
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(ValueError):
             ModelUtilities.parse_specie_id('1_bad_good_id[good_compt]')
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(ValueError):
             ModelUtilities.parse_specie_id('good_id[_bad_compt]')
 
     def test_get_species_types(self):
@@ -75,3 +78,58 @@ class TestModelUtilities(unittest.TestCase):
         specie_type_ids = [specie_type.id for specie_type in self.model.get_species_types()]
         specie_ids = [specie.serialize() for specie in self.model.get_species()]
         self.assertEqual(sorted(ModelUtilities.get_species_types(specie_ids)), sorted(specie_type_ids))
+
+    def test_concentration_to_molecules(self):
+        model = wc_lang.Model()
+
+        submodel = model.submodels.create(id='submodel', algorithm=wc_lang.SubmodelAlgorithm.ssa)
+
+        compartment_c = model.compartments.create(id='c', initial_volume=1.)
+
+        species_types = {}
+        for cu in ConcentrationUnit:
+            id = "species_type_{}".format(cu.name.replace(' ', '_'))
+            species_types[cu.name] = model.species_types.create(id=id, molecular_weight=10)
+
+        for other in ['no_units', 'no_concentration', 'no_such_concentration_unit']:
+            species_types[other] = model.species_types.create(id=other, molecular_weight=10)
+
+        species = {}
+        for key,species_type in species_types.items():
+            species[key] = wc_lang.Species(species_type=species_type, compartment=compartment_c)
+
+        conc_value = 2.
+        for key,specie in species.items():
+            if key in ConcentrationUnit.__members__:
+                wc_lang.Concentration(species=specie, value=conc_value, units=key)
+            elif key == 'no_such_concentration_unit':
+                wc_lang.Concentration(species=specie, value=conc_value, units=key)
+            elif key == 'no_units':
+                wc_lang.Concentration(species=specie, value=conc_value)
+            elif key == 'no_concentration':
+                continue
+
+        copy_number = ModelUtilities.concentration_to_molecules(species['molecules'])
+        self.assertEqual(copy_number, conc_value)
+        copy_number = ModelUtilities.concentration_to_molecules(species['M'])
+        self.assertEqual(copy_number, conc_value * Avogadro)
+        copy_number = ModelUtilities.concentration_to_molecules(species['no_units'])
+        self.assertEqual(copy_number, conc_value * Avogadro)
+        copy_number = ModelUtilities.concentration_to_molecules(species['mM'])
+        self.assertEqual(copy_number, 10**-3 * conc_value * Avogadro)
+        copy_number = ModelUtilities.concentration_to_molecules(species['uM'])
+        self.assertEqual(copy_number, 10**-6 * 2. * Avogadro)
+        copy_number = ModelUtilities.concentration_to_molecules(species['nM'])
+        self.assertEqual(copy_number, 10**-9 * 2. * Avogadro)
+        copy_number = ModelUtilities.concentration_to_molecules(species['pM'])
+        self.assertEqual(copy_number, 10**-12 * 2. * Avogadro)
+        copy_number = ModelUtilities.concentration_to_molecules(species['fM'])
+        self.assertAlmostEqual(copy_number, 10**-15 * 2. * Avogadro, delta=1)
+        copy_number = ModelUtilities.concentration_to_molecules(species['aM'])
+        self.assertAlmostEqual(copy_number, 10**-18 * 2. * Avogadro, delta=1)
+        copy_number = ModelUtilities.concentration_to_molecules(species['no_concentration'])
+        self.assertEqual(copy_number, 0)
+        with self.assertRaises(ValueError):
+            ModelUtilities.concentration_to_molecules(species['moles dm^-2'])
+        with self.assertRaises(ValueError):
+            ModelUtilities.concentration_to_molecules(species['no_such_concentration_unit'])

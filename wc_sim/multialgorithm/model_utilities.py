@@ -6,9 +6,13 @@
 :License: MIT
 '''
 
-from wc_utils.util.list import difference
 import collections
 import re
+from scipy.constants import Avogadro
+
+from wc_lang import ConcentrationUnit
+from wc_utils.util.list import difference
+
 
 class ModelUtilities(object):
     '''A set of static methods that help prepare Models for simulation.'''
@@ -75,6 +79,37 @@ class ModelUtilities(object):
         if return_ids:
             return set([shared_specie.serialize() for shared_specie in shared_species])
         return(shared_species)
+
+    @staticmethod
+    def concentration_to_molecules(species):
+        '''Provide the copy number of `species` from its concentration
+
+        Args:
+            species (:obj:`Species`): a `Species` instance
+
+        Returns:
+            `int`: the `species'` copy number
+
+        Raises:
+            :obj:`ValueError`: if the concentration uses illegal or unsupported units
+        '''
+        conc = species.concentration
+        if conc is None:
+            return 0
+        else:
+            units = conc.units
+            if units is None:
+                units = ConcentrationUnit.M.name
+            if units not in ConcentrationUnit.__members__:
+                raise ValueError("unknown ConcentrationUnit '{}'".format(units))
+            if units == ConcentrationUnit['moles dm^-2'].name:
+                raise ValueError("ConcentrationUnit 'moles dm^-2' not supported")
+            if units == ConcentrationUnit['molecules'].name:
+                return conc.value
+            conc_unit = ConcentrationUnit[units]
+            unit_magnitudes = 3 * (conc_unit.value - ConcentrationUnit.M.value)
+            factor = 10 ** -unit_magnitudes
+            return int(round(factor * conc.value * species.compartment.initial_volume * Avogadro))
 
     @staticmethod
     def initial_specie_concentrations(model):
