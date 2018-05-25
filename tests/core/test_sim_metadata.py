@@ -35,9 +35,8 @@ class TestMetadata(unittest.TestCase):
         simulation = sim_config.SimulationConfig(time_max=100, time_step=1, changes=changes,
                                                     perturbations=perturbations, random_seed=1)
 
-        ip_address = socket.gethostbyname(socket.gethostname())
         self.author = author = AuthorMetadata(name='Test user', email='test@test.com',
-            username='Test username', organization='Test organization', ip_address=ip_address)
+            username='Test username', organization='Test organization')
 
         self.run = run = RunMetadata()
         run.record_start()
@@ -91,3 +90,9 @@ class TestMetadata(unittest.TestCase):
         self.assertEqual(d['model']['branch'], self.metadata.model.branch)
         self.assertEqual(d['run']['start_time'], self.metadata.run.start_time)
         self.assertEqual(d['simulation']['changes'], self.metadata.simulation.changes)
+
+    def test_str(self):
+        self.assertIn(self.metadata.author.name, str(self.metadata))
+        self.assertIn(self.metadata.model.branch, str(self.metadata))
+        self.assertIn(self.metadata.run.ip_address, str(self.metadata))
+        self.assertIn(str(self.metadata.simulation.time_max), str(self.metadata))

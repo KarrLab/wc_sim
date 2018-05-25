@@ -10,10 +10,12 @@
 import datetime
 import os
 import socket
+import warnings
 
 import wc_utils.util.git
 from wc_utils.util.misc import obj_to_str
 from wc_sim.core.sim_config import SimulationConfig
+
 
 class SimulationMetadata(object):
     """ Represents the metadata of a simulation run
@@ -46,8 +48,7 @@ class SimulationMetadata(object):
         if other.__class__ is not self.__class__:
             return False
 
-        attrs = 'model simulation run author'.split()
-        for attr in attrs:
+        for attr in self.ATTRIBUTES:
             if getattr(other, attr) != getattr(self, attr):
                 return False
 
@@ -105,8 +106,12 @@ class ModelMetadata(object):
             repo_path (:obj:`str`): path to Git repository
         """
 
-        md = wc_utils.util.git.get_repo_metadata(repo_path)
-        return ModelMetadata(md.url, md.branch, md.revision)
+        try:
+            md = wc_utils.util.git.get_repo_metadata(repo_path)
+            return ModelMetadata(md.url, md.branch, md.revision)
+        except ValueError:  # pragma: no cover
+            warnings.warn("repo_path ({}) not in a git repo".format(repo_path))
+            return ModelMetadata('unknown', 'unknown', 'unknown')
 
     def __eq__(self, other):
         """ Compare two model metadata objects
@@ -120,8 +125,7 @@ class ModelMetadata(object):
         if other.__class__ is not self.__class__:
             return False
 
-        attrs = 'url branch revision'.split()
-        for attr in attrs:
+        for attr in self.ATTRIBUTES:
             if getattr(other, attr) != getattr(self, attr):
                 return False
 
@@ -195,8 +199,7 @@ class RunMetadata(object):
         if other.__class__ is not self.__class__:
             return False
 
-        attrs = 'start_time run_time ip_address'.split()
-        for attr in attrs:
+        for attr in self.ATTRIBUTES:
             if getattr(other, attr) != getattr(self, attr):
                 return False
 
@@ -230,11 +233,10 @@ class AuthorMetadata(object):
         email (:obj:`str`): author's email address
         username (:obj:`str`): authors' username
         organization (:obj:`str`): author's organization
-        ip_address (:obj:`str`): author's ip address
     """
-    ATTRIBUTES = ['name', 'email', 'username', 'organization', 'ip_address']
+    ATTRIBUTES = ['name', 'email', 'username', 'organization']
 
-    def __init__(self, name, email, username, organization, ip_address):
+    def __init__(self, name, email, username, organization):
         """ Construct a representation of the author of a simulation run
 
         Args:
@@ -242,13 +244,11 @@ class AuthorMetadata(object):
             email (:obj:`str`): author's email address
             username (:obj:`str`): authors' username
             organization (:obj:`str`): author's organization
-            ip_address (:obj:`str`): author's ip address
         """
         self.name = name
         self.email = email
         self.username = username
         self.organization = organization
-        self.ip_address = ip_address
 
     def __eq__(self, other):
         """ Compare two author metadata objects
@@ -262,8 +262,7 @@ class AuthorMetadata(object):
         if other.__class__ is not self.__class__:
             return False
 
-        attrs = ['name', 'email', 'username', 'organization', 'ip_address']
-        for attr in attrs:
+        for attr in self.ATTRIBUTES:
             if getattr(other, attr) != getattr(self, attr):
                 return False
 
