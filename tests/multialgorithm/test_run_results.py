@@ -7,6 +7,7 @@
 """
 
 import os
+import getpass
 import unittest
 import shutil
 import tempfile
@@ -60,7 +61,7 @@ class TestRunResults(unittest.TestCase):
 
         metadata = run_results_1.get('metadata')
         self.assertEqual(metadata['simulation']['time_max'], 10.)
-        self.assertEqual(metadata['author']['username'], 'root')
+        self.assertEqual(metadata['author']['username'], getpass.getuser())
 
     def test_run_results_errors(self):
 
