@@ -111,19 +111,13 @@ class SimControllerTestCase(unittest.TestCase):
         self.assertTrue(os.path.isdir(self.args.checkpoints_dir))
 
     def test_ckpt_dir_processing_2(self):
-        # checkpoints_dir exists, but isn't empty
-        os.makedirs(os.path.join(self.args.checkpoints_dir, 'new_dir'))
-        with self.assertRaises(ValueError):
-            SimController.process_and_validate_args(self.args)
-
-    def test_ckpt_dir_processing_3(self):
         # checkpoints_dir exists, and is empty
         tmp = self.args.checkpoints_dir
         SimController.process_and_validate_args(self.args)
         # process_and_validate_args creates 1 timestamped sub-dir
         self.assertEqual(len(os.listdir(tmp)), 1)
 
-    def test_ckpt_dir_processing_4(self):
+    def test_ckpt_dir_processing_3(self):
         # checkpoints_dir is a file
         self.args.checkpoints_dir = os.path.join(self.args.checkpoints_dir, 'new_file')
         try:
@@ -132,6 +126,22 @@ class SimControllerTestCase(unittest.TestCase):
                 SimController.process_and_validate_args(self.args)
         except FileExistsError:
            pass
+
+    def test_ckpt_dir_processing_4(self):
+        # timestamped sub-directory of checkpoints-dir already exists
+        tmp = self.args.checkpoints_dir
+        SimController.process_and_validate_args(self.args)
+        # given the chance, albeit small, that the second has advanced and
+        # a different timestamped sub-directory is made, try repeatedly to create the error
+        # the for loop takes about 0.01 sec
+        raised = False
+        for i in range(10):
+            self.args.checkpoints_dir = tmp
+            try:
+                SimController.process_and_validate_args(self.args)
+            except:
+                raised = True
+        self.assertTrue(raised)
 
     # @unittest.skip("Fails when simulation writes to stdout, as when debugging")
     def test_app_run(self):

@@ -84,19 +84,23 @@ class SimController(CementBaseController):
         if args.checkpoints_dir:
             results_sup_dir = os.path.abspath(os.path.expanduser(args.checkpoints_dir))
 
+            # if results_sup_dir is a file, raise error
+            if os.path.isfile(results_sup_dir):
+                raise ValueError("checkpoints-dir ({}) is a file, not a dir".format(results_sup_dir))
+
             # if results_sup_dir does not exist, make it
             if not os.path.exists(results_sup_dir):
                 os.makedirs(results_sup_dir)
 
-            # if results_sup_dir is not an empty dir, raise error
-            if not (os.path.isdir(results_sup_dir) and not os.listdir(results_sup_dir)):
-                raise ValueError("checkpoints-dir ({}) must be an empty directory, or not exist".format(
-                    args.checkpoints_dir))
-
-            # make a time-stamped sub-dir
-            args.checkpoints_dir = os.path.join(results_sup_dir, datetime.datetime.now().strftime(
+            # make a time-stamped sub-dir for this run
+            time_stamped_sub_dir = os.path.join(results_sup_dir, datetime.datetime.now().strftime(
                 '%Y-%m-%d-%H-%M-%S'))
-            os.makedirs(args.checkpoints_dir)
+            if os.path.exists(time_stamped_sub_dir):
+                raise ValueError("timestamped sub-directory of checkpoints-dir ({}) already exists".format(
+                    time_stamped_sub_dir))
+            else:
+                os.makedirs(time_stamped_sub_dir)
+            args.checkpoints_dir = time_stamped_sub_dir
 
         # validate args
         if args.end_time <= 0:
@@ -129,13 +133,12 @@ class SimController(CementBaseController):
 
         # author metadata
         # TODO: collect more comprehensive and specific author information
-        ip_address = socket.gethostbyname(socket.gethostname())
         try:
             username = getpass.getuser()
         except:     # pragma: no cover
             username = 'Unknown username'
         author = AuthorMetadata(name='Unknown name', email='Unknown email', username=username,
-                                organization='Unknown organization', ip_address=ip_address)
+                                organization='Unknown organization')
 
         # simulation config metadata
         sim_args = {'time_max':args.end_time}
