@@ -69,6 +69,7 @@ class SimController(CementBaseController):
         self.process_and_validate_args(args)
         self.simulate(args)
 
+    # TODO(Arthur): remove code that's been copied to Simulation
     @staticmethod
     def process_and_validate_args(args):
         """ Process and validate command line arguments

@@ -114,7 +114,7 @@ class MultialgorithmSimulation(object):
 
     Attributes:
         model (:obj:`Model`): a model description
-        args (:obj:`dict`): parameters for the simulation; if checkpoint_dir is provided, then also
+        args (:obj:`dict`): parameters for the simulation; if results_dir is provided, then also
             must include checkpoint_period and metadata
         init_populations (:obj: dict from species id to population): the initial populations of
             species, as specified by `model`
@@ -162,9 +162,9 @@ class MultialgorithmSimulation(object):
         """
         self.partition_species()
         self.dynamic_model = DynamicModel(self.model, self.dynamic_compartments)
-        if 'checkpoint_dir' in self.args and self.args['checkpoint_dir']:
+        if 'results_dir' in self.args and self.args['results_dir']:
             self.checkpointing_sim_obj = self.create_multialgorithm_checkpointing(
-                self.args['checkpoint_dir'],
+                self.args['results_dir'],
                 self.args['checkpoint_period'],
                 self.args['metadata'])
         self.simulation_submodels = self.create_dynamic_submodels()
@@ -335,11 +335,11 @@ class MultialgorithmSimulation(object):
             initial_fluxes=initial_fluxes,
             retain_history=retain_history)
 
-    def create_multialgorithm_checkpointing(self, checkpoint_dir, checkpoint_period, metadata):
+    def create_multialgorithm_checkpointing(self, checkpoints_dir, checkpoint_period, metadata):
         """ Create a multialgorithm checkpointing object for this simulation
 
         Args:
-            checkpoint_dir (:obj:`str`): the directory in which to save checkpoints
+            checkpoints_dir (:obj:`str`): the directory in which to save checkpoints
             checkpoint_period (:obj:`float`): interval between checkpoints, in simulated seconds
             metadata (:obj:`SimulationMetadata`): simulation run metadata
 
@@ -347,7 +347,7 @@ class MultialgorithmSimulation(object):
             :obj:`MultialgorithmicCheckpointingSimObj`: the checkpointing object
         """
         multialgorithm_checkpointing_sim_obj = MultialgorithmicCheckpointingSimObj(
-            DEFAULT_VALUES['checkpointing_sim_obj'], checkpoint_period, checkpoint_dir,
+            DEFAULT_VALUES['checkpointing_sim_obj'], checkpoint_period, checkpoints_dir,
             metadata, self.local_species_population, self.dynamic_model, self)
 
         # add the multialgorithm checkpointing object to the simulation
