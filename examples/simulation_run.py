@@ -7,33 +7,29 @@
 """
 
 import os
-from argparse import Namespace
+import matplotlib.pyplot as plt
 
-# import simulate and run results
-from wc_sim.multialgorithm.__main__ import SimController
-
-# select tiny model
-# tood: more interesting model
-model_filename = os.path.join(os.path.dirname(__file__), '../tests/multialgorithm/fixtures',
-                                   '2_species_1_reaction.xlsx')
+# import simulation and run results
+from wc_sim.multialgorithm.simulation import Simulation
+from wc_sim.multialgorithm.run_results import RunResults
 
 # setup inputs
-checkpoints_dir = os.path.expanduser('tmp/checkpoints_dir')
-# tood: build into simulator: make dir if doesn't exist, use if empty, error otherwise
-if not os.path.isdir(checkpoints_dir):
-    os.makedirs(checkpoints_dir)
+# use a toy model
+model_filename = os.path.join(os.path.dirname(__file__), '../tests/multialgorithm/fixtures',
+                                   '2_species_1_reaction.xlsx')
+results_dir = os.path.expanduser('~/tmp/checkpoints_dir')
 
-args = Namespace(
-    model_file=model_filename,
-    end_time=100,
-    checkpoint_period=3,
-    checkpoints_dir=checkpoints_dir,
-    fba_time_step=5     # although the model doesn't have an FBA submodel
-)
-SimController.process_and_validate_args(args)
-
-# simulate
-num_events, results_dir = SimController.simulate(args)
+# create and run simulation
+simulation = Simulation(model_filename)
+num_events, results_dir = simulation.run(end_time=100, results_dir=results_dir, checkpoint_period=10)
+run_results = RunResults(results_dir)
 
 # view results
+print(run_results.get('populations'))
+# run_results also contains 'aggregate_states', 'random_states', and 'metadata'
+for component in RunResults.COMPONENTS:
+    print(run_results.get(component))
 
+fig = run_results.get('populations').plot().get_figure()
+fig.savefig(os.path.join(results_dir, 'population_dynamics.pdf'))
+plt.close(fig)

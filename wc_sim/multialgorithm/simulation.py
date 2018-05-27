@@ -7,14 +7,17 @@
 """
 
 import os
+import datetime
 
 import wc_lang
+from wc_lang.io import Reader
 from wc_lang.core import Model
 from wc_lang.prepare import PrepareModel, CheckModel
 from wc_sim.core import sim_config
+from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm.run_results import RunResults
-from wc_sim.core import sim_config
+from wc_sim.core.sim_metadata import SimulationMetadata, ModelMetadata, AuthorMetadata, RunMetadata
 
 '''
 usage:
@@ -60,7 +63,7 @@ class Simulation(object):
             self.model_path = None
         elif isinstance(model, str):
             # read model
-            self.model_path = os.path.abspath(os.path.expanduser(model)
+            self.model_path = os.path.abspath(os.path.expanduser(model))
             self.model = Reader().run(self.model_path, strict=False)
             if self.model is None:
                 raise MultialgorithmError("No model found in model file '{}'".format(self.model_path))
@@ -122,7 +125,6 @@ class Simulation(object):
         Raises:
             :obj:`MultialgorithmError`: if any of the arguments are invalid
         """
-        # todo: perhaps take individual args and not dict, and return updated results dir
         # todo: remove checks which are redundant with SimulationConfig
         # process results directory
         if 'results_dir' in args:
@@ -182,6 +184,7 @@ class Simulation(object):
                 containing the results
         """
         self.sim_config = sim_config.SimulationConfig(time_max=end_time, time_step=time_step)
+        self._prepare()
 
         # create a multi-algorithmic simulator
         simulation_args = dict(
@@ -192,7 +195,7 @@ class Simulation(object):
             time_step=time_step
         )
         self.process_and_validate_args(simulation_args)
-        self._prepare()
+        results_dir = simulation_args['results_dir']
 
         multialgorithm_simulation = MultialgorithmSimulation(self.model, simulation_args)
         simulation_engine, dynamic_model = multialgorithm_simulation.build_simulation()
@@ -213,7 +216,7 @@ class Simulation(object):
 
         return (num_events, results_dir)
 
-    def run_batch(self, results_dir, checkpoint_period):
+    def run_batch(self, results_dir, checkpoint_period):    # pragma: no cover  # not implemented 
         """ Run all simulations specified by the simulation configuration
 
         Args:
@@ -228,9 +231,3 @@ class Simulation(object):
         for simulation in self.sim_config.iterator():
             # setup simulation changes
             pass
-
-
-
-
-
-
