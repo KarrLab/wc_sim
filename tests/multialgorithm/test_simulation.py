@@ -12,6 +12,7 @@ import shutil
 import tempfile
 import pandas
 from copy import copy
+from capturer import CaptureOutput
 
 from wc_sim.core import sim_config
 from wc_sim.core.sim_metadata import SimulationMetadata
@@ -35,8 +36,9 @@ class TestSimulation(unittest.TestCase):
         shutil.rmtree(self.results_dir)
 
     def run_simulation(self, simulation):
-        num_events, results_dir = simulation.run(end_time=100, results_dir=self.results_dir,
-            checkpoint_period=10)
+        with CaptureOutput(relay=False):
+            num_events, results_dir = simulation.run(end_time=100, results_dir=self.results_dir,
+                checkpoint_period=10)
         
         # TODO(Arthur): add more specific tests
         self.assertTrue(0<num_events)
