@@ -78,12 +78,12 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         # read and initialize a model
         self.model = Reader().run(self.MODEL_FILENAME, strict=False)
         self.args = dict(fba_time_step=1,
-            checkpoint_dir=None)
+            results_dir=None)
         self.multialgorithm_simulation = MultialgorithmSimulation(self.model, self.args)
-        self.checkpoint_dir = tempfile.mkdtemp()
+        self.results_dir = tempfile.mkdtemp()
 
     def tearDown(self):
-        shutil.rmtree(self.checkpoint_dir)
+        shutil.rmtree(self.results_dir)
 
     def test_molecular_weights_for_species(self):
         multi_alg_sim = self.multialgorithm_simulation
@@ -128,7 +128,7 @@ class TestMultialgorithmSimulation(unittest.TestCase):
 
     def test_build_simulation(self):
         args = dict(fba_time_step=1,
-            checkpoint_dir=self.checkpoint_dir,
+            results_dir=self.results_dir,
             checkpoint_period=10,
             metadata={})
         multialgorithm_simulation = MultialgorithmSimulation(self.model, args)
@@ -142,14 +142,14 @@ class TestMultialgorithmSimulation(unittest.TestCase):
 class TestRunSSASimulation(unittest.TestCase):
 
     def setUp(self):
-        self.checkpoint_dir = tempfile.mkdtemp()
+        self.results_dir = tempfile.mkdtemp()
         self.args = dict(fba_time_step=1,
-            checkpoint_dir=self.checkpoint_dir,
+            results_dir=self.results_dir,
             checkpoint_period=10,
             metadata={})
 
     def tearDown(self):
-        shutil.rmtree(self.checkpoint_dir)
+        shutil.rmtree(self.results_dir)
 
     def make_model_and_simulation(self, model_type, specie_copy_numbers=None, init_vol=None):
         # reset indices
@@ -215,7 +215,7 @@ class TestRunSSASimulation(unittest.TestCase):
             self.assertTrue(invariant_obj.eval())
 
         # check the checkpoint times
-        self.assertEqual(MultialgorithmCheckpoint.list_checkpoints(self.checkpoint_dir), self.checkpoint_times(run_time))
+        self.assertEqual(MultialgorithmCheckpoint.list_checkpoints(self.results_dir), self.checkpoint_times(run_time))
 
     def test_run_ssa_suite(self):
         specie = 'spec_type_0[c]'
@@ -226,8 +226,8 @@ class TestRunSSASimulation(unittest.TestCase):
             delta=50)
         # species counts, and cell mass and volume steadily decline
         previous_ckpt = None
-        for time in MultialgorithmCheckpoint.list_checkpoints(self.checkpoint_dir):
-            ckpt = MultialgorithmCheckpoint.get_checkpoint(self.checkpoint_dir, time=time)
+        for time in MultialgorithmCheckpoint.list_checkpoints(self.results_dir):
+            ckpt = MultialgorithmCheckpoint.get_checkpoint(self.results_dir, time=time)
             if previous_ckpt:
                 previous_species_pops, previous_aggregate_state = previous_ckpt.state
                 species_pops, aggregate_state = ckpt.state
