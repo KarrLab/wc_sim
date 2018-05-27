@@ -1,0 +1,177 @@
+""" Test simple simulation
+
+:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Date: 2018-05-26
+:Copyright: 2018, Karr Lab
+:License: MIT
+"""
+
+import os
+import unittest
+import shutil
+import tempfile
+import pandas
+from copy import copy
+
+from wc_sim.core import sim_config
+from wc_sim.core.sim_metadata import SimulationMetadata
+from wc_lang.core import SpeciesType
+from wc_sim.multialgorithm.simulation import Simulation
+from wc_sim.multialgorithm.run_results import RunResults
+from wc_sim.multialgorithm.make_models import MakeModels
+from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
+
+TOY_MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', '2_species_1_reaction.xlsx')
+
+
+class TestSimulation(unittest.TestCase):
+
+
+    def setUp(self):
+        SpeciesType.objects.reset()
+        self.results_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.results_dir)
+
+    def run_simulation(self, simulation):
+        num_events, results_dir = simulation.run(end_time=100, results_dir=self.results_dir,
+            checkpoint_period=10)
+        
+        # TODO(Arthur): add more specific tests
+        self.assertTrue(0<num_events)
+        self.assertTrue(os.path.isdir(results_dir))
+        run_results = RunResults(results_dir)
+
+        for component in RunResults.COMPONENTS:
+            self.assertTrue(isinstance(run_results.get(component), (pandas.DataFrame, pandas.Series)))
+
+    def test_simulation_model_in_file(self):
+        self.run_simulation(Simulation(TOY_MODEL_FILENAME))
+
+    def test_simulation_model_in_memory(self):
+        model = MakeModels.make_test_model('2 species, 1 reaction', transform_prep_and_check=False)
+        self.run_simulation(Simulation(model))
+
+    def test_simulation_errors(self):
+        with self.assertRaises(MultialgorithmError):
+            Simulation(2)
+
+
+class TestProcessAndValidateArgs(unittest.TestCase):
+
+    def setUp(self):
+        self.results_dir = tempfile.mkdtemp()
+        self.tmp = os.path.expanduser('~/tmp/test_dir/checkpoints_dir')
+        if not os.path.exists(self.tmp):
+            os.makedirs(self.tmp)
+        self.user_tmp_dir = tempfile.mkdtemp(dir=self.tmp)
+        self.simulation = Simulation(TOY_MODEL_FILENAME)
+        self.args = dict(
+            results_dir=self.results_dir,
+            checkpoint_period=10,
+            end_time=100,
+            time_step=5
+        )
+
+    def tearDown(self):
+        shutil.rmtree(self.results_dir)
+        shutil.rmtree(self.user_tmp_dir)
+
+    def test_create_metadata_1(self):
+        with self.assertRaises(MultialgorithmError):
+            self.simulation._create_metadata()
+
+        self.simulation.sim_config = sim_config.SimulationConfig(time_max=self.args['end_time'],
+            time_step=self.args['time_step']) 
+        simulation_metadata = self.simulation._create_metadata()
+        for attr in SimulationMetadata.ATTRIBUTES:
+            self.assertTrue(getattr(simulation_metadata, attr) is not None)
+
+    def test_create_metadata_2(self):
+        # no time_step
+        self.simulation.sim_config = sim_config.SimulationConfig(time_max=self.args['end_time']) 
+        del self.args['time_step']
+        simulation_metadata = self.simulation._create_metadata()
+        self.assertEqual(simulation_metadata.simulation.time_step, 1)
+
+    def test_ckpt_dir_processing_1(self):
+        # checkpoints_dir does not exist
+        self.args['results_dir'] = os.path.join(self.results_dir, 'no_such_dir', 'no_such_sub_dir')
+        self.simulation.process_and_validate_args(self.args)
+        self.assertTrue(os.path.isdir(self.args['results_dir']))
+
+    def test_ckpt_dir_processing_2(self):
+        # checkpoints_dir exists, and is empty
+        root_dir = self.args['results_dir']
+        self.simulation.process_and_validate_args(self.args)
+        # process_and_validate_args creates 1 timestamped sub-dir
+        self.assertEqual(len(os.listdir(root_dir)), 1)
+
+    def test_ckpt_dir_processing_3(self):
+        # checkpoints_dir is a file
+        self.args['results_dir'] = os.path.join(self.args['results_dir'], 'new_file')
+        try:
+            open(self.args['results_dir'], 'x')
+            with self.assertRaises(MultialgorithmError):
+                self.simulation.process_and_validate_args(self.args)
+        except FileExistsError:
+           pass
+
+    def test_ckpt_dir_processing_4(self):
+        # timestamped sub-directory of checkpoints-dir already exists
+        root_dir = self.args['results_dir']
+        self.simulation.process_and_validate_args(self.args)
+        # given the chance, albeit small, that the second has advanced and
+        # a different timestamped sub-directory is made, try repeatedly to create the error
+        # the for loop takes about 0.01 sec
+        raised = False
+        for i in range(10):
+            self.args['results_dir'] = root_dir
+            try:
+                self.simulation.process_and_validate_args(self.args)
+            except:
+                raised = True
+        self.assertTrue(raised)
+
+    def test_process_and_validate_args1(self):
+        original_args = copy(self.args)
+        self.simulation.process_and_validate_args(self.args)
+        self.assertTrue(self.args['results_dir'].startswith(original_args['results_dir']))
+
+    def test_process_and_validate_args2(self):
+        # test files specified relative to home directory
+        relative_tmp_dir = os.path.join('~/tmp/', os.path.basename(self.user_tmp_dir))
+        self.args['results_dir'] = relative_tmp_dir
+        self.simulation.process_and_validate_args(self.args)
+        self.assertIn(relative_tmp_dir.replace('~', ''), self.args['results_dir'])
+
+    def test_process_and_validate_args3(self):
+        self.args['checkpoint_period'] =7
+        with self.assertRaises(MultialgorithmError):
+            self.simulation.process_and_validate_args(self.args)
+
+    def test_process_and_validate_args4(self):
+        # test no results dir
+        del self.args['results_dir']
+        original_args = copy(self.args)
+        self.simulation.process_and_validate_args(self.args)
+        self.assertEqual(self.args, original_args)
+
+    def test_process_and_validate_args5(self):
+        # test error detection
+        errors = dict(
+            end_time = [-3, 0],
+            checkpoint_period = [-2, 0, self.args['end_time'] + 1],
+            time_step = [-2, 0, self.args['end_time'] + 1],
+        )
+        for arg, error_vals in errors.items():
+            for error_val in error_vals:
+                bad_args = copy(self.args)
+                bad_args[arg] = error_val
+                # need a good, empty checkpoints_dir for each call to process_and_validate_args
+                new_tmp_dir = tempfile.mkdtemp()
+                bad_args['results_dir'] = new_tmp_dir
+                with self.assertRaises(MultialgorithmError):
+                    self.simulation.process_and_validate_args(bad_args)
+                shutil.rmtree(new_tmp_dir)
