@@ -90,7 +90,10 @@ class CheckpointLogTest(unittest.TestCase):
         time_max = 20
         metadata = dict(time_max=time_max)
         final_time, final_state, final_random_state = mock_simulate(metadata=metadata, checkpoint_step=checkpoint_step)
-        self.assertEqual([], Checkpoint.list_checkpoints(dirname=checkpoint_dir))
+
+        self.assertEqual([], Checkpoint.list_checkpoints(dirname=checkpoint_dir, error_if_empty=False))
+        with self.assertRaises(ValueError):
+            Checkpoint.list_checkpoints(dirname=checkpoint_dir)
         self.assertGreater(final_time, time_max)
 
         # run simulation to check checkpointing

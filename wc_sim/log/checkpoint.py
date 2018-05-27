@@ -87,14 +87,18 @@ class Checkpoint(object):
             return pickle.load(file)
 
     @staticmethod
-    def list_checkpoints(dirname):
+    def list_checkpoints(dirname, error_if_empty=True):
         """ Get sorted list of times of saved checkpoints in checkpoint directory `dirname`.
 
         Args:
             dirname (:obj:`str`): directory to read/write checkpoint data
+            error_if_empty (:obj:`bool`, optional): if set, report an error if no checkpoints found
 
         Returns:
             :obj:`list`: sorted list of times of saved checkpoints
+
+        Raises:
+            :obj:`ValueError`: if `dirname` doesn't contain any checkpoints
         """
 
         # find checkpoint times
@@ -103,6 +107,10 @@ class Checkpoint(object):
             match = re.match('^(\d+\.\d{6,6}).pickle$', file_name)
             if os.path.isfile(os.path.join(dirname, file_name)) and match:
                 checkpoint_times.append(float(match.group(1)))
+
+        # error if no checkpoints found
+        if error_if_empty and not checkpoint_times:
+            raise ValueError("no checkpoints found in '{}'".format(dirname))
 
         # sort by time
         checkpoint_times.sort()
