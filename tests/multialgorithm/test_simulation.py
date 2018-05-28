@@ -16,6 +16,7 @@ from capturer import CaptureOutput
 
 from wc_sim.core import sim_config
 from wc_sim.core.sim_metadata import SimulationMetadata
+from wc_sim.log.checkpoint import Checkpoint
 from wc_lang.core import SpeciesType
 from wc_sim.multialgorithm.simulation import Simulation
 from wc_sim.multialgorithm.run_results import RunResults
@@ -26,7 +27,6 @@ TOY_MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', '2_spec
 
 
 class TestSimulation(unittest.TestCase):
-
 
     def setUp(self):
         SpeciesType.objects.reset()
@@ -39,7 +39,7 @@ class TestSimulation(unittest.TestCase):
         with CaptureOutput(relay=False):
             num_events, results_dir = simulation.run(end_time=100, results_dir=self.results_dir,
                 checkpoint_period=10)
-        
+
         # TODO(Arthur): add more specific tests
         self.assertTrue(0<num_events)
         self.assertTrue(os.path.isdir(results_dir))
@@ -58,6 +58,26 @@ class TestSimulation(unittest.TestCase):
     def test_simulation_errors(self):
         with self.assertRaises(MultialgorithmError):
             Simulation(2)
+
+    def test_simulate_wo_output_files(self):
+        with CaptureOutput(relay=False):
+            num_events, results_dir = Simulation(TOY_MODEL_FILENAME).run(end_time=100)
+        self.assertTrue(0 < num_events)
+        self.assertEqual(results_dir, None)
+
+    def test_simulate(self):
+        end_time = 30
+        with CaptureOutput(relay=False):
+            num_events, results_dir = Simulation(TOY_MODEL_FILENAME).run(end_time=end_time,
+                results_dir=self.results_dir, checkpoint_period=10)
+
+        # check time, and simulation config in checkpoints
+        for time in Checkpoint.list_checkpoints(results_dir):
+            ckpt = Checkpoint.get_checkpoint(results_dir, time=time)
+            self.assertEqual(time, ckpt.time)
+            self.assertEqual(ckpt.metadata.simulation.time_init, 0)
+            self.assertEqual(ckpt.metadata.simulation.time_max, end_time)
+            self.assertTrue(ckpt.random_state != None)
 
 
 class TestProcessAndValidateArgs(unittest.TestCase):
@@ -177,3 +197,18 @@ class TestProcessAndValidateArgs(unittest.TestCase):
                 with self.assertRaises(MultialgorithmError):
                     self.simulation.process_and_validate_args(bad_args)
                 shutil.rmtree(new_tmp_dir)
+
+    def test_process_and_validate_args6(self):
+        del self.args['end_time']
+        with self.assertRaises(MultialgorithmError):
+            self.simulation.process_and_validate_args(self.args)
+
+    def test_process_and_validate_args7(self):
+        del self.args['time_step']
+        no_exception = False
+        try:
+            self.simulation.process_and_validate_args(self.args)
+            no_exception = True
+        except:
+            pass
+        self.assertTrue(no_exception)

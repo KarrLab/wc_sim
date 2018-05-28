@@ -18,6 +18,7 @@ import warnings
 from wc_utils.util.misc import obj_to_str
 
 
+# todo: SimulationConfig represents a batch of simulations; need a config object that represents one simulation run
 class SimulationConfig(object):
     """ Represents and applies simulation configurations:
 

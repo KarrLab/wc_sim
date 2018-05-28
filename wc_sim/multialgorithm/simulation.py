@@ -170,32 +170,34 @@ class Simulation(object):
                 raise MultialgorithmError("Timestep for time-stepped submodels ({}) must be positive and less than or "
                     "equal to end time".format(args['time_step']))
 
-    def run(self, end_time, results_dir, checkpoint_period, time_step=1):
+    def run(self, end_time, results_dir=None, checkpoint_period=None, time_step=1):
         """ Run one simulation
 
         Args:
             end_time (:obj:`float`): the end time of the simulation (sec)
-            results_dir (:obj:`str`): path to a directory in which results should be stored
-            checkpoint_period (:obj:`float`): the period between simulation state checkpoints (sec)
+            results_dir (:obj:`str`, optional): path to a directory in which results are stored
+            checkpoint_period (:obj:`float`, optional): the period between simulation state checkpoints (sec)
             time_step (:obj:`float`, optional): time step length of time-stepped submodels (sec)
 
         Returns:
             :obj:`tuple` of (`int`, `str`): number of simulation events, pathname of directory
-                containing the results
+                containing the results, or :obj:`tuple` of (`int`, `None`): number of simulation events,
+                `None` if `results_dir=None`
         """
         self.sim_config = sim_config.SimulationConfig(time_max=end_time, time_step=time_step)
         self._prepare()
 
         # create a multi-algorithmic simulator
         simulation_args = dict(
-            results_dir=results_dir,
-            checkpoint_period=checkpoint_period,
             metadata=self.simulation_metadata,
             end_time=end_time,
             time_step=time_step
         )
+        if results_dir:
+            simulation_args['results_dir'] = results_dir
+            simulation_args['checkpoint_period'] = checkpoint_period
+
         self.process_and_validate_args(simulation_args)
-        results_dir = simulation_args['results_dir']
 
         multialgorithm_simulation = MultialgorithmSimulation(self.model, simulation_args)
         simulation_engine, dynamic_model = multialgorithm_simulation.build_simulation()
@@ -210,13 +212,15 @@ class Simulation(object):
 
         print('Simulated {} events'.format(num_events))
         if results_dir:
-            # use RunResults to summarize results in an HDF5 file in results_dir
-            RunResults(results_dir, self.simulation_metadata)
-            print("Saved checkpoints and run results in '{}'".format(results_dir))
+            timestamped_results_dir = simulation_args['results_dir']
+            # summarize results in an HDF5 file in timestamped_results_dir
+            RunResults(timestamped_results_dir, self.simulation_metadata)
+            print("Saved checkpoints and run results in '{}'".format(timestamped_results_dir))
+            return (num_events, timestamped_results_dir)
+        else:
+            return (num_events, None)
 
-        return (num_events, results_dir)
-
-    def run_batch(self, results_dir, checkpoint_period):    # pragma: no cover  # not implemented 
+    def run_batch(self, results_dir, checkpoint_period):    # pragma: no cover  # not implemented
         """ Run all simulations specified by the simulation configuration
 
         Args:
