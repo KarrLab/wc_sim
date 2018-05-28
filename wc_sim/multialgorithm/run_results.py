@@ -28,19 +28,17 @@ class RunResults(object):
     COMPONENTS = {
         'populations',          # predicted populations of species at all checkpoint times
         'aggregate_states',     # predicted aggregate states of the cell over the simulation
-        'random_states',        # states of the simulation's pRNGs over the simulation
+        'random_states',        # states of the simulation's random number geerators over the simulation
         'metadata',             # the simulation's global metadata
     }
     HDF5_FILENAME = 'run_results.h5'
 
-    def __init__(self, results_dir, metadata=None):
+    def __init__(self, results_dir):
         """ Create a `RunResults`
 
         Args:
             results_dir (:obj:`str`): directory storing checkpoints and/or HDF5 file with
                 the simulation run results
-            metadata (:obj:`SimulationMetadata`, optional): metadata for the simulation run;
-                required if an HDF5 file combining simulation run results has not been already created
         """
         self.results_dir = results_dir
         self.run_results = {}
@@ -49,23 +47,20 @@ class RunResults(object):
         if os.path.isfile(self._hdf_file()):
             self._load_hdf_file()
 
-        # else create the HDF file from the sequence of checkpoints
+        # else create the HDF file from the stored metadata and sequence of checkpoints
         else:
-            if metadata is None:
-                raise MultialgorithmError("'metadata' must be provided to create an HDF5 file")
-
-            population_df, aggregate_states_df, random_states_s = self.convert_checkpoints()
 
             # create the HDF file containing the run results
+            population_df, aggregate_states_df, random_states_s = self.convert_checkpoints()
             # populations
             population_df.to_hdf(self._hdf_file(), 'populations')
             # aggregate states
             aggregate_states_df.to_hdf(self._hdf_file(), 'aggregate_states')
             # random states
             random_states_s.to_hdf(self._hdf_file(), 'random_states')
+
             # metadata
-            metadata_dict = as_dict(metadata)
-            metadata_s = pandas.Series(metadata_dict)
+            metadata_s = self.convert_metadata()
             metadata_s.to_hdf(self._hdf_file(), 'metadata')
 
             self._load_hdf_file()
@@ -101,6 +96,15 @@ class RunResults(object):
             raise MultialgorithmError("component '{}' is not an element of {}".format(component,
                 RunResults.COMPONENTS))
         return self.run_results[component]
+
+    def convert_metadata(self):
+        """ Convert the saved simulation metadata into a pandas series
+
+        Returns:
+            :obj:`pandas.Series`: the simulation metadata
+        """
+        simulation_metadata = SimulationMetadata.read_metadata(self.results_dir)
+        return pandas.Series(as_dict(simulation_metadata))
 
     def convert_checkpoints(self):
         """ Convert the data in saved checkpoints into pandas dataframes

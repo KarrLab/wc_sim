@@ -14,39 +14,38 @@ import tempfile
 from argparse import Namespace
 import warnings
 import pandas
+import numpy
 
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm.simulation import Simulation
 from wc_sim.multialgorithm.run_results import RunResults
 
 
-# TODO: fix after metadata better organized
-@unittest.skip("fix after metadata better organized")
 class TestRunResults(unittest.TestCase):
 
     def setUp(self):
-        # use stored checkpoints
-        self.CHECKPOINTS_DIR = os.path.join(os.path.dirname(__file__), 'fixtures', 'checkpoints_dir')
-        self.checkpoints_dir = tempfile.mkdtemp()
-        self.checkpoints_copy = os.path.join(self.checkpoints_dir, 'checkpoints_copy')
-        shutil.copytree(self.CHECKPOINTS_DIR, self.checkpoints_copy)
-        TOY_MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', '2_species_1_reaction.xlsx')
-        simulation = Simulation(TOY_MODEL_FILENAME)
-        self.metadata = simulation._create_metadata()
+        # use stored checkpoints and metadata from simulation of 2_species_1_reaction model
+        self.RESULTS_DIR = os.path.join(os.path.dirname(__file__), 'fixtures', 'results_dir')
+        self.results_dir = tempfile.mkdtemp()
+        self.results_copy = os.path.join(self.results_dir, 'results_copy')
+        shutil.copytree(self.RESULTS_DIR, self.results_copy)
+        self.checkpoint_period = 10
+        self.max_time = 100
 
     def tearDown(self):
-        shutil.rmtree(self.checkpoints_dir)
+        shutil.rmtree(self.results_dir)
 
     def test_run_results(self):
 
-        run_results_1 = RunResults(self.checkpoints_copy, self.metadata)
+        run_results_1 = RunResults(self.results_copy)
         # after run_results file created
-        run_results_2 = RunResults(self.checkpoints_copy)
+        run_results_2 = RunResults(self.results_copy)
         for component in RunResults.COMPONENTS:
             component_data = run_results_1.get(component)
             self.assertTrue(run_results_1.get(component).equals(run_results_2.get(component)))
 
-        expected_times = pandas.Float64Index([0., 3., 6., 9.])
+
+        expected_times = pandas.Float64Index(numpy.linspace(0, self.max_time, 1 + self.max_time/self.checkpoint_period))
         for component in ['populations', 'aggregate_states', 'random_states']:
             component_data = run_results_1.get(component)
             self.assertTrue(component_data.index.equals(expected_times))
@@ -58,13 +57,10 @@ class TestRunResults(unittest.TestCase):
             self.assertEqual(pop_sum[time], pop_sum[0.])
 
         metadata = run_results_1.get('metadata')
-        self.assertEqual(metadata['simulation']['time_max'], 10.)
-        self.assertEqual(metadata['author']['username'], getpass.getuser())
+        self.assertEqual(metadata['simulation']['time_max'], self.max_time)
 
     def test_run_results_errors(self):
 
-        with self.assertRaises(MultialgorithmError):
-            RunResults(self.checkpoints_copy)
-        run_results = RunResults(self.checkpoints_copy, self.metadata)
+        run_results = RunResults(self.results_copy)
         with self.assertRaisesRegexp(MultialgorithmError, "component '.*' is not an element of "):
             run_results.get('not_a_component')

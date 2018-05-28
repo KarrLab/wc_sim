@@ -198,23 +198,30 @@ class Simulation(object):
             simulation_args['checkpoint_period'] = checkpoint_period
 
         self.process_and_validate_args(simulation_args)
+        timestamped_results_dir = None
+        if results_dir:
+            timestamped_results_dir = simulation_args['results_dir']
 
         multialgorithm_simulation = MultialgorithmSimulation(self.model, simulation_args)
         simulation_engine, dynamic_model = multialgorithm_simulation.build_simulation()
         simulation_engine.initialize()
 
+        # todo: take metadata out of Checkpoint
+        if timestamped_results_dir:
+            SimulationMetadata.write_metadata(self.simulation_metadata, timestamped_results_dir)
+
         # run simulation
-        # todo: take metadata out of Checkpoint, and record it in a file
+        # todo: handle exceptions
         num_events = simulation_engine.simulate(end_time)
         self.simulation_metadata.run.record_end()
-        # todo: handle exceptions
-        # todo: update metadata in file
+        # update metadata in file
+        if timestamped_results_dir:
+            SimulationMetadata.write_metadata(self.simulation_metadata, timestamped_results_dir)
 
         print('Simulated {} events'.format(num_events))
-        if results_dir:
-            timestamped_results_dir = simulation_args['results_dir']
+        if timestamped_results_dir:
             # summarize results in an HDF5 file in timestamped_results_dir
-            RunResults(timestamped_results_dir, self.simulation_metadata)
+            RunResults(timestamped_results_dir)
             print("Saved checkpoints and run results in '{}'".format(timestamped_results_dir))
             return (num_events, timestamped_results_dir)
         else:
