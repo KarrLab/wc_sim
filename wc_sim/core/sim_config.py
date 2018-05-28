@@ -6,6 +6,7 @@
 :License: MIT
 """
 
+# .. todo:: comprehensively test the __eq__ methods
 # .. todo:: support add, remove changes
 # .. todo:: represent other stopping conditions e.g. cell divided
 # .. todo:: represent observables in SED-ML
@@ -18,7 +19,6 @@ import warnings
 from wc_utils.util.misc import obj_to_str
 
 
-# todo: SimulationConfig represents a batch of simulations; need a config object that represents one simulation run
 class SimulationConfig(object):
     """ Represents and applies simulation configurations:
 
@@ -134,6 +134,38 @@ class SimulationConfig(object):
         """
         return int((self.time_max - self.time_init) / self.time_step)
 
+    def __eq__(self, other):
+        """ Compare two `SimulationConfig` objects
+
+        Args:
+            other (:obj:`SimulationConfig`): other simulation config object
+
+        Returns:
+            :obj:`bool`: true if simulation config objects are semantically equal
+        """
+        if other.__class__ is not self.__class__:
+            return False
+
+        for attr in ['time_init', 'time_max', 'time_step', 'random_seed']:
+            if getattr(other, attr) != getattr(self, attr):
+                return False
+
+        for attr in ['changes', 'perturbations']:
+            if getattr(other, attr) is None and getattr(self, attr) is not None:
+                return False
+            if getattr(other, attr) is not None and getattr(self, attr) is None:
+                return False
+            if isinstance(getattr(other, attr), list) and isinstance(getattr(self, attr), list):
+                other_list = getattr(other, attr)
+                self_list = getattr(self, attr)
+                if len(other_list) != len(self_list):
+                    return False
+                for other_obj, self_obj in zip(other_list, self_list):
+                    if other_obj != self_obj:
+                        return False
+
+        return True
+
     def __str__(self):
         """ Provide a readable representation of this `SimulationConfig`
 
@@ -156,6 +188,24 @@ class Change(object):
         self.target = target
         self.value = value
 
+    def __eq__(self, other):
+        """ Compare two `Change` objects
+
+        Args:
+            other (:obj:`Object`): other object
+
+        Returns:
+            :obj:`bool`: true if `Change` objects are semantically equal
+        """
+        if other.__class__ is not self.__class__:
+            return False
+
+        for attr in self.ATTRIBUTES:
+            if getattr(other, attr) != getattr(self, attr):
+                return False
+
+        return True
+
 
 class Perturbation(object):
     """ Represents a perturbation to simulate:
@@ -166,7 +216,7 @@ class Perturbation(object):
       the target will be held to the desired value from the start to the end time.
 
     Attributes:
-        change (:obj:`wc.sim.conf.Change`): desired value for a target
+        change (:obj:`Change`): desired value for a target
         start_time (:obj:`float`): perturbation start time in seconds
         end_time (:obj:`float`): perturbation end time in seconds
     """
@@ -182,6 +232,33 @@ class Perturbation(object):
         self.change = change
         self.start_time = start_time
         self.end_time = end_time
+
+    def __eq__(self, other):
+        """ Compare two `Perturbation` objects
+
+        Args:
+            other (:obj:`Object`): other object
+
+        Returns:
+            :obj:`bool`: true if `Perturbation` objects are semantically equal
+        """
+        if other.__class__ is not self.__class__:
+            return False
+
+        for attr in ['change', 'start_time']:
+            if getattr(other, attr) != getattr(self, attr):
+                return False
+
+        if math.isnan(other.end_time) and not math.isnan(self.end_time):
+            return False
+
+        if not math.isnan(other.end_time) and math.isnan(self.end_time):
+            return False
+
+        if not math.isnan(other.end_time) and not math.isnan(self.end_time):
+            return other.end_time == self.end_time
+
+        return True
 
 
 class SimulationConfigError(Exception):

@@ -10,6 +10,8 @@
 import socket
 import unittest
 import copy
+import shutil
+import tempfile
 
 from wc_sim.core import sim_config
 from wc_sim.core.sim_metadata import SimulationMetadata, ModelMetadata, AuthorMetadata, RunMetadata
@@ -19,6 +21,8 @@ from wc_utils.util.misc import as_dict
 class TestMetadata(unittest.TestCase):
 
     def setUp(self):
+        self.pickle_file_dir = tempfile.mkdtemp()
+
         self.model = model = ModelMetadata.create_from_repository()
         self.model_equal = ModelMetadata.create_from_repository()
         self.model_different = copy.copy(self.model_equal)
@@ -52,6 +56,9 @@ class TestMetadata(unittest.TestCase):
         author_different.name = 'Joe Smith'
         self.metadata_different = SimulationMetadata(model, simulation, run, author_different)
 
+    def tearDown(self):
+        shutil.rmtree(self.pickle_file_dir)
+
     def test_build_metadata(self):
         model = self.metadata.model
         self.assertIn(model.url, ['https://github.com/KarrLab/wc_sim.git',
@@ -76,13 +83,13 @@ class TestMetadata(unittest.TestCase):
         self.assertNotEqual(self.run, self.run_different)
         self.assertFalse(self.run != self.run_equal)
 
-        self.assertEqual(self.metadata, self.metadata_equal)
-        self.assertNotEqual(self.metadata, obj)
-        self.assertNotEqual(self.metadata, self.metadata_different)
-
         self.assertEqual(self.author, self.author_equal)
         self.assertNotEqual(self.author, obj)
         self.assertNotEqual(self.author, self.author_different)
+
+        self.assertEqual(self.metadata, self.metadata_equal)
+        self.assertNotEqual(self.metadata, obj)
+        self.assertNotEqual(self.metadata, self.metadata_different)
 
     def test_as_dict(self):
         d = as_dict(self.metadata)
@@ -96,3 +103,7 @@ class TestMetadata(unittest.TestCase):
         self.assertIn(self.metadata.model.branch, str(self.metadata))
         self.assertIn(self.metadata.run.ip_address, str(self.metadata))
         self.assertIn(str(self.metadata.simulation.time_max), str(self.metadata))
+
+    def test_write_and_read(self):
+        SimulationMetadata.write_metadata(self.metadata, self.pickle_file_dir)
+        self.assertEqual(self.metadata, SimulationMetadata.read_metadata(self.pickle_file_dir))

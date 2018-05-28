@@ -11,6 +11,7 @@ import datetime
 import os
 import socket
 import warnings
+import pickle
 
 import wc_utils.util.git
 from wc_utils.util.misc import obj_to_str
@@ -35,6 +36,46 @@ class SimulationMetadata(object):
         self.simulation = simulation
         self.run = run
         self.author = author
+
+    @staticmethod
+    def write_metadata(simulation_metadata, dirname):
+        """ Save a simulation metadata object to the directory `dirname`
+
+        Args:
+            simulation_metadata (:obj:`SimulationMetadata`): a simulation metadata instance
+            dirname (:obj:`str`): directory for holding the metadata
+        """
+
+        file_name = SimulationMetadata.get_file_name(dirname)
+
+        with open(file_name, 'wb') as file:
+            pickle.dump(simulation_metadata, file)
+
+    @staticmethod
+    def read_metadata(dirname):
+        """ Read a simulation metadata object from the directory `dirname`
+
+        Args:
+            dirname (:obj:`str`): directory for holding the metadata
+        """
+
+        file_name = SimulationMetadata.get_file_name(dirname)
+
+        # load and return this simulation metadata
+        with open(file_name, 'rb') as file:
+            return pickle.load(file)
+
+    def get_file_name(dirname):
+        """ Get file name for simulation metadata stored in directory `dirname`
+
+        Args:
+            dirname (:obj:`str`): directory for holding the metadata
+
+        Returns:
+            :obj:`str`: file name for simulation metadata
+        """
+
+        return os.path.join(dirname, 'sim_metadata.pickle')
 
     def __eq__(self, other):
         """ Compare two simulation metadata objects
@@ -109,7 +150,7 @@ class ModelMetadata(object):
         try:
             md = wc_utils.util.git.get_repo_metadata(repo_path)
             return ModelMetadata(md.url, md.branch, md.revision)
-        except ValueError:  # pragma: no cover
+        except ValueError:
             warnings.warn("repo_path ({}) not in a git repo".format(repo_path))
             return ModelMetadata('unknown', 'unknown', 'unknown')
 
