@@ -72,7 +72,7 @@ class MultialgorithmicCheckpointingSimObj(CheckpointSimulationObject):
     Attributes:
         access_state_object (:obj:`AccessState`): an object that provides checkpoints
     """
-    def __init__(self, name, checkpoint_period, checkpoint_dir, metadata, local_species_population,
+    def __init__(self, name, checkpoint_period, checkpoint_dir, local_species_population,
         dynamic_model, multialgorithm_simulation):
         """ Create a MultialgorithmicCheckpointingSimObj
 
@@ -80,7 +80,6 @@ class MultialgorithmicCheckpointingSimObj(CheckpointSimulationObject):
             name (:obj:`str`): name
             checkpoint_period (:obj:`float`): checkpoint period
             checkpoint_dir (:obj:`str`): checkpoint directory
-            metadata (:obj:`SimulationMetadata`): metadata
             local_species_population (:obj:`LocalSpeciesPopulation`): the `LocalSpeciesPopulation`
             dynamic_model (:obj:`DynamicModel`): the `DynamicModel`
             multialgorithm_simulation (:obj:`MultialgorithmSimulation`): the `MultialgorithmSimulation`
@@ -88,7 +87,7 @@ class MultialgorithmicCheckpointingSimObj(CheckpointSimulationObject):
 
         self.access_state_object = AccessState(local_species_population, dynamic_model,
             multialgorithm_simulation)
-        super().__init__(name, checkpoint_period, checkpoint_dir, metadata, self.access_state_object)
+        super().__init__(name, checkpoint_period, checkpoint_dir, self.access_state_object)
 
     def __str__(self):
         """ Provide a readable representation of this `MultialgorithmicCheckpointingSimObj`
@@ -97,5 +96,5 @@ class MultialgorithmicCheckpointingSimObj(CheckpointSimulationObject):
             :obj:`str`: a readable representation of this `MultialgorithmicCheckpointingSimObj`
         """
 
-        return obj_to_str(self, ['name', 'checkpoint_period', 'checkpoint_dir', 'metadata',
+        return obj_to_str(self, ['name', 'checkpoint_period', 'checkpoint_dir',
             'local_species_population', 'dynamic_model'])

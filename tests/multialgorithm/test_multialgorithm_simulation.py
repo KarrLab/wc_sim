@@ -129,8 +129,7 @@ class TestMultialgorithmSimulation(unittest.TestCase):
     def test_build_simulation(self):
         args = dict(fba_time_step=1,
             results_dir=self.results_dir,
-            checkpoint_period=10,
-            metadata={})
+            checkpoint_period=10)
         multialgorithm_simulation = MultialgorithmSimulation(self.model, args)
         simulation_engine, _ = multialgorithm_simulation.build_simulation()
         # 3 objects: 2 submodels, and the checkpointing obj:
@@ -145,8 +144,7 @@ class TestRunSSASimulation(unittest.TestCase):
         self.results_dir = tempfile.mkdtemp()
         self.args = dict(fba_time_step=1,
             results_dir=self.results_dir,
-            checkpoint_period=10,
-            metadata={})
+            checkpoint_period=10)
 
     def tearDown(self):
         shutil.rmtree(self.results_dir)

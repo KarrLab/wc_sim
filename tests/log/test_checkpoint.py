@@ -25,27 +25,25 @@ import wc_utils.util.types
 class TestCheckpoint(unittest.TestCase):
 
     def setUp(self):
-        self.empty_checkpoint1 = Checkpoint(None, None, None, None)
-        self.empty_checkpoint2 = Checkpoint(None, None, None, None)
+        self.empty_checkpoint1 = Checkpoint(None, None, None)
+        self.empty_checkpoint2 = Checkpoint(None, None, None)
 
-        # Checkpoint(metadata, time, state, random_state)
-        metadata = {'time_max': 10}
+        # Checkpoint(time, state, random_state)
         time = 2
         state = [[1, 2], 3]
         random_state = random.RandomState(seed=0)
-        attrs = dict(metadata=metadata, time=time, state=state, random_state=random_state)
-        self.non_empty_checkpoint1 = Checkpoint(metadata, time, state, random_state)
+        attrs = dict(time=time, state=state, random_state=random_state)
+        self.non_empty_checkpoint1 = Checkpoint(time, state, random_state)
         self.non_empty_checkpoint2 = self.non_empty_checkpoint1
 
         # make Checkpoints that differ
-        diff_metadata = {'time_max': 11}
         diff_time = 3
         diff_state = [[1, 2], 3, 4]
         diff_random_state = random.RandomState(seed=1)
-        diff_attrs = dict(metadata=diff_metadata, time=diff_time, state=diff_state,
+        diff_attrs = dict(time=diff_time, state=diff_state,
             random_state=diff_random_state)
         self.diff_checkpoints = []
-        for attr in ['metadata', 'time', 'state', 'random_state']:
+        for attr in ['time', 'state', 'random_state']:
             args = copy.deepcopy(attrs)
             args[attr] = copy.deepcopy(diff_attrs[attr])
             self.diff_checkpoints.append(Checkpoint(**args))
@@ -78,8 +76,7 @@ class CheckpointLogTest(unittest.TestCase):
         checkpoint_dir = os.path.join(self.checkpoint_dir, 'checkpoint')
         checkpoint_step = 2
         init_time = 0
-        metadata = {'time_max': 10}
-        CheckpointLogger(checkpoint_dir, checkpoint_step, init_time, metadata)
+        CheckpointLogger(checkpoint_dir, checkpoint_step, init_time)
         self.assertTrue(os.path.isdir(checkpoint_dir))
 
     def test_mock_simulator(self):
@@ -116,11 +113,9 @@ class CheckpointLogTest(unittest.TestCase):
         chkpt = Checkpoint.get_checkpoint(dirname=checkpoint_dir, time=checkpoint_time)
         self.assertIn('time:', str(chkpt))
         self.assertIn('state:', str(chkpt))
-        self.assertEqual(chkpt.metadata, dict(time_max=time_max))
         self.assertLessEqual(chkpt.time, checkpoint_time)
 
         chkpt = Checkpoint.get_checkpoint(dirname=checkpoint_dir)
-        self.assertEqual(chkpt.metadata, dict(time_max=time_max))
         self.assertLessEqual(chkpt.time, time_max)
 
         # resume simulation
@@ -145,7 +140,6 @@ class CheckpointLogTest(unittest.TestCase):
 
         # check checkpoints have correct data
         chkpt = Checkpoint.get_checkpoint(dirname=checkpoint_dir)
-        self.assertEqual(chkpt.metadata, dict(time_max=time_max))
         self.assertLessEqual(chkpt.time, final_time)
 
         self.assertNotEqual(wc_utils.util.types.cast_to_builtins(chkpt.random_state),
@@ -208,7 +202,7 @@ def mock_simulate(metadata, init_time=0, init_state=None, init_random_state=None
     time = init_time
 
     if checkpoint_dir:
-        logger = CheckpointLogger(checkpoint_dir, checkpoint_step, init_time, metadata)
+        logger = CheckpointLogger(checkpoint_dir, checkpoint_step, init_time)
 
     while time < metadata['time_max']:
         dt = random_state.exponential(1. / 100.)

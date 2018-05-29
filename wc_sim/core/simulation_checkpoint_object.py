@@ -64,15 +64,13 @@ class CheckpointSimulationObject(AbstractCheckpointSimulationObject):
 
     Attributes:
         checkpoint_dir (:obj:`str`): the directory in which to save checkpoints
-        metadata (:obj:`SimulationMetadata`): simulation run metadata
         access_state_obj (:obj:`AccessStateObjectInterface`): an object whose `get_checkpoint_state(time)`
             returns the simulation's state at time `time`; `access_state_obj` objects should be derived from
             `AccessStateObjectInterface`
     """
 
-    def __init__(self, name, checkpoint_period, checkpoint_dir, metadata, access_state_obj):
+    def __init__(self, name, checkpoint_period, checkpoint_dir, access_state_obj):
         self.checkpoint_dir = checkpoint_dir
-        self.metadata = metadata
         self.access_state_obj = access_state_obj
         super().__init__(name, checkpoint_period)
 
@@ -80,5 +78,5 @@ class CheckpointSimulationObject(AbstractCheckpointSimulationObject):
         """ Create a checkpoint in the directory `self.checkpoint_dir`
         """
         Checkpoint.set_checkpoint(self.checkpoint_dir,
-            Checkpoint(self.metadata, self.time, self.access_state_obj.get_checkpoint_state(self.time),
+            Checkpoint(self.time, self.access_state_obj.get_checkpoint_state(self.time),
                 self.access_state_obj.get_random_state()))

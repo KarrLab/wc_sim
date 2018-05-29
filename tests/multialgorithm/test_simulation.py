@@ -75,8 +75,6 @@ class TestSimulation(unittest.TestCase):
         for time in Checkpoint.list_checkpoints(results_dir):
             ckpt = Checkpoint.get_checkpoint(results_dir, time=time)
             self.assertEqual(time, ckpt.time)
-            self.assertEqual(ckpt.metadata.simulation.time_init, 0)
-            self.assertEqual(ckpt.metadata.simulation.time_max, end_time)
             self.assertTrue(ckpt.random_state != None)
 
 

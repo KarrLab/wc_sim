@@ -20,7 +20,6 @@ import warnings
 from wc_lang.core import SpeciesType
 from wc_sim import __main__
 from wc_sim.multialgorithm.__main__ import SimController
-from wc_sim.log.checkpoint import Checkpoint
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_sim.core.sim_metadata import SimulationMetadata
 

@@ -134,9 +134,8 @@ class TestCheckpointSimulationObjects(unittest.TestCase):
         Take checkpoints and test them.
         '''
         # prepare
-        metadata = {'test_metadata': 'value'}
         checkpointing_obj = CheckpointSimulationObject('checkpointing_obj', self.checkpoint_period,
-                                                       self.checkpoint_dir, metadata, self.state)
+                                                       self.checkpoint_dir, self.state)
         self.simulator.add_objects([self.updating_obj, checkpointing_obj])
         self.simulator.initialize()
 

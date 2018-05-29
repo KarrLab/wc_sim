@@ -206,7 +206,6 @@ class Simulation(object):
         simulation_engine, dynamic_model = multialgorithm_simulation.build_simulation()
         simulation_engine.initialize()
 
-        # todo: take metadata out of Checkpoint
         if timestamped_results_dir:
             SimulationMetadata.write_metadata(self.simulation_metadata, timestamped_results_dir)
 
@@ -238,7 +237,7 @@ class Simulation(object):
             :obj:`tuple` of (`int`, `str`): number of simulation events, pathname of directory
                 containing the results
         """
-        # todo: iterate over sim configs
+        # todo: implement; iterate over sim configs
         for simulation in self.sim_config.iterator():
             # setup simulation changes
             pass

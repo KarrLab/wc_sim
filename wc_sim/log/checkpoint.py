@@ -17,20 +17,17 @@ import re
 from wc_sim.core.sim_metadata import SimulationMetadata
 from wc_utils.util.misc import obj_to_str
 
-# TODO(Arthur): make a simulation results obj; move metadata there
-# it doesn't belong in Checkpoint because 1) it's constant, and 2) run_time isn't known yet
+
 class Checkpoint(object):
     """ Represents a simulation checkpoint
 
     Attributes:
-        metadata (:obj:`SimulationMetadata`): static metadata that describes the simulatino
         time (:obj:`float`): the checkpoint's simulated time, in sec
         state (:obj:`object`): the simulated model's state at time `time`
         random_state (:obj:`object`): the state of the simulator's random number generator at time `time`
     """
 
-    def __init__(self, metadata, time, state, random_state):
-        self.metadata = metadata
+    def __init__(self, time, state, random_state):
         self.time = time
         self.state = state
         self.random_state = random_state
@@ -139,7 +136,7 @@ class Checkpoint(object):
             :obj:`str`: a human readable representation of this `Checkpoint`
         """
 
-        return obj_to_str(self, ['time', 'metadata', 'state', 'random_state'])
+        return obj_to_str(self, ['time', 'state', 'random_state'])
 
     def __eq__(self, other):
         """ Compare two checkpoints
@@ -153,9 +150,6 @@ class Checkpoint(object):
             :obj:`bool`: true if checkpoints are semantically equal
         """
         if other.__class__ is not self.__class__:
-            return False
-
-        if other.metadata != self.metadata:
             return False
 
         if other.time != self.time:
@@ -190,16 +184,14 @@ class CheckpointLogger(object):
         dirname (:obj:`str`): directory to write checkpoint data
         step (:obj:`float`): simulation time between checkpoints in seconds
         _next_checkpoint (:obj:`float`): time in seconds of next checkpoint
-        metadata (:obj:`SimulationMetadata`): simulation run metadata
     """
 
-    def __init__(self, dirname, step, initial_time, metadata):
+    def __init__(self, dirname, step, initial_time):
         """
         Args:
             dirname (:obj:`str`): directory to write checkpoint data
             step (:obj:`float`): simulation time between checkpoints in seconds
             initial_time (:obj:`float`): starting simulation time
-            metadata (:obj:`SimulationMetadata`): simulation run metadata
         """
 
         next_checkpoint = math.ceil(initial_time / step) * step
@@ -212,7 +204,6 @@ class CheckpointLogger(object):
         self.dirname = dirname
         self.step = step
         self._next_checkpoint = next_checkpoint
-        self.metadata = metadata
 
     def checkpoint_periodically(self, time, state, random_state):
         """ Periodically store checkpoint
@@ -236,4 +227,4 @@ class CheckpointLogger(object):
             random_state (:obj:`numpy.random.RandomState`): random number generator state
         """
 
-        Checkpoint.set_checkpoint(self.dirname, Checkpoint(self.metadata, time, state, random_state.get_state()))
+        Checkpoint.set_checkpoint(self.dirname, Checkpoint(time, state, random_state.get_state()))
