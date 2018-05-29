@@ -7,8 +7,9 @@
 
 import unittest
 import warnings
-
+from capturer import CaptureOutput
 from argparse import Namespace
+
 from examples.random_state_variable import RunRandomStateVariableSimulation
 from wc_sim.core.debug_logs import config
 
@@ -26,7 +27,8 @@ class TestRandomStateVariableSimulation(unittest.TestCase):
         config['debug_logs']['loggers']['wc.debug.console']['level'] = self.console_level
 
     def test_random_state_variable_simulation(self):
-        args = Namespace(initial_state=3, end_time=10, output=False)
-        self.assertTrue(0<RunRandomStateVariableSimulation.main(args))
-        args = Namespace(initial_state=3, end_time=10, output=True)
-        self.assertTrue(0<RunRandomStateVariableSimulation.main(args))
+        with CaptureOutput(relay=False):
+            args = Namespace(initial_state=3, end_time=10, output=False)
+            self.assertTrue(0<RunRandomStateVariableSimulation.main(args))
+            args = Namespace(initial_state=3, end_time=10, output=True)
+            self.assertTrue(0<RunRandomStateVariableSimulation.main(args))
