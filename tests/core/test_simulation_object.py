@@ -388,21 +388,21 @@ class TestSimulationObject(unittest.TestCase):
 
     def test_event_exceptions(self):
         delay = -1.0
-        with self.assertRaises(SimulatorError) as context:
+        with self.assertRaisesRegexp(SimulatorError,
+            re.escape("delay < 0 in send_event(): {}".format(delay))):
             self.o1.send_event(delay, self.o2, Eg1())
-        self.assertEqual(str(context.exception),
-            "delay < 0 in send_event(): {}".format(str(delay)))
 
         event_time = -1
-        with self.assertRaises(SimulatorError) as context:
+        with self.assertRaisesRegexp(SimulatorError,
+            "event_time \(-1.*\) < current time \(0.*\) in send_event_absolute\(\)"):
             self.o1.send_event_absolute(event_time, self.o2, Eg1())
-        self.assertRegex(str(context.exception),
-            "event_time \(-1.*\) < current time \(0.*\) in send_event_absolute\(\)")
 
-        with self.assertRaises(SimulatorError) as context:
+        with self.assertRaisesRegexp(SimulatorError,
+            "SimulationObject '{}' is already part of a simulator".format(self.o1.name)):
             self.o1.add(self.simulator)
-        self.assertEqual(str(context.exception),
-            "SimulationObject '{}' is already part of a simulator".format(self.o1.name))
+
+        with self.assertRaisesRegexp(SimulatorError, "delay is 'NaN'"):
+            self.o1.send_event(float('nan'), self.o2, Eg1())
 
     def test_misc(self):
         self.assertEqual(self.o1.get_state(), TEST_SIM_OBJ_STATE)
