@@ -69,7 +69,7 @@ class EventQueue(object):
                 for the `Event` in its attributes.
 
         Raises:
-            :obj:`SimulatorError`: if `receive_time` < `send_time`
+            :obj:`SimulatorError`: if `receive_time` < `send_time`, or `receive_time` or `send_time` is NaN
         """
 
         if math.isnan(send_time) or math.isnan(receive_time):
@@ -253,9 +253,8 @@ class EventQueue(object):
         return rv
 
 
-# TODO(Arthur): properly format doc strings
 class SimulationObject(object):
-    """Base class for simulation objects.
+    """ Base class for simulation objects.
 
     SimulationObject is a base class for all simulations objects. It provides basic functionality:
     the object's name (which must be unique), its simulation time, a queue of received events,
@@ -272,7 +271,7 @@ class SimulationObject(object):
         simulator (:obj:`int`): the `SimulationEngine` that uses this `SimulationObject`
     """
     def __init__(self, name):
-        """Initialize a SimulationObject.
+        """ Initialize a SimulationObject.
 
         Create its event queue, initialize its name, and set its start time to 0.
 
@@ -285,13 +284,13 @@ class SimulationObject(object):
         self.simulator = None
 
     def add(self, simulator):
-        """Add this object to a simulation.
+        """ Add this object to a simulation.
 
         Args:
-            simulator: `SimulationEngine`: the simulator that will use this `SimulationObject`
+            simulator (:obj:`SimulationEngine`): the simulator that will use this `SimulationObject`
 
         Raises:
-            SimulatorError: if this `SimulationObject` is already registered with a simulator
+            :obj:`SimulatorError`: if this `SimulationObject` is already registered with a simulator
         """
         if self.simulator is None:
             # TODO(Arthur): reference to the simulator is problematic because it means simulator can't be GC'ed
@@ -300,27 +299,29 @@ class SimulationObject(object):
         raise SimulatorError("SimulationObject '{}' is already part of a simulator".format(self.name))
 
     def delete(self):
-        """Delete this object from a simulation.
+        """ Delete this object from a simulation.
         """
         # TODO(Arthur): is this an operation that makes sense to support? if not, remove it; if yes,
         # remove all of this object's state from simulator, and test it properly
         self.simulator = None
 
     def send_event_absolute(self, event_time, receiving_object, message, copy=True):
-        """Send a simulation event message with an absolute event time.
+        """ Send a simulation event message with an absolute event time.
 
         Args:
-            event_time (:obj:`float`): the simulation time at which the receiving_object should execute the event
-            receiving_object: object; the object that will receive the event
-            message (class): the class of the event message
-            message: object; an optional object containing the body of the event
-            copy: boolean; if True, copy the message; True by default as a safety measure to
-                avoid unexpected changes to shared objects; set False to optimize
+            event_time (:obj:`float`): the absolute simulation time at which `receiving_object` will execute the event
+            receiving_object (:obj:`SimulationObject`): the simulation object that will receive and
+                execute the event
+            message (:obj:`SimulationMessage`): the simulation message which will be carried by the event
+            copy (:obj:`bool`, optional): if `True`, copy the message before adding it to the event;
+                `True` by default as a safety measure to avoid unexpected changes to shared objects;
+                    set `False` to optimize
 
         Raises:
-            SimulatorError: if event_time < 0
-            SimulatorError: if the sending object type is not registered to send a message type
-            SimulatorError: if the receiving simulation object type is not registered to receive the message type
+            :obj:`SimulatorError`: if `event_time` < 0, or
+                if the sending object type is not registered to send messages with the type of `message`, or
+                if the receiving simulation object type is not registered to receive
+                messages with the type of `message`
         """
         if math.isnan(event_time):
             raise SimulatorError("event_time is 'NaN'")
@@ -358,19 +359,22 @@ class SimulationObject(object):
             receiving_object.name, event_time, message.__class__.__name__))
 
     def send_event(self, delay, receiving_object, message, copy=True):
-        """Send a simulation event message, specifing the event time as a delay
+        """ Send a simulation event message, specifing the event time as a delay.
 
         Args:
-            delay (:obj:`float`): the simulation delay at which the receiving_object should execute the event.
-            receiving_object: object; the object that will receive the event
-            message: object; an object containing the body of the event
-            copy: boolean; if True, copy the message; True by default as a safety measure to
-                avoid unexpected changes to shared objects; set False to optimize
+            delay (:obj:`float`): the simulation delay at which `receiving_object` should execute the event
+            receiving_object (:obj:`SimulationObject`): the simulation object that will receive and
+                execute the event
+            message (:obj:`SimulationMessage`): the simulation message which will be carried by the event
+            copy (:obj:`bool`, optional): if `True`, copy the message before adding it to the event;
+                `True` by default as a safety measure to avoid unexpected changes to shared objects;
+                    set `False` to optimize
 
         Raises:
-            SimulatorError: if delay < 0
-            SimulatorError: if the sending object type is not registered to send a message type
-            SimulatorError: if the receiving simulation object type is not registered to receive the message type
+            :obj:`SimulatorError`: if `delay` < 0 or `delay` is NaN, or
+                if the sending object type is not registered to send messages with the type of `message`, or
+                if the receiving simulation object type is not registered to receive messages with
+                the type of `message`
         """
         if math.isnan(delay):
             raise SimulatorError("delay is 'NaN'")
@@ -380,7 +384,7 @@ class SimulationObject(object):
 
     @staticmethod
     def register_handlers(subclass, handlers):
-        """Register a `SimulationObject`'s event handler methods.
+        """ Register a `SimulationObject`'s event handler methods.
 
         The simulation engine vectors execution of a simulation message to the message's registered
         event handler method. These relationships are declared in an `ApplicationSimulationObject`'s
@@ -391,13 +395,16 @@ class SimulationObject(object):
         Each call to `register_handlers` re-initializes all event handler methods.
 
         Args:
-            subclass: `SimulationObject`: a subclass of `SimulationObject`
-            handlers: list: list of (`SimulationMessage`, method) tuples, ordered
-                in decreasing priority for handling simulation message types
+            subclass (:obj:`SimulationObject`): a subclass of `SimulationObject` that is registering
+                the relationships between the simulation messages it receives and the methods that
+                handle them
+            handlers (:obj:`list` of (`SimulationMessage`, method)): a list of tuples, indicating which
+                method should handle which type of `SimulationMessage` in `subclass`; ordered in
+                decreasing priority for handling simulation message types
 
         Raises:
-            SimulatorError: if a `SimulationMessage` appears repeatedly in `handlers`
-            SimulatorError: if a handler is not callable
+            :obj:`SimulatorError`: if a `SimulationMessage` appears repeatedly in `handlers`, or
+                if a method in `handlers` is not callable
         """
         for message_type, handler in handlers:
             if message_type in subclass.metadata.event_handlers_dict:
@@ -417,9 +424,10 @@ class SimulationObject(object):
         Calling `register_sent_messages` re-initializes all registered sent message types.
 
         Args:
-            subclass: `SimulationObject`: a subclass of `SimulationObject`
-            sent_messages: list: list of `SimulationMessage`'s which can be sent
-            by `SimulationObject`s of type `subclass`
+            subclass (:obj:`SimulationObject`): a subclass of `SimulationObject` that is registering
+                the types of simulation messages it sends
+            sent_messages (:obj:`list` of `SimulationMessage`): a list of the `SimulationMessage`
+                type's which can be sent by `SimulationObject`'s of type `subclass`
         """
         for sent_message_type in sent_messages:
             subclass.metadata.message_types_sent.add(sent_message_type)
@@ -445,7 +453,7 @@ class SimulationObject(object):
             event_list (:obj:`list` of `Event`): the `Event` message(s) in the simulation event
 
         Raises:
-            SimulatorError: if a message in `event_list` has an invalid type
+            :obj:`SimulatorError`: if a message in `event_list` has an invalid type
         """
         # TODO(Arthur): rationalize naming between simulation message, event, & event_list.
         # The PDES field needs this clarity.
@@ -469,11 +477,14 @@ class SimulationObject(object):
 
     def render_event_queue(self):
         """ Format an event queue as a string
+
+        Returns:
+            :obj:`str`: return a string representation of the simulator's event queue
         """
         return self.simulator.event_queue.render()
 
     def log_with_time(self, msg, local_call_depth=1):
-        """Write a debug log message with the simulation time.
+        """ Write a debug log message with the simulation time.
         """
         debug_logs.get_log('wc.debug.file').debug(msg, sim_time=self.time,
             local_call_depth=local_call_depth)
@@ -492,12 +503,11 @@ class ApplicationSimulationObjectMetadata(object):
     """ Metadata for an :class:`ApplicationSimulationObject`
 
     Attributes:
-        event_handlers_dict: dict: message_type -> event_handler; provides the event handler for each
-            message type for a subclass of `SimulationObject`
-        event_handler_priorities: `dict`: from message types handled by a `SimulationObject` subclass,
-            to message type priority. The highest priority is 0, and priority decreases with
-            increasing priority values.
-        message_types_sent: set: the types of messages a subclass of `SimulationObject` has
+        event_handlers_dict (:obj:`dict`): maps message_type -> event_handler; provides the event
+            handler for each message type for a subclass of `SimulationObject`
+        event_handler_priorities (:obj:`dict`): maps message_type -> message_type priority; the highest
+            priority is 0, and priority decreases with increasing priority values.
+        message_types_sent (:obj:`set`): the types of messages a subclass of `SimulationObject` has
             registered to send
     """
     def __init__(self):
@@ -516,7 +526,7 @@ class ApplicationSimulationObjMeta(type):
         """
         Args:
             cls (:obj:`class`): this class
-            clsname (:obj:`str`): name of `SimulationObject` subclass being created
+            clsname (:obj:`str`): name of the :class:`SimulationObject` subclass being created
             superclasses (:obj: `tuple`): tuple of superclasses
             namespace (:obj:`dict`): namespace of subclass of `ApplicationSimulationObject` being created
 
