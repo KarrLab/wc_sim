@@ -8,6 +8,8 @@
 
 from scipy.constants import Avogadro
 import numpy as np
+import warnings
+import math
 
 from obj_model import utils
 from wc_lang.core import Species, SpeciesType, Compartment
@@ -22,8 +24,8 @@ class DynamicCompartment(object):
     model.
 
     Attributes:
-        id (:obj:`str`): id of this `DynamicCompartment`, copied from the corresponding `Compartment`
-        name (:obj:`str`): name of this `DynamicCompartment`, copied from the corresponding `Compartment`
+        id (:obj:`str`): id of this `DynamicCompartment`, copied from `compartment`
+        name (:obj:`str`): name of this `DynamicCompartment`, copied from `compartment`
         init_volume (:obj:`float`): initial volume specified in the `wc_lang` model
         species_population (:obj:`LocalSpeciesPopulation`): an object that represents
             the populations of species in this `DynamicCompartment`
@@ -34,7 +36,7 @@ class DynamicCompartment(object):
         """ Initialize this `DynamicCompartment`
 
         Args:
-            compartment (:obj:`Compartment`): the corresponding `wc_lang` `Compartment`
+            compartment (:obj:`Compartment`): the corresponding static `wc_lang` `Compartment`
             species_population (:obj:`LocalSpeciesPopulation`): an object that represents
                 the populations of species in this `DynamicCompartment`
             species_ids (:obj:`list` of `str`, optional): the IDs of the species stored
@@ -48,9 +50,15 @@ class DynamicCompartment(object):
         self.init_volume = compartment.initial_volume
         self.species_population = species_population
         self.species_ids = species_ids
+        if math.isnan(self.init_volume):
+            raise MultialgorithmError("DynamicCompartment {}: init_volume is NaN, but must be a positive "
+                "number.".format(self.name))
         if self.init_volume<=0:
-            raise MultialgorithmError("DynamicCompartment: init_volume ({}) must be a positive number.".format(
-                self.init_volume))
+            raise MultialgorithmError("DynamicCompartment {}: init_volume ({}) must be a positive number.".format(
+                self.name, self.init_volume))
+        if 0 == self.mass():
+            warnings.warn("DynamicCompartment '{}': initial mass is 0, so constant_density is 0, and "
+                "volume will remain constant".format(self.name))
         self.constant_density = self.mass()/self.init_volume
 
     def mass(self):
@@ -69,13 +77,8 @@ class DynamicCompartment(object):
         Returns:
             :obj:`float`: this compartment's current volume (L)
         """
-        # TODO(Arthur): decide what to do if self.constant_density == 0; suggest this
-        '''
         if self.constant_density == 0:
             return self.init_volume
-        # and, upon initialization
-        warn("DynamicCompartment '{}': with initial mass of 0 constant_density is 0, and volume will remain constant".format())
-        '''
         return self.mass()/self.constant_density
 
     def density(self):
@@ -176,7 +179,6 @@ class DynamicModel(object):
         Returns:
             :obj:`float`: the cell's volume (L)
         """
-        # todo: test independently
         return sum([dynamic_compartment.volume() for dynamic_compartment in self.cellular_dyn_compartments])
 
     def cell_dry_weight(self):

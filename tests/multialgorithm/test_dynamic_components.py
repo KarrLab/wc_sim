@@ -8,6 +8,7 @@
 
 import os
 import unittest
+import warnings
 from argparse import Namespace
 from scipy.constants import Avogadro
 
@@ -21,42 +22,62 @@ from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 
 class TestDynamicCompartment(unittest.TestCase):
 
-    def test_simple_dynamic_compartment(self):
-
+    def setUp(self):
         comp_id = 'comp_id'
 
         # make a LocalSpeciesPopulation
-        num_species = 100
-        species_nums = list(range(0, num_species))
-        species_ids = list(map(lambda x: "specie_{}[{}]".format(x, comp_id), species_nums))
-        all_pops = 1E6
-        init_populations = dict(zip(species_ids, [all_pops]*len(species_nums)))
-        all_m_weights = 50
-        molecular_weights = dict(zip(species_ids, [all_m_weights]*len(species_nums)))
-        local_species_pop = LocalSpeciesPopulation('test', init_populations, molecular_weights)
+        self.num_species = 100
+        species_nums = list(range(0, self.num_species))
+        self.species_ids = list(map(lambda x: "specie_{}[{}]".format(x, comp_id), species_nums))
+        self.all_pops = 1E6
+        self.init_populations = dict(zip(self.species_ids, [self.all_pops]*len(species_nums)))
+        self.all_m_weights = 50
+        self.molecular_weights = dict(zip(self.species_ids, [self.all_m_weights]*len(species_nums)))
+        self.local_species_pop = LocalSpeciesPopulation('test', self.init_populations, self.molecular_weights)
 
         # make a DynamicCompartment
-        initial_volume=1E-17
-        compartment = Compartment(id=comp_id, name='name', initial_volume=initial_volume)
-        dynamic_compartment = DynamicCompartment(compartment, local_species_pop, species_ids)
+        self.initial_volume=1E-17
+        self.compartment = Compartment(id=comp_id, name='name', initial_volume=self.initial_volume)
+        self.dynamic_compartment = DynamicCompartment(self.compartment, self.local_species_pop, self.species_ids)
+
+    def test_simple_dynamic_compartment(self):
 
         # test DynamicCompartment
-        self.assertEqual(dynamic_compartment.volume(), compartment.initial_volume)
-        self.assertIn(dynamic_compartment.id, str(dynamic_compartment))
-        self.assertIn("Fold change volume: 1.0", str(dynamic_compartment))
-        estimated_mass = num_species*all_pops*all_m_weights/Avogadro
-        self.assertAlmostEqual(dynamic_compartment.mass(), estimated_mass)
-        estimated_density = estimated_mass/initial_volume
-        self.assertAlmostEqual(dynamic_compartment.density(), estimated_density)
+        self.assertEqual(self.dynamic_compartment.volume(), self.compartment.initial_volume)
+        self.assertIn(self.dynamic_compartment.id, str(self.dynamic_compartment))
+        self.assertIn("Fold change volume: 1.0", str(self.dynamic_compartment))
+        estimated_mass = self.num_species*self.all_pops*self.all_m_weights/Avogadro
+        self.assertAlmostEqual(self.dynamic_compartment.mass(), estimated_mass)
+        estimated_density = estimated_mass/self.initial_volume
+        self.assertAlmostEqual(self.dynamic_compartment.density(), estimated_density)
 
-        # compartment containing just the first element of species_ids
-        dynamic_compartment = DynamicCompartment(compartment, local_species_pop, species_ids[:1])
-        estimated_mass = all_pops*all_m_weights/Avogadro
-        self.assertAlmostEqual(dynamic_compartment.mass(), estimated_mass)
+        # self.compartment containing just the first element of self.species_ids
+        self.dynamic_compartment = DynamicCompartment(self.compartment, self.local_species_pop, self.species_ids[:1])
+        estimated_mass = self.all_pops*self.all_m_weights/Avogadro
+        self.assertAlmostEqual(self.dynamic_compartment.mass(), estimated_mass)
+
+        # set population of species to 0
+        init_populations = dict(zip(self.species_ids, [0]*len(self.species_ids)))
+        local_species_pop = LocalSpeciesPopulation('test2', init_populations, self.molecular_weights)
+        with warnings.catch_warnings(record=True) as w:
+            dynamic_compartment = DynamicCompartment(self.compartment, local_species_pop, self.species_ids)
+            self.assertIn("initial mass is 0, so constant_density is 0, and volume will remain constant", str(w[-1].message))
+
+        # check that 'volume remains constant'
+        self.assertEqual(dynamic_compartment.volume(), self.compartment.initial_volume)
+        local_species_pop.adjust_discretely(0, {self.species_ids[0]:5})
+        self.assertTrue(0 < dynamic_compartment.mass())
+        self.assertEqual(dynamic_compartment.volume(), self.compartment.initial_volume)
+
+    def test_dynamic_compartment_exceptions(self):
 
         compartment = Compartment(id='id', name='name', initial_volume=0)
         with self.assertRaises(MultialgorithmError):
-            DynamicCompartment(compartment, local_species_pop, species_ids)
+            DynamicCompartment(compartment, self.local_species_pop, self.species_ids)
+
+        compartment = Compartment(id='id', name='name', initial_volume=float('nan'))
+        with self.assertRaises(MultialgorithmError):
+            DynamicCompartment(compartment, self.local_species_pop, self.species_ids)
 
 
 class TestDynamicModel(unittest.TestCase):
