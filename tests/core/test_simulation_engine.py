@@ -181,8 +181,8 @@ class TestSimulationEngine(unittest.TestCase):
         event_queue.schedule_event(-1, -1, obj, obj, InitMsg())
         with self.assertRaises(AssertionError) as context:
             self.simulator.simulate(5.0)
-        self.assertIn('find object time', str(context.exception))
-        self.assertIn('> event time', str(context.exception))
+        self.assertIn('object time', str(context.exception))
+        self.assertIn('<= event time', str(context.exception))
 
         with self.assertRaises(SimulatorError) as context:
             self.simulator.initialize()

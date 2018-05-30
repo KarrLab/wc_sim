@@ -231,11 +231,12 @@ class SimulationEngine(object):
 
                 # assertion won't be violated unless init message sent to negative time or
                 # objects decrease their time.
-                assert next_sim_obj.time <= next_time, ("Dispatching '{}', but find object time "
-                    "{} > event time {}.".format(next_sim_obj.name, next_sim_obj.time, next_time))
+                assert next_sim_obj.time <= next_time, ("Dispatching '{}', but object time "
+                    "({}) <= event time ({}) is false".format(next_sim_obj.name, next_sim_obj.time, next_time))
 
                 # dispatch object that's ready to execute next event
                 next_sim_obj.time = next_time
+                self.log_with_time(" Running '{}' at {}".format(next_sim_obj.name, next_sim_obj.time))
                 next_sim_obj.__handle_event_list(self.event_queue.next_events())
         except SimulatorError as e:
             print('Simulation ended with error:', e, file=sys.stderr)
