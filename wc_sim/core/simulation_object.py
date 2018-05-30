@@ -13,6 +13,7 @@ from abc import ABCMeta
 import warnings
 import inspect
 import collections
+import math
 
 from wc_sim.core.event import Event
 from wc_sim.core.errors import SimulatorError
@@ -71,12 +72,16 @@ class EventQueue(object):
             :obj:`SimulatorError`: if `receive_time` < `send_time`
         """
 
+        if math.isnan(send_time) or math.isnan(receive_time):
+            raise SimulatorError("send_time ({}) and/or receive_time ({}) is NaN".format(
+                receive_time, send_time))
+
         # Ensure that send_time <= receive_time.
         # Events with send_time == receive_time can cause loops, but the application programmer
         # is responsible for avoiding them.
         if receive_time < send_time:
             raise SimulatorError("receive_time < send_time in schedule_event(): {} < {}".format(
-                str(receive_time), str(send_time)))
+                receive_time, send_time))
 
         if not isinstance(message, SimulationMessage):
             raise SimulatorError("message should be an instance of {} but is a '{}'".format(
@@ -305,7 +310,7 @@ class SimulationObject(object):
         """Send a simulation event message with an absolute event time.
 
         Args:
-            event_time: number; the simulation time at which the receiving_object should execute the event
+            event_time (:obj:`float`): the simulation time at which the receiving_object should execute the event
             receiving_object: object; the object that will receive the event
             message (class): the class of the event message
             message: object; an optional object containing the body of the event
@@ -317,6 +322,8 @@ class SimulationObject(object):
             SimulatorError: if the sending object type is not registered to send a message type
             SimulatorError: if the receiving simulation object type is not registered to receive the message type
         """
+        if math.isnan(event_time):
+            raise SimulatorError("event_time is 'NaN'")
         if event_time < self.time:
             raise SimulatorError("event_time ({}) < current time ({}) in send_event_absolute()".format(
                 round_direct(event_time, precision=3), round_direct(self.time, precision=3)))
@@ -354,7 +361,7 @@ class SimulationObject(object):
         """Send a simulation event message, specifing the event time as a delay
 
         Args:
-            delay: number; the simulation delay at which the receiving_object should execute the event.
+            delay (:obj:`float`): the simulation delay at which the receiving_object should execute the event.
             receiving_object: object; the object that will receive the event
             message: object; an object containing the body of the event
             copy: boolean; if True, copy the message; True by default as a safety measure to
@@ -365,6 +372,8 @@ class SimulationObject(object):
             SimulatorError: if the sending object type is not registered to send a message type
             SimulatorError: if the receiving simulation object type is not registered to receive the message type
         """
+        if math.isnan(delay):
+            raise SimulatorError("delay is 'NaN'")
         if delay < 0:
             raise SimulatorError("delay < 0 in send_event(): {}".format(str(delay)))
         self.send_event_absolute(delay + self.time, receiving_object, message, copy=copy)

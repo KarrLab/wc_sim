@@ -7,6 +7,7 @@
 
 import unittest
 import random
+import re
 import warnings
 
 from wc_sim.core.errors import SimulatorError
@@ -98,15 +99,20 @@ class TestEventQueue(unittest.TestCase):
 
     def test_exceptions(self):
         eq = EventQueue()
-        with self.assertRaises(SimulatorError) as context:
-            eq.schedule_event(2, 1, None, None, '')
-        self.assertEqual(str(context.exception),
-            "receive_time < send_time in schedule_event(): {} < {}".format(1, 2))
 
-        with self.assertRaises(SimulatorError) as context:
+        st, rt = 2, 1
+        with self.assertRaisesRegexp(SimulatorError,
+            re.escape("receive_time < send_time in schedule_event(): {} < {}".format(rt, st))):
+            eq.schedule_event(st, rt , None, None, '')
+
+        with self.assertRaisesRegexp(SimulatorError,
+            'message should be an instance of SimulationMessage but is a'):
             eq.schedule_event(1, 2, None, None, 13)
-        self.assertIn("message should be an instance of SimulationMessage but is a",
-            str(context.exception))
+
+        with self.assertRaisesRegexp(SimulatorError, 'send_time .* and/or receive_time .* is NaN'):
+            eq.schedule_event(float('NaN'), 1, None, None, '')
+        with self.assertRaisesRegexp(SimulatorError, 'send_time .* and/or receive_time .* is NaN'):
+            eq.schedule_event(1, float('NaN'), None, None, '')
 
     def test_render(self):
         self.assertEqual(None, EventQueue().render())
@@ -310,10 +316,12 @@ class TestSimulationObject(unittest.TestCase):
                 most_qual_cls_name(self.irso1),
                 InitMsg().__class__.__name__))
 
-        with self.assertRaises(SimulatorError) as context:
+        with self.assertRaisesRegexp(SimulatorError,
+            "simulation messages must be instances of type 'SimulationMessage'; "):
             self.eso1.send_event_absolute(2, self.irso1, InitMsg)
-        self.assertIn("simulation messages must be instances of type 'SimulationMessage'; ",
-            str(context.exception))
+
+        with self.assertRaisesRegexp(SimulatorError, "event_time is 'NaN'"):
+            self.eso1.send_event_absolute(float('NaN'), self.eso1, UnregisteredMsg())
 
     def test_get_receiving_priorities_dict(self):
         self.assertTrue(ExampleSimulationObject.metadata.event_handler_priorities[InitMsg] <
