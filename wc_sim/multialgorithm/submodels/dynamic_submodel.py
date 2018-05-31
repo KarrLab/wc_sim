@@ -90,7 +90,7 @@ class DynamicSubmodel(ApplicationSimulationObject):
 
         Concentrations are obtained from species counts.
         concentration ~ count/volume
-        Provide concentrations for only species stored in this dynamic submodel's compartment, whose
+        Provide concentrations for only species stored in this dynamic submodel's compartments, whose
         volume is known.
 
         Returns:
@@ -111,6 +111,7 @@ class DynamicSubmodel(ApplicationSimulationObject):
             if dynamic_compartment.volume() == 0:
                 raise MultialgorithmError("dynamic submodel '{}' cannot compute concentration in "
                     "compartment '{}' with volume=0".format(self.id, compartment_id))
+
             concentrations[specie_id] = counts[specie_id]/(dynamic_compartment.volume()*Avogadro)
         return concentrations
 
@@ -138,7 +139,7 @@ class DynamicSubmodel(ApplicationSimulationObject):
         """
         # TODO(Arthur): optimization: since len(self.reactions) is constant, preallocate this array
         rates = np.full(len(self.reactions), np.nan)
-        # TODO(Arthur): get concentrations only for modifiers in the reactions
+        # TODO(Arthur): optimization: get concentrations only for modifiers in the reactions
         species_concentrations = self.get_specie_concentrations()
         for idx_reaction, rxn in enumerate(self.reactions):            
             if rxn.rate_laws:

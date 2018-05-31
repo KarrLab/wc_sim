@@ -20,6 +20,7 @@ from wc_sim.core.event import Event
 from wc_sim.multialgorithm import message_types
 from wc_sim.multialgorithm.config import core as config_core_multialgorithm
 from wc_sim.multialgorithm.submodels.dynamic_submodel import DynamicSubmodel
+from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 
 config_core = config_core_core.get_config()['wc_sim']['core']
 config_multialgorithm = \
@@ -179,7 +180,7 @@ class SSASubmodel(DynamicSubmodel):
         self.ema_of_inter_event_time.add_value(dt)
 
     def schedule_next_SSA_reaction(self):
-        """ Schedule the next SSA reaction for this SSA submodel.
+        """ Schedule the next SSA reaction for this SSA submodel
 
         If the sum of propensities is positive, schedule a reaction, otherwise schedule a wait. The
         delay until the next reaction is an exponential sample with mean 1/sum(propensities).
@@ -195,13 +196,14 @@ class SSASubmodel(DynamicSubmodel):
         5. schedule the next reaction
 
         Returns:
-            float: the delay until the next SSA reaction, or `NaN` if no reaction is scheduled
+            :obj:`float`: the delay until the next SSA reaction, or `None` if no reaction is scheduled
         """
         (propensities, total_propensities) = self.determine_reaction_propensities()
-        # TODO(Arthur): raise exception if total_propensities < 0
-        if total_propensities <= 0:
+        assert not math.isnan(total_propensities), "total propensities is 'NaN'"
+
+        if total_propensities == 0:
             self.schedule_SsaWait()
-            return float('NaN')
+            return
 
         # Select time to next reaction from exponential distribution
         dt = self.random_state.exponential(1/total_propensities)

@@ -172,7 +172,7 @@ class TestRunSSASimulation(unittest.TestCase):
         return checkpoint_times
 
     def perform_ssa_test_run(self, model_type, run_time, initial_specie_copy_numbers,
-        expected_mean_copy_numbers, delta, invariants=None, iterations=5, init_vol=None):
+        expected_mean_copy_numbers, delta, invariants=None, iterations=3, init_vol=None):
         """ Test SSA by comparing expected and actual simulation copy numbers
 
         Args:
@@ -249,8 +249,23 @@ class TestRunSSASimulation(unittest.TestCase):
             delta=0,
             init_vol=1E-22)
 
-    # TODO(Arthur): graphs of a variety of models
-    # TODO(Arthur): test multiple ssa submodels
+
+class TestSSaExceptions(unittest.TestCase):
+
+    def setUp(self):
+        for base_model in [Submodel, Reaction, Species, SpeciesType]:
+            base_model.objects.reset()
+        self.model = MakeModels.make_test_model('2 species, 1 reaction, with rates given by reactant population',
+            specie_copy_numbers={'spec_type_0[c]':10, 'spec_type_1[c]':10})
+
+    def test_nan_propensities(self):
+        SpeciesType.objects.get_one(id='spec_type_0').molecular_weight = float('NaN')
+        multialgorithm_simulation = MultialgorithmSimulation(self.model, {})
+        simulation_engine, _ = multialgorithm_simulation.build_simulation()
+        with self.assertRaisesRegexp(AssertionError, "total propensities is 'NaN'"):
+            simulation_engine.initialize()
+
+    # TODO(Arthur): test multiple ssa submodels, in shared or different compartments
     # TODO(Arthur): compare SSA submodel with published model
     # TODO(Arthur): test have identify_enabled_reactions() return a disabled reaction & ssa submodel with reactions that cannot run
     # TODO(Arthur): have if self.enabled_reaction(self.reactions[reaction_index]) do else branch
