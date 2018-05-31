@@ -18,6 +18,7 @@ from wc_sim.multialgorithm.utils import get_species_and_compartment_from_name
 from wc_sim.multialgorithm.debug_logs import logs as debug_logs
 from wc_sim.multialgorithm import message_types, distributed_properties
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError, SpeciesPopulationError
+from wc_sim.multialgorithm.debug_logs import logs as debug_logs
 
 # TODO(Arthur): reactions -> dynamic reactions
 # TODO(Arthur): species -> dynamic species, or morph into species populations species
@@ -41,6 +42,7 @@ class DynamicSubmodel(ApplicationSimulationObject):
             compartments used by its transfer reactions
         local_species_population (:obj:`LocalSpeciesPopulation`): the store that maintains this
             dynamic submodel's species population
+        logger (:obj:`logging.Logger`): debug logger
     """
     def __init__(self, id, reactions, species, parameters, dynamic_compartments, local_species_population):
         """ Initialize a dynamic submodel
@@ -51,6 +53,7 @@ class DynamicSubmodel(ApplicationSimulationObject):
         self.parameters = parameters
         self.dynamic_compartments = dynamic_compartments
         self.local_species_population = local_species_population
+        self.logger = debug_logs.get_log('wc.debug.file')
         super().__init__(id)
 
     # The next 3 methods implement the abstract methods in ApplicationSimulationObject
@@ -145,6 +148,10 @@ class DynamicSubmodel(ApplicationSimulationObject):
             if rxn.rate_laws:
                 parameter_values = {param.id: param.value for param in rxn.rate_laws[0].equation.parameters}
                 rates[idx_reaction] = RateLawUtils.eval_rate_law(rxn.rate_laws[0], species_concentrations, parameter_values)
+        # TODO(Arthur): optimization: get this if to work:
+        # if self.logger.isEnabledFor(self.logger.getEffectiveLevel()):
+        msg = str([(self.reactions[i].id, rates[i]) for i in range(len(self.reactions))])
+        debug_logs.get_log('wc.debug.file').debug(msg, sim_time=self.time)
         return rates
 
     # These methods - enabled_reaction, identify_enabled_reactions, execute_reaction - are used
