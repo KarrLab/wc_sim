@@ -154,8 +154,9 @@ class TestRunSSASimulation(unittest.TestCase):
         for base_model in [Submodel, Species, SpeciesType]:
             base_model.objects.reset()
         # make simple model
+        init_vols = None if init_vol is None else [init_vol]
         model = MakeModels.make_test_model(model_type, specie_copy_numbers=specie_copy_numbers,
-            init_vol=init_vol)
+            init_vols=init_vols)
         multialgorithm_simulation = MultialgorithmSimulation(model, self.args)
         simulation_engine, _ = multialgorithm_simulation.build_simulation()
         return (model, multialgorithm_simulation, simulation_engine)
@@ -216,7 +217,7 @@ class TestRunSSASimulation(unittest.TestCase):
         self.assertEqual(MultialgorithmCheckpoint.list_checkpoints(self.results_dir), self.checkpoint_times(run_time))
 
     def test_run_ssa_suite(self):
-        specie = 'spec_type_0[c]'
+        specie = 'spec_type_0[compt_1]'
         self.perform_ssa_test_run('1 species, 1 reaction',
             run_time=999,       # tests checkpoint history in which the last checkpoint time < run time
             initial_specie_copy_numbers={specie:3000},
@@ -236,16 +237,16 @@ class TestRunSSASimulation(unittest.TestCase):
 
         self.perform_ssa_test_run('2 species, 1 reaction',
             run_time=1000,
-            initial_specie_copy_numbers={'spec_type_0[c]':3000, 'spec_type_1[c]':0},
-            expected_mean_copy_numbers={'spec_type_0[c]':2000,  'spec_type_1[c]':1000},
+            initial_specie_copy_numbers={'spec_type_0[compt_1]':3000, 'spec_type_1[compt_1]':0},
+            expected_mean_copy_numbers={'spec_type_0[compt_1]':2000,  'spec_type_1[compt_1]':1000},
             delta=50)
 
         # test reaction with rate determined by reactant population; decrease volume to increase rates
         init_spec_type_0_pop = 2000
         self.perform_ssa_test_run('2 species, 1 reaction, with rates given by reactant population',
             run_time=1000,
-            initial_specie_copy_numbers={'spec_type_0[c]':init_spec_type_0_pop, 'spec_type_1[c]':0},
-            expected_mean_copy_numbers={'spec_type_0[c]':0,  'spec_type_1[c]':init_spec_type_0_pop},
+            initial_specie_copy_numbers={'spec_type_0[compt_1]':init_spec_type_0_pop, 'spec_type_1[compt_1]':0},
+            expected_mean_copy_numbers={'spec_type_0[compt_1]':0,  'spec_type_1[compt_1]':init_spec_type_0_pop},
             delta=0,
             init_vol=1E-22)
 
@@ -256,7 +257,7 @@ class TestSSaExceptions(unittest.TestCase):
         for base_model in [Submodel, Reaction, Species, SpeciesType]:
             base_model.objects.reset()
         self.model = MakeModels.make_test_model('2 species, 1 reaction, with rates given by reactant population',
-            specie_copy_numbers={'spec_type_0[c]':10, 'spec_type_1[c]':10})
+            specie_copy_numbers={'spec_type_0[compt_1]':10, 'spec_type_1[compt_1]':10})
 
     def test_nan_propensities(self):
         SpeciesType.objects.get_one(id='spec_type_0').molecular_weight = float('NaN')

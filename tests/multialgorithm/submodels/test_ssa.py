@@ -56,8 +56,8 @@ class TestSsaSubmodel(unittest.TestCase):
         SpeciesType.objects.reset()
         spec_type_0_cn = 1000000
         specie_copy_numbers={
-            'spec_type_0[c]':spec_type_0_cn,
-            'spec_type_1[c]':2*spec_type_0_cn
+            'spec_type_0[compt_1]':spec_type_0_cn,
+            'spec_type_1[compt_1]':2*spec_type_0_cn
         }
         # with constant reaction rates, all propensities are equal
         model = MakeModels.make_test_model(
@@ -77,9 +77,9 @@ class TestSsaSubmodel(unittest.TestCase):
         self.assertEqual(2*propensities[0], propensities[1])
         ssa_submodel.execute_SSA_reaction(0)
         population = ssa_submodel.local_species_population.read(0,
-            set(['spec_type_0[c]', 'spec_type_1[c]']))
+            set(['spec_type_0[compt_1]', 'spec_type_1[compt_1]']))
         expected_population = {
-            'spec_type_0[c]': spec_type_0_cn-1,
-            'spec_type_1[c]': 2*spec_type_0_cn+1
+            'spec_type_0[compt_1]': spec_type_0_cn-1,
+            'spec_type_1[compt_1]': 2*spec_type_0_cn+1
         }
         self.assertEqual(population, expected_population)

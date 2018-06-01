@@ -88,9 +88,9 @@ class TestDynamicSubmodel(unittest.TestCase):
 
         # test volume=0 exception; must create model with 0<mass and then decrease counts
         model = MakeModels().make_test_model('1 species, 1 reaction',
-            specie_copy_numbers={'spec_type_0[c]': 1})
+            specie_copy_numbers={'spec_type_0[compt_1]': 1})
         dynamic_submodel = DynamicSubmodel(*make_dynamic_submodel_params(model, model.submodels[0]))
-        dynamic_submodel.local_species_population.adjust_discretely(0, {'spec_type_0[c]': -1})
+        dynamic_submodel.local_species_population.adjust_discretely(0, {'spec_type_0[compt_1]': -1})
         with self.assertRaises(MultialgorithmError) as context:
             dynamic_submodel.get_specie_concentrations()
         self.assertRegex(str(context.exception),
