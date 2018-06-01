@@ -36,6 +36,9 @@ from wc_sim.core.simulation_checkpoint_object import CheckpointSimulationObject
 
 config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 
+def reset_wc_lang_obj_indices():
+    for base_model in [Submodel, Reaction, Species, SpeciesType]:
+        base_model.objects.reset()
 
 # TODO(Arthur): transcode & eval invariants
 class Invariant(object):
@@ -73,8 +76,7 @@ class TestMultialgorithmSimulation(unittest.TestCase):
     MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_model.xlsx')
 
     def setUp(self):
-        for base_model in [Submodel, Species, SpeciesType]:
-            base_model.objects.reset()
+        reset_wc_lang_obj_indices()
         # read and initialize a model
         self.model = Reader().run(self.MODEL_FILENAME, strict=False)
         self.args = dict(fba_time_step=1,
@@ -149,14 +151,14 @@ class TestRunSSASimulation(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.results_dir)
 
-    def make_model_and_simulation(self, model_type, specie_copy_numbers=None, init_vol=None):
-        # reset indices
-        for base_model in [Submodel, Species, SpeciesType]:
-            base_model.objects.reset()
+    def make_model_and_simulation(self, model_type, num_submodels, specie_copy_numbers=None, init_vols=None):
+        reset_wc_lang_obj_indices()
         # make simple model
-        init_vols = None if init_vol is None else [init_vol]
-        model = MakeModels.make_test_model(model_type, specie_copy_numbers=specie_copy_numbers,
-            init_vols=init_vols)
+        if init_vols is not None:
+            if not isinstance(init_vols, list):
+                init_vols = [init_vols]*num_submodels
+        model = MakeModels.make_test_model(model_type, num_submodels=num_submodels,
+            specie_copy_numbers=specie_copy_numbers, init_vols=init_vols)
         multialgorithm_simulation = MultialgorithmSimulation(model, self.args)
         simulation_engine, _ = multialgorithm_simulation.build_simulation()
         return (model, multialgorithm_simulation, simulation_engine)
@@ -173,7 +175,7 @@ class TestRunSSASimulation(unittest.TestCase):
         return checkpoint_times
 
     def perform_ssa_test_run(self, model_type, run_time, initial_specie_copy_numbers,
-        expected_mean_copy_numbers, delta, invariants=None, iterations=3, init_vol=None):
+        expected_mean_copy_numbers, delta, num_submodels=1, invariants=None, iterations=3, init_vols=None):
         """ Test SSA by comparing expected and actual simulation copy numbers
 
         Args:
@@ -182,25 +184,27 @@ class TestRunSSASimulation(unittest.TestCase):
             initial_specie_copy_numbers (:obj:`dict`): initial specie counts, with IDs as keys and counts as values
             expected_mean_copy_numbers (:obj:`str`): expected final mean specie counts, in same format as
                 `initial_specie_copy_numbers`
-            delta (:obj:`int`): threshold difference between expected and actual counts
+            delta (:obj:`int`): maximum allowed difference between expected and actual counts
+            num_submodels (:obj:`int`): number of submodels to create
             invariants (:obj:`list`, optional): list of invariant relationships, to be tested
             iterations (:obj:`int`, optional): number of simulation runs
-            init_vol (:obj:`float`, optional): initial volume of compartment; if reaction rates depend
-                on concentration, use a smaller volume to increase rates
+            init_vols (:obj:`float`, `list` of `floats`, optional): initial volume of compartment(s)
+                if reaction rates depend on concentration, use a smaller volume to increase rates
         """
         # TODO(Arthur): analytically determine the values for delta
-        # TODO(Arthur): provide some invariant_objs
+        # TODO(Arthur): provide some invariant objects
         invariant_objs = [] if invariants is None else [Invariant(value) for value in invariants]
 
         final_specie_counts = []
         for i in range(iterations):
-            _, multialgorithm_simulation, simulation_engine = self.make_model_and_simulation(
+            model, multialgorithm_simulation, simulation_engine = self.make_model_and_simulation(
                 model_type,
+                num_submodels=num_submodels,
                 specie_copy_numbers=initial_specie_copy_numbers,
-                init_vol=init_vol)
+                init_vols=init_vols)
             local_species_pop = multialgorithm_simulation.local_species_population
             simulation_engine.initialize()
-            num_events_handled = simulation_engine.run(run_time)
+            simulation_engine.simulate(run_time)
             final_specie_counts.append(local_species_pop.read(run_time))
 
         mean_final_specie_counts = dict.fromkeys(list(initial_specie_copy_numbers.keys()), 0)
@@ -248,14 +252,36 @@ class TestRunSSASimulation(unittest.TestCase):
             initial_specie_copy_numbers={'spec_type_0[compt_1]':init_spec_type_0_pop, 'spec_type_1[compt_1]':0},
             expected_mean_copy_numbers={'spec_type_0[compt_1]':0,  'spec_type_1[compt_1]':init_spec_type_0_pop},
             delta=0,
-            init_vol=1E-22)
+            init_vols=1E-22)
+
+    def test_run_multiple_ssa_submodels(self):
+        # 1 submodel per compartment, no transfer reactions
+        num_submodels = 3
+        init_spec_type_0_pop = 200
+        initial_specie_copy_numbers = {}
+        expected_mean_copy_numbers = {}
+        for i in range(num_submodels):
+            compt_idx = i + 1
+            specie_0_id = 'spec_type_0[compt_{}]'.format(compt_idx)
+            specie_1_id = 'spec_type_1[compt_{}]'.format(compt_idx)
+            initial_specie_copy_numbers[specie_0_id] = init_spec_type_0_pop
+            initial_specie_copy_numbers[specie_1_id] = 0
+            expected_mean_copy_numbers[specie_0_id] = 0
+            expected_mean_copy_numbers[specie_1_id] = init_spec_type_0_pop
+
+        self.perform_ssa_test_run('2 species, 1 reaction, with rates given by reactant population',
+            num_submodels=num_submodels,
+            run_time=1000,
+            initial_specie_copy_numbers=initial_specie_copy_numbers,
+            expected_mean_copy_numbers=expected_mean_copy_numbers,
+            delta=0,
+            init_vols=1E-22)
 
 
 class TestSSaExceptions(unittest.TestCase):
 
     def setUp(self):
-        for base_model in [Submodel, Reaction, Species, SpeciesType]:
-            base_model.objects.reset()
+        reset_wc_lang_obj_indices()
         self.model = MakeModels.make_test_model('2 species, 1 reaction, with rates given by reactant population',
             specie_copy_numbers={'spec_type_0[compt_1]':10, 'spec_type_1[compt_1]':10})
 
