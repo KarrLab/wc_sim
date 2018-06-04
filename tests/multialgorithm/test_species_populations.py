@@ -1,4 +1,4 @@
-""" Test species_populations.py.
+""" Test species_populations.py
 
 :Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
 :Date: 2017-02-04
@@ -25,7 +25,7 @@ from wc_sim.core.simulation_object import SimulationObject
 from wc_sim.core.simulation_message import SimulationMessage
 from wc_sim.multialgorithm import message_types
 from wc_sim.multialgorithm.species_populations import (LOCAL_POP_STORE, Specie, SpeciesPopSimObject,
-    SpeciesPopulationCache, LocalSpeciesPopulation, AccessSpeciesPopulations)
+    SpeciesPopulationCache, LocalSpeciesPopulation, MakeTestLSP, AccessSpeciesPopulations)
 from wc_sim.multialgorithm.multialgorithm_errors import NegativePopulationError, SpeciesPopulationError
 from wc_sim.multialgorithm.submodels.skeleton_submodel import SkeletonSubmodel
 from wc_sim.multialgorithm import distributed_properties
@@ -40,6 +40,7 @@ def specie_l(l):
 
 remote_pop_stores = {store_i(i):None for i in range(1, 4)}
 species_ids = [specie_l(l) for l in list(string.ascii_lowercase)[0:5]]
+
 
 class TestAccessSpeciesPopulations(unittest.TestCase):
 
@@ -411,6 +412,29 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         self.assertIn("molecular weight not available for '{}'".format(unknown_species),
             str(context.exception))
 
+    def test_make_test_lsp(self):
+        make_test_lsp = MakeTestLSP()
+        self.assertEqual(make_test_lsp.num_species, MakeTestLSP.DEFAULT_NUM_SPECIES)
+        self.assertEqual(make_test_lsp.all_pops, MakeTestLSP.DEFAULT_ALL_POPS)
+        self.assertEqual(make_test_lsp.all_mol_weights, MakeTestLSP.DEFAULT_ALL_MOL_WEIGHTS)
+        kwargs = dict(
+            num_species=7,
+            all_pops=3E4,
+            all_mol_weights=1000
+        )
+        make_test_lsp = MakeTestLSP(**kwargs)
+        self.assertEqual(make_test_lsp.num_species, kwargs['num_species'])
+        self.assertEqual(make_test_lsp.all_pops, kwargs['all_pops'])
+        self.assertEqual(make_test_lsp.all_mol_weights, kwargs['all_mol_weights'])
+        self.assertEqual(make_test_lsp.local_species_pop.read_one(0, 'specie_1[comp_id]'), kwargs['all_pops'])
+        name = 'foo'
+        make_test_lsp_3 = MakeTestLSP(name=name, initial_population=make_test_lsp.initial_population)
+        self.assertEqual(make_test_lsp_3.initial_population, make_test_lsp.initial_population)
+        make_test_lsp_4 = MakeTestLSP(initial_population=make_test_lsp.initial_population,
+            molecular_weights=make_test_lsp.molecular_weights)
+        self.assertEqual(make_test_lsp_4.initial_population, make_test_lsp.initial_population)
+        self.assertEqual(make_test_lsp_4.molecular_weights, make_test_lsp.molecular_weights)
+
     """
     todo: test the distributed property MASS
     def test_mass(self):
@@ -427,12 +451,10 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
 class TestSpeciesPopulationCache(unittest.TestCase):
 
     def setUp(self):
-        species_nums = range(1, 5)
-        self.species_ids = list(map(lambda x: "specie_{}".format(x), species_nums))
-        self.init_populations = dict(zip(self.species_ids, [0]*len(self.species_ids)))
-        self.molecular_weights = self.init_populations
-        local_species_population = LocalSpeciesPopulation('name', self.init_populations,
-            self.molecular_weights)
+        kwargs = dict(num_species=4, all_pops=0, all_mol_weights=0)
+        make_test_lsp = MakeTestLSP(**kwargs)
+        self.species_ids = make_test_lsp.species_ids
+        local_species_population = make_test_lsp.local_species_pop
 
         remote_pop_stores = {store_i(i):None for i in range(1, 4)}
         self.an_ASP = AccessSpeciesPopulations(local_species_population, remote_pop_stores)
@@ -455,10 +477,10 @@ class TestSpeciesPopulationCache(unittest.TestCase):
         self.assertIn("some species are stored in the AccessSpeciesPopulations's local store: "
             "['specie_0'].", str(context.exception))
 
-        self.species_population_cache.cache_population(0, {"specie_1": 3})
+        self.species_population_cache.cache_population(0, {"specie_1[comp_id]": 3})
         with self.assertRaises(SpeciesPopulationError) as context:
-            self.species_population_cache.cache_population(-1, {"specie_1": 3})
-        self.assertIn("cache_population: caching an earlier population: specie_id: specie_1; "
+            self.species_population_cache.cache_population(-1, {"specie_1[comp_id]": 3})
+        self.assertIn("cache_population: caching an earlier population: specie_id: specie_1[comp_id]; "
             "current time: -1 <= previous time 0.", str(context.exception))
 
         with self.assertRaises(SpeciesPopulationError) as context:
@@ -467,8 +489,8 @@ class TestSpeciesPopulationCache(unittest.TestCase):
             str(context.exception))
 
         with self.assertRaises(SpeciesPopulationError) as context:
-            self.species_population_cache.read_one(1, 'specie_1')
-        self.assertIn("cache age of 1 too big for read at time 1 of specie 'specie_1'",
+            self.species_population_cache.read_one(1, 'specie_1[comp_id]')
+        self.assertIn("cache age of 1 too big for read at time 1 of specie 'specie_1[comp_id]'",
             str(context.exception))
 
         with self.assertRaises(SpeciesPopulationError) as context:
@@ -477,8 +499,8 @@ class TestSpeciesPopulationCache(unittest.TestCase):
             str(context.exception))
 
         with self.assertRaises(SpeciesPopulationError) as context:
-            self.species_population_cache.read(1, ['specie_1'])
-        self.assertIn(".read: species ['specie_1'] not reading recently cached value(s)",
+            self.species_population_cache.read(1, ['specie_1[comp_id]'])
+        self.assertIn(".read: species ['specie_1[comp_id]'] not reading recently cached value(s)",
             str(context.exception))
 
 

@@ -16,6 +16,7 @@ from wc_sim.core.simulation_checkpoint_object import CheckpointSimulationObject,
 from wc_sim.core.sim_metadata import SimulationMetadata
 from wc_sim.multialgorithm.submodels.ssa import SSASubmodel
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
+from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation
 
 
 class MultialgorithmCheckpoint(Checkpoint):

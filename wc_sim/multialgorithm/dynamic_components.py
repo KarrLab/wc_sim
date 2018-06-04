@@ -14,6 +14,7 @@ import math
 from obj_model import utils
 from wc_lang.core import Species, SpeciesType, Compartment
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
+from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation
 
 
 class DynamicCompartment(object):

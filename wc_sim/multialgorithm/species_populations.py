@@ -932,6 +932,63 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         return '\n'.join(state)
 
 
+class MakeTestLSP(object):
+    """ Make a LocalSpeciesPopulation for testing
+
+    Because a LocalSpeciesPopulation takes about 10 lines of code to make, and they're
+    widely needed for testing wc_sim, provide a configurable class that creates a test LSP.
+
+    Attributes:
+        local_species_pop (:obj:`LocalSpeciesPopulation`): the `LocalSpeciesPopulation` created
+    """
+    DEFAULT_NUM_SPECIES = 10
+    DEFAULT_ALL_POPS = 1E6
+    DEFAULT_ALL_MOL_WEIGHTS = 50
+    def __init__(self, name=None, initial_population=None, molecular_weights=None, initial_fluxes=None,
+        retain_history=True, **kwargs):
+        """ Initialize a `MakeTestLSP` object
+
+        All initialized arguments are applied to the local species population being created.
+        Valid keys in `kwargs` are `num_species`, `all_pops`, and `all_mol_weights`, which default to
+        `MakeTestLSP.DEFAULT_NUM_SPECIES`, `MakeTestLSP.DEFAULT_ALL_POPS`, and
+        `MakeTestLSP.DEFAULT_ALL_MOL_WEIGHTS`, respectively. These make a uniform population of
+        num_species, with population of all_pops, and molecular weights of all_mol_weights
+
+        Args:
+            name (:obj:`str`, optional): the name of the local species population being created
+            initial_population (:obj:`dict` of `float`, optional): initial population for some species;
+                dict: specie_id -> initial_population
+            molecular_weights (:obj:`dict` of `float`, optional): map: specie_id -> molecular_weight,
+                provided for computing the mass of lists of species in a `LocalSpeciesPopulation`
+            initial_fluxes (:obj:`dict` of `float`, optional): map: specie_id -> initial_flux;
+                initial fluxes for all species whose populations are estimated by a continuous
+                submodel. Fluxes are ignored for species not specified in initial_population.
+            retain_history (:obj:`bool`, optional): whether to retain species population history
+        """
+        name = 'test_lsp' if name is None else name
+        if initial_population is None:
+            self.num_species = kwargs['num_species'] if 'num_species' in kwargs else MakeTestLSP.DEFAULT_NUM_SPECIES
+            self.species_nums = list(range(0, self.num_species))
+            self.all_pops = kwargs['all_pops'] if 'all_pops' in kwargs else MakeTestLSP.DEFAULT_ALL_POPS
+            comp_id = 'comp_id'
+            self.species_ids = list(map(lambda x: "specie_{}[{}]".format(x, comp_id), self.species_nums))
+            self.initial_population = dict(zip(self.species_ids, [self.all_pops]*len(self.species_nums)))
+        else:
+            self.initial_population = initial_population
+            self.species_ids = list(initial_population.keys())
+
+        if molecular_weights is None:
+            if 'all_mol_weights' in kwargs:
+                self.all_mol_weights = kwargs['all_mol_weights']
+            else:
+                self.all_mol_weights = MakeTestLSP.DEFAULT_ALL_MOL_WEIGHTS
+            self.molecular_weights = dict(zip(self.species_ids, [self.all_mol_weights]*len(self.species_ids)))
+        else:
+            self.molecular_weights = molecular_weights
+        self.local_species_pop = LocalSpeciesPopulation(name, self.initial_population, self.molecular_weights,
+            initial_fluxes=initial_fluxes, retain_history=initial_fluxes)
+
+
 # TODO(Arthur): cover after MVP wc_sim done
 class SpeciesPopSimObject(LocalSpeciesPopulation, ApplicationSimulationObject,
     metaclass=AppSimObjAndABCMeta): # pragma: no cover

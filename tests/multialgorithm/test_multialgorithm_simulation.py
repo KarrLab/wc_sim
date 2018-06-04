@@ -24,7 +24,6 @@ from wc_lang.core import (Model, Submodel,  SpeciesType, SpeciesTypeType, Specie
                           BiomassComponent, BiomassReaction, StopCondition)
 from wc_lang.prepare import PrepareModel, CheckModel
 from wc_lang.transform import SplitReversibleReactionsTransform
-from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation
 from wc_sim.multialgorithm.make_models import MakeModels
 from wc_sim.multialgorithm.model_utilities import ModelUtilities
 from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
