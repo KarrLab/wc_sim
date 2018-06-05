@@ -102,4 +102,21 @@ class TestDynamicObservables(unittest.TestCase):
             DynamicFunction(self.dyn_mdl, self.pseudo_function)
 
     def test_dynamic_stop_condition(self):
-        pass
+        dyn_obs_1 = DynamicObservable(self.dyn_mdl, self.lsp, self.obs_1)
+        # expression: obs_1 < 90
+        tokens1 = [('obs_1', TokCodes.python_id), ('<', TokCodes.other), ('90', TokCodes.other)]
+        tokens2 = [('obs_1', TokCodes.python_id), ('>', TokCodes.other), ('90', TokCodes.other)]
+        for tokens,expected_val in zip([tokens1, tokens2], [True, False]):
+            pseudo_function = PseudoFunction('fun_1', tokens, [self.obs_1])
+            dynamic_stop_cond = DynamicStopCondition(self.dyn_mdl, pseudo_function)
+            self.assertEqual(dynamic_stop_cond.eval(0), expected_val)
+
+    def test_dynamic_stop_condition_exceptions_and_warnings(self):
+        with self.assertRaises(MultialgorithmError):
+            DynamicStopCondition(self.dyn_mdl, self.pseudo_function)
+
+        tokens = [('9', TokCodes.other), ('-', TokCodes.other), ('5', TokCodes.other)]
+        pseudo_function = PseudoFunction('fun_1', tokens, [])
+        dynamic_stop_cond = DynamicStopCondition(self.dyn_mdl, pseudo_function)
+        with self.assertRaises(MultialgorithmError):
+            dynamic_stop_cond.eval(0)

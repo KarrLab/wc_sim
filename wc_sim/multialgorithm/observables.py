@@ -47,6 +47,10 @@ class DynamicObservable(object):
             dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
             local_species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
             observable (:obj:`Observable`): a `wc_lang` `Observable`
+
+        Raises:
+            :obj:`MultialgorithmError`: if `observable` has an empty id, or doesn't have a corresponding
+                dynamic observable registered with `dynamic_model`
         """
         self.dynamic_model = dynamic_model
         self.local_species_population = local_species_population
@@ -117,6 +121,10 @@ class DynamicFunction(object):
         Args:
             dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
             function (:obj:`Function`): a `wc_lang` `Function`
+
+        Raises:
+            :obj:`MultialgorithmError`: if an observable in `function` doesn't have a corresponding
+                dynamic observable registered with `dynamic_model`
         """
         self.dynamic_model = dynamic_model
         self.id = function.id
@@ -137,7 +145,10 @@ class DynamicFunction(object):
             time (:obj:`time`): simulation time
 
         Returns:
-            :obj:`float`: the value of this dynamic function at time `time`
+            :obj:`obj`: the value of this dynamic function at time `time`
+
+        Raises:
+            :obj:`MultialgorithmError`: if a dynamic observable in this dynamic function isn't registered
         """
         # replace observable IDs with their current values
         tmp_tokens = []
@@ -157,4 +168,20 @@ class DynamicStopCondition(DynamicFunction):
     """ The dynamic representation of a `StopCondition`
 
     """
-    pass
+    def eval(self, time):
+        """ Evaluate the value of this dynamic stop condition at time `time`
+
+        Args:
+            time (:obj:`time`): simulation time
+
+        Returns:
+            :obj:`bool`: the boolean value of this dynamic stop condition at time `time`
+
+        Raises:
+            :obj:`MultialgorithmError`: if eval doesn't return a boolean value
+        """
+        value = super().eval(time)
+        if not isinstance(value, bool):
+            raise MultialgorithmError("DynamicStopCondition evaluated to a {}, instead of a bool".format(
+                type(value)))
+        return value
