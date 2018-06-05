@@ -15,6 +15,7 @@ from obj_model import utils
 from wc_lang.core import Species, SpeciesType, Compartment
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation
+from wc_sim.multialgorithm.observables import DynamicObservable, DynamicFunction, DynamicStopCondition
 
 
 class DynamicCompartment(object):
