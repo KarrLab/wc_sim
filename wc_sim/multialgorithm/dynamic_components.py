@@ -122,11 +122,16 @@ class DynamicModel(object):
         dynamic_compartments (:obj: `dict`): map from compartment ID to `DynamicCompartment`; the simulation's
             `DynamicCompartment`s, one for each compartment in `model`
         cellular_dyn_compartments (:obj:`list`): list of the cellular compartments
+        dynamic_observables (:obj:`dict` of `DynamicObservable`): the simulation's dynamic observables,
+            indexed by their ids
+        dynamic_functions (:obj:`dict` of `DynamicFunction`): the simulation's dynamic functions,
+            indexed by their ids
+        dynamic_stop_conditions (:obj:`dict` of `DynamicStopCondition`): the simulation's stop conditions,
+            indexed by their ids
         fraction_dry_weight (:obj:`float`): fraction of the cell's weight which is not water
             a constant
         water_in_model (:obj:`bool`): if set, the model represents water
     """
-
     def __init__(self, model, dynamic_compartments):
         """ Prepare a `DynamicModel` for a discrete-event simulation
 
@@ -136,6 +141,9 @@ class DynamicModel(object):
                 compartment in `model`
         """
         self.dynamic_compartments = dynamic_compartments
+        self.dynamic_observables = {}
+        self.dynamic_functions = {}
+        self.dynamic_stop_conditions = {}
 
         # Classify compartments into extracellular and cellular; those which are not extracellular are cellular
         # Assumes at most one extracellular compartment

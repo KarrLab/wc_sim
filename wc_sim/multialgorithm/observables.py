@@ -30,6 +30,7 @@ class DynamicObservable(object):
     """ The dynamic representation of an `Observable`
 
     Attributes:
+        dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
         local_species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
         id (:obj:`str`): unique id
         weighted_species (:obj:`list` of `tuple`): Pairs of :obj:`float`, :obj:`str` representing the
@@ -38,15 +39,14 @@ class DynamicObservable(object):
             representing the coefficients and observables whose products are summed in a
             `DynamicObservable`'s value
     """
-    # dictionary from ID to DynamicObservable
-    # TODO: put this in a context
-    observables = {}
-    def __init__(self, local_species_population, observable):
+    def __init__(self, dynamic_model, local_species_population, observable):
         """
         Args:
+            dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
             local_species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
             observable (:obj:`Observable`): a `wc_lang` `Observable`
         """
+        self.dynamic_model = dynamic_model
         self.local_species_population = local_species_population
         if observable.id == '':
             raise MultialgorithmError("observable cannot have an empty id")
@@ -57,13 +57,13 @@ class DynamicObservable(object):
         self.weighted_observables = []
         for observable_coeff in observable.observables:
             id = observable_coeff.observable.id
-            if id not in DynamicObservable.observables:
-                raise MultialgorithmError("cannot find DynamicObservable '{}'".format(id))
-            dynamic_observable = DynamicObservable.observables[id]
+            if id not in self.dynamic_model.dynamic_observables:
+                raise MultialgorithmError("Cannot find DynamicObservable '{}'".format(id))
+            dynamic_observable = self.dynamic_model.dynamic_observables[id]
             self.weighted_observables.append((observable_coeff.coefficient, dynamic_observable))
-        if self.id in DynamicObservable.observables:
-            warnings.warn("replacing observable '{}' with new instance".format(self.id))
-        DynamicObservable.observables[self.id] = self
+        if self.id in self.dynamic_model.dynamic_observables:
+            warnings.warn("Replacing observable '{}' with a new instance".format(self.id))
+        self.dynamic_model.dynamic_observables[self.id] = self
 
     def eval(self, time):
         """ Evaluate the value of this dynamic observable at time `time`
