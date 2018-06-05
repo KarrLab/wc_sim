@@ -7,14 +7,27 @@
 
 import unittest
 import warnings
+import math
 
 from wc_lang import (StopCondition, Function, Observable, SpeciesType, Compartment, Species,
     SpeciesCoefficient, ObservableCoefficient)
-from wc_sim.multialgorithm.observables import DynamicObservable, DynamicFunction, DynamicStopCondition
+from wc_sim.multialgorithm.observables import (DynamicObservable, DynamicFunction,
+    DynamicStopCondition, TokCodes)
 from wc_sim.multialgorithm.species_populations import MakeTestLSP
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm.dynamic_components import DynamicModel
 from wc_sim.multialgorithm.make_models import MakeModels
+
+
+# a temporary hack, until wc_lang.Function correctly parses expressions
+class PseudoFunction(object):
+    def __init__(self, id, tokens, observables):
+        self.id = id
+        self.tokens = tokens
+        self.observables = observables
+# e.g.: 3 * log( obs_1 )
+# would tokenize as [('3', other), ('*', other), ('log', math_function), 
+# ('(', other), ('observable_1', python_id), (')', other)]
 
 
 class TestDynamicObservables(unittest.TestCase):
@@ -38,6 +51,10 @@ class TestDynamicObservables(unittest.TestCase):
 
         self.init_pop = {'a[a]': 10, 'bb[bb]': 20}
         self.lsp = MakeTestLSP(initial_population=self.init_pop).local_species_pop
+
+        self.tokens = [('3', TokCodes.other), ('*', TokCodes.other), ('log', TokCodes.math_function),
+            ('(', TokCodes.other), ('obs_1', TokCodes.python_id), (')', TokCodes.other)]
+        self.pseudo_function = PseudoFunction('fun_1', self.tokens, [self.obs_1])
 
         self.model = MakeModels.make_test_model('1 species, 1 reaction')
         self.dyn_mdl = DynamicModel(self.model, {})
@@ -71,7 +88,18 @@ class TestDynamicObservables(unittest.TestCase):
             self.assertRegex(str(w[-1].message), "Replacing observable '.*' with a new instance")
 
     def test_dynamic_function(self):
-        pass
+        expression = '3 * log ( obs_1 )'
+        self.assertEqual(expression, ' '.join([val for val, _ in self.tokens]))
+        dyn_obs_1 = DynamicObservable(self.dyn_mdl, self.lsp, self.obs_1)
+        dynamic_function_1 = DynamicFunction(self.dyn_mdl, self.pseudo_function)
+        self.assertEqual(dynamic_function_1.dynamic_observables,
+            {dyn_obs_1.id: dyn_obs_1})
+        # SB: 3 * log( dyn_obs_1(0) ) = 3 * log( 80 )
+        self.assertAlmostEqual(dynamic_function_1.eval(0), 3 * math.log( 80 ))
+
+    def test_dynamic_function_exceptions_and_warnings(self):
+        with self.assertRaises(MultialgorithmError):
+            DynamicFunction(self.dyn_mdl, self.pseudo_function)
 
     def test_dynamic_stop_condition(self):
         pass

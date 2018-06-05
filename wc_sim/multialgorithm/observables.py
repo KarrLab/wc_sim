@@ -9,18 +9,20 @@
 import re
 import warnings
 
+from wc_utils.util.enumerate import CaseInsensitiveEnum
 from wc_lang import StopCondition, Function, Observable
 from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 
 '''
 Also:
-    All instances in dynamicModel
+    Unittests of Observable and Function needed
     Check for errors including cycles in Check
     Include in checkpoints, and checkpoint processing
     Make available to rate law calculations
-    Unittests of Observable and Function needed
     prohibit observable names that conflict with functions (but could be relaxed with smarter parsing)
+    expression parser for DynamicFunction, generalized for RateLaws too
+    failing test for wc_lang that shows the str.replace() problem
     push wc_lang
 Later:
     cache computed observalbes (use memoize?)
@@ -58,7 +60,7 @@ class DynamicObservable(object):
         for observable_coeff in observable.observables:
             id = observable_coeff.observable.id
             if id not in self.dynamic_model.dynamic_observables:
-                raise MultialgorithmError("Cannot find DynamicObservable '{}'".format(id))
+                raise MultialgorithmError("DynamicObservable '{}' not registered".format(id))
             dynamic_observable = self.dynamic_model.dynamic_observables[id]
             self.weighted_observables.append((observable_coeff.coefficient, dynamic_observable))
         if self.id in self.dynamic_model.dynamic_observables:
@@ -89,27 +91,43 @@ class DynamicObservable(object):
         """
         pass
 
-'''
-assumes that wc_lang parses a Function into str tokens and Observable observables
-'''
+# tokens must distinguish among species ids, observable ids, functions and other tokens
+class TokCodes(int, CaseInsensitiveEnum):
+    """ Token codes in parsed expressions """
+    species_id = 1
+    python_id = 2
+    math_function = 3
+    other = 4
+
+
+# assumes that wc_lang parses a Function into str tokens and Observable observables
 class DynamicFunction(object):
     """ The dynamic representation of a `Function`
 
     Attributes:
-        id (:obj:`str`): unique id for this `Function`
-        tokens (:obj:`list` of `str`): sequence of Python tokens in this `Function`
-        observables (:obj:`dict` of `str` to `DynamicObservable`): map from IDs of observables to
-            `DynamicObservable`s used by this `Function`
+        dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
+        id (:obj:`str`): unique id for this `DynamicFunction`
+        tokens (:obj:`list` of `tuple`): sequence of (value, `TokCodes`) tokens for this `Function`
+        dynamic_observables (:obj:`dict` of `str` to `DynamicObservable`): map from IDs of dynamic
+            observables to `DynamicObservable`s used by this `DynamicFunction`
         local_ns (:obj:`dict` of `str` to `callable`): the functions allowed in `Function`
     """
-    def __init__(self, function):
+    def __init__(self, dynamic_model, function):
         """
         Args:
+            dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
             function (:obj:`Function`): a `wc_lang` `Function`
         """
+        self.dynamic_model = dynamic_model
         self.id = function.id
         self.tokens = function.tokens
-        self.observables = {observable: observable.id for observable in function.observables}
+        self.dynamic_observables = {}
+        for observable in function.observables:
+            if observable.id not in self.dynamic_model.dynamic_observables:
+                raise MultialgorithmError("DynamicObservable '{}' not registered for '{}'".format(
+                    observable.id, self.id))
+            dynamic_observable = self.dynamic_model.dynamic_observables[observable.id]
+            self.dynamic_observables[observable.id] = dynamic_observable
         self.local_ns = {func.__name__: func for func in Function.Meta.valid_functions}
 
     def eval(self, time):
@@ -121,14 +139,18 @@ class DynamicFunction(object):
         Returns:
             :obj:`float`: the value of this dynamic function at time `time`
         """
+        # replace observable IDs with their current values
         tmp_tokens = []
-        for token in self.tokens:
-            if token in self.observables:
-                tmp_tokens.append(self.observables[token].eval(time))
+        for value,code in self.tokens:
+            if code == TokCodes.python_id:
+                if value not in self.dynamic_observables:   # pragma    no cover
+                    raise MultialgorithmError("DynamicObservable '{}' not registered".format(id))
+                tmp_tokens.append(str(self.dynamic_observables[value].eval(time)))
             else:
-                tmp_tokens.append(token)
+                tmp_tokens.append(value)
         expression = ' '.join(tmp_tokens)
-        return eval(expression, {}, local_ns)
+        # todo: catch exceptions
+        return eval(expression, {}, self.local_ns)
 
 
 class DynamicStopCondition(DynamicFunction):
