@@ -1,4 +1,4 @@
-""" Dynamic observables, functionality that depends on them
+""" Dynamic observables, and functionality that depends on them
 
 :Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
 :Date: 2018-06-03
@@ -7,8 +7,11 @@
 """
 
 import re
+import os
 import warnings
+import tempfile
 
+import wc_utils.cache
 from wc_utils.util.enumerate import CaseInsensitiveEnum
 from wc_lang import StopCondition, Function, Observable
 from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation
@@ -16,17 +19,44 @@ from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 
 '''
 Also:
-    Unittests of Observable and Function needed
-    Check for errors including cycles in Check
     Include in checkpoints, and checkpoint processing
+        expand
+            calc all observables in dynamic_model
+            get_checkpoint_state
+            RunResults(), COMPONENTS, convert_checkpoints,
+
     Make available to rate law calculations
     prohibit observable names that conflict with functions (but could be relaxed with smarter parsing)
     expression parser for DynamicFunction, generalized for RateLaws too
     failing test for wc_lang that shows the str.replace() problem
     push wc_lang
 Later:
-    cache computed observalbes (use memoize?)
+    clean up memoize cache file
 '''
+
+class ParseWcLangExpr(object):
+    '''
+        Parse expr into sequence of (value, `TokCodes`) tokens
+        Report errors on failed parses
+    '''
+    def __init__(self, expr):
+        """
+        Args:
+            expr (:obj:`str`): a Python expression used by `wc_lang`
+        """
+        self.expr = expr
+
+    def tokenize(self, expr_type):
+        """
+        Args:
+            expr_type (:obj:`DynamicModel`): the simulation's dynamic model
+
+        Raises:
+            :obj:`MultialgorithmError`: if `observable` has an empty id, or doesn't have a corresponding
+                dynamic observable registered with `dynamic_model`
+        """
+        pass
+
 
 class DynamicObservable(object):
     """ The dynamic representation of an `Observable`
@@ -40,7 +70,11 @@ class DynamicObservable(object):
         weighted_observables (:obj:`list` of `tuple`): Pairs of :obj:`float`, :obj:`DynamicObservable`
             representing the coefficients and observables whose products are summed in a
             `DynamicObservable`'s value
+        antecedent_observables (:obj:`set`): dynamic observables on which this dynamic observable depends
     """
+    cache_dir = tempfile.mkdtemp()
+    cache = wc_utils.cache.Cache(directory=os.path.join(cache_dir, 'cache'))
+
     def __init__(self, dynamic_model, local_species_population, observable):
         """
         Args:
@@ -61,12 +95,14 @@ class DynamicObservable(object):
         for species_coeff in observable.species:
             self.weighted_species.append((species_coeff.coefficient, species_coeff.species.id()))
         self.weighted_observables = []
+        self.antecedent_observables = set()
         for observable_coeff in observable.observables:
             id = observable_coeff.observable.id
             if id not in self.dynamic_model.dynamic_observables:
                 raise MultialgorithmError("DynamicObservable '{}' not registered".format(id))
             dynamic_observable = self.dynamic_model.dynamic_observables[id]
             self.weighted_observables.append((observable_coeff.coefficient, dynamic_observable))
+            self.antecedent_observables.add(dynamic_observable)
         if self.id in self.dynamic_model.dynamic_observables:
             warnings.warn("Replacing observable '{}' with a new instance".format(self.id))
         self.dynamic_model.dynamic_observables[self.id] = self
@@ -138,6 +174,7 @@ class DynamicFunction(object):
             self.dynamic_observables[observable.id] = dynamic_observable
         self.local_ns = {func.__name__: func for func in Function.Meta.valid_functions}
 
+    @DynamicObservable.cache.memoize()
     def eval(self, time):
         """ Evaluate the value of this dynamic function at time `time`
 

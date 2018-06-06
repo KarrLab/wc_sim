@@ -76,6 +76,20 @@ class TestDynamicObservables(unittest.TestCase):
         self.assertEqual(dynamic_observable_2.eval(0),
             2 * self.init_pop['a[a]'] + 5 * dynamic_observable_1.eval(0))
 
+    def test_dynamic_observable_memoize_perf(self):
+        '''
+            implmentations to compare:
+                no memoization w recomputation
+                no memoization and avoid recomputation for each eval by tracking dependencies
+                memoization *
+            workloads to test:
+                small observables with few dependencies
+                large observables with many dependencies
+            * the current implementation
+        '''
+        # large observables with many dependencies
+        num_dependencies = 20
+
     def test_dynamic_observable_exceptions_and_warnings(self):
         obs = Observable(id='')
         with self.assertRaises(MultialgorithmError):
