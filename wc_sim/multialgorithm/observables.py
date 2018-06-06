@@ -129,7 +129,13 @@ class DynamicObservable(object):
         Returns:
             :obj:`str`: a readable representation of this `DynamicObservable`
         """
-        pass
+        rv = []
+        rv.append("id: {}".format(self.id))
+        rv.append("LocalSpeciesPopulation: {}".format(self.local_species_population.name))
+        rv.append("weighted_species: {}".format(self.weighted_species))
+        rv.append("weighted_observables: {}".format([(coeff,dyn_obs.id)
+            for coeff,dyn_obs in self.weighted_observables]))
+        return '\n'.join(rv)
 
 # tokens must distinguish among species ids, observable ids, functions and other tokens
 class TokCodes(int, CaseInsensitiveEnum):

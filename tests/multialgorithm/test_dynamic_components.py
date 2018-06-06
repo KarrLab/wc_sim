@@ -11,13 +11,18 @@ import unittest
 import warnings
 from argparse import Namespace
 from scipy.constants import Avogadro
+from itertools import chain
 
 from wc_lang.io import Reader
-from wc_lang.core import (Submodel, Compartment, Reaction, SpeciesType)
+from wc_lang.core import (Submodel, Compartment, Reaction, SpeciesType, Species, SpeciesCoefficient,
+    Observable, ObservableCoefficient)
 from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation
 from wc_sim.multialgorithm.dynamic_components import DynamicModel, DynamicCompartment
 from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
+from wc_sim.multialgorithm.observables import DynamicObservable
+from wc_sim.multialgorithm.species_populations import MakeTestLSP
+from wc_sim.multialgorithm.make_models import MakeModels
 
 
 class TestDynamicCompartment(unittest.TestCase):
@@ -153,3 +158,75 @@ class TestDynamicModel(unittest.TestCase):
                 'volume': 4.58E-17}}
         }
         self.compare_aggregate_states(expected_aggregate_state, computed_aggregate_state)
+
+    def test_eval_dynamic_observables(self):
+        # create some dynamic observables
+        num_species_types = 10
+        species_types = []
+        for i in range(num_species_types):
+            species_types.append(SpeciesType(id='st_{}'.format(i)))
+
+        comp = Compartment(id='comp_0')
+
+        species = []
+        species_coefficients = []
+        for st_idx in range(num_species_types):
+            species.append(Species(species_type=species_types[st_idx], compartment=comp))
+            species_coefficients.append(SpeciesCoefficient(species=species[-1], coefficient=st_idx))
+
+        num_non_dependent_observables = 10
+        non_dependent_observables = []
+        for i in range(num_non_dependent_observables):
+            non_dependent_observables.append(Observable(id='obs_nd_{}'.format(i)))
+            for j in range(i):
+                non_dependent_observables[-1].species.append(species_coefficients[j])
+
+        num_dependent_observables = 5
+        dependent_observables = []
+        for i in range(num_dependent_observables):
+            dependent_observables.append(Observable(id='obs_d_{}'.format(i)))
+            for j in range(i):
+                oc = ObservableCoefficient(observable=non_dependent_observables[j], coefficient=j)
+                dependent_observables[-1].observables.append(oc)
+
+        # make a LocalSpeciesPopulation
+        init_pop = dict(zip([s.id() for s in species], list(range(num_species_types))))
+        lsp = MakeTestLSP(initial_population=init_pop).local_species_pop
+
+        # make a Model
+        model = MakeModels.make_test_model('no reactions')
+
+        # make a DynamicModel
+        dyn_mdl = DynamicModel(model, {})
+
+        non_dependent_dynamic_observables = []
+        for non_dependent_observable in non_dependent_observables:
+            non_dependent_dynamic_observables.append(DynamicObservable(dyn_mdl, lsp, non_dependent_observable))
+
+        dependent_dynamic_observables = []
+        for dependent_observable in dependent_observables:
+            dependent_dynamic_observables.append(DynamicObservable(dyn_mdl, lsp, dependent_observable))
+
+        # test them
+        expected_non_dependent = []
+        for idx, dynamic_observable in enumerate(non_dependent_dynamic_observables):
+            expected_non_dependent.append(sum([i*i for i in range(idx)]))
+            self.assertEqual(dynamic_observable.eval(0), expected_non_dependent[-1])
+
+        expected_dependent = []
+        for idx, dynamic_observable in enumerate(dependent_dynamic_observables):
+            expected_dependent.append(sum([i*expected_non_dependent[i] for i in range(idx)]))
+            self.assertEqual(dynamic_observable.eval(0), expected_dependent[-1])
+
+        ids_of_non_dependent_dynamic_observables = [do.id for do in non_dependent_dynamic_observables]
+        self.assertEqual(dyn_mdl.eval_dynamic_observables(0, ids_of_non_dependent_dynamic_observables),
+            dict(zip(ids_of_non_dependent_dynamic_observables, expected_non_dependent)))
+
+        ids_of_dependent_dynamic_observables = [do.id for do in dependent_dynamic_observables]
+        self.assertEqual(dyn_mdl.eval_dynamic_observables(0, ids_of_dependent_dynamic_observables),
+            dict(zip(ids_of_dependent_dynamic_observables, expected_dependent)))
+
+        expected_eval_dynamic_observables = dict(
+            zip(chain(ids_of_non_dependent_dynamic_observables, ids_of_dependent_dynamic_observables),
+                chain(expected_non_dependent, expected_dependent)))
+        self.assertEqual(dyn_mdl.eval_dynamic_observables(0), expected_eval_dynamic_observables)

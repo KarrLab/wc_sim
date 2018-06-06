@@ -75,6 +75,8 @@ class TestDynamicObservables(unittest.TestCase):
             set([(self.obs_coeff_1.coefficient, dynamic_observable_1)]))
         self.assertEqual(dynamic_observable_2.eval(0),
             2 * self.init_pop['a[a]'] + 5 * dynamic_observable_1.eval(0))
+        self.assertIn('weighted_species', str(dynamic_observable_2))
+        self.assertIn('weighted_observables', str(dynamic_observable_2))
 
     def test_dynamic_observable_memoize_perf(self):
         '''
@@ -88,6 +90,7 @@ class TestDynamicObservables(unittest.TestCase):
             * the current implementation
         '''
         # large observables with many dependencies
+        # TODO: make performance test
         num_dependencies = 20
 
     def test_dynamic_observable_exceptions_and_warnings(self):

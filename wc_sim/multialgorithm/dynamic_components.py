@@ -274,7 +274,7 @@ class DynamicModel(object):
         # for dyn_observable,antecedents in antecedent_observables.items():
         if not observables_ready_to_eval:
             raise MultialgorithmError("observables_ready_to_eval is empty")
-    # TODO: TBD
+    # TODO: complete or toss
     '''
 
     def eval_dynamic_observables(self, time, observables_to_eval=None):
