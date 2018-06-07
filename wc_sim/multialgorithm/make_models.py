@@ -95,7 +95,7 @@ class MakeModels(object):
         comp = model.compartments.create(id='compt_{}'.format(submodel_num),
             name='compartment num {}'.format(submodel_num), initial_volume=init_vol)
 
-        # Species and Concentrations
+        # Species, Concentrations and Observables
         species = []
         for i in range(num_species):
             spec = comp.species.create(species_type=species_types[i])
@@ -105,11 +105,17 @@ class MakeModels(object):
                 Concentration(species=spec, value=concentration, units=ConcentrationUnit.M.value)
             else:
                 Concentration(species=spec, value=default_concentration, units=ConcentrationUnit.M.value)
+            # TODO: fix some problem with SpeciesCoefficient that prevents coefficients from being identical
+            species_coefficient = spec.species_coefficients.create(coefficient=1. + i)
+            obs_plain = model.observables.create(id='obs_{}_{}'.format(submodel_num, i))
+            obs_plain.species.append(species_coefficient)
+            obs_coeff = obs_plain.observable_coefficients.create(coefficient=2.)
+            obs_dependent = model.observables.create(id='obs_dep_{}_{}'.format(submodel_num, i))
+            obs_dependent.observables.append(obs_coeff)
 
         # Submodel
         id = 'submodel_{}'.format(submodel_num)
         submodel = model.submodels.create(id=id, name=id, algorithm=SubmodelAlgorithm.ssa, compartment=comp)
-        # submodel.pprint(max_depth=0)
 
         # Reactions and RateLaws
         if num_species:
