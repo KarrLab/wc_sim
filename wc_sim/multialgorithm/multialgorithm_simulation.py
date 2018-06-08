@@ -161,7 +161,7 @@ class MultialgorithmSimulation(object):
                 dynamic model
         """
         self.partition_species()
-        self.dynamic_model = DynamicModel(self.model, self.dynamic_compartments)
+        self.dynamic_model = DynamicModel(self.model, self.local_species_population, self.dynamic_compartments)
         if 'results_dir' in self.args and self.args['results_dir']:
             self.checkpointing_sim_obj = self.create_multialgorithm_checkpointing(
                 self.args['results_dir'],

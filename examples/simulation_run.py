@@ -26,7 +26,7 @@ run_results = RunResults(results_dir)
 
 # view results
 print(run_results.get('populations'))
-# run_results also contains 'aggregate_states', 'random_states', and 'metadata'
+# run_results also contains 'observables', 'aggregate_states', 'random_states', and 'metadata'
 for component in RunResults.COMPONENTS:
     print(run_results.get(component))
 

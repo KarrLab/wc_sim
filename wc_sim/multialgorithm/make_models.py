@@ -105,8 +105,8 @@ class MakeModels(object):
                 Concentration(species=spec, value=concentration, units=ConcentrationUnit.M.value)
             else:
                 Concentration(species=spec, value=default_concentration, units=ConcentrationUnit.M.value)
-            # TODO: fix some problem with SpeciesCoefficient that prevents coefficients from being identical
-            species_coefficient = spec.species_coefficients.create(coefficient=1. + i)
+            # TODO: fix some problem with SpeciesCoefficient that prevents coefficient values from being identical
+            species_coefficient = spec.species_coefficients.create(coefficient=1.5)
             obs_plain = model.observables.create(id='obs_{}_{}'.format(submodel_num, i))
             obs_plain.species.append(species_coefficient)
             obs_coeff = obs_plain.observable_coefficients.create(coefficient=2.)

@@ -6,48 +6,49 @@
 :License: MIT
 """
 
-import os
-import getpass
 import unittest
 import shutil
 import tempfile
-from argparse import Namespace
-import warnings
 import pandas
 import numpy
 
+from wc_lang.core import SpeciesType
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm.simulation import Simulation
 from wc_sim.multialgorithm.run_results import RunResults
+from wc_sim.multialgorithm.make_models import MakeModels
 
 
 class TestRunResults(unittest.TestCase):
 
     def setUp(self):
-        # use stored checkpoints and metadata from simulation of 2_species_1_reaction model
-        self.RESULTS_DIR = os.path.join(os.path.dirname(__file__), 'fixtures', 'results_dir')
-        self.results_dir = tempfile.mkdtemp()
-        self.results_copy = os.path.join(self.results_dir, 'results_copy')
-        shutil.copytree(self.RESULTS_DIR, self.results_copy)
+        SpeciesType.objects.reset()
+        # create stored checkpoints and metadata
+        self.temp_dir = tempfile.mkdtemp()
+        # create and run simulation
+        model = MakeModels.make_test_model('2 species, 1 reaction')
+        simulation = Simulation(model)
         self.checkpoint_period = 10
         self.max_time = 100
+        _, self.results_dir = simulation.run(end_time=self.max_time, results_dir=self.temp_dir,
+            checkpoint_period=self.checkpoint_period)
 
     def tearDown(self):
-        shutil.rmtree(self.results_dir)
+        shutil.rmtree(self.temp_dir)
 
     def test_run_results(self):
 
-        run_results_1 = RunResults(self.results_copy)
+        run_results_1 = RunResults(self.results_dir)
         # after run_results file created
-        run_results_2 = RunResults(self.results_copy)
+        run_results_2 = RunResults(self.results_dir)
         for component in RunResults.COMPONENTS:
             component_data = run_results_1.get(component)
             self.assertTrue(run_results_1.get(component).equals(run_results_2.get(component)))
 
-
         expected_times = pandas.Float64Index(numpy.linspace(0, self.max_time, 1 + self.max_time/self.checkpoint_period))
-        for component in ['populations', 'aggregate_states', 'random_states']:
+        for component in ['populations', 'observables', 'aggregate_states', 'random_states']:
             component_data = run_results_1.get(component)
+            self.assertFalse(component_data.empty)
             self.assertTrue(component_data.index.equals(expected_times))
 
         # total population is invariant
@@ -61,6 +62,6 @@ class TestRunResults(unittest.TestCase):
 
     def test_run_results_errors(self):
 
-        run_results = RunResults(self.results_copy)
+        run_results = RunResults(self.results_dir)
         with self.assertRaisesRegexp(MultialgorithmError, "component '.*' is not an element of "):
             run_results.get('not_a_component')

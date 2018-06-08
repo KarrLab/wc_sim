@@ -99,7 +99,7 @@ class TestDynamicModel(unittest.TestCase):
         self.model = Reader().run(model_filename, strict=False)
         multialgorithm_simulation = MultialgorithmSimulation(self.model, None)
         dynamic_compartments = multialgorithm_simulation.dynamic_compartments
-        self.dynamic_model = DynamicModel(self.model, dynamic_compartments)
+        self.dynamic_model = DynamicModel(self.model, multialgorithm_simulation.local_species_population, dynamic_compartments)
 
     # TODO(Arthur): move this proportional test to a utility & use it instead of assertAlmostEqual everywhere
     def almost_equal_test(self, a, b, frac_diff=1/100):
@@ -197,7 +197,7 @@ class TestDynamicModel(unittest.TestCase):
         model = MakeModels.make_test_model('no reactions')
 
         # make a DynamicModel
-        dyn_mdl = DynamicModel(model, {})
+        dyn_mdl = DynamicModel(model, lsp, {})
 
         non_dependent_dynamic_observables = []
         for non_dependent_observable in non_dependent_observables:

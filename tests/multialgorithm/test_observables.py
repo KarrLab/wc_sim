@@ -57,7 +57,7 @@ class TestDynamicObservables(unittest.TestCase):
         self.pseudo_function = PseudoFunction('fun_1', self.tokens, [self.obs_1])
 
         self.model = MakeModels.make_test_model('1 species, 1 reaction')
-        self.dyn_mdl = DynamicModel(self.model, {})
+        self.dyn_mdl = DynamicModel(self.model, self.lsp, {})
 
     def test_dynamic_observable(self):
 

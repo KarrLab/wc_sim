@@ -19,17 +19,12 @@ from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 
 '''
 Also:
-    Include in checkpoints, and checkpoint processing
-        expand
-            calc all observables in dynamic_model
-            get_checkpoint_state
-            RunResults(), COMPONENTS, convert_checkpoints,
-
-    Make available to rate law calculations
-    prohibit observable names that conflict with functions (but could be relaxed with smarter parsing)
+    Make observalbes available to rate law calculations
     expression parser for DynamicFunction, generalized for RateLaws too
+    prohibit observable names that conflict with functions (but could be relaxed with smarter parsing)
     failing test for wc_lang that shows the str.replace() problem
     push wc_lang
+    memoize performance comparison
 Later:
     clean up memoize cache file
 '''

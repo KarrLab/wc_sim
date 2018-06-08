@@ -123,6 +123,8 @@ class DynamicModel(object):
         dynamic_compartments (:obj: `dict`): map from compartment ID to `DynamicCompartment`; the simulation's
             `DynamicCompartment`s, one for each compartment in `model`
         cellular_dyn_compartments (:obj:`list`): list of the cellular compartments
+        species_population (:obj:`LocalSpeciesPopulation`): an object that represents
+            the populations of species in this `DynamicCompartment`
         dynamic_observables (:obj:`dict` of `DynamicObservable`): the simulation's dynamic observables,
             indexed by their ids
         dynamic_functions (:obj:`dict` of `DynamicFunction`): the simulation's dynamic functions,
@@ -133,18 +135,18 @@ class DynamicModel(object):
             a constant
         water_in_model (:obj:`bool`): if set, the model represents water
     """
-    def __init__(self, model, dynamic_compartments):
+    def __init__(self, model, species_population, dynamic_compartments):
         """ Prepare a `DynamicModel` for a discrete-event simulation
 
         Args:
             model (:obj:`Model`): the description of the whole-cell model in `wc_lang`
+            species_population (:obj:`LocalSpeciesPopulation`): an object that represents
+                the populations of species in this `DynamicCompartment`
             dynamic_compartments (:obj: `dict`): the simulation's `DynamicCompartment`s, one for each
                 compartment in `model`
         """
         self.dynamic_compartments = dynamic_compartments
-        self.dynamic_observables = {}
-        self.dynamic_functions = {}
-        self.dynamic_stop_conditions = {}
+        self.species_population = species_population
 
         # Classify compartments into extracellular and cellular; those which are not extracellular are cellular
         # Assumes at most one extracellular compartment
@@ -168,6 +170,14 @@ class DynamicModel(object):
         # cell dry weight
         self.fraction_dry_weight = utils.get_component_by_id(model.get_parameters(),
             'fractionDryWeight').value
+
+        # create dynamic observables
+        self.dynamic_observables = {}
+        for observable in model.observables:
+            self.dynamic_observables[observable.id] = DynamicObservable(self, self.species_population, observable)
+
+        self.dynamic_functions = {}
+        self.dynamic_stop_conditions = {}
 
     def cell_mass(self):
         """ Compute the cell's mass

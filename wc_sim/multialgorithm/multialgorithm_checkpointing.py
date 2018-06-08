@@ -43,10 +43,16 @@ class AccessState(AccessStateObjectInterface):
         """ Obtain a checkpoint of the biological state
 
         Returns:
-            :obj:`tuple` of (`dict`, `dict`): dictionaries with the species populations and the
-                cell's aggregate state, respectively
+            :obj:`dict` of `dict`: dictionaries containing the simulation's state: `population` has
+                the simulation's species populations, `aggregate_state` contains its aggregrate compartment
+                states, and `observables` contains all of its observables
         """
-        return (self.local_species_population.read(time), self.dynamic_model.get_aggregate_state())
+        state = {
+            'population': self.local_species_population.read(time),
+            'aggregate_state': self.dynamic_model.get_aggregate_state(),
+            'observables': self.dynamic_model.eval_dynamic_observables(time)
+        }
+        return state
 
     def get_random_state(self):
         """ Obtain a checkpoint of the random state

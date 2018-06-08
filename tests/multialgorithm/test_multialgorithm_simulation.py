@@ -30,6 +30,7 @@ from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimula
 from wc_sim.multialgorithm.config import core as config_core_multialgorithm
 from wc_sim.multialgorithm.multialgorithm_checkpointing import (MultialgorithmicCheckpointingSimObj,
     MultialgorithmCheckpoint)
+from wc_sim.multialgorithm.run_results import RunResults
 
 from wc_sim.core.simulation_checkpoint_object import CheckpointSimulationObject
 
@@ -227,16 +228,16 @@ class TestRunSSASimulation(unittest.TestCase):
             expected_mean_copy_numbers={specie:2000},
             delta=50)
         # species counts, and cell mass and volume steadily decline
-        previous_ckpt = None
+        prev_ckpt = None
         for time in MultialgorithmCheckpoint.list_checkpoints(self.results_dir):
             ckpt = MultialgorithmCheckpoint.get_checkpoint(self.results_dir, time=time)
-            if previous_ckpt:
-                previous_species_pops, previous_aggregate_state = previous_ckpt.state
-                species_pops, aggregate_state = ckpt.state
-                self.assertTrue(species_pops[specie] < previous_species_pops[specie])
-                self.assertTrue(aggregate_state['cell mass'] < previous_aggregate_state['cell mass'])
-                self.assertTrue(aggregate_state['cell volume'] < previous_aggregate_state['cell volume'])
-            previous_ckpt = ckpt
+            if prev_ckpt:
+                prev_species_pops, prev_observables, prev_aggregate_state = RunResults.get_state_components(prev_ckpt.state)
+                species_pops, observables, aggregate_state = RunResults.get_state_components(ckpt.state)
+                self.assertTrue(species_pops[specie] < prev_species_pops[specie])
+                self.assertTrue(aggregate_state['cell mass'] < prev_aggregate_state['cell mass'])
+                self.assertTrue(aggregate_state['cell volume'] < prev_aggregate_state['cell volume'])
+            prev_ckpt = ckpt
 
         self.perform_ssa_test_run('2 species, 1 reaction',
             run_time=1000,
