@@ -242,51 +242,6 @@ class DynamicModel(object):
         aggregate_state['compartments'] = compartments
         return aggregate_state
 
-    '''
-    def eval_dynamic_observables(self, time, observables_to_eval=None):
-        """ Evaluate some dynamic observables at time `time`
-
-        Because observables depend on each other, all observables that depend on `observables` must be
-        evaluated. Observables that do not depend on other observables must be evaluated first.
-
-        Args:
-            time (:obj:`float`): the simulation time
-            observables_to_eval (:obj:`list` of `str`, optional): if provided, ids of the observables to evaluate;
-                otherwise, evaluate all observables
-
-        Returns:
-            :obj:`dict`: map from a super set of the IDs of dynamic observables in `observables_to_eval`
-                to their values at simulation time `time`
-        """
-        if observables_to_eval is None:
-            observables_to_eval = set(self.dynamic_observables.keys())
-        else:
-            # close observables_to_eval by searching the observable dependencies relation
-            observables_to_eval = set([self.dynamic_observables[id] for id in observables_to_eval])
-            observables_to_explore = set(observables_to_eval)
-            while observables_to_explore:
-                dyn_observable = observables_to_explore.pop()
-                for _,dependent_observable in dyn_observable.weighted_observables:
-                    if dependent_observable not in observables_to_eval:
-                        observables_to_eval.add(dependent_observable)
-                        observables_to_explore.add(dependent_observable)
-
-        # map from observable to its current value
-        evaluated_observables = {}
-        # map from observable to set of non-evaluated observables on which it depends
-        antecedent_observables = {}
-        observables_ready_to_eval = set()
-        for dyn_observable in observables_to_eval:
-            if dyn_observable.antecedent_observables:
-                antecedent_observables[dyn_observable] = set(dyn_observable.antecedent_observables)
-            else:
-                observables_ready_to_eval.add(dyn_observable)
-        # for dyn_observable,antecedents in antecedent_observables.items():
-        if not observables_ready_to_eval:
-            raise MultialgorithmError("observables_ready_to_eval is empty")
-    # TODO: complete or toss
-    '''
-
     def eval_dynamic_observables(self, time, observables_to_eval=None):
         """ Evaluate some dynamic observables at time `time`
 
