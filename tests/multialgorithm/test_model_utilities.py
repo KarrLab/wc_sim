@@ -19,8 +19,8 @@ from wc_sim.multialgorithm.model_utilities import ModelUtilities
 
 class TestModelUtilities(unittest.TestCase):
 
-    def get_submodel(self, id_val):
-        return Submodel.objects.get_one(id=id_val)
+    def get_submodel(self, model, id_val):
+        return model.submodels.get_one(id=id_val)
 
     MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_model.xlsx')
 
@@ -37,12 +37,12 @@ class TestModelUtilities(unittest.TestCase):
 
         mod1_expected_species_ids = ['specie_1[c]', 'specie_1[e]', 'specie_2[e]']
         mod1_expected_species = Species.get(mod1_expected_species_ids, self.model.get_species())
-        self.assertEqual(set(private_species[self.get_submodel('submodel_1')]),
+        self.assertEqual(set(private_species[self.get_submodel(self.model, 'submodel_1')]),
             set(mod1_expected_species))
 
         mod2_expected_species_ids = ['specie_4[c]', 'specie_5[c]', 'specie_6[c]']
         mod2_expected_species = Species.get(mod2_expected_species_ids, self.model.get_species())
-        self.assertEqual(set(private_species[self.get_submodel('submodel_2')]),
+        self.assertEqual(set(private_species[self.get_submodel(self.model, 'submodel_2')]),
             set(mod2_expected_species))
 
         private_species = ModelUtilities.find_private_species(self.model, return_ids=True)

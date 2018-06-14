@@ -113,7 +113,7 @@ class TestMultialgorithmSimulation(unittest.TestCase):
             submodel_2=['c']
         )
         for submodel_id in ['submodel_1', 'submodel_2']:
-            submodel = Submodel.objects.get_one(id=submodel_id)
+            submodel = self.model.submodels.get_one(id=submodel_id)
             submodel_dynamic_compartments = self.multialgorithm_simulation.get_dynamic_compartments(submodel)
             self.assertEqual(set(submodel_dynamic_compartments.keys()), set(expected_compartments[submodel_id]))
 
@@ -286,7 +286,7 @@ class TestSSaExceptions(unittest.TestCase):
             specie_copy_numbers={'spec_type_0[compt_1]':10, 'spec_type_1[compt_1]':10})
 
     def test_nan_propensities(self):
-        SpeciesType.objects.get_one(id='spec_type_0').molecular_weight = float('NaN')
+        self.model.species_types.get_one(id='spec_type_0').molecular_weight = float('NaN')
         multialgorithm_simulation = MultialgorithmSimulation(self.model, {})
         simulation_engine, _ = multialgorithm_simulation.build_simulation()
         with self.assertRaisesRegexp(AssertionError, "total propensities is 'NaN'"):
