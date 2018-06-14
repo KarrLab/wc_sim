@@ -22,7 +22,6 @@ from wc_sim.multialgorithm.make_models import MakeModels
 class TestRunResults(unittest.TestCase):
 
     def setUp(self):
-        SpeciesType.objects.reset()
         # create stored checkpoints and metadata
         self.temp_dir = tempfile.mkdtemp()
         # create and run simulation

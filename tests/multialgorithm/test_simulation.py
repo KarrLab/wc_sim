@@ -29,7 +29,6 @@ TOY_MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', '2_spec
 class TestSimulation(unittest.TestCase):
 
     def setUp(self):
-        SpeciesType.objects.reset()
         self.results_dir = tempfile.mkdtemp()
 
     def tearDown(self):

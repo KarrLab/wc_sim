@@ -27,7 +27,6 @@ from wc_sim.core.sim_metadata import SimulationMetadata
 class SimControllerTestCase(unittest.TestCase):
 
     def setUp(self):
-        SpeciesType.objects.reset()
         self.MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures',
                                            '2_species_1_reaction.xlsx')
         self.checkpoints_dir = tempfile.mkdtemp()

@@ -90,10 +90,6 @@ class TestDynamicModel(unittest.TestCase):
     MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_model.xlsx')
     DRY_MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_dry_model.xlsx')
 
-    def setUp(self):
-        for model in [Submodel, Reaction, SpeciesType]:
-            model.objects.reset()
-
     def read_model(self, model_filename):
         # read and initialize a model
         self.model = Reader().run(model_filename, strict=False)

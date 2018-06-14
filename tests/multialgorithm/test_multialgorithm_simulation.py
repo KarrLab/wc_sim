@@ -36,10 +36,6 @@ from wc_sim.core.simulation_checkpoint_object import CheckpointSimulationObject
 
 config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 
-def reset_wc_lang_obj_indices():
-    for base_model in [Submodel, Reaction, Species, SpeciesType]:
-        base_model.objects.reset()
-
 # TODO(Arthur): transcode & eval invariants
 class Invariant(object):
     """ Support invariant expressions on species concentrations for model testing
@@ -76,7 +72,6 @@ class TestMultialgorithmSimulation(unittest.TestCase):
     MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_model.xlsx')
 
     def setUp(self):
-        reset_wc_lang_obj_indices()
         # read and initialize a model
         self.model = Reader().run(self.MODEL_FILENAME, strict=False)
         self.args = dict(fba_time_step=1,
@@ -152,7 +147,6 @@ class TestRunSSASimulation(unittest.TestCase):
         shutil.rmtree(self.results_dir)
 
     def make_model_and_simulation(self, model_type, num_submodels, specie_copy_numbers=None, init_vols=None):
-        reset_wc_lang_obj_indices()
         # make simple model
         if init_vols is not None:
             if not isinstance(init_vols, list):
@@ -281,7 +275,6 @@ class TestRunSSASimulation(unittest.TestCase):
 class TestSSaExceptions(unittest.TestCase):
 
     def setUp(self):
-        reset_wc_lang_obj_indices()
         self.model = MakeModels.make_test_model('2 species, 1 reaction, with rates given by reactant population',
             specie_copy_numbers={'spec_type_0[compt_1]':10, 'spec_type_1[compt_1]':10})
 

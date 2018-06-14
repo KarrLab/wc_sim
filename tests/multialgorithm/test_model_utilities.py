@@ -25,7 +25,6 @@ class TestModelUtilities(unittest.TestCase):
 
     def setUp(self):
         # read a model
-        wc_lang.Submodel.objects.reset()
         self.model = Reader().run(self.MODEL_FILENAME, strict=False)
 
     def test_find_private_species(self):
