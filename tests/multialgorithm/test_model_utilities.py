@@ -5,28 +5,26 @@
 :License: MIT
 '''
 
-import unittest, os
+import os
+import unittest
 from argparse import Namespace
 from scipy.constants import Avogadro
 
 import wc_lang
-from wc_lang import ConcentrationUnit
-from wc_lang.io import Reader
-from wc_lang.core import RateLawEquation, RateLaw, Reaction, Submodel, Species
 from obj_model import utils
+from wc_lang.io import Reader
 from wc_sim.multialgorithm.model_utilities import ModelUtilities
 
 
 class TestModelUtilities(unittest.TestCase):
 
-    def get_submodel(self, id_val):
-        return Submodel.objects.get_one(id=id_val)
+    def get_submodel(self, model, id_val):
+        return model.submodels.get_one(id=id_val)
 
     MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_model.xlsx')
 
     def setUp(self):
         # read a model
-        Submodel.objects.reset()
         self.model = Reader().run(self.MODEL_FILENAME, strict=False)
 
     def test_find_private_species(self):
@@ -36,13 +34,13 @@ class TestModelUtilities(unittest.TestCase):
         private_species = ModelUtilities.find_private_species(self.model)
 
         mod1_expected_species_ids = ['specie_1[c]', 'specie_1[e]', 'specie_2[e]']
-        mod1_expected_species = Species.get(mod1_expected_species_ids, self.model.get_species())
-        self.assertEqual(set(private_species[self.get_submodel('submodel_1')]),
+        mod1_expected_species = wc_lang.Species.get(mod1_expected_species_ids, self.model.get_species())
+        self.assertEqual(set(private_species[self.get_submodel(self.model, 'submodel_1')]),
             set(mod1_expected_species))
 
         mod2_expected_species_ids = ['specie_4[c]', 'specie_5[c]', 'specie_6[c]']
-        mod2_expected_species = Species.get(mod2_expected_species_ids, self.model.get_species())
-        self.assertEqual(set(private_species[self.get_submodel('submodel_2')]),
+        mod2_expected_species = wc_lang.Species.get(mod2_expected_species_ids, self.model.get_species())
+        self.assertEqual(set(private_species[self.get_submodel(self.model, 'submodel_2')]),
             set(mod2_expected_species))
 
         private_species = ModelUtilities.find_private_species(self.model, return_ids=True)
@@ -52,7 +50,7 @@ class TestModelUtilities(unittest.TestCase):
     @unittest.skip("to be fixed")
     def test_find_shared_species(self):
         self.assertEqual(set(ModelUtilities.find_shared_species(self.model)),
-            set(Species.get(['specie_2[c]', 'specie_3[c]'], self.model.get_species())))
+            set(wc_lang.Species.get(['specie_2[c]', 'specie_3[c]'], self.model.get_species())))
 
         self.assertEqual(set(ModelUtilities.find_shared_species(self.model, return_ids=True)),
             set(['specie_2[c]', 'specie_3[c]']))
@@ -87,7 +85,7 @@ class TestModelUtilities(unittest.TestCase):
         compartment_c = model.compartments.create(id='c', initial_volume=1.)
 
         species_types = {}
-        for cu in ConcentrationUnit:
+        for cu in wc_lang.ConcentrationUnit:
             id = "species_type_{}".format(cu.name.replace(' ', '_'))
             species_types[cu.name] = model.species_types.create(id=id, molecular_weight=10)
 
@@ -100,8 +98,8 @@ class TestModelUtilities(unittest.TestCase):
 
         conc_value = 2.
         for key,specie in species.items():
-            if key in ConcentrationUnit.__members__:
-                wc_lang.Concentration(species=specie, value=conc_value, units=ConcentrationUnit.__members__[key].value)
+            if key in wc_lang.ConcentrationUnit.__members__:
+                wc_lang.Concentration(species=specie, value=conc_value, units=wc_lang.ConcentrationUnit.__members__[key].value)
             elif key == 'no_units':
                 wc_lang.Concentration(species=specie, value=conc_value)
             elif key == 'no_concentration':

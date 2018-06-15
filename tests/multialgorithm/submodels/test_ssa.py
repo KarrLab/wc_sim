@@ -35,9 +35,6 @@ class TestSsaSubmodel(unittest.TestCase):
             default_center_of_mass=default_center_of_mass)
         return ssa_submodel
 
-    def setUp(self):
-        SpeciesType.objects.reset()
-
     def test_SSA_submodel_init(self):
         model = MakeModels.make_test_model('1 species, 1 reaction')
         ssa_submodel = self.make_ssa_submodel(model, default_center_of_mass=20)
@@ -53,7 +50,6 @@ class TestSsaSubmodel(unittest.TestCase):
         # there's only one reaction
         self.assertEqual(propensities[0], total_propensities)
 
-        SpeciesType.objects.reset()
         spec_type_0_cn = 1000000
         specie_copy_numbers={
             'spec_type_0[compt_1]':spec_type_0_cn,
@@ -68,7 +64,6 @@ class TestSsaSubmodel(unittest.TestCase):
         self.assertEqual(propensities[0], propensities[1])
 
         # with rates given by reactant population, propensities proportional to copy number
-        SpeciesType.objects.reset()
         model = MakeModels.make_test_model(
             '2 species, a pair of symmetrical reactions rates given by reactant population',
             specie_copy_numbers=specie_copy_numbers)

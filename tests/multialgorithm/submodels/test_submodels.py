@@ -47,7 +47,7 @@ class TestDynamicSubmodel(unittest.TestCase):
 
     def setUp(self):
         warnings.simplefilter("ignore")
-        SpeciesType.objects.reset()
+        #SpeciesType.objects.reset()
 
         self.MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures',
             'test_submodel_no_shared_species.xlsx')
@@ -156,7 +156,6 @@ class TestDynamicSubmodel(unittest.TestCase):
 class TestSkeletonSubmodel(unittest.TestCase):
 
     def setUp(self):
-        SpeciesType.objects.reset()
         warnings.simplefilter("ignore")
         self.MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures',
             'test_submodel_no_shared_species.xlsx')

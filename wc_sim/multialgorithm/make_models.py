@@ -67,7 +67,7 @@ class MakeModels(object):
         return specie_copy_number/(vol*Avogadro)
 
     @staticmethod
-    def add_test_submodel(model, model_type, submodel_num, submodel_type, init_vol, species_types,
+    def add_test_submodel(model, model_type, submodel_num, init_vol, species_types,
         default_specie_copy_number, specie_copy_numbers, equations):
         """ Create a test submodel
 
@@ -77,14 +77,14 @@ class MakeModels(object):
         * 1 or 2 reactions
 
         Args:
+            model (:obj:`Model`): model
             model_type (:obj:`str`): model type description
+            submodel_num (:obj:`int`): submodel index within list of submodels
+            init_vol (:obj:`float`): initial volume of the compartment
+            species_types (:obj:`list` of :obj:`SpeciesType`): species types
             default_specie_copy_number (:obj:`int`): default population of all species in their compartments
-            specie_copy_numbers (:obj:`dict`): populations for particular species, which overrides `default_specie_copy_number`
-            init_vol (:obj:`float`, optional): initial volume of the compartment; default=1E-16
-            transform_prep_and_check (:obj:`bool`, optional): whether to transform, prepare and check the model
-
-        Returns:
-            :obj:`Model`: a `wc_lang` model
+            specie_copy_numbers (:obj:`dict`): populations for particular species, which overrides `default_specie_copy_number`            
+            equations (:obj:`dict`):
         """
         # local: compartment, species, conc, reaction, rate law, init_vol,
         default_concentration = MakeModels.convert_pop_conc(default_specie_copy_number, init_vol)
@@ -222,7 +222,7 @@ class MakeModels(object):
         equations = {}
         for i in range(num_submodels):
             submodel_num = i+1
-            MakeModels.add_test_submodel(model, model_type, submodel_num, model_type, init_vols[i],
+            MakeModels.add_test_submodel(model, model_type, submodel_num, init_vols[i],
                 species_types, default_specie_copy_number=default_specie_copy_number,
                 specie_copy_numbers=specie_copy_numbers, equations=equations)
 

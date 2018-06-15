@@ -36,10 +36,6 @@ from wc_sim.core.simulation_checkpoint_object import CheckpointSimulationObject
 
 config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 
-def reset_wc_lang_obj_indices():
-    for base_model in [Submodel, Reaction, Species, SpeciesType]:
-        base_model.objects.reset()
-
 # TODO(Arthur): transcode & eval invariants
 class Invariant(object):
     """ Support invariant expressions on species concentrations for model testing
@@ -76,7 +72,6 @@ class TestMultialgorithmSimulation(unittest.TestCase):
     MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_model.xlsx')
 
     def setUp(self):
-        reset_wc_lang_obj_indices()
         # read and initialize a model
         self.model = Reader().run(self.MODEL_FILENAME, strict=False)
         self.args = dict(fba_time_step=1,
@@ -113,7 +108,7 @@ class TestMultialgorithmSimulation(unittest.TestCase):
             submodel_2=['c']
         )
         for submodel_id in ['submodel_1', 'submodel_2']:
-            submodel = Submodel.objects.get_one(id=submodel_id)
+            submodel = self.model.submodels.get_one(id=submodel_id)
             submodel_dynamic_compartments = self.multialgorithm_simulation.get_dynamic_compartments(submodel)
             self.assertEqual(set(submodel_dynamic_compartments.keys()), set(expected_compartments[submodel_id]))
 
@@ -152,7 +147,6 @@ class TestRunSSASimulation(unittest.TestCase):
         shutil.rmtree(self.results_dir)
 
     def make_model_and_simulation(self, model_type, num_submodels, specie_copy_numbers=None, init_vols=None):
-        reset_wc_lang_obj_indices()
         # make simple model
         if init_vols is not None:
             if not isinstance(init_vols, list):
@@ -281,12 +275,11 @@ class TestRunSSASimulation(unittest.TestCase):
 class TestSSaExceptions(unittest.TestCase):
 
     def setUp(self):
-        reset_wc_lang_obj_indices()
         self.model = MakeModels.make_test_model('2 species, 1 reaction, with rates given by reactant population',
             specie_copy_numbers={'spec_type_0[compt_1]':10, 'spec_type_1[compt_1]':10})
 
     def test_nan_propensities(self):
-        SpeciesType.objects.get_one(id='spec_type_0').molecular_weight = float('NaN')
+        self.model.species_types.get_one(id='spec_type_0').molecular_weight = float('NaN')
         multialgorithm_simulation = MultialgorithmSimulation(self.model, {})
         simulation_engine, _ = multialgorithm_simulation.build_simulation()
         with self.assertRaisesRegexp(AssertionError, "total propensities is 'NaN'"):
