@@ -12,10 +12,10 @@ import warnings
 import tempfile
 
 import wc_utils.cache
-from wc_utils.util.enumerate import CaseInsensitiveEnum
 from wc_lang import StopCondition, Function, Observable
 from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
+from wc_lang.rate_law_utils import TokCodes
 
 '''
 Also:
@@ -131,14 +131,6 @@ class DynamicObservable(object):
             for coeff,dyn_obs in self.weighted_observables]))
         return '\n'.join(rv)
 
-# tokens must distinguish among species ids, observable ids, functions and other tokens
-class TokCodes(int, CaseInsensitiveEnum):
-    """ Token codes in parsed expressions """
-    species_id = 1
-    python_id = 2
-    math_function = 3
-    other = 4
-
 
 # assumes that wc_lang parses a Function into str tokens and Observable observables
 class DynamicFunction(object):
@@ -190,7 +182,7 @@ class DynamicFunction(object):
         # replace observable IDs with their current values
         tmp_tokens = []
         for value,code in self.tokens:
-            if code == TokCodes.python_id:
+            if code == TokCodes.wc_lang_obj_id:
                 if value not in self.dynamic_observables:   # pragma    no cover
                     raise MultialgorithmError("DynamicObservable '{}' not registered".format(id))
                 tmp_tokens.append(str(self.dynamic_observables[value].eval(time)))

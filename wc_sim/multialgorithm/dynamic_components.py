@@ -113,9 +113,10 @@ WATER_ID = 'H2O'
 
 
 class DynamicModel(object):
-    """ Represent the aggregate dynamics of a whole-cell model simulation
+    """ Represent and access the dynamics of a whole-cell model simulation
 
-    A `DynamicModel` determines aggregate properties that are not provided
+    A `DynamicModel` provides access to dynamical components of the simulation, and
+    determines aggregate properties that are not provided
     by other, more specific, dynamical components like species populations, submodels, and
     dynamic compartments.
 
@@ -241,6 +242,26 @@ class DynamicModel(object):
             }
         aggregate_state['compartments'] = compartments
         return aggregate_state
+
+    def eval_dynamic_obj(self, wc_lang_model_type, model_id, time):
+        """ Evaluate a dynamic instance at time `time`
+
+        Args:
+            wc_lang_model_type (:obj:`type`): the type of an `obj_model.Model` whose corresponding
+                dynamic model should be evaluated
+            model_id (:obj:`str`): the id of the dynamic model to evaluate
+            time (:obj:`float`): the simulation time
+
+        Returns:
+            :obj:`float`: the value of dynamic model at simulation time `time`
+        """
+        '''
+        Approach:
+            map wc_lang_model_type to the corresponding dynamic model type
+            use model_id to find the dynamic model instance
+            evaluate the dynamic model instance at time
+        '''
+        pass
 
     def eval_dynamic_observables(self, time, observables_to_eval=None):
         """ Evaluate some dynamic observables at time `time`

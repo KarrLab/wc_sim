@@ -9,10 +9,11 @@ import unittest
 import warnings
 import math
 
+from wc_lang.rate_law_utils import TokCodes
 from wc_lang import (StopCondition, Function, Observable, SpeciesType, Compartment, Species,
     SpeciesCoefficient, ObservableCoefficient)
 from wc_sim.multialgorithm.observables import (DynamicObservable, DynamicFunction,
-    DynamicStopCondition, TokCodes)
+    DynamicStopCondition)
 from wc_sim.multialgorithm.species_populations import MakeTestLSP
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm.dynamic_components import DynamicModel
@@ -52,8 +53,8 @@ class TestDynamicObservables(unittest.TestCase):
         self.init_pop = {'a[a]': 10, 'bb[bb]': 20}
         self.lsp = MakeTestLSP(initial_population=self.init_pop).local_species_pop
 
-        self.tokens = [('3', TokCodes.other), ('*', TokCodes.other), ('log', TokCodes.math_function),
-            ('(', TokCodes.other), ('obs_1', TokCodes.python_id), (')', TokCodes.other)]
+        self.tokens = [('3', TokCodes.other), ('*', TokCodes.other), ('log', TokCodes.math_fun_id),
+            ('(', TokCodes.other), ('obs_1', TokCodes.wc_lang_obj_id), (')', TokCodes.other)]
         self.pseudo_function = PseudoFunction('fun_1', self.tokens, [self.obs_1])
 
         self.model = MakeModels.make_test_model('1 species, 1 reaction')
@@ -121,8 +122,8 @@ class TestDynamicObservables(unittest.TestCase):
     def test_dynamic_stop_condition(self):
         dyn_obs_1 = DynamicObservable(self.dyn_mdl, self.lsp, self.obs_1)
         # expression: obs_1 < 90
-        tokens1 = [('obs_1', TokCodes.python_id), ('<', TokCodes.other), ('90', TokCodes.other)]
-        tokens2 = [('obs_1', TokCodes.python_id), ('>', TokCodes.other), ('90', TokCodes.other)]
+        tokens1 = [('obs_1', TokCodes.wc_lang_obj_id), ('<', TokCodes.other), ('90', TokCodes.other)]
+        tokens2 = [('obs_1', TokCodes.wc_lang_obj_id), ('>', TokCodes.other), ('90', TokCodes.other)]
         for tokens,expected_val in zip([tokens1, tokens2], [True, False]):
             pseudo_function = PseudoFunction('fun_1', tokens, [self.obs_1])
             dynamic_stop_cond = DynamicStopCondition(self.dyn_mdl, pseudo_function)
