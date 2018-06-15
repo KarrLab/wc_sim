@@ -8,6 +8,7 @@
 
 import os
 import unittest
+import time
 import shutil
 import tempfile
 import pandas
@@ -75,6 +76,40 @@ class TestSimulation(unittest.TestCase):
             ckpt = Checkpoint.get_checkpoint(results_dir, time=time)
             self.assertEqual(time, ckpt.time)
             self.assertTrue(ckpt.random_state != None)
+
+    def test_reseed(self):
+        # different seeds must make different results
+        seeds = [17, 19]
+        results = {}
+        run_results = {}
+        for seed in seeds:
+            with CaptureOutput(relay=False):
+                num_events, results_dir = Simulation(TOY_MODEL_FILENAME).run(end_time=20,
+                    results_dir=self.results_dir, checkpoint_period=5, seed=seed)
+            results[seed] = {}
+            results[seed]['num_events'] = num_events
+            run_results[seed] = RunResults(results_dir)
+        self.assertNotEqual(results[seeds[0]]['num_events'], results[seeds[1]]['num_events'])
+        self.assertFalse(run_results[seeds[0]].get('populations').equals(run_results[seeds[1]].get('populations')))
+
+        # a given seed must must always make the same result
+        seed = 117
+        results = {}
+        run_results = {}
+        for rep in range(2):
+            time.sleep(1)
+            with CaptureOutput(relay=False):
+                num_events, results_dir = Simulation(TOY_MODEL_FILENAME).run(end_time=20,
+                    results_dir=self.results_dir, checkpoint_period=5, seed=seed)
+            results[rep] = {}
+            results[rep]['num_events'] = num_events
+            run_results[rep] = RunResults(results_dir)
+        self.assertEqual(results[0]['num_events'], results[1]['num_events'])
+        self.assertTrue(run_results[0].get('populations').equals(run_results[1].get('populations')))
+        for component in RunResults.COMPONENTS:
+            # metadata differs, because it includes timestamp
+            if component != 'metadata':
+                self.assertTrue(run_results[0].get(component).equals(run_results[1].get(component)))
 
 
 class TestProcessAndValidateArgs(unittest.TestCase):

@@ -8,7 +8,9 @@
 
 import os
 import datetime
+import numpy
 
+from wc_utils.util.rand import RandomStateManager
 import wc_lang
 from wc_lang.io import Reader
 from wc_lang.core import Model
@@ -170,7 +172,7 @@ class Simulation(object):
                 raise MultialgorithmError("Timestep for time-stepped submodels ({}) must be positive and less than or "
                     "equal to end time".format(args['time_step']))
 
-    def run(self, end_time, results_dir=None, checkpoint_period=None, time_step=1):
+    def run(self, end_time, results_dir=None, checkpoint_period=None, time_step=1, seed=None):
         """ Run one simulation
 
         Args:
@@ -178,12 +180,17 @@ class Simulation(object):
             results_dir (:obj:`str`, optional): path to a directory in which results are stored
             checkpoint_period (:obj:`float`, optional): the period between simulation state checkpoints (sec)
             time_step (:obj:`float`, optional): time step length of time-stepped submodels (sec)
+            seed (:obj:`object`, optional): a seed for the simulation's `numpy.random.RandomState`;
+                if provided, `seed` will reseed the simulator's PRNG
 
         Returns:
             :obj:`tuple` of (`int`, `str`): number of simulation events, pathname of directory
                 containing the results, or :obj:`tuple` of (`int`, `None`): number of simulation events,
                 `None` if `results_dir=None`
         """
+        if seed is not None:
+            RandomStateManager.initialize(seed=seed)
+
         self.sim_config = sim_config.SimulationConfig(time_max=end_time, time_step=time_step)
         self._prepare()
 
