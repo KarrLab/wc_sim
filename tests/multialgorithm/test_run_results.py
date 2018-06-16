@@ -11,6 +11,7 @@ import shutil
 import tempfile
 import pandas
 import numpy
+from capturer import CaptureOutput
 
 from wc_lang.core import SpeciesType
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
@@ -29,8 +30,9 @@ class TestRunResults(unittest.TestCase):
         simulation = Simulation(model)
         self.checkpoint_period = 10
         self.max_time = 100
-        _, self.results_dir = simulation.run(end_time=self.max_time, results_dir=self.temp_dir,
-            checkpoint_period=self.checkpoint_period)
+        with CaptureOutput(relay=False) as capturer:
+            _, self.results_dir = simulation.run(end_time=self.max_time, results_dir=self.temp_dir,
+                checkpoint_period=self.checkpoint_period)
 
     def tearDown(self):
         shutil.rmtree(self.temp_dir)
