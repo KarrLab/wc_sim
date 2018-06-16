@@ -15,7 +15,7 @@ import wc_utils.cache
 from wc_lang import StopCondition, Function, Observable
 from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
-from wc_lang.rate_law_utils import TokCodes
+from wc_lang.expression_utils import TokCodes
 
 '''
 Also:
