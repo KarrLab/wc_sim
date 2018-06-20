@@ -16,6 +16,7 @@ import math
 import numpy
 import warnings
 
+from wc_lang import transform
 from wc_utils.util.misc import obj_to_str
 
 
@@ -113,8 +114,8 @@ class SimulationConfig(object):
             model (:obj:`wc.sim.model.Model`): model
         """
 
-        # .. todo:: implement
-        pass  # pragma: no cover
+        for change in self.changes:
+            transform.ChangeParameterTransform(change.target, change.value).run(model)
 
     def apply_perturbations(self, model):
         """ Applies perturbations to model
@@ -123,8 +124,9 @@ class SimulationConfig(object):
             model (:obj:`wc.sim.model.Model`): model
         """
 
-        # .. todo:: implement
-        pass  # pragma: no cover
+        for perturbation in self.perturbations:
+            # .. todo:: implement
+            pass  # pragma: no cover
 
     def get_num_time_steps(self):
         """ Calculate number of simulation timesteps
@@ -179,12 +181,17 @@ class Change(object):
     """ Represents a change to a model
 
     Attributes:
-        target (:obj:`str`): id of the state/parameter to perturb
+        target (:obj:`list`): chain of ids of the attribute to change
         value (:obj:`float`): desired value
     """
     ATTRIBUTES = ['target', 'value']
 
     def __init__(self, target, value):
+        """
+        Args:
+            target (:obj:`list`): chain of ids of the attribute to change
+            value (:obj:`float`): desired value
+        """
         self.target = target
         self.value = value
 
@@ -375,7 +382,7 @@ class SedMl(object):
         changes = []
         mdl = cfg_ml.getModel(0)
         for change_ml in mdl.getListOfChanges():
-            target = change_ml.getTarget()
+            target = change_ml.getTarget().split('.')
             value = float(change_ml.getNewValue())
             changes.append(Change(target, value))
 
@@ -383,7 +390,7 @@ class SedMl(object):
         perturbations = []
         for task_ml in cfg_ml.getListOfTasks():
             change_ml = task_ml.getTaskChange(0)
-            target = change_ml.getTarget()
+            target = change_ml.getTarget().split('.')
             value = float(libsedml.formulaToString(change_ml.getMath()))
             change = Change(target, value)
 
@@ -441,7 +448,7 @@ class SedMl(object):
         mdl = cfg_ml.createModel()
         for change in cfg.changes:
             change_ml = mdl.createChangeAttribute()
-            change_ml.setTarget(change.target)
+            change_ml.setTarget('.'.join(change.target))
             change_ml.setNewValue(str(change.value))
 
         # write perturbations
@@ -449,7 +456,7 @@ class SedMl(object):
             task_ml = cfg_ml.createRepeatedTask()
 
             change_ml = task_ml.createTaskChange()
-            change_ml.setTarget(perturbation.change.target)
+            change_ml.setTarget('.'.join(perturbation.change.target))
             change_ml.setMath(libsedml.parseFormula(str(perturbation.change.value)))
 
             if perturbation.end_time and not numpy.isnan(perturbation.end_time):

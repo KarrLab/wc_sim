@@ -27,12 +27,12 @@ class TestSimulationConfig(unittest.TestCase):
         time_max = 100
         time_step = 2
         changes = [
-            sim_config.Change(target='rxn-1.vmax', value=1),
-            sim_config.Change(target='species-1', value=2),
+            sim_config.Change(target=['rxn-1', 'vmax'], value=1),
+            sim_config.Change(target=['species-1'], value=2),
         ]
         perturbations = [
-            sim_config.Perturbation(sim_config.Change('rxn-1.vmax', 3), start_time=1),
-            sim_config.Perturbation(sim_config.Change('species-1', 4), start_time=0, end_time=10),
+            sim_config.Perturbation(sim_config.Change(['rxn-1', 'vmax'], 3), start_time=1),
+            sim_config.Perturbation(sim_config.Change(['species-1'], 4), start_time=0, end_time=10),
         ]
         random_seed = 3
         cfg = sim_config.SimulationConfig(time_max=time_max, time_step=time_step, changes=changes,
@@ -107,12 +107,12 @@ class TestSedMlImportExport(unittest.TestCase):
         time_max = 100.0
         time_step = 2.0
         changes = [
-            sim_config.Change(target='rxn-1.vmax', value=1),
-            sim_config.Change(target='species-1', value=2),
+            sim_config.Change(target=['rxn-1', 'vmax'], value=1),
+            sim_config.Change(target=['species-1'], value=2),
         ]
         perturbations = [
-            sim_config.Perturbation(sim_config.Change('rxn-1.vmax', 3), start_time=1),
-            sim_config.Perturbation(sim_config.Change('species-1', 4), start_time=0, end_time=10),
+            sim_config.Perturbation(sim_config.Change(['rxn-1', 'vmax'], 3), start_time=1),
+            sim_config.Perturbation(sim_config.Change(['species-1'], 4), start_time=0, end_time=10),
         ]
         random_seed = 3
         cfg = sim_config.SimulationConfig(time_max=time_max, time_step=time_step, changes=changes,
