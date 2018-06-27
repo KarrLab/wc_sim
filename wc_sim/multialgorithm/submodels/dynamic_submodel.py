@@ -11,7 +11,7 @@ import numpy as np
 from scipy.constants import Avogadro
 
 from wc_lang.core import Species, Reaction, Compartment, Parameter
-from wc_lang.rate_law_utils import RateLawUtils
+from wc_lang.expression_utils import RateLawUtils
 from wc_sim.multialgorithm.dynamic_components import DynamicCompartment
 from wc_sim.core.simulation_object import SimulationObject, ApplicationSimulationObject
 from wc_sim.multialgorithm.utils import get_species_and_compartment_from_name
