@@ -9,7 +9,7 @@ import unittest
 import warnings
 import math
 
-from wc_lang.rate_law_utils import TokCodes
+from wc_lang.expression_utils import TokCodes
 from wc_lang import (StopCondition, Function, Observable, SpeciesType, Compartment, Species,
     SpeciesCoefficient, ObservableCoefficient)
 from wc_sim.multialgorithm.observables import (DynamicObservable, DynamicFunction,
