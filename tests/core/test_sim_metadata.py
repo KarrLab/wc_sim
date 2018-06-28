@@ -12,6 +12,7 @@ import unittest
 import copy
 import shutil
 import tempfile
+import wc_lang
 
 from wc_sim.core import sim_config
 from wc_sim.core.sim_metadata import SimulationMetadata, ModelMetadata, AuthorMetadata, RunMetadata
@@ -29,18 +30,36 @@ class TestMetadata(unittest.TestCase):
         self.model_different.branch = self.model_equal.branch + 'x'
 
         changes = [
-            sim_config.Change(target='rxn-1.km', value=1),
-            sim_config.Change(target='species-1', value=1),
+            sim_config.Change(
+                wc_lang.Reaction,
+                'rxn-1',
+                ['rate_laws', 'forward', 'k_m'],
+                1),
+            sim_config.Change(
+                wc_lang.Species,
+                'species-1[compartment-1]',
+                ['concentration', 'value'],
+                1),
         ]
         perturbations = [
-            sim_config.Perturbation(sim_config.Change(target='rxn-1.km', value=1), start_time=5),
-            sim_config.Perturbation(sim_config.Change(target='species-1', value=1), start_time=0, end_time=10),
+            sim_config.Perturbation(sim_config.Change(
+                wc_lang.Reaction,
+                'rxn-1',
+                ['rate_laws', 'forward', 'k_m'],
+                1,
+            ), start_time=5),
+            sim_config.Perturbation(sim_config.Change(
+                wc_lang.Species,
+                'species-1[compartment-1]',
+                ['concentration', 'value'],
+                1,
+            ), start_time=0, end_time=10),
         ]
         simulation = sim_config.SimulationConfig(time_max=100, time_step=1, changes=changes,
-                                                    perturbations=perturbations, random_seed=1)
+                                                 perturbations=perturbations, random_seed=1)
 
         self.author = author = AuthorMetadata(name='Test user', email='test@test.com',
-            username='Test username', organization='Test organization')
+                                              username='Test username', organization='Test organization')
 
         self.run = run = RunMetadata()
         run.record_start()
