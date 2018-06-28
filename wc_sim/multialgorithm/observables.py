@@ -18,12 +18,12 @@ from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_lang.expression_utils import TokCodes
 
 '''
-Also:
-    failing test for wc_lang that shows the str.replace() problem, and try to fix
-    expression parser for DynamicFunction, generalized for ObjectiveFunction, RateLaws, StopCondition, etc.
-        prohibit observable names that conflict with functions (but could be relaxed with smarter parsing)
-    Make observables available to rate law calculations
-Later:
+# TODO:
+build
+    memoize all evals
+    rename to dynamic_expressions
+    jupyter examples
+cleanup
     memoize performance comparison; decide whether to trash or finish implementing direct dependency tracking eval
     clean up memoize cache file?
 '''
