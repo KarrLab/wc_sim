@@ -86,10 +86,12 @@ class ModelUtilities(object):
     def concentration_to_molecules(species):
         '''Provide the copy number of `species` from its concentration
 
-        Copy number is be rounded to the closest integer to avoid truncating small populations
+        Copy number is be rounded to the closest integer to avoid truncating small populations.
 
         Args:
-            species (:obj:`Species`): a `Species` instance
+            species (:obj:`Species`): a `Species` instance; the `species.concentration.units` must
+                be `None` or a value selected from `ConcentrationUnit`; `None` is interpreted as
+                `ConcentrationUnit.M`; `ConcentrationUnit['moles dm^-2']` is not supported
 
         Returns:
             `int`: the `species'` copy number
