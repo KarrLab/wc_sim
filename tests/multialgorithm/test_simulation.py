@@ -83,12 +83,14 @@ class TestSimulation(unittest.TestCase):
         results = {}
         run_results = {}
         for seed in seeds:
+            tmp_results_dir = tempfile.mkdtemp()
             with CaptureOutput(relay=False):
                 num_events, results_dir = Simulation(TOY_MODEL_FILENAME).run(end_time=20,
-                    results_dir=self.results_dir, checkpoint_period=5, seed=seed)
+                    results_dir=tmp_results_dir, checkpoint_period=5, seed=seed)
             results[seed] = {}
             results[seed]['num_events'] = num_events
             run_results[seed] = RunResults(results_dir)
+            shutil.rmtree(tmp_results_dir)
         self.assertNotEqual(results[seeds[0]]['num_events'], results[seeds[1]]['num_events'])
         self.assertFalse(run_results[seeds[0]].get('populations').equals(run_results[seeds[1]].get('populations')))
 
@@ -97,13 +99,14 @@ class TestSimulation(unittest.TestCase):
         results = {}
         run_results = {}
         for rep in range(2):
-            time.sleep(1)
+            tmp_results_dir = tempfile.mkdtemp()
             with CaptureOutput(relay=False):
                 num_events, results_dir = Simulation(TOY_MODEL_FILENAME).run(end_time=20,
-                    results_dir=self.results_dir, checkpoint_period=5, seed=seed)
+                    results_dir=tmp_results_dir, checkpoint_period=5, seed=seed)
             results[rep] = {}
             results[rep]['num_events'] = num_events
             run_results[rep] = RunResults(results_dir)
+            shutil.rmtree(tmp_results_dir)
         self.assertEqual(results[0]['num_events'], results[1]['num_events'])
         self.assertTrue(run_results[0].get('populations').equals(run_results[1].get('populations')))
         for component in RunResults.COMPONENTS:
