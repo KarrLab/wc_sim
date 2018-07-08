@@ -47,14 +47,16 @@ class DynamicSubmodel(ApplicationSimulationObject):
     def __init__(self, id, reactions, species, parameters, dynamic_compartments, local_species_population):
         """ Initialize a dynamic submodel
         """
+        super().__init__(id)
         self.id = id
         self.reactions = reactions
+        self.log_with_time("submodel: {}; reactions: {}".format(self.id,
+            [reaction.id for reaction in reactions]))
         self.species = species
         self.parameters = parameters
         self.dynamic_compartments = dynamic_compartments
         self.local_species_population = local_species_population
         self.logger = debug_logs.get_log('wc.debug.file')
-        super().__init__(id)
 
     # The next 3 methods implement the abstract methods in ApplicationSimulationObject
     def send_initial_events(self):

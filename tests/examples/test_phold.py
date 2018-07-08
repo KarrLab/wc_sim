@@ -16,7 +16,7 @@ from copy import copy
 
 from tests.utilities_for_testing import make_args
 
-# turn off logging by changing config to raise the 'wc.debug.console', 'level' above DEBUG, to ERROR
+# turn off logging by changing config to raise the 'wc.debug.console' 'level' above DEBUG, to ERROR
 # share this with phold by setting a temporary config environ variable & then importing phold which imports debug_logs
 # to avoid any other side effects, run the import in a context that creates a temporary environment
 from wc_utils.util.environ import EnvironUtils, MakeEnvironArgs

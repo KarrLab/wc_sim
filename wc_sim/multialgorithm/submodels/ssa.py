@@ -154,6 +154,7 @@ class SSASubmodel(DynamicSubmodel):
         # propensities can be proportional because only relative values are considered
         # thus, they don't need to be multiplied by volume * Avogadro
         proportional_propensities = np.maximum(0, self.calc_reaction_rates())
+        self.log_with_time("submodel: {}; proportional_propensities: {}".format(self.id, proportional_propensities))
 
         # avoid reactions with inadequate specie counts
         # TODO(Arthur): incorporate generalization in the COPASI paper
