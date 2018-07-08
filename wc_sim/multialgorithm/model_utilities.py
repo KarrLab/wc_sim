@@ -80,6 +80,8 @@ class ModelUtilities(object):
             return set([shared_specie.serialize() for shared_specie in shared_species])
         return(shared_species)
 
+    CONCENTRATION_UNIT_VALUES = set([unit.value for unit in ConcentrationUnit.__members__.values()])
+
     @staticmethod
     def concentration_to_molecules(species):
         '''Provide the copy number of `species` from its concentration
@@ -102,6 +104,8 @@ class ModelUtilities(object):
             units = conc.units
             if units is None:
                 units = ConcentrationUnit.M.value
+            if not units in ModelUtilities.CONCENTRATION_UNIT_VALUES:
+                raise ValueError("units '{}' not a value in ConcentrationUnit".format(units))
             if units == ConcentrationUnit['moles dm^-2'].value:
                 raise ValueError("ConcentrationUnit 'moles dm^-2' not supported")
             if units == ConcentrationUnit['molecules'].value:

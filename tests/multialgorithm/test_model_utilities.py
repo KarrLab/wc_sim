@@ -127,3 +127,12 @@ class TestModelUtilities(unittest.TestCase):
         self.assertEqual(copy_number, 0)
         with self.assertRaises(ValueError):
             ModelUtilities.concentration_to_molecules(species['moles dm^-2'])
+
+        species_tmp = wc_lang.Species(species_type=species_type, compartment=compartment_c)
+        wc_lang.Concentration(species=species_tmp, value=conc_value, units='molecules')
+        with self.assertRaises(ValueError):
+            ModelUtilities.concentration_to_molecules(species_tmp)
+        species_tmp2 = wc_lang.Species(species_type=species_type, compartment=compartment_c)
+        wc_lang.Concentration(species=species_tmp2, value=conc_value, units=0)
+        with self.assertRaises(ValueError):
+            ModelUtilities.concentration_to_molecules(species_tmp2)
