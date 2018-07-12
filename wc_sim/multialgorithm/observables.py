@@ -10,7 +10,9 @@ import re
 import os
 import warnings
 import tempfile
+from collections import namedtuple
 
+from wc_utils.util.enumerate import CaseInsensitiveEnum
 import wc_utils.cache
 from wc_lang import StopCondition, Function, Observable
 from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation
@@ -20,6 +22,7 @@ from wc_lang.expression_utils import TokCodes
 '''
 # TODO:
 build
+    subclass all DynamicX from DynamicComponent
     memoize all evals
     rename to dynamic_expressions
     jupyter examples
@@ -28,28 +31,85 @@ cleanup
     clean up memoize cache file?
 '''
 
-class ParseWcLangExpr(object):
-    '''
-        Parse expr into sequence of (value, `TokCodes`) tokens
-        Report errors on failed parses
-    '''
-    def __init__(self, expr):
-        """
-        Args:
-            expr (:obj:`str`): a Python expression used by `wc_lang`
-        """
-        self.expr = expr
 
-    def tokenize(self, expr_type):
+class DynamicComponent(object):
+    """ Component of a simulation
+
+    Attributes:
+        dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
+        local_species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
+        id (:obj:`str`): unique id
+    """
+    def __init__(self, dynamic_model, local_species_population, wc_lang_model):
         """
         Args:
-            expr_type (:obj:`DynamicModel`): the simulation's dynamic model
+            dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
+            local_species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
+            wc_lang_model (:obj:`obj_model.Model`): the corresponding `wc_lang` `Model`
 
         Raises:
-            :obj:`MultialgorithmError`: if `observable` has an empty id, or doesn't have a corresponding
-                dynamic observable registered with `dynamic_model`
+            :obj:`MultialgorithmError`: if `wc_lang_model` does not have an id
         """
-        pass
+        self.dynamic_model = dynamic_model
+        self.local_species_population = local_species_population
+        if not hasattr(wc_lang_model, 'id') or wc_lang_model.id == '':
+            raise MultialgorithmError("wc_lang_model must have an id")
+        self.id = wc_lang_model.id
+
+
+class SimTokCodes(int, CaseInsensitiveEnum):
+    """ Token codes used in WcSimTokens """
+    dynamic_component = 1
+    math_fun = 2
+    other = 3
+
+
+# a token in DynamicExpression.wc_tokens
+WcSimToken = namedtuple('WcSimToken', 'tok_code, token_string, dynamic_component')
+# make dynamic_component optional: see https://stackoverflow.com/a/18348004
+WcSimToken.__new__.__defaults__ = (None)
+WcSimToken.__doc__ += ': Token in a validated expression'
+WcSimToken.tok_code.__doc__ = 'SimTokCodes encoding'
+WcSimToken.token_string.__doc__ = "The token's string"
+WcSimToken.dynamic_component.__doc__ = "When tok_code is dynamic_component, the dynamic_component instance"
+
+
+class DynamicExpression(object):
+    """ Simulation representation of a mathematical expression, based on WcLangExpression
+
+    Attributes:
+        source (:obj:`str`): the `wc_lang` Model source for this expression
+        wc_tokens (:obj:`list` of `WcSimToken`): a tokenized representation of the expression
+    """
+    def __init__(self, wc_lang_expression):
+        """
+        Args:
+            wc_lang_expression (:obj:`WcLangExpression`): an analyzed and validated expression
+
+        Raises:
+            :obj:`MultialgorithmError`: if `wc_lang_expression` does not contain an analyzed,
+                validated expression;
+        """
+        if not wc_lang_expression.wc_tokens:
+            raise MultialgorithmError("wc_tokens cannot be empty")
+        self.wc_tokens = []
+        for wc_token in wc_lang_expression.wc_tokens:
+            if wc_token.tok_code == TokCodes.wc_lang_obj_id:
+                dynamic_component = get_dynamic_component(wc_token.model_type, wc_token.model_id)
+                self.wc_tokens.append(WcSimToken(SimTokCodes.dynamic_component, wc_token.token_string,
+                    dynamic_component))
+            elif wc_token.tok_code == TokCodes.math_fun_id:
+                self.wc_tokens.append(WcSimToken(SimTokCodes.math_fun, wc_token.token_string))
+            elif wc_token.tok_code == TokCodes.other:
+                self.wc_tokens.append(WcSimToken(SimTokCodes.other, wc_token.token_string))
+
+
+class DynamicExpressionComponent(DynamicComponent):
+    """ Component of a simulation that contains a mathematical expression
+
+    Attributes:
+    """
+    pass
 
 
 class DynamicObservable(object):
