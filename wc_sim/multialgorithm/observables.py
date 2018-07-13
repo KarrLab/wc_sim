@@ -103,6 +103,27 @@ class DynamicExpression(object):
             elif wc_token.tok_code == TokCodes.other:
                 self.wc_tokens.append(WcSimToken(SimTokCodes.other, wc_token.token_string))
 
+    def eval(self, time):
+        """ Evaluate the mathematical expression in `wc_tokens`
+
+        This expression must have been successfully `tokenize`d.
+
+        Called to validate this by the simulator when it calculates the value of a dynamic object, such as a
+        `DynamicObservable`, or a `RateLawEquation`.
+
+        Approach:
+            * Replace references to related Models in `self.wc_tokens` with their values
+            * Join the elements of `self.wc_tokens` into a Python expression
+            * `eval` the Python expression
+
+        Args:
+            time (:obj:`float`): the current simulation time
+            dynamic_model (:obj:`wc_sim.DynamicModel`): a simulation's dynamical access method
+            testing (:obj:`bool`): if set, test `eval` the expression, using values of 1.0 for all related Models;
+                default = `False`
+        """
+        pass
+
 
 class DynamicExpressionComponent(DynamicComponent):
     """ Component of a simulation that contains a mathematical expression
