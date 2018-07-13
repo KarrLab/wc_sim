@@ -210,7 +210,9 @@ class DynamicSubmodel(ApplicationSimulationObject):
         for participant in reaction.participants:
             species_id = Species.gen_id(participant.species.species_type,
                 participant.species.compartment)
-            adjustments[species_id] = participant.coefficient
+            if not species_id in adjustments:
+                adjustments[species_id] = 0
+            adjustments[species_id] += participant.coefficient
         try:
             self.local_species_population.adjust_discretely(self.time, adjustments)
         except SpeciesPopulationError as e:
