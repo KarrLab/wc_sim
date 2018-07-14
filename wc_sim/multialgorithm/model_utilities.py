@@ -84,7 +84,7 @@ class ModelUtilities(object):
 
     @staticmethod
     def concentration_to_molecules(species):
-        '''Provide the copy number of `species` from its concentration
+        '''Provide the initial copy number of `species` from its concentration
 
         Copy number is be rounded to the closest integer to avoid truncating small populations.
 
@@ -116,21 +116,6 @@ class ModelUtilities(object):
             factor = 10 ** -unit_magnitudes
             # population must be rounded to the closest integer to avoid truncating small populations
             return int(round(factor * conc.value * species.compartment.initial_volume * Avogadro))
-
-    @staticmethod
-    def initial_specie_concentrations(model):
-        '''Get a dictionary of the initial species concentrations in a model
-
-        Args:
-            model (:obj:`Model`): a `Model` instance
-
-        Returns:
-            `dict`: specie_id -> concentration, for each specie
-        '''
-        concentrations = {specie.serialize():0.0 for specie in model.get_species()}
-        for concentration in model.get_concentrations():
-            concentrations[concentration.species.serialize()] = concentration.value
-        return concentrations
 
     @staticmethod
     def parse_specie_id(specie_id):

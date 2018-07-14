@@ -9,9 +9,10 @@ import unittest
 import os, sys
 import numpy as np
 import warnings
+from scipy.constants import Avogadro
 
 from wc_lang.io import Reader
-from wc_lang.core import Reaction, SpeciesType, Species
+from wc_lang.core import Reaction, SpeciesType, Species, Model
 from wc_lang.prepare import PrepareModel, CheckModel
 from wc_lang.transform import SplitReversibleReactionsTransform
 from wc_sim.core.simulation_object import SimulationObject
@@ -24,6 +25,7 @@ from wc_sim.multialgorithm.utils import get_species_and_compartment_from_name
 from wc_sim.multialgorithm.make_models import MakeModels
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm.submodels.skeleton_submodel import SkeletonSubmodel
+from wc_sim.multialgorithm.model_utilities import ModelUtilities
 from obj_model.utils import get_component_by_id
 
 def prepare_model(model):
@@ -47,7 +49,6 @@ class TestDynamicSubmodel(unittest.TestCase):
 
     def setUp(self):
         warnings.simplefilter("ignore")
-        #SpeciesType.objects.reset()
 
         self.MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures',
             'test_submodel_no_shared_species.xlsx')
@@ -70,15 +71,15 @@ class TestDynamicSubmodel(unittest.TestCase):
         for dynamic_submodel in self.dynamic_submodels.values():
             self.assertEqual(dynamic_submodel.get_state(), DynamicSubmodel.GET_STATE_METHOD_MESSAGE)
 
+    def expected_molar_conc(self, dynamic_submodel, specie_id):
+        species = list(filter(lambda s: s.id() == specie_id, dynamic_submodel.species))[0]
+        copy_num = ModelUtilities.concentration_to_molecules(species)
+        return copy_num / (species.compartment.initial_volume * Avogadro)
+
     def test_get_specie_concentrations(self):
-        expected_conc = {}
-        for conc in self.model.get_concentrations():
-            expected_conc[
-                Species.gen_id(conc.species.species_type, conc.species.compartment)] = conc.value
         for dynamic_submodel in self.dynamic_submodels.values():
-            for specie_id,v in dynamic_submodel.get_specie_concentrations().items():
-                if specie_id in expected_conc:
-                    self.assertAlmostEqual(expected_conc[specie_id], v)
+            for specie_id,value in dynamic_submodel.get_specie_concentrations().items():
+                self.assertEqual(self.expected_molar_conc(dynamic_submodel, specie_id), value)
 
         for dynamic_submodel in self.misconfigured_dynamic_submodels.values():
             with self.assertRaises(MultialgorithmError) as context:
@@ -105,7 +106,7 @@ class TestDynamicSubmodel(unittest.TestCase):
                     self.assertAlmostEqual(list(rates)[index], expected_rates[rxn.id])
 
     expected_enabled = {
-        'submodel_1': set(['reaction_1', '__exchange_reaction__1', '__exchange_reaction__2']),
+        'submodel_1': set(['reaction_1', 'reaction_2', '__exchange_reaction__1', '__exchange_reaction__2']),
         'submodel_2': set(['reaction_4', 'reaction_3_forward', 'reaction_3_backward']),
     }
     def test_enabled_reaction(self):
@@ -124,20 +125,7 @@ class TestDynamicSubmodel(unittest.TestCase):
             enabled = dynamic_submodel.identify_enabled_reactions()
             self.assertTrue(np.array_equal(enabled, expected_array))
 
-    def test_execute_reaction(self):
-        # test one reaction 'by hand'
-        # reversible reactions have been split in two
-        adjustments = {'reaction_3_forward': {'specie_2[c]':-1, 'specie_4[c]':-2, 'specie_5[c]':1}}
-        for dynamic_submodel in self.dynamic_submodels.values():
-            for reaction in dynamic_submodel.reactions:
-                if reaction.id in adjustments:
-                    before = dynamic_submodel.get_specie_counts()
-                    dynamic_submodel.execute_reaction(reaction)
-                    after = dynamic_submodel.get_specie_counts()
-                    for specie_id in adjustments[reaction.id].keys():
-                        self.assertEqual(adjustments[reaction.id][specie_id],
-                            after[specie_id]-before[specie_id])
-
+    def test_execute_disabled_reactions(self):
         # test exception by executing reactions that aren't enabled
         enabled_rxn_ids = []
         for set_rxn_ids in TestDynamicSubmodel.expected_enabled.values():
@@ -151,6 +139,23 @@ class TestDynamicSubmodel(unittest.TestCase):
                         dynamic_submodel.execute_reaction(reaction)
                     self.assertRegex(str(context.exception),
                         "dynamic submodel .* cannot execute reaction")
+
+    def do_test_execute_reaction(self, reaction_id, expected_adjustments):
+        rxn = self.model.get_component('reaction', reaction_id)
+        dynamic_submodel = self.dynamic_submodels[rxn.submodel.id]
+        before = dynamic_submodel.get_specie_counts()
+        dynamic_submodel.execute_reaction(rxn)
+        after = dynamic_submodel.get_specie_counts()
+        for specie_id,change in expected_adjustments.items():
+            self.assertEqual(change, after[specie_id]-before[specie_id])
+
+    def test_execute_reaction(self):
+        # test reactions 'by hand'
+        # reversible reactions have been split in two
+        self.do_test_execute_reaction('reaction_3_forward',
+            {'specie_2[c]':-1, 'specie_4[c]':-2, 'specie_5[c]':1})
+        # test reaction in which a species appears multiple times
+        self.do_test_execute_reaction('reaction_2', {'specie_1[c]':1, 'specie_3[c]':1})
 
 
 class TestSkeletonSubmodel(unittest.TestCase):

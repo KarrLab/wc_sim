@@ -11,7 +11,7 @@ import numpy as np
 
 from wc_lang.core import (Model, Submodel,  SpeciesType, Species, Reaction, Compartment,
                           SpeciesCoefficient, Parameter, RateLaw, RateLawEquation,
-                          SubmodelAlgorithm, Concentration)
+                          SubmodelAlgorithm)
 from wc_sim.core.simulation_engine import SimulationEngine
 from wc_sim.multialgorithm.submodels.ssa import SSASubmodel
 from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation

@@ -55,14 +55,6 @@ class TestModelUtilities(unittest.TestCase):
         self.assertEqual(set(ModelUtilities.find_shared_species(self.model, return_ids=True)),
             set(['specie_2[c]', 'specie_3[c]']))
 
-    def test_get_initial_specie_concentrations(self):
-        initial_specie_concentrations = ModelUtilities.initial_specie_concentrations(self.model)
-        some_specie_concentrations = {
-            'specie_2[e]':2.0E-4,
-            'specie_2[c]':5.0E-4 }
-        for k in some_specie_concentrations.keys():
-            self.assertEqual(initial_specie_concentrations[k], some_specie_concentrations[k])
-
     def test_parse_specie_id(self):
         self.assertEqual(ModelUtilities.parse_specie_id('good_id[good_compt]'), ('good_id', 'good_compt'))
         with self.assertRaises(ValueError):
@@ -105,28 +97,29 @@ class TestModelUtilities(unittest.TestCase):
             elif key == 'no_concentration':
                 continue
 
-        copy_number = ModelUtilities.concentration_to_molecules(species['molecules'])
+        conc_to_molecules = ModelUtilities.concentration_to_molecules
+        copy_number = conc_to_molecules(species['molecules'])
         self.assertEqual(copy_number, conc_value)
-        copy_number = ModelUtilities.concentration_to_molecules(species['M'])
+        copy_number = conc_to_molecules(species['M'])
         self.assertEqual(copy_number, conc_value * Avogadro)
-        copy_number = ModelUtilities.concentration_to_molecules(species['no_units'])
+        copy_number = conc_to_molecules(species['no_units'])
         self.assertEqual(copy_number, conc_value * Avogadro)
-        copy_number = ModelUtilities.concentration_to_molecules(species['mM'])
+        copy_number = conc_to_molecules(species['mM'])
         self.assertEqual(copy_number, 10**-3 * conc_value * Avogadro)
-        copy_number = ModelUtilities.concentration_to_molecules(species['uM'])
-        self.assertEqual(copy_number, 10**-6 * 2. * Avogadro)
-        copy_number = ModelUtilities.concentration_to_molecules(species['nM'])
-        self.assertEqual(copy_number, 10**-9 * 2. * Avogadro)
-        copy_number = ModelUtilities.concentration_to_molecules(species['pM'])
-        self.assertEqual(copy_number, 10**-12 * 2. * Avogadro)
-        copy_number = ModelUtilities.concentration_to_molecules(species['fM'])
-        self.assertAlmostEqual(copy_number, 10**-15 * 2. * Avogadro, delta=1)
-        copy_number = ModelUtilities.concentration_to_molecules(species['aM'])
-        self.assertAlmostEqual(copy_number, 10**-18 * 2. * Avogadro, delta=1)
-        copy_number = ModelUtilities.concentration_to_molecules(species['no_concentration'])
+        copy_number = conc_to_molecules(species['uM'])
+        self.assertEqual(copy_number, 10**-6 * conc_value * Avogadro)
+        copy_number = conc_to_molecules(species['nM'])
+        self.assertEqual(copy_number, 10**-9 * conc_value * Avogadro)
+        copy_number = conc_to_molecules(species['pM'])
+        self.assertEqual(copy_number, 10**-12 * conc_value * Avogadro)
+        copy_number = conc_to_molecules(species['fM'])
+        self.assertAlmostEqual(copy_number, 10**-15 * conc_value * Avogadro, delta=1)
+        copy_number = conc_to_molecules(species['aM'])
+        self.assertAlmostEqual(copy_number, 10**-18 * conc_value * Avogadro, delta=1)
+        copy_number = conc_to_molecules(species['no_concentration'])
         self.assertEqual(copy_number, 0)
         with self.assertRaises(ValueError):
-            ModelUtilities.concentration_to_molecules(species['moles dm^-2'])
+            conc_to_molecules(species['moles dm^-2'])
 
         species_tmp = wc_lang.Species(species_type=species_type, compartment=compartment_c)
         wc_lang.Concentration(species=species_tmp, value=conc_value, units='molecules')
