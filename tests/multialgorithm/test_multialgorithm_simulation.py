@@ -12,9 +12,14 @@ import re
 import numpy as np
 import shutil
 import tempfile
+import cProfile
+import pstats
 from scipy.constants import Avogadro
 import pandas
+import copy
+import time
 
+from wc_utils.util.dict import DictUtil
 from obj_model import utils
 from wc_lang.io import Reader, Writer
 from wc_lang.core import (Model, Submodel,  SpeciesType, SpeciesTypeType, Species,
@@ -33,6 +38,7 @@ from wc_sim.multialgorithm.multialgorithm_checkpointing import (Multialgorithmic
 from wc_sim.multialgorithm.run_results import RunResults
 
 from wc_sim.core.simulation_checkpoint_object import CheckpointSimulationObject
+from wc_sim.core.debug_logs import logs, config
 
 config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 
@@ -142,9 +148,11 @@ class TestRunSSASimulation(unittest.TestCase):
         self.args = dict(fba_time_step=1,
             results_dir=self.results_dir,
             checkpoint_period=10)
+        self.out_dir = tempfile.mkdtemp()
 
     def tearDown(self):
         shutil.rmtree(self.results_dir)
+        shutil.rmtree(self.out_dir)
 
     def make_model_and_simulation(self, model_type, num_submodels, specie_copy_numbers=None, init_vols=None):
         # make simple model
@@ -271,6 +279,59 @@ class TestRunSSASimulation(unittest.TestCase):
             delta=0,
             init_vols=1E-22)
 
+    def suspend_logging(self):
+        self.saved_config = copy.deepcopy(config)
+        DictUtil.set_value(config, 'level', 'ERROR')
+
+    def restore_logging(self):
+        global config
+        config = self.saved_config
+
+    def prep_simulation(self, num_ssa_submodels):
+        model, multialgorithm_simulation, simulation_engine = self.make_model_and_simulation(
+            '2 species, a pair of symmetrical reactions, and rates given by reactant population',
+            num_ssa_submodels,
+            init_vols=1E-18)
+        local_species_pop = multialgorithm_simulation.local_species_population
+        simulation_engine.initialize()
+        return simulation_engine
+
+    @unittest.skip("performance scaling test; runs slowly")
+    def test_performance(self):
+        end_sim_time = 100
+        min_num_ssa_submodels = 2
+        max_num_ssa_submodels = 32
+        print()
+        print("Performance test of SSA submodel simulation: 2 reactions per submodel; end simulation time: {}".format(end_sim_time))
+        unprofiled_perf = ["\n#SSA submodels\t# events\trun time (s)\treactions/s".format()]
+
+        self.suspend_logging()
+        num_ssa_submodels = min_num_ssa_submodels
+        while num_ssa_submodels <= max_num_ssa_submodels:
+
+            # measure execution time
+            simulation_engine = self.prep_simulation(num_ssa_submodels)
+            start_time = time.process_time()
+            num_events = simulation_engine.simulate(end_sim_time)
+            run_time = time.process_time() - start_time
+            unprofiled_perf.append("{}\t{}\t{:8.3f}\t{:8.3f}".format(num_ssa_submodels, num_events,
+                run_time, num_events/run_time))
+
+            # profile
+            simulation_engine = self.prep_simulation(num_ssa_submodels)
+            out_file = os.path.join(self.out_dir, "profile_out_{}.out".format(num_ssa_submodels))
+            locals = {'simulation_engine':simulation_engine,
+                'end_sim_time':end_sim_time}
+            cProfile.runctx('num_events = simulation_engine.simulate(end_sim_time)', {}, locals, filename=out_file)
+            profile = pstats.Stats(out_file)
+            print("Profile for {} simulation objects:".format(num_ssa_submodels))
+            profile.strip_dirs().sort_stats('cumulative').print_stats(15)
+
+            num_ssa_submodels *= 4
+
+        print('Performance summary')
+        print("\n".join(unprofiled_perf))
+        self.restore_logging()
 
 class TestSSaExceptions(unittest.TestCase):
 
