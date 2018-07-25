@@ -92,16 +92,16 @@ class DynamicExpression(object):
         """
         if not wc_lang_expression.wc_tokens:
             raise MultialgorithmError("wc_tokens cannot be empty")
-        self.wc_tokens = []
+        self.wc_sim_tokens = []
         for wc_token in wc_lang_expression.wc_tokens:
             if wc_token.tok_code == TokCodes.wc_lang_obj_id:
                 dynamic_component = get_dynamic_component(wc_token.model_type, wc_token.model_id)
-                self.wc_tokens.append(WcSimToken(SimTokCodes.dynamic_component, wc_token.token_string,
+                self.wc_sim_tokens.append(WcSimToken(SimTokCodes.dynamic_component, wc_token.token_string,
                     dynamic_component))
             elif wc_token.tok_code == TokCodes.math_fun_id:
-                self.wc_tokens.append(WcSimToken(SimTokCodes.math_fun, wc_token.token_string))
+                self.wc_sim_tokens.append(WcSimToken(SimTokCodes.math_fun, wc_token.token_string))
             elif wc_token.tok_code == TokCodes.other:
-                self.wc_tokens.append(WcSimToken(SimTokCodes.other, wc_token.token_string))
+                self.wc_sim_tokens.append(WcSimToken(SimTokCodes.other, wc_token.token_string))
 
     def eval(self, time):
         """ Evaluate the mathematical expression in `wc_tokens`
@@ -112,8 +112,8 @@ class DynamicExpression(object):
         `DynamicObservable`, or a `RateLawEquation`.
 
         Approach:
-            * Replace references to related Models in `self.wc_tokens` with their values
-            * Join the elements of `self.wc_tokens` into a Python expression
+            * Replace references to related Models in `self.wc_sim_tokens` with their values
+            * Join the elements of `self.wc_sim_tokens` into a Python expression
             * `eval` the Python expression
 
         Args:
@@ -122,6 +122,15 @@ class DynamicExpression(object):
             testing (:obj:`bool`): if set, test `eval` the expression, using values of 1.0 for all related Models;
                 default = `False`
         """
+        '''
+        approach: make a Python expression & then eval it
+            Build a Python expression expr
+                process each token in self.wc_sim_tokens
+                    other: append to expr
+                    math_fun: append to expr, and add the fun to the local ns
+                    dynamic_component: eval, and append value to expr
+                eval expr
+        '''
         pass
 
 
