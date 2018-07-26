@@ -38,6 +38,7 @@ def make_dynamic_submodel_params(model, lang_submodel):
     multialgorithm_simulation = MultialgorithmSimulation(model, None)
 
     return (lang_submodel.id,
+            multialgorithm_simulation.dynamic_model,
             lang_submodel.reactions,
             lang_submodel.get_species(),
             model.get_parameters(),
@@ -61,11 +62,11 @@ class TestDynamicSubmodel(unittest.TestCase):
                 *make_dynamic_submodel_params(self.model, lang_submodel))
 
             # create dynamic submodels that lack a dynamic compartment
-            (id, reactions, species, parameters, dynamic_compartments, local_species_pop) = \
+            (id, dynamic_model, reactions, species, parameters, dynamic_compartments, local_species_pop) = \
                 make_dynamic_submodel_params(self.model, lang_submodel)
             dynamic_compartments.popitem()
             self.misconfigured_dynamic_submodels[lang_submodel.id] = DynamicSubmodel(
-                id, reactions, species, parameters, dynamic_compartments, local_species_pop)
+                id, None, reactions, species, parameters, dynamic_compartments, local_species_pop)
 
     def test_get_state(self):
         for dynamic_submodel in self.dynamic_submodels.values():

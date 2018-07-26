@@ -148,6 +148,7 @@ class DynamicModel(object):
         """
         self.dynamic_compartments = dynamic_compartments
         self.species_population = species_population
+        self.num_submodels = len(model.get_submodels())
 
         # Classify compartments into extracellular and cellular; those which are not extracellular are cellular
         # Assumes at most one extracellular compartment
@@ -281,6 +282,14 @@ class DynamicModel(object):
         for dyn_observable_id in observables_to_eval:
             evaluated_observables[dyn_observable_id] = self.dynamic_observables[dyn_observable_id].eval(time)
         return evaluated_observables
+
+    def get_num_submodels(self):
+        """ Provide the number of submodels
+
+        Returns:
+            :obj:`int`: the number of submodels
+        """
+        return self.num_submodels
 
     def get_species_count_array(self, now):     # pragma no cover   not used
         """ Map current species counts into an np array

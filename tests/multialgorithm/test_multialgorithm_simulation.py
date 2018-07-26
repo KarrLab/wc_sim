@@ -35,6 +35,7 @@ from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimula
 from wc_sim.multialgorithm.config import core as config_core_multialgorithm
 from wc_sim.multialgorithm.multialgorithm_checkpointing import (MultialgorithmicCheckpointingSimObj,
     MultialgorithmCheckpoint)
+from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm.run_results import RunResults
 
 from wc_sim.core.simulation_checkpoint_object import CheckpointSimulationObject
@@ -139,6 +140,7 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         self.assertEqual(len(simulation_engine.simulation_objects.keys()), 3)
         self.assertEqual(type(multialgorithm_simulation.checkpointing_sim_obj),
             MultialgorithmicCheckpointingSimObj)
+        self.assertEqual(multialgorithm_simulation.dynamic_model.get_num_submodels(), 2)
 
 
 class TestRunSSASimulation(unittest.TestCase):
@@ -247,14 +249,17 @@ class TestRunSSASimulation(unittest.TestCase):
             expected_mean_copy_numbers={'spec_type_0[compt_1]':2000,  'spec_type_1[compt_1]':1000},
             delta=50)
 
-        # test reaction with rate determined by reactant population; decrease volume to increase rates
+    def test_runtime_errors(self):
         init_spec_type_0_pop = 2000
-        self.perform_ssa_test_run('2 species, 1 reaction, with rates given by reactant population',
-            run_time=1000,
-            initial_specie_copy_numbers={'spec_type_0[compt_1]':init_spec_type_0_pop, 'spec_type_1[compt_1]':0},
-            expected_mean_copy_numbers={'spec_type_0[compt_1]':0,  'spec_type_1[compt_1]':init_spec_type_0_pop},
-            delta=0,
-            init_vols=1E-22)
+        # this model consumes all the reactants, driving propensities to 0:
+        with self.assertRaisesRegexp(MultialgorithmError,
+            "simulation with 1 submodel and total propensities = 0 cannot progress"):
+            self.perform_ssa_test_run('2 species, 1 reaction, with rates given by reactant population',
+                run_time=500,
+                initial_specie_copy_numbers={'spec_type_0[compt_1]':init_spec_type_0_pop, 'spec_type_1[compt_1]':0},
+                expected_mean_copy_numbers={},
+                delta=0,
+                init_vols=1E-22)
 
     def test_run_multiple_ssa_submodels(self):
         # 1 submodel per compartment, no transfer reactions

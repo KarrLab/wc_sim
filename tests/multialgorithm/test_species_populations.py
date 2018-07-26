@@ -27,7 +27,6 @@ from wc_sim.multialgorithm import message_types
 from wc_sim.multialgorithm.species_populations import (LOCAL_POP_STORE, Specie, SpeciesPopSimObject,
     SpeciesPopulationCache, LocalSpeciesPopulation, MakeTestLSP, AccessSpeciesPopulations)
 from wc_sim.multialgorithm.multialgorithm_errors import NegativePopulationError, SpeciesPopulationError
-from wc_sim.multialgorithm.submodels.skeleton_submodel import SkeletonSubmodel
 from wc_sim.multialgorithm import distributed_properties
 from wc_utils.util.rand import RandomStateManager
 from tests.core.mock_simulation_object import MockSimulationObject

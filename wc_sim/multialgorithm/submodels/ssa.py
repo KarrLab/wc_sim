@@ -95,12 +95,13 @@ class SSASubmodel(DynamicSubmodel):
     event_handlers = [(sim_msg_type, 'handle_{}_msg'.format(sim_msg_type.__name__))
         for sim_msg_type in MESSAGE_TYPES_BY_PRIORITY]
 
-    def __init__(self, id, reactions, species, parameters, dynamic_compartments,
+    def __init__(self, id, dynamic_model, reactions, species, parameters, dynamic_compartments,
         local_species_population, default_center_of_mass=None):
         """ Initialize an SSA submodel object.
 
         Args:
             id (:obj:`str`): unique id of this dynamic SSA submodel
+            dynamic_model (:obj: `DynamicModel`): the aggregate state of a simulation
             reactions (:obj:`list` of `Reaction`): the reactions modeled by this SSA submodel
             species (:obj:`list` of `Species`): the species that participate in the reactions modeled
                 by this SSA submodel, with their initial concentrations
@@ -112,8 +113,11 @@ class SSASubmodel(DynamicSubmodel):
                 SSA submodel's species population
             default_center_of_mass (:obj:`float`, optional): the center_of_mass for the
                 ExponentialMovingAverage
+
+        Raises:
+            MultialgorithmError: if the initial SSA wait exponential moving average is not positive
         """
-        super().__init__(id, reactions, species, parameters, dynamic_compartments, local_species_population)
+        super().__init__(id, dynamic_model, reactions, species, parameters, dynamic_compartments, local_species_population)
 
         self.num_SsaWaits=0
         # The 'initial_ssa_wait_ema' must be positive, as otherwise an infinite sequence of SsaWait
@@ -121,7 +125,7 @@ class SSASubmodel(DynamicSubmodel):
         if default_center_of_mass is None:
             default_center_of_mass = config_core['default_center_of_mass']
         if config_multialgorithm['initial_ssa_wait_ema'] <= 0:
-            raise ValueError("'initial_ssa_wait_ema' must be positive to avoid infinite sequence of "
+            raise MultialgorithmError("'initial_ssa_wait_ema' must be positive to avoid infinite sequence of "
             "SsaWait messages, but it is {}".format(config_multialgorithm['initial_ssa_wait_ema']))
         self.ema_of_inter_event_time = ExponentialMovingAverage(
             config_multialgorithm['initial_ssa_wait_ema'],
@@ -148,6 +152,9 @@ class SSASubmodel(DynamicSubmodel):
 
         Returns:
             reaction (propensities, total_propensities)
+
+        Raises:
+            MultialgorithmError: if the simulation has 1 submodel and the total propensities are 0
         """
 
         # TODO(Arthur): optimization: only calculate new reaction rates only for species whose counts have changed
@@ -161,6 +168,8 @@ class SSASubmodel(DynamicSubmodel):
         enabled_reactions = self.identify_enabled_reactions()
         proportional_propensities = enabled_reactions * proportional_propensities
         total_proportional_propensities = np.sum(proportional_propensities)
+        if total_proportional_propensities == 0 and self.get_num_submodels() == 1:
+            raise MultialgorithmError("A simulation with 1 submodel and total propensities = 0 cannot progress")
         return (proportional_propensities, total_proportional_propensities)
 
     def schedule_SsaWait(self):

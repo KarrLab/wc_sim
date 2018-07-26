@@ -56,8 +56,13 @@ class TestSimulation(unittest.TestCase):
         self.run_simulation(Simulation(model))
 
     def test_simulation_errors(self):
-        with self.assertRaises(MultialgorithmError):
+        with self.assertRaisesRegexp(MultialgorithmError, 'model must be a wc_lang Model or a pathname'):
             Simulation(2)
+        model = MakeModels.make_test_model('2 species, 1 reaction, with rates given by reactant population',
+            specie_copy_numbers={'spec_type_0[compt_1]':10, 'spec_type_1[compt_1]':0}, init_vols=[1E-22])
+        with self.assertRaisesRegexp(MultialgorithmError,
+            'simulation with 1 submodel and total propensities = 0 cannot progress'):
+            Simulation(model).run(1000)
 
     def test_simulate_wo_output_files(self):
         with CaptureOutput(relay=False):

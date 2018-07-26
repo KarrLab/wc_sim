@@ -66,7 +66,7 @@ class FbaSubmodel(DynamicSubmodel):
         message_types.RunFba,
     ]
 
-    def __init__(self, id, reactions, species, parameters, dynamic_compartment,
+    def __init__(self, id, dynamic_model, reactions, species, parameters, dynamic_compartment,
         local_species_population, time_step):
         """ Initialize an FBA submodel
 
@@ -74,9 +74,10 @@ class FbaSubmodel(DynamicSubmodel):
 
         Args:
             See pydocs of super classes.
+            dynamic_model (:obj: `DynamicModel`): the aggregate state of a simulation
             time_step: float; time between FBA executions
         """
-        super().__init__(id, reactions, species, parameters, dynamic_compartment, local_species_population)
+        super().__init__(id, dynamic_model, reactions, species, parameters, dynamic_compartment, local_species_population)
         self.algorithm = 'FBA'
         if time_step <= 0:
             raise MultialgorithmError("time_step must be positive, but is {}".format(time_step))

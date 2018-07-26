@@ -72,7 +72,7 @@ class Simulation(object):
             if self.model is None:
                 raise MultialgorithmError("No model found in model file '{}'".format(self.model_path))
         else:
-            raise MultialgorithmError("model must be a wc_lang Model or a pathname in a str, but its "
+            raise MultialgorithmError("model must be a wc_lang Model or a pathname for a model, but its "
                 "type is {}".format(type(model)))
 
         self.sim_config = sim_config
@@ -219,8 +219,15 @@ class Simulation(object):
             SimulationMetadata.write_metadata(self.simulation_metadata, timestamped_results_dir)
 
         # run simulation
-        # todo: handle exceptions
-        num_events = self.simulation_engine.simulate(end_time)
+        try:
+            num_events = self.simulation_engine.simulate(end_time)
+        except MultialgorithmError as e:
+            print('Simulation terminated with multialgorithm error: {}'.format(e))
+            return
+        except Error as e:
+            print('Simulation terminated with error: {}'.format(e))
+            return
+
         self.simulation_metadata.run.record_end()
         # update metadata in file
         if timestamped_results_dir:

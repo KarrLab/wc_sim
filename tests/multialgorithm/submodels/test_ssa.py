@@ -27,6 +27,7 @@ class TestSsaSubmodel(unittest.TestCase):
 
         ssa_submodel = SSASubmodel(
             model.id,
+            multialgorithm_simulation.dynamic_model,
             list(wc_lang_ssa_submodel.reactions),
             wc_lang_ssa_submodel.get_species(),
             wc_lang_ssa_submodel.parameters,

@@ -152,6 +152,7 @@ class MultialgorithmSimulation(object):
         self.shared_specie_store_name = shared_specie_store_name
         self.local_species_population = self.make_local_species_pop(self.model)
         self.dynamic_compartments = self.create_dynamic_compartments(self.model, self.local_species_population)
+        self.dynamic_model = None
 
     def build_simulation(self):
         """ Build a simulation
@@ -369,6 +370,7 @@ class MultialgorithmSimulation(object):
             if lang_submodel.algorithm == SubmodelAlgorithm.ssa:
                 simulation_submodel = SSASubmodel(
                     lang_submodel.id,
+                    self.dynamic_model,
                     list(lang_submodel.reactions),
                     lang_submodel.get_species(),
                     lang_submodel.parameters,
@@ -382,6 +384,7 @@ class MultialgorithmSimulation(object):
 
                 simulation_submodel = FbaSubmodel(
                     lang_submodel.id,
+                    self.dynamic_model,
                     list(lang_submodel.reactions),
                     lang_submodel.get_species(),
                     lang_submodel.parameters,

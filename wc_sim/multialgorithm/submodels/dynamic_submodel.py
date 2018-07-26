@@ -12,13 +12,12 @@ from scipy.constants import Avogadro
 
 from wc_lang.core import Species, Reaction, Compartment, Parameter
 from wc_lang.expression_utils import RateLawUtils
-from wc_sim.multialgorithm.dynamic_components import DynamicCompartment
+from wc_sim.multialgorithm.dynamic_components import DynamicCompartment, DynamicModel
 from wc_sim.core.simulation_object import SimulationObject, ApplicationSimulationObject
 from wc_sim.multialgorithm.utils import get_species_and_compartment_from_name
 from wc_sim.multialgorithm.debug_logs import logs as debug_logs
 from wc_sim.multialgorithm import message_types, distributed_properties
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError, SpeciesPopulationError
-from wc_sim.multialgorithm.debug_logs import logs as debug_logs
 
 # TODO(Arthur): reactions -> dynamic reactions
 # TODO(Arthur): species -> dynamic species, or morph into species populations species
@@ -33,7 +32,9 @@ class DynamicSubmodel(ApplicationSimulationObject):
 
     Attributes:
         id (:obj:`str`): unique id of this dynamic submodel / simulation object
+        dynamic_model (:obj: `DynamicModel`): the aggregate state of a simulation
         reactions (:obj:`list` of `Reaction`): the reactions modeled by this dynamic submodel
+        rates (:obj:`np.array`): array to hold reaction rates
         species (:obj:`list` of `Species`): the species that participate in the reactions modeled
             by this dynamic submodel, with their initial concentrations
         parameters (:obj:`list` of `Parameter`): the model's parameters
@@ -44,12 +45,14 @@ class DynamicSubmodel(ApplicationSimulationObject):
             dynamic submodel's species population
         logger (:obj:`logging.Logger`): debug logger
     """
-    def __init__(self, id, reactions, species, parameters, dynamic_compartments, local_species_population):
+    def __init__(self, id, dynamic_model, reactions, species, parameters, dynamic_compartments, local_species_population):
         """ Initialize a dynamic submodel
         """
         super().__init__(id)
         self.id = id
+        self.dynamic_model = dynamic_model
         self.reactions = reactions
+        self.rates = np.full(len(self.reactions), np.nan)
         self.log_with_time("submodel: {}; reactions: {}".format(self.id,
             [reaction.id for reaction in reactions]))
         self.species = species
@@ -131,6 +134,14 @@ class DynamicSubmodel(ApplicationSimulationObject):
             vals[param.id] = param.value
         return vals
 
+    def get_num_submodels(self):
+        """ Provide the number of submodels
+
+        Returns:
+            :obj:`int`: the number of submodels
+        """
+        return self.dynamic_model.get_num_submodels()
+
     def calc_reaction_rates(self):
         """ Calculate the rates for this dynamic submodel's reactions
 
@@ -142,19 +153,18 @@ class DynamicSubmodel(ApplicationSimulationObject):
         Returns:
             :obj:`np.ndarray`: a numpy array of reaction rates, indexed by reaction index
         """
-        # TODO(Arthur): optimization: since len(self.reactions) is constant, preallocate this array
-        rates = np.full(len(self.reactions), np.nan)
         # TODO(Arthur): optimization: get concentrations only for modifiers in the reactions
         species_concentrations = self.get_specie_concentrations()
         for idx_reaction, rxn in enumerate(self.reactions):            
             if rxn.rate_laws:
                 parameter_values = {param.id: param.value for param in rxn.rate_laws[0].equation.parameters}
-                rates[idx_reaction] = RateLawUtils.eval_rate_law(rxn.rate_laws[0], species_concentrations, parameter_values)
+                self.rates[idx_reaction] = RateLawUtils.eval_rate_law(rxn.rate_laws[0], species_concentrations, parameter_values)
         # TODO(Arthur): optimization: get this if to work:
         # if self.logger.isEnabledFor(self.logger.getEffectiveLevel()):
-        msg = str([(self.reactions[i].id, rates[i]) for i in range(len(self.reactions))])
+        # print('self.logger.getEffectiveLevel())', self.logger.getEffectiveLevel())
+        msg = str([(self.reactions[i].id, self.rates[i]) for i in range(len(self.reactions))])
         debug_logs.get_log('wc.debug.file').debug(msg, sim_time=self.time)
-        return rates
+        return self.rates
 
     # These methods - enabled_reaction, identify_enabled_reactions, execute_reaction - are used
     # by discrete time submodels like SSASubmodel and the SkeletonSubmodel.
