@@ -60,9 +60,10 @@ class TestSimulation(unittest.TestCase):
             Simulation(2)
         model = MakeModels.make_test_model('2 species, 1 reaction, with rates given by reactant population',
             specie_copy_numbers={'spec_type_0[compt_1]':10, 'spec_type_1[compt_1]':0}, init_vols=[1E-22])
-        with self.assertRaisesRegexp(MultialgorithmError,
-            'simulation with 1 submodel and total propensities = 0 cannot progress'):
+        with CaptureOutput(relay=False) as capturer:
             Simulation(model).run(1000)
+            self.assertIn('simulation with 1 submodel and total propensities = 0 cannot progress',
+                capturer.get_text())
 
     def test_simulate_wo_output_files(self):
         with CaptureOutput(relay=False):
