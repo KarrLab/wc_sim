@@ -9,6 +9,7 @@
 import datetime
 import pprint
 import sys
+from collections import Counter
 
 from wc_sim.core.simulation_object import EventQueue, SimulationObject
 from wc_sim.core.errors import SimulatorError
@@ -39,6 +40,7 @@ class SimulationEngine(object):
             log or checkpoint the entire state of a simulation; all objects in `shared_state` must
             implement `SharedStateInterface`
         debug_log (:obj:`bool`, optional): whether to output a debug log
+        event_counts (:obj:`Counter`): a counter of event types
         __initialized (:obj:`bool`): whether the simulation has been initialized
     """
 
@@ -52,6 +54,7 @@ class SimulationEngine(object):
         self.simulation_objects = {}
         self.log_with_time("SimulationEngine created")
         self.event_queue = EventQueue()
+        self.event_counts = Counter()
         self.__initialized = False
 
     def add_object(self, simulation_object):
@@ -130,6 +133,7 @@ class SimulationEngine(object):
             raise SimulatorError('Simulation has already been initialized')
         for sim_obj in self.simulation_objects.values():
             sim_obj.send_initial_events()
+        self.event_counts.clear()
         self.__initialized = True
 
     def reset(self):
@@ -204,8 +208,9 @@ class SimulationEngine(object):
 
         num_events_handled = 0
         self.log_with_time("Simulation to {} starting".format(end_time))
-        # TODO(Arthur): add optional logical termation condition(s)
+
         try:
+            # TODO(Arthur): use stop conditions
             while self.time <= end_time:
 
                 # TODO(Arthur): provide dynamic control
@@ -237,7 +242,11 @@ class SimulationEngine(object):
                 # dispatch object that's ready to execute next event
                 next_sim_obj.time = next_time
                 self.log_with_time(" Running '{}' at {}".format(next_sim_obj.name, next_sim_obj.time))
-                next_sim_obj.__handle_event_list(self.event_queue.next_events())
+                next_events = self.event_queue.next_events()
+                for e in next_events:
+                    e_name = ' - '.join([next_sim_obj.__class__.__name__, next_sim_obj.name, e.message.__class__.__name__])
+                    self.event_counts[e_name] += 1
+                next_sim_obj.__handle_event_list(next_events)
         except SimulatorError as e:
             print('Simulation ended with error:', e, file=sys.stderr)
 
@@ -248,6 +257,17 @@ class SimulationEngine(object):
         """
         debug_logs.get_log('wc.debug.file').debug(msg, sim_time=self.time,
             local_call_depth=local_call_depth)
+
+    def provide_event_counts(self):
+        """ Provide the simulation's categorized event counts
+
+        Returns:
+            :obj:`str`: the simulation's categorized event counts, in a tab-separated table
+        """
+        rv = ['\t'.join(['Count', 'Event type (Object type - object name - event type)'])]
+        for event_type, count in self.event_counts.most_common():
+            rv.append("{}\t{}".format(count, event_type))
+        return '\n'.join(rv)
 
     def get_simulation_state(self):
         """ Get the simulation's state

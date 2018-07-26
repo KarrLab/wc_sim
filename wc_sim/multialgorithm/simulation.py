@@ -20,6 +20,7 @@ from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimula
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm.run_results import RunResults
 from wc_sim.core.sim_metadata import SimulationMetadata, ModelMetadata, AuthorMetadata, RunMetadata
+from wc_sim.core.simulation_engine import SimulationEngine
 
 '''
 usage:
@@ -49,6 +50,7 @@ class Simulation(object):
         model_path (:obj:`str`): path to a file describing a `wc_lang` model
         model (:obj:`Model`): a `wc_lang` model description
         sim_config (:obj:`sim_config.SimulationConfig`): a simulation configuration
+        simulation_engine (:obj:`SimulationEngine`): the `SimulationEngine`
     """
     def __init__(self, model, sim_config=None):
         """
@@ -210,15 +212,15 @@ class Simulation(object):
             timestamped_results_dir = simulation_args['results_dir']
 
         multialgorithm_simulation = MultialgorithmSimulation(self.model, simulation_args)
-        simulation_engine, dynamic_model = multialgorithm_simulation.build_simulation()
-        simulation_engine.initialize()
+        self.simulation_engine, dynamic_model = multialgorithm_simulation.build_simulation()
+        self.simulation_engine.initialize()
 
         if timestamped_results_dir:
             SimulationMetadata.write_metadata(self.simulation_metadata, timestamped_results_dir)
 
         # run simulation
         # todo: handle exceptions
-        num_events = simulation_engine.simulate(end_time)
+        num_events = self.simulation_engine.simulate(end_time)
         self.simulation_metadata.run.record_end()
         # update metadata in file
         if timestamped_results_dir:
@@ -232,6 +234,26 @@ class Simulation(object):
             return (num_events, timestamped_results_dir)
         else:
             return (num_events, None)
+
+    def get_simulation_engine(self):
+        """ Provide the simulation's simulation engine
+
+        Returns:
+            :obj:`SimulationEngine`: the simulation's simulation engine
+        """
+        if hasattr(self, 'simulation_engine'):
+            return self.simulation_engine
+        return None
+
+    def provide_event_counts(self):
+        """ Provide the last simulation's categorized event counts
+
+        Returns:
+            :obj:`str`: the last simulation's categorized event counts, in a tab-separated table
+        """
+        if self.get_simulation_engine():
+            return self.get_simulation_engine().provide_event_counts()
+        return 'must run() obtaining event counts'
 
     def run_batch(self, results_dir, checkpoint_period):    # pragma: no cover  # not implemented
         """ Run all simulations specified by the simulation configuration
