@@ -15,7 +15,8 @@ from obj_model import utils
 from wc_lang.core import Species, SpeciesType, Compartment
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation
-from wc_sim.multialgorithm.observables import DynamicObservable, DynamicFunction, DynamicStopCondition
+from wc_sim.multialgorithm.dynamic_expressions import (DynamicFunction, DynamicStopCondition,
+    DynamicParameter, DynamicObservable)
 
 
 class DynamicCompartment(object):
@@ -132,6 +133,8 @@ class DynamicModel(object):
             indexed by their ids
         dynamic_stop_conditions (:obj:`dict` of `DynamicStopCondition`): the simulation's stop conditions,
             indexed by their ids
+        dynamic_parameters (:obj:`dict` of `DynamicParameter`): the simulation's parameters,
+            indexed by their ids
         fraction_dry_weight (:obj:`float`): fraction of the cell's weight which is not water
             a constant
         water_in_model (:obj:`bool`): if set, the model represents water
@@ -175,11 +178,29 @@ class DynamicModel(object):
 
         # create dynamic observables
         self.dynamic_observables = {}
+        # todo: create dynamic observables when implemented
+        '''
         for observable in model.observables:
             self.dynamic_observables[observable.id] = DynamicObservable(self, self.species_population, observable)
+        '''
 
+        # create dynamic functions
         self.dynamic_functions = {}
+        for function in model.functions:
+            self.dynamic_functions[function.id] = DynamicFunction(self, self.species_population, function,
+                function.expression.analyzed_expr)
+
+        # create dynamic stop conditions
         self.dynamic_stop_conditions = {}
+        for stop_condition in model.stop_conditions:
+            self.dynamic_stop_conditions[stop_condition.id] = DynamicStopCondition(self, self.species_population,
+                stop_condition, stop_condition.expression.analyzed_expr)
+
+        # create dynamic parameters
+        self.dynamic_parameters = {}
+        for parameter in model.parameters:
+            self.dynamic_parameters[parameter.id] = DynamicParameter(self, self.species_population,
+                parameter, parameter.value)
 
     def cell_mass(self):
         """ Compute the cell's mass
