@@ -2,7 +2,8 @@ downstream_dependencies:
   - mycoplasma_pneumoniae
   - rand_wc_model_gen
   - wc
-  - wc_test  
+  - wc_test
+  - h1_hesc
 email_notifications:
   - jonrkarr@gmail.com
   - arthur.p.goldberg@mssm.edu
