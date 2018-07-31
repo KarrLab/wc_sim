@@ -5,6 +5,7 @@
 :License: MIT
 """
 
+# todo: test provide_event_counts
 import sys
 import os
 import unittest
@@ -20,6 +21,7 @@ import warnings
 from wc_sim.core.errors import SimulatorError
 from wc_sim.core.simulation_message import SimulationMessage
 from wc_sim.core.simulation_object import SimulationObject, ApplicationSimulationObject
+from wc_sim.core.template_sim_objs import TemplatePeriodicSimulationObject
 from wc_sim.core.simulation_engine import SimulationEngine
 from tests.core.some_message_types import InitMsg, Eg1
 from wc_sim.core.shared_state_interface import SharedStateInterface
@@ -106,6 +108,22 @@ class CyclicalMessagesSimulationObject(ApplicationSimulationObject):
 
     # register the message types sent
     messages_sent = ALL_MESSAGE_TYPES
+
+
+class PeriodicSimulationObject(TemplatePeriodicSimulationObject):
+    """ Self-clocking ApplicationSimulationObject
+
+    Attributes:
+        period (:obj:`float`): interval between events, in simulated seconds
+    """
+
+    def __init__(self, name, period):
+        super().__init__(name, period)
+
+    def handle_event(self):
+        """ Handle the periodic event
+        """
+        return
 
 
 NAME_PREFIX = 'sim_obj'
@@ -201,6 +219,27 @@ class TestSimulationEngine(unittest.TestCase):
         self.simulator.initialize()
         # log "No events remain"
         self.simulator.simulate(5.0)
+
+    def test_simulation_stop_condition(self):
+        simulator = SimulationEngine()
+        # 1 event/sec:
+        simulator.add_object(PeriodicSimulationObject('name', 1))
+        simulator.initialize()
+        end_time = 10
+        # execute to time <= end_time, with 1st event at time = 1
+        self.assertEqual(simulator.simulate(end_time), end_time)
+
+        __stop_cond_end = 3
+        def stop_cond_eg(time):
+            return __stop_cond_end <= time
+        simulator = SimulationEngine(stop_condition=stop_cond_eg)
+        simulator.add_object(PeriodicSimulationObject('name', 1))
+        simulator.initialize()
+        self.assertEqual(simulator.simulate(end_time), __stop_cond_end)
+        # todo: test log of 'Terminate with stop condition satisfied'
+
+        with self.assertRaisesRegexp(SimulatorError, 'stop_condition is not a function'):
+            SimulationEngine(stop_condition='hello')
 
     def test_multi_object_simulation_and_reset(self):
         for i in range(1, 4):

@@ -40,16 +40,24 @@ class SimulationEngine(object):
             log or checkpoint the entire state of a simulation; all objects in `shared_state` must
             implement `SharedStateInterface`
         debug_log (:obj:`bool`, optional): whether to output a debug log
+        stop_condition (:obj:`function`, optional): if provided, a function that takes one argument `time`,
+            and which will terminate a simulation if the function returns `True`
         event_counts (:obj:`Counter`): a counter of event types
         __initialized (:obj:`bool`): whether the simulation has been initialized
+
+        Raises:
+            :obj:`SimulatorError`: if the `stop_condition` is not callable
     """
 
-    def __init__(self, shared_state=None, debug_log=False):
+    def __init__(self, shared_state=None, debug_log=False, stop_condition=None):
         if shared_state is None:
             self.shared_state = []
         else:
             self.shared_state = shared_state
         self.debug_log = debug_log
+        if stop_condition is not None and not callable(stop_condition):
+            raise SimulatorError('stop_condition is not a function')
+        self.stop_condition = stop_condition
         self.time = 0.0
         self.simulation_objects = {}
         self.log_with_time("SimulationEngine created")
@@ -210,8 +218,11 @@ class SimulationEngine(object):
         self.log_with_time("Simulation to {} starting".format(end_time))
 
         try:
-            # TODO(Arthur): use stop conditions
             while self.time <= end_time:
+                # use the stop condition
+                if self.stop_condition is not None and self.stop_condition(self.time):
+                    self.log_with_time(" Terminate with stop condition satisfied")
+                    break
 
                 # TODO(Arthur): provide dynamic control
                 # self.log_simulation_state()

@@ -13,10 +13,10 @@ from wc_sim.core.simulation_object import ApplicationSimulationObject
 from wc_sim.core.errors import SimulatorError
 from wc_sim.log.checkpoint import Checkpoint
 from wc_sim.core.sim_metadata import SimulationMetadata
-from wc_sim.core.template_sim_objs import TemplateCheckpointSimulationObject
+from wc_sim.core.template_sim_objs import TemplatePeriodicSimulationObject
 
 
-class AbstractCheckpointSimulationObject(TemplateCheckpointSimulationObject):
+class AbstractCheckpointSimulationObject(TemplatePeriodicSimulationObject):
     """ Abstract class that creates periodic checkpoints
 
     Attributes:

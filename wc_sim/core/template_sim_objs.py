@@ -15,7 +15,7 @@ class NextEvent(SimulationMessage):
     "Schedule the next event"
 
 
-class TemplateCheckpointSimulationObject(ApplicationSimulationObject):
+class TemplatePeriodicSimulationObject(ApplicationSimulationObject):
     """ Template self-clocking ApplicationSimulationObject
 
     Events occur at time 0, `period`, `2 x period`, ...
