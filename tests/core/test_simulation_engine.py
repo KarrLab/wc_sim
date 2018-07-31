@@ -236,6 +236,11 @@ class TestSimulationEngine(unittest.TestCase):
         simulator.add_object(PeriodicSimulationObject('name', 1))
         simulator.initialize()
         self.assertEqual(simulator.simulate(end_time), __stop_cond_end)
+
+        simulator = SimulationEngine()
+        simulator.add_object(PeriodicSimulationObject('name', 1))
+        simulator.initialize()
+        self.assertEqual(simulator.simulate(end_time, stop_condition=stop_cond_eg), __stop_cond_end)
         # todo: test log of 'Terminate with stop condition satisfied'
 
         with self.assertRaisesRegexp(SimulatorError, 'stop_condition is not a function'):

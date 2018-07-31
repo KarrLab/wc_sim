@@ -40,8 +40,8 @@ class SimulationEngine(object):
             log or checkpoint the entire state of a simulation; all objects in `shared_state` must
             implement `SharedStateInterface`
         debug_log (:obj:`bool`, optional): whether to output a debug log
-        stop_condition (:obj:`function`, optional): if provided, a function that takes one argument `time`,
-            and which will terminate a simulation if the function returns `True`
+        stop_condition (:obj:`function`, optional): if provided, a function that takes one argument:
+            `time`; a simulation terminates if `stop_condition` returns `True`
         event_counts (:obj:`Counter`): a counter of event types
         __initialized (:obj:`bool`): whether the simulation has been initialized
 
@@ -55,15 +55,28 @@ class SimulationEngine(object):
         else:
             self.shared_state = shared_state
         self.debug_log = debug_log
-        if stop_condition is not None and not callable(stop_condition):
-            raise SimulatorError('stop_condition is not a function')
-        self.stop_condition = stop_condition
+        self.set_stop_condition(stop_condition)
         self.time = 0.0
         self.simulation_objects = {}
         self.log_with_time("SimulationEngine created")
         self.event_queue = EventQueue()
         self.event_counts = Counter()
         self.__initialized = False
+
+    def set_stop_condition(self, stop_condition):
+        """ Set the simulation engine's stop condition
+
+        Attributes:
+            stop_condition (:obj:`function`): a function that takes one argument
+                `time`; `stop_condition` is executed and tested before each simulation event.
+                If it returns `True` a simulation is terminated.
+
+            Raises:
+                :obj:`SimulatorError`: if the `stop_condition` is not callable
+        """
+        if stop_condition is not None and not callable(stop_condition):
+            raise SimulatorError('stop_condition is not a function')
+        self.stop_condition = stop_condition
 
     def add_object(self, simulation_object):
         """ Add a simulation object instance to this simulation
@@ -177,7 +190,7 @@ class SimulationEngine(object):
         """
         return self.simulate(end_time, epsilon=epsilon)
 
-    def simulate(self, end_time, epsilon=None):
+    def simulate(self, end_time, epsilon=None, stop_condition=None):
         """ Run the simulation
 
         Args:
@@ -185,6 +198,8 @@ class SimulationEngine(object):
             epsilon (:obj:`float`): small time interval used to control the order of near simultaneous
                 events at different simulation objects; if provided, compare
                 `epsilon` with `end_time` to ensure the ratio is not too large.
+            stop_condition (:obj:`function`, optional): if provided, a function that takes one argument
+                `time`; a simulation terminates if the function returns `True`
 
         Returns:
             :obj:`int`: the number of times a simulation object executes `_handle_event()`. This may
@@ -208,6 +223,9 @@ class SimulationEngine(object):
         if not epsilon is None and not(epsilon + end_time > end_time):
             raise SimulatorError("epsilon ({:E}) plus end time ({:E}) must exceed end time".format(
                 epsilon, end_time))
+
+        if stop_condition is not None:
+            self.set_stop_condition(stop_condition)
 
         # write header to a plot log
         # plot logging is controlled by configuration files pointed to by config_constants and by env vars
