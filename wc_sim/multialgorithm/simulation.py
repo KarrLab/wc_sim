@@ -260,7 +260,7 @@ class Simulation(object):
         """
         if self.get_simulation_engine():
             return self.get_simulation_engine().provide_event_counts()
-        return 'must run() obtaining event counts'
+        return 'execute run() to obtain event counts'
 
     def run_batch(self, results_dir, checkpoint_period):    # pragma: no cover  # not implemented
         """ Run all simulations specified by the simulation configuration

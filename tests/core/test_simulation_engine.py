@@ -5,7 +5,6 @@
 :License: MIT
 """
 
-# todo: test provide_event_counts
 import sys
 import os
 import unittest
@@ -252,6 +251,12 @@ class TestSimulationEngine(unittest.TestCase):
             self.simulator.add_object(obj)
         self.simulator.initialize()
         self.assertEqual(self.simulator.simulate(5.0), 9)
+
+        event_count_lines = self.simulator.provide_event_counts().split('\n')[1:]
+        for idx, line in enumerate(event_count_lines):
+            self.assertIn('3', line)
+            self.assertIn('ExampleSimulationObject', line)
+            self.assertIn(obj_name(idx+1), line)
 
         self.simulator.reset()
         self.assertEqual(len(self.simulator.simulation_objects), 0)
