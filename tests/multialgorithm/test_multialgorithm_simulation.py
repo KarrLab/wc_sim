@@ -141,6 +141,15 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         self.assertEqual(type(multialgorithm_simulation.checkpointing_sim_obj),
             MultialgorithmicCheckpointingSimObj)
         self.assertEqual(multialgorithm_simulation.dynamic_model.get_num_submodels(), 2)
+        self.assertTrue(callable(simulation_engine.stop_condition))
+
+    def test_stop_condition(self):
+        args = dict(fba_time_step=1,
+            results_dir=self.results_dir,
+            checkpoint_period=10)
+        multialgorithm_simulation = MultialgorithmSimulation(self.model, args)
+        simulation_engine, _ = multialgorithm_simulation.build_simulation()
+        self.assertTrue(callable(simulation_engine.stop_condition))
 
 
 class TestRunSSASimulation(unittest.TestCase):
@@ -253,7 +262,7 @@ class TestRunSSASimulation(unittest.TestCase):
         init_spec_type_0_pop = 2000
         # this model consumes all the reactants, driving propensities to 0:
         with self.assertRaisesRegexp(MultialgorithmError,
-            "simulation with 1 submodel and total propensities = 0 cannot progress"):
+            "simulation with 1 SSA submodel and total propensities = 0 cannot progress"):
             self.perform_ssa_test_run('2 species, 1 reaction, with rates given by reactant population',
                 run_time=500,
                 initial_specie_copy_numbers={'spec_type_0[compt_1]':init_spec_type_0_pop, 'spec_type_1[compt_1]':0},

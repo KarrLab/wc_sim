@@ -169,7 +169,7 @@ class SSASubmodel(DynamicSubmodel):
         proportional_propensities = enabled_reactions * proportional_propensities
         total_proportional_propensities = np.sum(proportional_propensities)
         if total_proportional_propensities == 0 and self.get_num_submodels() == 1:
-            raise MultialgorithmError("A simulation with 1 submodel and total propensities = 0 cannot progress")
+            raise MultialgorithmError("A simulation with 1 SSA submodel and total propensities = 0 cannot progress")
         return (proportional_propensities, total_proportional_propensities)
 
     def schedule_SsaWait(self):

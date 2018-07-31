@@ -62,7 +62,7 @@ class TestSimulation(unittest.TestCase):
             specie_copy_numbers={'spec_type_0[compt_1]':10, 'spec_type_1[compt_1]':0}, init_vols=[1E-22])
         with CaptureOutput(relay=False) as capturer:
             Simulation(model).run(1000)
-            self.assertIn('simulation with 1 submodel and total propensities = 0 cannot progress',
+            self.assertIn('simulation with 1 SSA submodel and total propensities = 0 cannot progress',
                 capturer.get_text())
 
     def test_simulate_wo_output_files(self):

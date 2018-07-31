@@ -312,6 +312,25 @@ class DynamicModel(object):
         """
         return self.num_submodels
 
+    def set_stop_condition(self, simulation):
+        """ Set the simulation's stop_condition
+
+        A simulation's stop condition is constructed as a logical 'or' of all `StopConditions` in
+        a model.
+
+        Args:
+            simulation (:obj:`SimulationEngine`): a simulation
+        """
+        if self.dynamic_stop_conditions:
+            dynamic_stop_conditions = self.dynamic_stop_conditions.values()
+            def stop_condition(time):
+                for dynamic_stop_condition in dynamic_stop_conditions:
+                    print('checking dynamic_stop_condition', dynamic_stop_condition)
+                    if dynamic_stop_condition.eval(time):
+                        return True
+                return False
+            simulation.set_stop_condition(stop_condition)
+
     def get_species_count_array(self, now):     # pragma no cover   not used
         """ Map current species counts into an np array
 

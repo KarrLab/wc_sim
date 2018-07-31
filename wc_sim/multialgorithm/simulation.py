@@ -224,7 +224,7 @@ class Simulation(object):
         except MultialgorithmError as e:
             print('Simulation terminated with multialgorithm error: {}'.format(e))
             return
-        except Error as e:
+        except BaseException as e:
             print('Simulation terminated with error: {}'.format(e))
             return
 
