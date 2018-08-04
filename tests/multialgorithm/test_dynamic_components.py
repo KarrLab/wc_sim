@@ -15,7 +15,7 @@ from itertools import chain
 
 from wc_lang.io import Reader
 from wc_lang.core import (Submodel, Compartment, Reaction, SpeciesType, Species, SpeciesCoefficient,
-    Observable, ObservableCoefficient)
+    Observable, ExpressionMethods)
 from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation
 from wc_sim.multialgorithm.dynamic_components import DynamicModel, DynamicCompartment
 from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
@@ -156,6 +156,9 @@ class TestDynamicModel(unittest.TestCase):
         self.compare_aggregate_states(expected_aggregate_state, computed_aggregate_state)
 
     def test_eval_dynamic_observables(self):
+        # make a Model
+        model = MakeModels.make_test_model('no reactions')
+
         # create some dynamic observables
         num_species_types = 10
         species_types = []
@@ -165,32 +168,39 @@ class TestDynamicModel(unittest.TestCase):
         comp = Compartment(id='comp_0')
 
         species = []
-        species_coefficients = []
         for st_idx in range(num_species_types):
             species.append(Species(species_type=species_types[st_idx], compartment=comp))
-            species_coefficients.append(SpeciesCoefficient(species=species[-1], coefficient=st_idx))
 
+        objects = {
+            Species:{},
+            Observable:{}
+        }
         num_non_dependent_observables = 10
         non_dependent_observables = []
         for i in range(num_non_dependent_observables):
-            non_dependent_observables.append(Observable(id='obs_nd_{}'.format(i)))
+            expr_parts = []
             for j in range(i):
-                non_dependent_observables[-1].species.append(species_coefficients[j])
+                expr_parts.append("{}*{}".format(j, species[j].get_id()))
+                objects[Species][species[j].get_id()] = species[j]
+            expr = ' + '.join(expr_parts)
+            non_dependent_observables.append(
+                ExpressionMethods.make_obj(model, Observable, 'obs_nd_{}'.format(i), expr, objects))
 
         num_dependent_observables = 5
         dependent_observables = []
         for i in range(num_dependent_observables):
-            dependent_observables.append(Observable(id='obs_d_{}'.format(i)))
+            expr_parts = []
             for j in range(i):
-                oc = ObservableCoefficient(observable=non_dependent_observables[j], coefficient=j)
-                dependent_observables[-1].observables.append(oc)
+                nd_obs_id = 'obs_nd_{}'.format(j)
+                expr_parts.append("{}*{}".format(j, nd_obs_id))
+                objects[Observable][nd_obs_id] = non_dependent_observables[j]
+            expr = ' + '.join(expr_parts)
+            dependent_observables.append(
+                ExpressionMethods.make_obj(model, Observable, 'obs_d_{}'.format(i), expr, objects))
 
         # make a LocalSpeciesPopulation
         init_pop = dict(zip([s.id() for s in species], list(range(num_species_types))))
         lsp = MakeTestLSP(initial_population=init_pop).local_species_pop
-
-        # make a Model
-        model = MakeModels.make_test_model('no reactions')
 
         # make a DynamicModel
         dyn_mdl = DynamicModel(model, lsp, {})

@@ -23,8 +23,8 @@ from wc_utils.util.dict import DictUtil
 from obj_model import utils
 from wc_lang.io import Reader, Writer
 from wc_lang.core import (Model, Submodel,  SpeciesType, SpeciesTypeType, Species,
-                          Reaction, Observable, Compartment,
-                          SpeciesCoefficient, ObservableCoefficient, Parameter,
+                          Reaction, Compartment,
+                          SpeciesCoefficient, Parameter,
                           RateLaw, RateLawDirection, RateLawEquation, SubmodelAlgorithm, Concentration,
                           BiomassComponent, BiomassReaction, StopCondition)
 from wc_lang.prepare import PrepareModel, CheckModel

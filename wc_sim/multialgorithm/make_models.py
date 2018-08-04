@@ -17,9 +17,10 @@ from wc_utils.util.enumerate import CaseInsensitiveEnum
 from wc_lang.io import Reader, Writer
 from wc_lang.core import (Model, Submodel,  SpeciesType, SpeciesTypeType, Species,
                           Reaction, Observable, Compartment,
-                          SpeciesCoefficient, ObservableCoefficient, Parameter,
+                          SpeciesCoefficient, Parameter,
                           RateLaw, RateLawDirection, RateLawEquation, SubmodelAlgorithm, Concentration,
-                          BiomassComponent, BiomassReaction, StopCondition, ConcentrationUnit)
+                          BiomassComponent, BiomassReaction, StopCondition, ConcentrationUnit,
+                          ExpressionMethods)
 from wc_lang.prepare import PrepareModel, CheckModel
 from wc_lang.transform import SplitReversibleReactionsTransform
 
@@ -97,21 +98,27 @@ class MakeModels(object):
 
         # Species, Concentrations and Observables
         species = []
+        objects = {
+            Species:{},
+            Observable:{}
+        }
         for i in range(num_species):
-            spec = comp.species.create(species_type=species_types[i])
-            species.append(spec)
-            if specie_copy_numbers is not None and spec.id() in specie_copy_numbers:
-                concentration = MakeModels.convert_pop_conc(specie_copy_numbers[spec.id()], init_vol)
-                Concentration(species=spec, value=concentration, units=ConcentrationUnit.M.value)
+            specie = comp.species.create(species_type=species_types[i])
+            species.append(specie)
+            objects[Species][specie.get_id()] = specie
+            if specie_copy_numbers is not None and specie.id() in specie_copy_numbers:
+                concentration = MakeModels.convert_pop_conc(specie_copy_numbers[specie.id()], init_vol)
+                Concentration(species=specie, value=concentration, units=ConcentrationUnit.M.value)
             else:
-                Concentration(species=spec, value=default_concentration, units=ConcentrationUnit.M.value)
-            # TODO: fix some problem with SpeciesCoefficient that prevents coefficient values from being identical
-            species_coefficient = spec.species_coefficients.create(coefficient=1.5)
-            obs_plain = model.observables.create(id='obs_{}_{}'.format(submodel_num, i))
-            obs_plain.species.append(species_coefficient)
-            obs_coeff = obs_plain.observable_coefficients.create(coefficient=2.)
-            obs_dependent = model.observables.create(id='obs_dep_{}_{}'.format(submodel_num, i))
-            obs_dependent.observables.append(obs_coeff)
+                Concentration(species=specie, value=default_concentration, units=ConcentrationUnit.M.value)
+            obs_id = 'obs_{}_{}'.format(submodel_num, i)
+            expr = "1.5 * {}".format(specie.get_id())
+            objects[Observable][obs_id] = obs_plain = \
+                ExpressionMethods.make_obj(model, Observable, obs_id, expr, objects)
+
+            obs_id = 'obs_dep_{}_{}'.format(submodel_num, i)
+            expr = "2 * {}".format(obs_plain)
+            objects[Observable][obs_id] = ExpressionMethods.make_obj(model, Observable, obs_id, expr, objects)
 
         # Submodel
         id = 'submodel_{}'.format(submodel_num)

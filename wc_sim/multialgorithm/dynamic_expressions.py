@@ -26,7 +26,6 @@ from wc_lang.expression_utils import TokCodes
 build:
     unit test remaining code
     integrate into dynamic simulation
-    add Observable
 cleanup
     move dynamic_components to a more convenient place
     jupyter examples
@@ -156,10 +155,11 @@ class DynamicExpression(DynamicComponent):
         # optimization: combine together adjacent wc_token.tok_code math_fun_id and other
         next_static_tokens = ''
         function_names = set()
+        non_lang_obj_id_tokens = set([TokCodes.math_fun_id, TokCodes.number, TokCodes.op, TokCodes.other])
         for wc_token in self.wc_lang_expression.wc_tokens:
             if wc_token.tok_code == TokCodes.math_fun_id:
                 function_names.add(wc_token.token_string)
-            if wc_token.tok_code == TokCodes.math_fun_id or wc_token.tok_code == TokCodes.other:
+            if wc_token.tok_code in non_lang_obj_id_tokens:
                 next_static_tokens = next_static_tokens + wc_token.token_string
             elif wc_token.tok_code == TokCodes.wc_lang_obj_id:
                 if next_static_tokens != '':
