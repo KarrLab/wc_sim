@@ -14,8 +14,8 @@ from scipy.constants import Avogadro
 from itertools import chain
 
 from wc_lang.io import Reader
-from wc_lang.core import (Submodel, Compartment, Reaction, SpeciesType, Species, SpeciesCoefficient,
-    Observable, ExpressionMethods)
+from wc_lang.core import (Model, Submodel, Compartment, Reaction, SpeciesType, Species, SpeciesCoefficient,
+    Concentration, ConcentrationUnit, Observable, ExpressionMethods)
 from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation
 from wc_sim.multialgorithm.dynamic_components import DynamicModel, DynamicCompartment
 from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
@@ -157,46 +157,52 @@ class TestDynamicModel(unittest.TestCase):
 
     def test_eval_dynamic_observables(self):
         # make a Model
-        model = MakeModels.make_test_model('no reactions')
+        model = Model()
+        comp = model.compartments.create(id='comp_0')
+        submodel = model.submodels.create(id='submodel', compartment=comp)
+        model.parameters.create(id='fractionDryWeight', value=0.3)
 
-        # create some dynamic observables
         num_species_types = 10
         species_types = []
         for i in range(num_species_types):
-            species_types.append(SpeciesType(id='st_{}'.format(i)))
-
-        comp = Compartment(id='comp_0')
+            st = model.species_types.create(id='st_{}'.format(i))
+            species_types.append(st)
 
         species = []
         for st_idx in range(num_species_types):
-            species.append(Species(species_type=species_types[st_idx], compartment=comp))
+            specie = comp.species.create(species_type=species_types[st_idx])
+            conc = Concentration(species=specie, value=0, units=ConcentrationUnit.M)
+            species.append(specie)
 
+        # create some observables
         objects = {
             Species:{},
             Observable:{}
         }
-        num_non_dependent_observables = 10
+        num_non_dependent_observables = 5
         non_dependent_observables = []
         for i in range(num_non_dependent_observables):
             expr_parts = []
-            for j in range(i):
+            for j in range(i+1):
                 expr_parts.append("{}*{}".format(j, species[j].get_id()))
                 objects[Species][species[j].get_id()] = species[j]
             expr = ' + '.join(expr_parts)
-            non_dependent_observables.append(
-                ExpressionMethods.make_obj(model, Observable, 'obs_nd_{}'.format(i), expr, objects))
+            obj = ExpressionMethods.make_obj(model, Observable, 'obs_nd_{}'.format(i), expr, objects)
+            self.assertTrue(obj.expression.validate() is None)
+            non_dependent_observables.append(obj)
 
-        num_dependent_observables = 5
+        num_dependent_observables = 4
         dependent_observables = []
         for i in range(num_dependent_observables):
             expr_parts = []
-            for j in range(i):
+            for j in range(i+1):
                 nd_obs_id = 'obs_nd_{}'.format(j)
                 expr_parts.append("{}*{}".format(j, nd_obs_id))
                 objects[Observable][nd_obs_id] = non_dependent_observables[j]
             expr = ' + '.join(expr_parts)
-            dependent_observables.append(
-                ExpressionMethods.make_obj(model, Observable, 'obs_d_{}'.format(i), expr, objects))
+            obj = ExpressionMethods.make_obj(model, Observable, 'obs_d_{}'.format(i), expr, objects)
+            self.assertTrue(obj.expression.validate() is None)
+            dependent_observables.append(obj)
 
         # make a LocalSpeciesPopulation
         init_pop = dict(zip([s.id() for s in species], list(range(num_species_types))))
@@ -204,3 +210,14 @@ class TestDynamicModel(unittest.TestCase):
 
         # make a DynamicModel
         dyn_mdl = DynamicModel(model, lsp, {})
+        # check that dynamic observables have the right values
+        for obs_id, obs_val in dyn_mdl.eval_dynamic_observables(0).items():
+            index = int(obs_id.split('_')[-1])
+            if 'obs_nd_' in obs_id:
+                expected_val = float(sum([i*i for i in range(index+1)]))
+                self.assertEqual(expected_val, obs_val)
+            elif 'obs_d_' in obs_id:
+                expected_val = 0
+                for d_index in range(index+1):
+                    expected_val += d_index * sum([i*i for i in range(d_index+1)])
+                self.assertEqual(expected_val, obs_val)

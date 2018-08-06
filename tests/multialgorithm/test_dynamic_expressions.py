@@ -15,7 +15,7 @@ from wc_lang.expression_utils import TokCodes
 import wc_lang
 from wc_lang import (Model, SpeciesType, Compartment, Species, Parameter, Function, StopCondition,
     FunctionExpression, StopConditionExpression, Observable, ObjectiveFunction, RateLawEquation,
-    ExpressionMethods)
+    ExpressionMethods, Concentration, ConcentrationUnit)
 from wc_sim.multialgorithm.dynamic_expressions import (DynamicComponent, SimTokCodes, WcSimToken,
     DynamicExpression, DynamicParameter, DynamicFunction, DynamicStopCondition, DynamicObservable,
     DynamicSpecies, WC_LANG_MODEL_TO_DYNAMIC_MODEL)
@@ -101,7 +101,7 @@ class TestDynamicExpression(unittest.TestCase):
     def test_dynamic_expression_errors(self):
         # remove the Function's tokenized result
         self.fun1.expression.analyzed_expr.wc_tokens = []
-        with self.assertRaisesRegexp(MultialgorithmError, "wc_tokens cannot be empty"):
+        with self.assertRaisesRegexp(MultialgorithmError, "wc_tokens cannot be empty - ensure that '.*' is valid"):
             DynamicFunction(self.dynamic_model, self.local_species_population,
                 self.fun1, self.fun1.expression.analyzed_expr)
 
@@ -132,10 +132,8 @@ class TestDynamicExpression(unittest.TestCase):
 
 
 class TestAllDynamicExpressionTypes(unittest.TestCase):
-    # test creation, evaluation, eval performance
 
     def setUp(self):
-        self.model = model = Model()
         self.objects = objects = {
             Parameter: {},
             Function: {},
@@ -144,14 +142,24 @@ class TestAllDynamicExpressionTypes(unittest.TestCase):
             Species: {}
         }
 
-        self.st_a = st_a = SpeciesType(id='a')
-        self.st_b = st_b = SpeciesType(id='b')
-        self.c1 = c1 = Compartment(id='c1')
-        self.c2 = c2 = Compartment(id='c2')
-        self.s_a_1 = s_a_1 = Species(species_type=st_a, compartment=c1)
-        objects[Species][s_a_1.get_id()] = s_a_1
-        self.s_b_2 = s_b_2 = Species(species_type=st_b, compartment=c2)
-        objects[Species][s_b_2.get_id()] = s_b_2
+        self.model = model = Model()
+        species_types = {}
+        st_ids = ['a', 'b']
+        for id in st_ids:
+            species_types[id] = model.species_types.create(id=id)
+        compartments = {}
+        comp_ids = ['c1', 'c2']
+        for id in comp_ids:
+            compartments[id] = model.compartments.create(id=id)
+        submodels = {}
+        for sm_id, c_id in zip(['submodel1', 'submodel2'], comp_ids):
+            submodels[id] = model.submodels.create(id=id, compartment=compartments[c_id])
+
+        for c_id, st_id in zip(comp_ids, st_ids):
+            specie = compartments[c_id].species.create(species_type=species_types[st_id])
+            objects[Species][specie.get_id()] = specie
+            Concentration(species=specie, value=0, units=ConcentrationUnit.M)
+
         self.init_pop = {'a[c1]': 10, 'b[c2]': 20}
 
         # map wc_lang object -> expected value
@@ -188,7 +196,7 @@ class TestAllDynamicExpressionTypes(unittest.TestCase):
             obj_id = make_id(wc_lang_model_type)
             wc_lang_obj = ExpressionMethods.make_obj(model, wc_lang_model_type, obj_id, expr, objects)
             objects[wc_lang_model_type][obj_id] = wc_lang_obj
-            expected_values[wc_lang_obj] = expected_value
+            expected_values[wc_lang_obj.id] = expected_value
 
         # needed for simulation:
         model.parameters.create(id='fractionDryWeight', value=0.3, units='dimensionless')
@@ -196,46 +204,16 @@ class TestAllDynamicExpressionTypes(unittest.TestCase):
         self.local_species_population = MakeTestLSP(initial_population=self.init_pop).local_species_pop
         self.dynamic_model = DynamicModel(self.model, self.local_species_population, {})
 
-        # create all the Dynamic* objects
-        # map wc_lang object -> dynamic object
-        self.dynamic_objects = dynamic_objects = {}
-        for wc_lang_model_type in expression_models:
-            dynamic_expr_model_type = DynamicExpression.get_dynamic_model_type(wc_lang_model_type)
-            for id, wc_lang_obj in objects[wc_lang_model_type].items():
-                dynamic_objects[wc_lang_obj] = dynamic_expr_model_type(self.dynamic_model,
-                    self.local_species_population, wc_lang_obj, wc_lang_obj.expression.analyzed_expr)
-
-        # Parameter and Species aren't expression models
-        dynamic_objects[param] = DynamicParameter(self.dynamic_model, self.local_species_population,
-            param, param.value)
-        for id, wc_lang_obj in objects[Species].items():
-            dynamic_objects[wc_lang_obj] = DynamicSpecies(self.dynamic_model,
-                self.local_species_population, wc_lang_obj)
-
     def test_all_dynamic_expressions(self):
 
-        # prepare all Dynamic* objects
-        dynamic_expression_models = set()
-        for expression_model in self.expression_models:
-            dynamic_expression_models.add(DynamicExpression.get_dynamic_model_type(expression_model))
-
-        for dynamic_object in self.dynamic_objects.values():
-            if dynamic_object.__class__ in dynamic_expression_models:
-                dynamic_object.prepare()
-                self.assertTrue(dynamic_object.wc_sim_tokens)
-                self.assertTrue(hasattr(dynamic_object, 'local_ns'))
-
-        # eval all Dynamic objects
-        for wc_lang_model, dynamic_expression in self.dynamic_objects.items():
-            if dynamic_expression.__class__ in dynamic_expression_models:
-                self.assertEqual(self.expected_values[wc_lang_model], dynamic_expression.eval(0))
-
-        # measure performance of all test Dynamic objects
+        # check computed value and measure performance of all test Dynamic objects
         number = 10000
         print()
         print("Measure {} evals of each Dynamic expression:".format(number))
-        for dynamic_expression in self.dynamic_objects.values():
-            if dynamic_expression.__class__ in dynamic_expression_models:
+        for dynamic_obj_dict in [self.dynamic_model.dynamic_observables,
+            self.dynamic_model.dynamic_functions, self.dynamic_model.dynamic_stop_conditions]:
+            for id, dynamic_expression in dynamic_obj_dict.items():
+                self.assertEqual(self.expected_values[id], dynamic_expression.eval(0))
                 eval_time = timeit.timeit(stmt='dynamic_expression.eval(0)', number=number,
                     globals=locals())
                 print("{:.2f} usec/eval of {} {} '{}'".format(eval_time*1E6/number,

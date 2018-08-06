@@ -37,7 +37,6 @@ class TestRunResults(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.temp_dir)
 
-    @unittest.skip("fixed when DynamicObservable objects work")
     def test_run_results(self):
 
         run_results_1 = RunResults(self.results_dir)

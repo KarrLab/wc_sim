@@ -1,4 +1,4 @@
-""" Dynamic observables, and functionality that depends on them
+""" Dynamic expressions
 
 :Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
 :Date: 2018-06-03
@@ -94,6 +94,17 @@ class DynamicComponent(object):
             DynamicExpression.dynamic_components[model_type] = {}
         DynamicExpression.dynamic_components[model_type][self.id] = self
 
+    def __str__(self):
+        """ Provide a readable representation of this `DynamicComponent`
+
+        Returns:
+            :obj:`str`: a readable representation of this `DynamicComponent`
+        """
+        rv = ['DynamicComponent:']
+        rv.append("type: {}".format(self.__class__.__name__))
+        rv.append("id: {}".format(self.id))
+        return '\n'.join(rv)
+
 
 class DynamicExpression(DynamicComponent):
     """ Simulation representation of a mathematical expression, based on WcLangExpression
@@ -122,7 +133,8 @@ class DynamicExpression(DynamicComponent):
 
         # wc_lang_expression must have been successfully `tokenize`d.
         if not wc_lang_expression.wc_tokens:
-            raise MultialgorithmError("wc_tokens cannot be empty")
+            raise MultialgorithmError("wc_tokens cannot be empty - ensure that '{}' is valid".format(
+                wc_lang_model))
         # optimization: self.wc_lang_expression will be deleted by prepare()
         self.wc_lang_expression = wc_lang_expression
         self.expression = wc_lang_expression.expression
@@ -135,7 +147,6 @@ class DynamicExpression(DynamicComponent):
 
         Raises:
             :obj:`MultialgorithmError`: if a Python function used in `wc_lang_expression` does not exist
-                validated expression
         """
 
         # create self.wc_sim_tokens, which contains WcSimTokens that refer to other DynamicExpressions
@@ -156,7 +167,11 @@ class DynamicExpression(DynamicComponent):
                 if next_static_tokens != '':
                     self.wc_sim_tokens.append(WcSimToken(SimTokCodes.other, next_static_tokens))
                     next_static_tokens = ''
-                dynamic_expression = self.get_dynamic_component(wc_token.model, wc_token.model_id)
+                try:
+                    dynamic_expression = self.get_dynamic_component(wc_token.model, wc_token.model_id)
+                except:
+                    raise MultialgorithmError("'{}.{} must be prepared to create '{}''".format(
+                        wc_token.model.__class__.__name__, wc_token.model_id, self.id))
                 self.wc_sim_tokens.append(WcSimToken(SimTokCodes.dynamic_expression, wc_token.token_string,
                     dynamic_expression))
             else:   # pragma    no cover
@@ -204,6 +219,8 @@ class DynamicExpression(DynamicComponent):
         Raises:
             :obj:`MultialgorithmError`: if Python `eval` raises an exception
         """
+        assert hasattr(self, 'wc_sim_tokens'), "'{}' must use prepare() before eval()".format(
+            self.id)
         for idx, sim_token in enumerate(self.wc_sim_tokens):
             if sim_token.tok_code == SimTokCodes.dynamic_expression:
                 self.expr_substrings[idx] = str(sim_token.dynamic_expression.eval(time))
@@ -283,7 +300,6 @@ class DynamicExpression(DynamicComponent):
         rv = ['DynamicExpression:']
         rv.append("type: {}".format(self.__class__.__name__))
         rv.append("id: {}".format(self.id))
-        rv.append("LocalSpeciesPopulation: {}".format(self.local_species_population.name))
         rv.append("expression: {}".format(self.expression))
         return '\n'.join(rv)
 

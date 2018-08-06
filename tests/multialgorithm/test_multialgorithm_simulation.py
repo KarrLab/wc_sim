@@ -195,7 +195,7 @@ class TestRunSSASimulation(unittest.TestCase):
             model_type (:obj:`str`): model type description
             run_time (:obj:`float`): duration of the simulation run
             initial_specie_copy_numbers (:obj:`dict`): initial specie counts, with IDs as keys and counts as values
-            expected_mean_copy_numbers (:obj:`str`): expected final mean specie counts, in same format as
+            expected_mean_copy_numbers (:obj:`dict`): expected final mean specie counts, in same format as
                 `initial_specie_copy_numbers`
             delta (:obj:`int`): maximum allowed difference between expected and actual counts
             num_submodels (:obj:`int`): number of submodels to create
@@ -221,12 +221,17 @@ class TestRunSSASimulation(unittest.TestCase):
             final_specie_counts.append(local_species_pop.read(run_time))
 
         mean_final_specie_counts = dict.fromkeys(list(initial_specie_copy_numbers.keys()), 0)
-        for final_specie_count in final_specie_counts:
-            for k,v in final_specie_count.items():
-                mean_final_specie_counts[k] += v
-        for k,v in mean_final_specie_counts.items():
-            mean_final_specie_counts[k] = v/iterations
-            self.assertAlmostEqual(mean_final_specie_counts[k], expected_mean_copy_numbers[k], delta=delta)
+        if expected_mean_copy_numbers:
+            for final_specie_count in final_specie_counts:
+                for k,v in final_specie_count.items():
+                    mean_final_specie_counts[k] += v
+            for k,v in mean_final_specie_counts.items():
+                mean_final_specie_counts[k] = v/iterations
+                if k not in mean_final_specie_counts:
+                    print(k,  'not in mean_final_specie_counts',  list(mean_final_specie_counts.keys()))
+                if k not in expected_mean_copy_numbers:
+                    print(k,  'not in expected_mean_copy_numbers',  list(expected_mean_copy_numbers.keys()))
+                self.assertAlmostEqual(mean_final_specie_counts[k], expected_mean_copy_numbers[k], delta=delta)
         for invariant_obj in invariant_objs:
             self.assertTrue(invariant_obj.eval())
 
@@ -264,7 +269,7 @@ class TestRunSSASimulation(unittest.TestCase):
         with self.assertRaisesRegexp(MultialgorithmError,
             "simulation with 1 SSA submodel and total propensities = 0 cannot progress"):
             self.perform_ssa_test_run('2 species, 1 reaction, with rates given by reactant population',
-                run_time=500,
+                run_time=5000,
                 initial_specie_copy_numbers={'spec_type_0[compt_1]':init_spec_type_0_pop, 'spec_type_1[compt_1]':0},
                 expected_mean_copy_numbers={},
                 delta=0,

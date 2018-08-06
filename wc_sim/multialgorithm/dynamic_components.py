@@ -15,7 +15,7 @@ from obj_model import utils
 from wc_lang.core import Species, SpeciesType, Compartment
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation
-from wc_sim.multialgorithm.dynamic_expressions import (DynamicFunction, DynamicStopCondition,
+from wc_sim.multialgorithm.dynamic_expressions import (DynamicSpecies, DynamicFunction, DynamicStopCondition,
     DynamicParameter, DynamicObservable)
 
 
@@ -127,6 +127,8 @@ class DynamicModel(object):
         cellular_dyn_compartments (:obj:`list`): list of the cellular compartments
         species_population (:obj:`LocalSpeciesPopulation`): an object that represents
             the populations of species in this `DynamicCompartment`
+        dynamic_species (:obj:`dict` of `DynamicSpecies`): the simulation's dynamic species,
+            indexed by their ids
         dynamic_observables (:obj:`dict` of `DynamicObservable`): the simulation's dynamic observables,
             indexed by their ids
         dynamic_functions (:obj:`dict` of `DynamicFunction`): the simulation's dynamic functions,
@@ -176,13 +178,25 @@ class DynamicModel(object):
         self.fraction_dry_weight = utils.get_component_by_id(model.get_parameters(),
             'fractionDryWeight').value
 
+        # === create dynamic objects that are not expressions ===
+        # create dynamic parameters
+        self.dynamic_parameters = {}
+        for parameter in model.parameters:
+            self.dynamic_parameters[parameter.id] = DynamicParameter(self, self.species_population,
+                parameter, parameter.value)
+
+        # create dynamic species
+        self.dynamic_species = {}
+        for species in model.get_species():
+            self.dynamic_species[species.get_id()] = DynamicSpecies(self, self.species_population,
+                species)
+
+        # === create dynamic expressions ===
         # create dynamic observables
         self.dynamic_observables = {}
-        # todo: create dynamic observables when implemented
-        '''
         for observable in model.observables:
-            self.dynamic_observables[observable.id] = DynamicObservable(self, self.species_population, observable)
-        '''
+            self.dynamic_observables[observable.id] = DynamicObservable(self, self.species_population, observable,
+                observable.expression.analyzed_expr)
 
         # create dynamic functions
         self.dynamic_functions = {}
@@ -196,11 +210,11 @@ class DynamicModel(object):
             self.dynamic_stop_conditions[stop_condition.id] = DynamicStopCondition(self, self.species_population,
                 stop_condition, stop_condition.expression.analyzed_expr)
 
-        # create dynamic parameters
-        self.dynamic_parameters = {}
-        for parameter in model.parameters:
-            self.dynamic_parameters[parameter.id] = DynamicParameter(self, self.species_population,
-                parameter, parameter.value)
+        # prepare dynamic expressions
+        for dynamic_expression_group in [self.dynamic_observables, self.dynamic_functions,
+            self.dynamic_stop_conditions]:
+            for dynamic_expression in dynamic_expression_group.values():
+                dynamic_expression.prepare()
 
     def cell_mass(self):
         """ Compute the cell's mass
@@ -264,26 +278,6 @@ class DynamicModel(object):
             }
         aggregate_state['compartments'] = compartments
         return aggregate_state
-
-    def eval_dynamic_obj(self, wc_lang_model_type, model_id, time):
-        """ Evaluate a dynamic instance at time `time`
-
-        Args:
-            wc_lang_model_type (:obj:`type`): the type of an `obj_model.Model` whose corresponding
-                dynamic model should be evaluated
-            model_id (:obj:`str`): the id of the dynamic model to evaluate
-            time (:obj:`float`): the simulation time
-
-        Returns:
-            :obj:`float`: the value of dynamic model at simulation time `time`
-        """
-        '''
-        Approach:
-            map wc_lang_model_type to the corresponding dynamic model type
-            use model_id to find the dynamic model instance
-            evaluate the dynamic model instance at time
-        '''
-        pass
 
     def eval_dynamic_observables(self, time, observables_to_eval=None):
         """ Evaluate some dynamic observables at time `time`
