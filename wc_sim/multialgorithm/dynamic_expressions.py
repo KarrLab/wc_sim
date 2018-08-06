@@ -13,10 +13,11 @@ import tempfile
 import math
 from collections import namedtuple
 
+import obj_model
 from wc_utils.util.enumerate import CaseInsensitiveEnum
 import wc_utils.cache
 import wc_lang
-from wc_lang import Parameter, StopCondition, Function, Observable, ObjectiveFunction, RateLawEquation
+from wc_lang import (Species, Parameter, StopCondition, Function, Observable, ObjectiveFunction, RateLawEquation)
 from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_lang.expression_utils import TokCodes
@@ -24,7 +25,6 @@ from wc_lang.expression_utils import TokCodes
 '''
 # TODO:
 build:
-    unit test remaining code
     integrate into dynamic simulation
 cleanup
     move dynamic_components to a more convenient place
@@ -35,12 +35,10 @@ cleanup
 Expression eval design:
     Algorithms:
         evaling expression model types:
-            evaluate this generically: Observable
             special cases:
                 ObjectiveFunction: used by FBA, so express as needed by the FBA solver
                 RateLawEquation: needs special considaration of reactant order, intensive vs. extensive, volume, etc.
         evaling other model types used by expressions:
-            Species: abundance or concentration in Observable?
             Reaction and BiomassReaction: flux units in ObjectiveFunction?
     Optimizations:
         evaluate parameters statically at initialization
@@ -72,16 +70,6 @@ WcSimToken.token_string.__doc__ = "The token's string"
 WcSimToken.dynamic_expression.__doc__ = "When tok_code is dynamic_expression, the dynamic_expression instance"
 
 
-WC_LANG_MODEL_TO_DYNAMIC_MODEL = {
-    Function: 'DynamicFunction',
-    Parameter: 'DynamicParameter',
-    Observable: 'DynamicObservable',
-    StopCondition: 'DynamicStopCondition',
-    ObjectiveFunction: 'DynamicObjectiveFunction',
-    RateLawEquation: 'DynamicRateLawEquation'
-}
-
-
 class DynamicComponent(object):
     """ Component of a simulation
 
@@ -101,7 +89,7 @@ class DynamicComponent(object):
         self.dynamic_model = dynamic_model
         self.local_species_population = local_species_population
         self.id = wc_lang_model.get_id()
-        model_type = DynamicExpression.get_dynamic_model_type(wc_lang_model, from_wc_lang_mdl_type=True)
+        model_type = DynamicExpression.get_dynamic_model_type(wc_lang_model)
         if model_type not in DynamicExpression.dynamic_components:
             DynamicExpression.dynamic_components[model_type] = {}
         DynamicExpression.dynamic_components[model_type][self.id] = self
@@ -142,8 +130,8 @@ class DynamicExpression(DynamicComponent):
     def prepare(self):
         """ Prepare this dynamic expression for simulation
 
-        Because they refer to each other, all `DynamicExpression`s must be prepared after all
-        `DynamicExpression`s are created.
+        Because they refer to each other, all `DynamicExpression`s must be created before any of them
+        are prepared.
 
         Raises:
             :obj:`MultialgorithmError`: if a Python function used in `wc_lang_expression` does not exist
@@ -152,11 +140,14 @@ class DynamicExpression(DynamicComponent):
 
         # create self.wc_sim_tokens, which contains WcSimTokens that refer to other DynamicExpressions
         self.wc_sim_tokens = []
-        # optimization: combine together adjacent wc_token.tok_code math_fun_id and other
+        # optimization: combine together adjacent wc_token.tok_codes other than wc_lang_obj_id
         next_static_tokens = ''
         function_names = set()
         non_lang_obj_id_tokens = set([TokCodes.math_fun_id, TokCodes.number, TokCodes.op, TokCodes.other])
-        for wc_token in self.wc_lang_expression.wc_tokens:
+
+        i = 0
+        while i <  len(self.wc_lang_expression.wc_tokens):
+            wc_token = self.wc_lang_expression.wc_tokens[i]
             if wc_token.tok_code == TokCodes.math_fun_id:
                 function_names.add(wc_token.token_string)
             if wc_token.tok_code in non_lang_obj_id_tokens:
@@ -165,12 +156,16 @@ class DynamicExpression(DynamicComponent):
                 if next_static_tokens != '':
                     self.wc_sim_tokens.append(WcSimToken(SimTokCodes.other, next_static_tokens))
                     next_static_tokens = ''
-                dynamic_expression = self.get_dynamic_component(wc_token.model, wc_token.model_id,
-                    from_wc_lang_mdl_type=True)
+                dynamic_expression = self.get_dynamic_component(wc_token.model, wc_token.model_id)
                 self.wc_sim_tokens.append(WcSimToken(SimTokCodes.dynamic_expression, wc_token.token_string,
                     dynamic_expression))
             else:   # pragma    no cover
                 assert False, "unknown tok_code {} in {}".format(wc_token.tok_code, wc_token)
+            if wc_token.tok_code == TokCodes.wc_lang_obj_id and wc_token.model_type == Function:
+                # skip past the () syntactic sugar on functions
+                i += 2
+            # advance to the next token
+            i += 1
         if next_static_tokens != '':
             self.wc_sim_tokens.append(WcSimToken(SimTokCodes.other, next_static_tokens))
         # optimization: to conserve memory, delete self.wc_lang_expression
@@ -221,42 +216,47 @@ class DynamicExpression(DynamicComponent):
     dynamic_components = {}
 
     @staticmethod
-    def get_dynamic_model_type(model_type, from_wc_lang_mdl_type=False):
+    def get_dynamic_model_type(model_type):
         """ Get a simulation's dynamic component type
 
-        Convert to a dynamic component type from a corresponding `wc_lang` Model type and/or a
-        string representation
+        Convert to a dynamic component type from a corresponding `wc_lang` Model type, instance or
+        string name
 
         Args:
-            model_type (:obj:`obj`): a string name for a subclass of `DynamicComponent`, or a
-                corresponding `obj_model.Model`
-            from_wc_lang_mdl_type (:obj:`bool`, optional): if set, `model_type` comes from `wc_lang`,
-                that is, it's a subclass of `obj_model.Model`
+            model_type (:obj:`obj`): a `wc_lang` Model type represented by a subclass of `obj_model.Model`,
+                an instance of `obj_model.Model`, or a string name for a `obj_model.Model`
 
         Returns:
             :obj:`type`: the dynamic component
 
         Raises:
-            :obj:`MultialgorithmError`: if the dynamic component type cannot be found
+            :obj:`MultialgorithmError`: if the corresponding dynamic component type cannot be determined
         """
-        if from_wc_lang_mdl_type:
-            model_type = WC_LANG_MODEL_TO_DYNAMIC_MODEL[model_type.__class__]
+        if isinstance(model_type, type) and issubclass(model_type, obj_model.Model):
+            if model_type in WC_LANG_MODEL_TO_DYNAMIC_MODEL:
+                return WC_LANG_MODEL_TO_DYNAMIC_MODEL[model_type]
+            raise MultialgorithmError("model class of type '{}' not found".format(model_type.__name__))
+
+        if isinstance(model_type, obj_model.Model):
+            if model_type.__class__ in WC_LANG_MODEL_TO_DYNAMIC_MODEL:
+                return WC_LANG_MODEL_TO_DYNAMIC_MODEL[model_type.__class__]
+            raise MultialgorithmError("model of type '{}' not found".format(model_type.__class__.__name__))
+
         if isinstance(model_type, str):
             if model_type in globals():
                 model_type = globals()[model_type]
-            else:
-                raise MultialgorithmError("model type '{}' not defined".format(model_type))
-        return model_type
+                if not isinstance(model_type, str): # avoid infinite recursion # pragma no cover, but hand tested
+                    return DynamicExpression.get_dynamic_model_type(model_type)
+            raise MultialgorithmError("model type '{}' not defined".format(model_type))
+        raise MultialgorithmError("model type '{}' has wrong type".format(model_type))
 
     @staticmethod
-    def get_dynamic_component(model_type, id, from_wc_lang_mdl_type=False):
+    def get_dynamic_component(model_type, id):
         """ Get a simulation's dynamic component
 
         Args:
             model_type (:obj:`type`): the subclass of `DynamicComponent` (or `obj_model.Model`) being retrieved
             id (:obj:`str`): the dynamic component's id
-            from_wc_lang_mdl_type (:obj:`bool`, optional): if set, `model_type` comes from `wc_lang`,
-                that is, it's a subclass of `obj_model.Model`
 
         Returns:
             :obj:`DynamicComponent`: the dynamic component
@@ -264,13 +264,14 @@ class DynamicExpression(DynamicComponent):
         Raises:
             :obj:`MultialgorithmError`: if the dynamic component cannot be found
         """
-        model_type = DynamicExpression.get_dynamic_model_type(model_type, from_wc_lang_mdl_type)
+        model_type = DynamicExpression.get_dynamic_model_type(model_type)
         if model_type not in DynamicExpression.dynamic_components:
             raise MultialgorithmError("model type '{}' not in DynamicExpression.dynamic_components".format(
                 model_type.__name__))
         if id not in DynamicExpression.dynamic_components[model_type]:
             raise MultialgorithmError("model type '{}' with id='{}' not in DynamicExpression.dynamic_components".format(
                 model_type.__name__, id))
+        # print('model_type, id', model_type, id, '->', DynamicExpression.dynamic_components[model_type][id])
         return DynamicExpression.dynamic_components[model_type][id]
 
     def __str__(self):
@@ -320,7 +321,7 @@ class DynamicParameter(DynamicComponent):
         Args:
             dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
             local_species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
-            wc_lang_model (:obj:`obj_model.Model`): the corresponding `wc_lang` `Model`
+            wc_lang_model (:obj:`obj_model.Model`): the corresponding `wc_lang` `Parameter`
             value (:obj:`float`): the parameter's value
         """
         super().__init__(dynamic_model, local_species_population, wc_lang_model)
@@ -334,3 +335,54 @@ class DynamicParameter(DynamicComponent):
                 dynamic expression models have the same signature for 'eval`
         """
         return self.value
+
+
+class DynamicSpecies(DynamicComponent):
+    """ The dynamic representation of a `Species`
+    """
+
+    def __init__(self, dynamic_model, local_species_population, wc_lang_model):
+        """
+        Args:
+            dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
+            local_species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
+            wc_lang_model (:obj:`obj_model.Model`): the corresponding `wc_lang` `Species`
+        """
+        super().__init__(dynamic_model, local_species_population, wc_lang_model)
+        # Grab a reference to the right Species object used by local_species_population
+        self.species_obj = local_species_population._population[wc_lang_model.get_id()]
+
+    def eval(self, time):
+        """ Provide the population of this species
+
+        Args:
+            time (:obj:`float`): the current simulation time
+        """
+        return self.species_obj.get_population(time)
+
+
+class DynamicObjectiveFunction(DynamicExpression):
+    """ The dynamic representation of an `ObjectiveFunction`
+    """
+
+    def __init__(self, *args):
+        super().__init__(*args)
+
+
+class DynamicRateLawEquation(DynamicExpression):
+    """ The dynamic representation of a `RateLawEquation`
+    """
+
+    def __init__(self, *args):
+        super().__init__(*args)
+
+
+WC_LANG_MODEL_TO_DYNAMIC_MODEL = {
+    Function: DynamicFunction,
+    Parameter: DynamicParameter,
+    Species: DynamicSpecies,
+    Observable: DynamicObservable,
+    StopCondition: DynamicStopCondition,
+    ObjectiveFunction: DynamicObjectiveFunction,
+    RateLawEquation: DynamicRateLawEquation
+}
