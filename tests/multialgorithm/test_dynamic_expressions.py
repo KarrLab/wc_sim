@@ -106,7 +106,7 @@ class TestDynamicExpression(unittest.TestCase):
                 self.fun1, self.fun1.expression.analyzed_expr)
 
         expr = 'max(1) - 2'
-        fun = ExpressionMethods.make_obj(self.model, Function, 'fun', expr, {})
+        fun = ExpressionMethods.make_obj(self.model, Function, 'fun', expr, {}, allow_invalid_objects=True)
         dynamic_function = DynamicFunction(self.dynamic_model, self.local_species_population,
             fun, fun.expression.analyzed_expr)
         dynamic_function.prepare()
