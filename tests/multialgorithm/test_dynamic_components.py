@@ -204,38 +204,3 @@ class TestDynamicModel(unittest.TestCase):
 
         # make a DynamicModel
         dyn_mdl = DynamicModel(model, lsp, {})
-
-        '''
-        # activate when implemented
-        non_dependent_dynamic_observables = []
-        for non_dependent_observable in non_dependent_observables:
-            non_dependent_dynamic_observables.append(DynamicObservable(dyn_mdl, lsp, non_dependent_observable))
-
-        dependent_dynamic_observables = []
-        for dependent_observable in dependent_observables:
-            dependent_dynamic_observables.append(DynamicObservable(dyn_mdl, lsp, dependent_observable))
-
-        # test them
-        expected_non_dependent = []
-        for idx, dynamic_observable in enumerate(non_dependent_dynamic_observables):
-            expected_non_dependent.append(sum([i*i for i in range(idx)]))
-            self.assertEqual(dynamic_observable.eval(0), expected_non_dependent[-1])
-
-        expected_dependent = []
-        for idx, dynamic_observable in enumerate(dependent_dynamic_observables):
-            expected_dependent.append(sum([i*expected_non_dependent[i] for i in range(idx)]))
-            self.assertEqual(dynamic_observable.eval(0), expected_dependent[-1])
-
-        ids_of_non_dependent_dynamic_observables = [do.id for do in non_dependent_dynamic_observables]
-        self.assertEqual(dyn_mdl.eval_dynamic_observables(0, ids_of_non_dependent_dynamic_observables),
-            dict(zip(ids_of_non_dependent_dynamic_observables, expected_non_dependent)))
-
-        ids_of_dependent_dynamic_observables = [do.id for do in dependent_dynamic_observables]
-        self.assertEqual(dyn_mdl.eval_dynamic_observables(0, ids_of_dependent_dynamic_observables),
-            dict(zip(ids_of_dependent_dynamic_observables, expected_dependent)))
-
-        expected_eval_dynamic_observables = dict(
-            zip(chain(ids_of_non_dependent_dynamic_observables, ids_of_dependent_dynamic_observables),
-                chain(expected_non_dependent, expected_dependent)))
-        self.assertEqual(dyn_mdl.eval_dynamic_observables(0), expected_eval_dynamic_observables)
-        '''
