@@ -10,6 +10,7 @@
 
 import argparse
 from argparse import Namespace
+import cement
 import os
 import getpass
 import sys
@@ -17,7 +18,6 @@ import socket
 import datetime
 import warnings
 import pandas
-from cement.core.controller import CementBaseController, expose
 
 from wc_sim.core.sim_metadata import SimulationMetadata, ModelMetadata, AuthorMetadata, RunMetadata
 from wc_sim.core.sim_config import SimulationConfig
@@ -37,7 +37,7 @@ from .config.core import get_config
 config = get_config()['wc_sim']['multialgorithm']
 
 
-class SimController(CementBaseController):
+class SimController(cement.Controller):
     class Meta:
         label = 'sim'
         description = 'Simulate a wc-lang model'
@@ -64,8 +64,8 @@ class SimController(CementBaseController):
                 help="timestep for FBA submodel(s) (sec)")),
         ]
 
-    @expose(hide=True)
-    def default(self):
+    @cement.ex(hide=True)
+    def _default(self):
         args = self.app.pargs
         simulation = Simulation(args.model_file)
         simulation.run(end_time=args.end_time, results_dir=args.results_dir,
