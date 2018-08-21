@@ -1,5 +1,5 @@
 callbacks
-cement
+cement >= 3.0.0
 cobra
 matplotlib
 numpy

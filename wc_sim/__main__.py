@@ -7,12 +7,11 @@
 """
 
 from .multialgorithm.__main__ import handlers as multialgorithm_handlers
-from cement.core.foundation import CementApp
-from cement.core.controller import CementBaseController, expose
+import cement
 import wc_sim
 
 
-class BaseController(CementBaseController):
+class BaseController(cement.Controller):
     """ Base controller for command line application """
 
     class Meta:
@@ -22,12 +21,12 @@ class BaseController(CementBaseController):
             (['-v', '--version'], dict(action='version', version=wc_sim.__version__)),
         ]
 
-    @expose(hide=True)
-    def default(self):
+    @cement.ex(hide=True)
+    def _default(self):
         self.app.args.print_help()
 
 
-class App(CementApp):
+class App(cement.App):
     """ Command line application """
     class Meta:
         label = 'wc_sim'
