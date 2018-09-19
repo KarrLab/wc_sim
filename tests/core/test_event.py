@@ -68,9 +68,9 @@ class TestEvent(unittest.TestCase):
             test_msg)))
 
         # test headers
-        self.assertEquals(Event.BASE_HEADERS, Event.header(as_list=True)[:-1])
+        self.assertEqual(Event.BASE_HEADERS, Event.header(as_list=True)[:-1])
         self.assertIn('\t'.join(Event.BASE_HEADERS), Event.header())
-        self.assertEquals(Event.BASE_HEADERS, ev.custom_header(as_list=True)[:-len(attrs)])
+        self.assertEqual(Event.BASE_HEADERS, ev.custom_header(as_list=True)[:-len(attrs)])
         self.assertIn('\t'.join(Event.BASE_HEADERS), ev.custom_header())
         self.assertIn('\t'.join(attrs), ev.custom_header())
         data = list(times) + [SENDER, RECEIVER, TestMsg.__name__]
