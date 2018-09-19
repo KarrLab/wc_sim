@@ -242,7 +242,7 @@ class TestSimulationEngine(unittest.TestCase):
         self.assertEqual(simulator.simulate(end_time, stop_condition=stop_cond_eg), __stop_cond_end)
         # todo: test log of 'Terminate with stop condition satisfied'
 
-        with self.assertRaisesRegexp(SimulatorError, 'stop_condition is not a function'):
+        with self.assertRaisesRegex(SimulatorError, 'stop_condition is not a function'):
             SimulationEngine(stop_condition='hello')
 
     def test_multi_object_simulation_and_reset(self):

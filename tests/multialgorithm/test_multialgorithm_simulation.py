@@ -266,7 +266,7 @@ class TestRunSSASimulation(unittest.TestCase):
     def test_runtime_errors(self):
         init_spec_type_0_pop = 2000
         # this model consumes all the reactants, driving propensities to 0:
-        with self.assertRaisesRegexp(MultialgorithmError,
+        with self.assertRaisesRegex(MultialgorithmError,
             "simulation with 1 SSA submodel and total propensities = 0 cannot progress"):
             self.perform_ssa_test_run('2 species, 1 reaction, with rates given by reactant population',
                 run_time=5000,
@@ -362,7 +362,7 @@ class TestSSaExceptions(unittest.TestCase):
         self.model.species_types.get_one(id='spec_type_0').molecular_weight = float('NaN')
         multialgorithm_simulation = MultialgorithmSimulation(self.model, {})
         simulation_engine, _ = multialgorithm_simulation.build_simulation()
-        with self.assertRaisesRegexp(AssertionError, "total propensities is 'NaN'"):
+        with self.assertRaisesRegex(AssertionError, "total propensities is 'NaN'"):
             simulation_engine.initialize()
 
     # TODO(Arthur): test multiple ssa submodels, in shared or different compartments

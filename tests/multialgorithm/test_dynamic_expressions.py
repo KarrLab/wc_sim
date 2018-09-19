@@ -101,7 +101,7 @@ class TestDynamicExpression(unittest.TestCase):
     def test_dynamic_expression_errors(self):
         # remove the Function's tokenized result
         self.fun1.expression.analyzed_expr.wc_tokens = []
-        with self.assertRaisesRegexp(MultialgorithmError, "wc_tokens cannot be empty - ensure that '.*' is valid"):
+        with self.assertRaisesRegex(MultialgorithmError, "wc_tokens cannot be empty - ensure that '.*' is valid"):
             DynamicFunction(self.dynamic_model, self.local_species_population,
                 self.fun1, self.fun1.expression.analyzed_expr)
 
@@ -110,24 +110,24 @@ class TestDynamicExpression(unittest.TestCase):
         dynamic_function = DynamicFunction(self.dynamic_model, self.local_species_population,
             fun, fun.expression.analyzed_expr)
         dynamic_function.prepare()
-        with self.assertRaisesRegexp(MultialgorithmError, re.escape("eval of '{}' raises".format(expr))):
+        with self.assertRaisesRegex(MultialgorithmError, re.escape("eval of '{}' raises".format(expr))):
             dynamic_function.eval(1)
 
     def test_get_dynamic_model_type(self):
 
         self.assertEqual(DynamicExpression.get_dynamic_model_type(Function), DynamicFunction)
-        with self.assertRaisesRegexp(MultialgorithmError, "model class of type 'FunctionExpression' not found"):
+        with self.assertRaisesRegex(MultialgorithmError, "model class of type 'FunctionExpression' not found"):
             DynamicExpression.get_dynamic_model_type(FunctionExpression)
 
         self.assertEqual(DynamicExpression.get_dynamic_model_type(self.fun1), DynamicFunction)
         expr_model_obj, _ = ExpressionMethods.make_expression_obj(Function, '', {})
-        with self.assertRaisesRegexp(MultialgorithmError, "model of type 'FunctionExpression' not found"):
+        with self.assertRaisesRegex(MultialgorithmError, "model of type 'FunctionExpression' not found"):
             DynamicExpression.get_dynamic_model_type(expr_model_obj)
 
         self.assertEqual(DynamicExpression.get_dynamic_model_type('Function'), DynamicFunction)
-        with self.assertRaisesRegexp(MultialgorithmError, "model type 'NoSuchModel' not defined"):
+        with self.assertRaisesRegex(MultialgorithmError, "model type 'NoSuchModel' not defined"):
             DynamicExpression.get_dynamic_model_type('NoSuchModel')
-        with self.assertRaisesRegexp(MultialgorithmError, "model type '3' has wrong type"):
+        with self.assertRaisesRegex(MultialgorithmError, "model type '3' has wrong type"):
             DynamicExpression.get_dynamic_model_type(3)
 
 

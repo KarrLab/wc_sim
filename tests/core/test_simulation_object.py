@@ -101,17 +101,17 @@ class TestEventQueue(unittest.TestCase):
         eq = EventQueue()
 
         st, rt = 2, 1
-        with self.assertRaisesRegexp(SimulatorError,
+        with self.assertRaisesRegex(SimulatorError,
             re.escape("receive_time < send_time in schedule_event(): {} < {}".format(rt, st))):
             eq.schedule_event(st, rt , None, None, '')
 
-        with self.assertRaisesRegexp(SimulatorError,
+        with self.assertRaisesRegex(SimulatorError,
             'message should be an instance of SimulationMessage but is a'):
             eq.schedule_event(1, 2, None, None, 13)
 
-        with self.assertRaisesRegexp(SimulatorError, 'send_time .* and/or receive_time .* is NaN'):
+        with self.assertRaisesRegex(SimulatorError, 'send_time .* and/or receive_time .* is NaN'):
             eq.schedule_event(float('NaN'), 1, None, None, '')
-        with self.assertRaisesRegexp(SimulatorError, 'send_time .* and/or receive_time .* is NaN'):
+        with self.assertRaisesRegex(SimulatorError, 'send_time .* and/or receive_time .* is NaN'):
             eq.schedule_event(1, float('NaN'), None, None, '')
 
     def test_render(self):
@@ -316,11 +316,11 @@ class TestSimulationObject(unittest.TestCase):
                 most_qual_cls_name(self.irso1),
                 InitMsg().__class__.__name__))
 
-        with self.assertRaisesRegexp(SimulatorError,
+        with self.assertRaisesRegex(SimulatorError,
             "simulation messages must be instances of type 'SimulationMessage'; "):
             self.eso1.send_event_absolute(2, self.irso1, InitMsg)
 
-        with self.assertRaisesRegexp(SimulatorError, "event_time is 'NaN'"):
+        with self.assertRaisesRegex(SimulatorError, "event_time is 'NaN'"):
             self.eso1.send_event_absolute(float('NaN'), self.eso1, UnregisteredMsg())
 
     def test_get_receiving_priorities_dict(self):
@@ -388,20 +388,20 @@ class TestSimulationObject(unittest.TestCase):
 
     def test_event_exceptions(self):
         delay = -1.0
-        with self.assertRaisesRegexp(SimulatorError,
+        with self.assertRaisesRegex(SimulatorError,
             re.escape("delay < 0 in send_event(): {}".format(delay))):
             self.o1.send_event(delay, self.o2, Eg1())
 
         event_time = -1
-        with self.assertRaisesRegexp(SimulatorError,
+        with self.assertRaisesRegex(SimulatorError,
             "event_time \(-1.*\) < current time \(0.*\) in send_event_absolute\(\)"):
             self.o1.send_event_absolute(event_time, self.o2, Eg1())
 
-        with self.assertRaisesRegexp(SimulatorError,
+        with self.assertRaisesRegex(SimulatorError,
             "SimulationObject '{}' is already part of a simulator".format(self.o1.name)):
             self.o1.add(self.simulator)
 
-        with self.assertRaisesRegexp(SimulatorError, "delay is 'NaN'"):
+        with self.assertRaisesRegex(SimulatorError, "delay is 'NaN'"):
             self.o1.send_event(float('nan'), self.o2, Eg1())
 
     def test_misc(self):

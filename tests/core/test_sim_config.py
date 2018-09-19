@@ -345,7 +345,7 @@ class TestSedMlValidation(unittest.TestCase):
 
         libsedml.writeSedML(cfg_ml, self.filename)
 
-        with self.assertRaisesRegexp(sim_config.SedMlError, 'random_seed must be an integer'):
+        with self.assertRaisesRegex(sim_config.SedMlError, 'random_seed must be an integer'):
             sim_config.SedMl.read(self.filename)
 
     def test_invalid_random_seed_float(self):
@@ -367,7 +367,7 @@ class TestSedMlValidation(unittest.TestCase):
 
         libsedml.writeSedML(cfg_ml, self.filename)
 
-        with self.assertRaisesRegexp(sim_config.SedMlError, 'random_seed must be an integer'):
+        with self.assertRaisesRegex(sim_config.SedMlError, 'random_seed must be an integer'):
             sim_config.SedMl.read(self.filename)
 
     def test_not_unique_algorithm_parameters(self):
@@ -393,7 +393,7 @@ class TestSedMlValidation(unittest.TestCase):
 
         libsedml.writeSedML(cfg_ml, self.filename)
 
-        with self.assertRaisesRegexp(sim_config.SedMlError, 'Algorithm parameter KISAO ids must be unique'):
+        with self.assertRaisesRegex(sim_config.SedMlError, 'Algorithm parameter KISAO ids must be unique'):
             sim_config.SedMl.read(self.filename)
 
     def test_invalid_algorithm_parameter(self):

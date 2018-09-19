@@ -64,5 +64,5 @@ class TestRunResults(unittest.TestCase):
     def test_run_results_errors(self):
 
         run_results = RunResults(self.results_dir)
-        with self.assertRaisesRegexp(MultialgorithmError, "component '.*' is not an element of "):
+        with self.assertRaisesRegex(MultialgorithmError, "component '.*' is not an element of "):
             run_results.get('not_a_component')
