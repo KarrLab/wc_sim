@@ -101,7 +101,7 @@ class Checkpoint(object):
         # find checkpoint times
         checkpoint_times = []
         for file_name in os.listdir(dirname):
-            match = re.match('^(\d+\.\d{6,6}).pickle$', file_name)
+            match = re.match(r'^(\d+\.\d{6,6}).pickle$', file_name)
             if os.path.isfile(os.path.join(dirname, file_name)) and match:
                 checkpoint_times.append(float(match.group(1)))
 

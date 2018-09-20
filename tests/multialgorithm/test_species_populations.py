@@ -527,7 +527,7 @@ class TestSpecie(unittest.TestCase):
         s4 = Specie('specie', self.random_state, 10, initial_flux=0)
         self.assertEqual("specie_name: specie; last_population: 10; continuous_time: 0; "
             "continuous_flux: 0", str(s4))
-        self.assertRegex(s4.row(), 'specie\t10\..*\t0\..*\t0\..*')
+        self.assertRegex(s4.row(), r'specie\t10\..*\t0\..*\t0\..*')
 
         with self.assertRaises(SpeciesPopulationError) as context:
             s4.continuous_adjustment(2, -23, 1)

@@ -394,7 +394,7 @@ class TestSimulationObject(unittest.TestCase):
 
         event_time = -1
         with self.assertRaisesRegex(SimulatorError,
-            "event_time \(-1.*\) < current time \(0.*\) in send_event_absolute\(\)"):
+            r'event_time \(-1.*\) < current time \(0.*\) in send_event_absolute\(\)'):
             self.o1.send_event_absolute(event_time, self.o2, Eg1())
 
         with self.assertRaisesRegex(SimulatorError,

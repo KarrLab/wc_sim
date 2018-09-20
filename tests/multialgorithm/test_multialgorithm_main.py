@@ -54,7 +54,7 @@ class SimControllerTestCase(unittest.TestCase):
         with __main__.App(argv=argv) as app:
             with CaptureOutput(relay=False) as capturer:
                 app.run()
-                events = re.search('^Simulated (\d+) events', capturer.get_text())
+                events = re.search(r'^Simulated (\d+) events', capturer.get_text())
                 results = re.search("Saved checkpoints and run results in '(.*?)'$", capturer.get_text())
         num_events = int(events.group(1))
         results_dir = results.group(1)

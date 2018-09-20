@@ -131,7 +131,7 @@ class ModelUtilities(object):
         Raises:
             ValueError: if specie_id is not in the right form
         '''
-        match = re.match('^([a-z][a-z0-9_]*)\[([a-z][a-z0-9_]*)\]$', specie_id, flags=re.I)
+        match = re.match(r'^([a-z][a-z0-9_]*)\[([a-z][a-z0-9_]*)\]$', specie_id, flags=re.I)
         if match:
             return (match.group(1), match.group(2))
         raise ValueError("Cannot parse specie_id, '{}' not in the form "
