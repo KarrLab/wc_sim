@@ -101,12 +101,12 @@ class SSASubmodel(DynamicSubmodel):
 
         Args:
             id (:obj:`str`): unique id of this dynamic SSA submodel
-            dynamic_model (:obj: `DynamicModel`): the aggregate state of a simulation
+            dynamic_model (:obj:`DynamicModel`): the aggregate state of a simulation
             reactions (:obj:`list` of `Reaction`): the reactions modeled by this SSA submodel
             species (:obj:`list` of `Species`): the species that participate in the reactions modeled
                 by this SSA submodel, with their initial concentrations
             parameters (:obj:`list` of `Parameter`): the model's parameters
-            dynamic_compartments (:obj: `dict`): `DynamicCompartment`s, keyed by id, that contain
+            dynamic_compartments (:obj:`dict`): `DynamicCompartment`s, keyed by id, that contain
                 species which participate in reactions that this SSA submodel models, including
                 adjacent compartments used by its transfer reactions
             local_species_population (:obj:`LocalSpeciesPopulation`): the store that maintains this

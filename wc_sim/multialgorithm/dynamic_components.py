@@ -122,7 +122,7 @@ class DynamicModel(object):
     dynamic compartments.
 
     Attributes:
-        dynamic_compartments (:obj: `dict`): map from compartment ID to `DynamicCompartment`; the simulation's
+        dynamic_compartments (:obj:`dict`): map from compartment ID to `DynamicCompartment`; the simulation's
             `DynamicCompartment`s, one for each compartment in `model`
         cellular_dyn_compartments (:obj:`list`): list of the cellular compartments
         species_population (:obj:`LocalSpeciesPopulation`): an object that represents
@@ -148,7 +148,7 @@ class DynamicModel(object):
             model (:obj:`Model`): the description of the whole-cell model in `wc_lang`
             species_population (:obj:`LocalSpeciesPopulation`): an object that represents
                 the populations of species in this `DynamicCompartment`
-            dynamic_compartments (:obj: `dict`): the simulation's `DynamicCompartment`s, one for each
+            dynamic_compartments (:obj:`dict`): the simulation's `DynamicCompartment`s, one for each
                 compartment in `model`
         """
         self.dynamic_compartments = dynamic_compartments

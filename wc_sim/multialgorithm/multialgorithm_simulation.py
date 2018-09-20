@@ -116,22 +116,22 @@ class MultialgorithmSimulation(object):
         model (:obj:`Model`): a model description
         args (:obj:`dict`): parameters for the simulation; if results_dir is provided, then also
             must include checkpoint_period
-        init_populations (:obj: dict from species id to population): the initial populations of
+        init_populations (:obj:`dict` from species id to population): the initial populations of
             species, as specified by `model`
-        simulation (:obj: `SimulationEngine`): the initialized simulation
-        simulation_submodels (:obj: `list` of `DynamicSubmodel`): the simulation's submodels
-        checkpointing_sim_obj (:obj: `MultialgorithmicCheckpointingSimObj`): the checkpointing object;
+        simulation (:obj:`SimulationEngine`): the initialized simulation
+        simulation_submodels (:obj:`list` of `DynamicSubmodel`): the simulation's submodels
+        checkpointing_sim_obj (:obj:`MultialgorithmicCheckpointingSimObj`): the checkpointing object;
             `None` if absent
-        species_pop_objs (:obj: `dict` of `SpeciesPopSimObject`): shared species
+        species_pop_objs (:obj:`dict` of `SpeciesPopSimObject`): shared species
             populations stored in `SimulationObject`'s
         shared_specie_store_name (:obj:`str`): the name for the shared specie store
-        dynamic_model (:obj: `DynamicModel`): the dynamic state of a model
-        private_species (:obj: `dict` of `set`): map from `DynamicSubmodel` to a set of the species
+        dynamic_model (:obj:`DynamicModel`): the dynamic state of a model
+        private_species (:obj:`dict` of `set`): map from `DynamicSubmodel` to a set of the species
                 modeled by only the submodel
-        shared_species (:obj: `set`): the shared species
-        local_species_population (:obj: `LocalSpeciesPopulation`): a shared species population for the
+        shared_species (:obj:`set`): the shared species
+        local_species_population (:obj:`LocalSpeciesPopulation`): a shared species population for the
             multialgorithm simulation
-        dynamic_compartments (:obj: `dict`): the simulation's `DynamicCompartment`s, one for each
+        dynamic_compartments (:obj:`dict`): the simulation's `DynamicCompartment`s, one for each
             compartment in `model`
     """
 

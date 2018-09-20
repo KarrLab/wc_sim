@@ -74,7 +74,7 @@ class FbaSubmodel(DynamicSubmodel):
 
         Args:
             See pydocs of super classes.
-            dynamic_model (:obj: `DynamicModel`): the aggregate state of a simulation
+            dynamic_model (:obj:`DynamicModel`): the aggregate state of a simulation
             time_step: float; time between FBA executions
         """
         super().__init__(id, dynamic_model, reactions, species, parameters, dynamic_compartment, local_species_population)

@@ -527,7 +527,7 @@ class ApplicationSimulationObjMeta(type):
         Args:
             cls (:obj:`class`): this class
             clsname (:obj:`str`): name of the :class:`SimulationObject` subclass being created
-            superclasses (:obj: `tuple`): tuple of superclasses
+            superclasses (:obj:`tuple`): tuple of superclasses
             namespace (:obj:`dict`): namespace of subclass of `ApplicationSimulationObject` being created
 
         Returns:
