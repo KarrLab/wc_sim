@@ -80,14 +80,16 @@ def plot(model, results, filename):
     # plot mass
     axes2[0].plot(time / 3600, mass * 1e15)
     axes2[0].set_xlim((time[0] / 3600, time[-1] / 3600))
-    #axes2[0].set_ylim((0, 2 * 51))
-    axes2[0].set_xlabel('Time (h)')
+    axes2[0].set_ylim((51.1-0.01, 51.1+0.01))
+    axes2[0].ticklabel_format(useOffset=False)
+    #axes2[0].set_xlabel('Time (h)')
     axes2[0].set_ylabel('Mass (fg)')
 
     # plot volume
     axes2[1].plot(time / 3600, vol * 1e18)
     axes2[1].set_xlim((time[0] / 3600, time[-1] / 3600))
-    #axes2[1].set_ylim((0, 2 * 67))
+    axes2[1].set_ylim((67-0.01, 67+0.01))
+    axes2[1].ticklabel_format(useOffset=False)
     axes2[1].set_xlabel('Time (h)')
     axes2[1].set_ylabel('Volume (aL)')
 
