@@ -135,4 +135,4 @@ def plot(model, results, filename):
     pyplot.close(fig2)
 
 
-plot(model, results, 'wc_sim_results-{}.pdf')
+plot(model, results, 'results-{}.pdf')
