@@ -122,7 +122,7 @@ class MakeModels(object):
 
         # Submodel
         id = 'submodel_{}'.format(submodel_num)
-        submodel = model.submodels.create(id=id, name=id, algorithm=SubmodelAlgorithm.ssa, compartment=comp)
+        submodel = model.submodels.create(id=id, name=id, algorithm=SubmodelAlgorithm.ssa)
 
         # Reactions and RateLaws
         if num_species:

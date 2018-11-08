@@ -159,7 +159,7 @@ class TestDynamicModel(unittest.TestCase):
         # make a Model
         model = Model()
         comp = model.compartments.create(id='comp_0')
-        submodel = model.submodels.create(id='submodel', compartment=comp)
+        submodel = model.submodels.create(id='submodel')
         model.parameters.create(id='fractionDryWeight', value=0.3)
 
         num_species_types = 10

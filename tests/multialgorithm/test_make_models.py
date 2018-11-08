@@ -86,7 +86,6 @@ class TestMakeModels(unittest.TestCase):
         species_ids = set([s.id() for s in comp.species])
         self.assertEqual(species_ids, set(['spec_type_0[compt_1]', 'spec_type_1[compt_1]']))
         submodel = model.submodels[0]
-        self.assertEqual(model.submodels[0].compartment, comp)
 
         # reaction was split by SplitReversibleReactionsTransform
         ratelaw_elements = set()

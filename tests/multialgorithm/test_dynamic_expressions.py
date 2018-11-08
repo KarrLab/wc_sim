@@ -153,7 +153,7 @@ class TestAllDynamicExpressionTypes(unittest.TestCase):
             compartments[id] = model.compartments.create(id=id)
         submodels = {}
         for sm_id, c_id in zip(['submodel1', 'submodel2'], comp_ids):
-            submodels[id] = model.submodels.create(id=id, compartment=compartments[c_id])
+            submodels[id] = model.submodels.create(id=id)
 
         for c_id, st_id in zip(comp_ids, st_ids):
             specie = compartments[c_id].species.create(species_type=species_types[st_id])
