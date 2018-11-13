@@ -10,8 +10,8 @@ import os
 import shutil
 import tempfile
 
+from wc_lang import RateLawDirection
 from wc_lang.io import Writer, Reader
-from wc_lang.core import RateLawDirection
 from wc_sim.multialgorithm.make_models import MakeModels, RateLawType
 
 
@@ -83,7 +83,7 @@ class TestMakeModels(unittest.TestCase):
         self.assertEqual(comp.id, 'compt_1')
         species_type_ids = set([st.id for st in model.species_types])
         self.assertEqual(species_type_ids, set(['spec_type_0', 'spec_type_1']))
-        species_ids = set([s.id() for s in comp.species])
+        species_ids = set([s.id for s in comp.species])
         self.assertEqual(species_ids, set(['spec_type_0[compt_1]', 'spec_type_1[compt_1]']))
         submodel = model.submodels[0]
 
@@ -104,7 +104,7 @@ class TestMakeModels(unittest.TestCase):
         for r in submodel.reactions:
             r_list = []
             for part in r.participants:
-                r_list.append((part.species.id(), part.coefficient))
+                r_list.append((part.species.id, part.coefficient))
             participant_elements.add(tuple(sorted(r_list)))
         expected_participants = set([
             # id, coefficient

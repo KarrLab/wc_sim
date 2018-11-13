@@ -133,7 +133,7 @@ class SSASubmodel(DynamicSubmodel):
         self.random_state = RandomStateManager.instance()
 
         self.log_with_time("init: id: {}".format(id))
-        self.log_with_time("init: species: {}".format(str([s.id() for s in species])))
+        self.log_with_time("init: species: {}".format(str([s.id for s in species])))
 
     def send_initial_events(self):
         """ Send this SSA submodel's initial events

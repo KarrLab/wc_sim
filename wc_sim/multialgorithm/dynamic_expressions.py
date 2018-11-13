@@ -88,7 +88,7 @@ class DynamicComponent(object):
         """
         self.dynamic_model = dynamic_model
         self.local_species_population = local_species_population
-        self.id = wc_lang_model.get_id()
+        self.id = wc_lang_model.id
         model_type = DynamicExpression.get_dynamic_model_type(wc_lang_model)
         if model_type not in DynamicExpression.dynamic_components:
             DynamicExpression.dynamic_components[model_type] = {}
@@ -366,7 +366,7 @@ class DynamicSpecies(DynamicComponent):
         """
         super().__init__(dynamic_model, local_species_population, wc_lang_model)
         # Grab a reference to the right Species object used by local_species_population
-        self.species_obj = local_species_population._population[wc_lang_model.get_id()]
+        self.species_obj = local_species_population._population[wc_lang_model.id]
 
     def eval(self, time):
         """ Provide the population of this species

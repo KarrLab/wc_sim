@@ -12,7 +12,7 @@ import warnings
 import math
 
 from obj_model import utils
-from wc_lang.core import Species, SpeciesType, Compartment
+from wc_lang import Species, SpeciesType, Compartment
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation
 from wc_sim.multialgorithm.dynamic_expressions import (DynamicSpecies, DynamicFunction, DynamicStopCondition,
@@ -170,7 +170,7 @@ class DynamicModel(object):
         self.water_in_model = True
         for compartment in model.get_compartments():
             water_in_compartment_id = Species.gen_id(WATER_ID, compartment.id)
-            if water_in_compartment_id not in [s.id() for s in compartment.species]:
+            if water_in_compartment_id not in [s.id for s in compartment.species]:
                 self.water_in_model = False
                 break
 
@@ -188,7 +188,7 @@ class DynamicModel(object):
         # create dynamic species
         self.dynamic_species = {}
         for species in model.get_species():
-            self.dynamic_species[species.get_id()] = DynamicSpecies(self, self.species_population,
+            self.dynamic_species[species.id] = DynamicSpecies(self, self.species_population,
                 species)
 
         # === create dynamic expressions ===
@@ -337,7 +337,7 @@ class DynamicModel(object):
         species_counts = np.zeros((len(model.species), len(model.compartments)))
         for species in model.species:
             for compartment in model.compartments:
-                specie_id = Species.gen_id(species, compartment)
+                specie_id = Species.gen_id(species.id, compartment.id)
                 species_counts[ species.index, compartment.index ] = \
                     model.local_species_population.read_one(now, specie_id)
         return species_counts

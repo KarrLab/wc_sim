@@ -14,13 +14,13 @@ from scipy.constants import Avogadro
 
 from obj_model import utils
 from wc_utils.util.enumerate import CaseInsensitiveEnum
+from wc_lang import (Model, Submodel,  SpeciesType, SpeciesTypeType, Species,
+                     Reaction, Observable, Compartment,
+                     SpeciesCoefficient, Parameter,
+                     RateLaw, RateLawDirection, RateLawEquation, SubmodelAlgorithm, Concentration,
+                     BiomassComponent, BiomassReaction, StopCondition, ConcentrationUnit,
+                     ExpressionMethods)
 from wc_lang.io import Reader, Writer
-from wc_lang.core import (Model, Submodel,  SpeciesType, SpeciesTypeType, Species,
-                          Reaction, Observable, Compartment,
-                          SpeciesCoefficient, Parameter,
-                          RateLaw, RateLawDirection, RateLawEquation, SubmodelAlgorithm, Concentration,
-                          BiomassComponent, BiomassReaction, StopCondition, ConcentrationUnit,
-                          ExpressionMethods)
 from wc_lang.prepare import PrepareModel, CheckModel
 from wc_lang.transform import SplitReversibleReactionsTransform
 
@@ -104,15 +104,16 @@ class MakeModels(object):
         }
         for i in range(num_species):
             specie = comp.species.create(species_type=species_types[i])
+            specie.id = specie.gen_id(specie.species_type.id, specie.compartment.id)
             species.append(specie)
-            objects[Species][specie.get_id()] = specie
-            if specie_copy_numbers is not None and specie.id() in specie_copy_numbers:
-                concentration = MakeModels.convert_pop_conc(specie_copy_numbers[specie.id()], init_vol)
+            objects[Species][specie.id] = specie
+            if specie_copy_numbers is not None and specie.id in specie_copy_numbers:
+                concentration = MakeModels.convert_pop_conc(specie_copy_numbers[specie.id], init_vol)
                 Concentration(species=specie, value=concentration, units=ConcentrationUnit.M.value)
             else:
                 Concentration(species=specie, value=default_concentration, units=ConcentrationUnit.M.value)
             obs_id = 'obs_{}_{}'.format(submodel_num, i)
-            expr = "1.5 * {}".format(specie.get_id())
+            expr = "1.5 * {}".format(specie.id)
             objects[Observable][obs_id] = obs_plain = \
                 ExpressionMethods.make_obj(model, Observable, obs_id, expr, objects)
 
@@ -138,10 +139,10 @@ class MakeModels(object):
                 expression = '1'
                 modifiers = []
             if rate_law_type.name == 'reactant_pop':
-                expression = forward_reactant.id()
+                expression = forward_reactant.id
                 modifiers = [forward_reactant]
             if rate_law_type.name == 'product_pop':
-                expression = forward_product.id()
+                expression = forward_product.id
                 modifiers = [forward_product]
             equation = equations.get(expression, None)
             if not equation:
@@ -159,10 +160,10 @@ class MakeModels(object):
                     expression = '1'
                     modifiers = []
                 if rate_law_type.name == 'reactant_pop':
-                    expression = backward_reactant.id()
+                    expression = backward_reactant.id
                     modifiers = [backward_reactant]
                 if rate_law_type.name == 'product_pop':
-                    expression = backward_product.id()
+                    expression = backward_product.id
                     modifiers = [backward_product]
                 equation = equations.get(expression, None)
                 if not equation:

@@ -10,7 +10,7 @@
 import numpy as np
 from scipy.constants import Avogadro
 
-from wc_lang.core import Species, Reaction, Compartment, Parameter
+from wc_lang import Species, Reaction, Compartment, Parameter
 from wc_lang.expression_utils import RateLawUtils
 from wc_sim.multialgorithm.dynamic_components import DynamicCompartment, DynamicModel
 from wc_sim.core.simulation_object import SimulationObject, ApplicationSimulationObject
@@ -82,7 +82,7 @@ class DynamicSubmodel(ApplicationSimulationObject):
         Returns:
             :obj:`list`: ids of species used by this dynamic submodel
         """
-        return [s.id() for s in self.species]
+        return [s.id for s in self.species]
 
     def get_specie_counts(self):
         """ Get a dictionary of current species counts for this dynamic submodel
@@ -181,8 +181,8 @@ class DynamicSubmodel(ApplicationSimulationObject):
             :obj:`bool`: True if `reaction` is stoichiometrically enabled
         """
         for participant in reaction.participants:
-            species_id = Species.gen_id(participant.species.species_type,
-                participant.species.compartment)
+            species_id = Species.gen_id(participant.species.species_type.id,
+                participant.species.compartment.id)
             count = self.local_species_population.read_one(self.time, species_id)
             # 'participant.coefficient < 0' determines whether the participant is a reactant
             is_reactant = participant.coefficient < 0
@@ -218,8 +218,8 @@ class DynamicSubmodel(ApplicationSimulationObject):
         """
         adjustments = {}
         for participant in reaction.participants:
-            species_id = Species.gen_id(participant.species.species_type,
-                participant.species.compartment)
+            species_id = Species.gen_id(participant.species.species_type.id,
+                participant.species.compartment.id)
             if not species_id in adjustments:
                 adjustments[species_id] = 0
             adjustments[species_id] += participant.coefficient

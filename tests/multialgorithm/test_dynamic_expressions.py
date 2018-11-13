@@ -157,7 +157,8 @@ class TestAllDynamicExpressionTypes(unittest.TestCase):
 
         for c_id, st_id in zip(comp_ids, st_ids):
             specie = compartments[c_id].species.create(species_type=species_types[st_id])
-            objects[Species][specie.get_id()] = specie
+            specie.id = specie.gen_id(specie.species_type.id, specie.compartment.id)
+            objects[Species][specie.id] = specie
             Concentration(species=specie, value=0, units=ConcentrationUnit.M)
 
         self.init_pop = {'a[c1]': 10, 'b[c2]': 20}

@@ -11,8 +11,8 @@ import numpy as np
 import warnings
 from scipy.constants import Avogadro
 
+from wc_lang import Reaction, SpeciesType, Species, Model
 from wc_lang.io import Reader
-from wc_lang.core import Reaction, SpeciesType, Species, Model
 from wc_lang.prepare import PrepareModel, CheckModel
 from wc_lang.transform import SplitReversibleReactionsTransform
 from wc_sim.core.simulation_object import SimulationObject
@@ -73,7 +73,7 @@ class TestDynamicSubmodel(unittest.TestCase):
             self.assertEqual(dynamic_submodel.get_state(), DynamicSubmodel.GET_STATE_METHOD_MESSAGE)
 
     def expected_molar_conc(self, dynamic_submodel, specie_id):
-        species = list(filter(lambda s: s.id() == specie_id, dynamic_submodel.species))[0]
+        species = list(filter(lambda s: s.id == specie_id, dynamic_submodel.species))[0]
         copy_num = ModelUtilities.concentration_to_molecules(species)
         return copy_num / (species.compartment.initial_volume * Avogadro)
 

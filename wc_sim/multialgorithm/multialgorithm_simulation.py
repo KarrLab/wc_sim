@@ -255,7 +255,7 @@ class MultialgorithmSimulation(object):
         """
         init_populations = {}
         for specie in model.get_species():
-            init_populations[specie.id()] = ModelUtilities.concentration_to_molecules(specie)
+            init_populations[specie.id] = ModelUtilities.concentration_to_molecules(specie)
         return init_populations
 
     def get_dynamic_compartments(self, submodel):
@@ -315,9 +315,9 @@ class MultialgorithmSimulation(object):
 
         molecular_weights = {}
         for specie in model.get_species():
-            (specie_type_id, _) = ModelUtilities.parse_specie_id(specie.id())
+            (specie_type_id, _) = ModelUtilities.parse_specie_id(specie.id)
             # TODO(Arthur): make get_one more robust, or do linear search
-            molecular_weights[specie.id()] = model.species_types.get_one(id=specie_type_id).molecular_weight
+            molecular_weights[specie.id] = model.species_types.get_one(id=specie_type_id).molecular_weight
 
         # Species used by continuous time submodels (like DFBA and ODE) need initial fluxes
         # which indicate that the species is modeled by a continuous time submodel.
@@ -327,7 +327,7 @@ class MultialgorithmSimulation(object):
         for submodel in model.get_submodels():
             if submodel.algorithm in continuous_time_submodels:
                 for specie in submodel.get_species():
-                    initial_fluxes[specie.id()] = 0.0
+                    initial_fluxes[specie.id] = 0.0
 
         return LocalSpeciesPopulation(
             'LSP_' + model.id,

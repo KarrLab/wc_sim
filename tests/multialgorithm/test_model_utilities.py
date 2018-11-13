@@ -85,8 +85,10 @@ class TestModelUtilities(unittest.TestCase):
             species_types[other] = model.species_types.create(id=other, molecular_weight=10)
 
         species = {}
-        for key,species_type in species_types.items():
-            species[key] = wc_lang.Species(species_type=species_type, compartment=compartment_c)
+        for key, species_type in species_types.items():
+            species[key] = wc_lang.Species(id=wc_lang.Species.gen_id(species_type.id, compartment_c.id), 
+                                           species_type=species_type,
+                                           compartment=compartment_c)
 
         conc_value = 2.
         for key,specie in species.items():
@@ -121,11 +123,15 @@ class TestModelUtilities(unittest.TestCase):
         with self.assertRaises(ValueError):
             conc_to_molecules(species['moles dm^-2'])
 
-        species_tmp = wc_lang.Species(species_type=species_type, compartment=compartment_c)
+        species_tmp = wc_lang.Species(id=wc_lang.Species.gen_id(species_type.id, compartment_c.id),
+                                      species_type=species_type,
+                                      compartment=compartment_c)
         wc_lang.Concentration(species=species_tmp, value=conc_value, units='molecules')
         with self.assertRaises(ValueError):
             ModelUtilities.concentration_to_molecules(species_tmp)
-        species_tmp2 = wc_lang.Species(species_type=species_type, compartment=compartment_c)
+        species_tmp2 = wc_lang.Species(id=wc_lang.Species.gen_id(species_type.id, compartment_c.id),
+                                       species_type=species_type,
+                                       compartment=compartment_c)
         wc_lang.Concentration(species=species_tmp2, value=conc_value, units=0)
         with self.assertRaises(ValueError):
             ModelUtilities.concentration_to_molecules(species_tmp2)

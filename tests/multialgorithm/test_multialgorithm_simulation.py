@@ -21,12 +21,12 @@ import time
 
 from wc_utils.util.dict import DictUtil
 from obj_model import utils
-from wc_lang.io import Reader, Writer
-from wc_lang.core import (Model, Submodel,  SpeciesType, SpeciesTypeType, Species,
+from wc_lang import (Model, Submodel,  SpeciesType, SpeciesTypeType, Species,
                           Reaction, Compartment,
                           SpeciesCoefficient, Parameter,
                           RateLaw, RateLawDirection, RateLawEquation, SubmodelAlgorithm, Concentration,
                           BiomassComponent, BiomassReaction, StopCondition)
+from wc_lang.io import Reader, Writer
 from wc_lang.prepare import PrepareModel, CheckModel
 from wc_lang.transform import SplitReversibleReactionsTransform
 from wc_sim.multialgorithm.make_models import MakeModels
@@ -125,7 +125,7 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         self.assertEqual(initial_species_population[specie_wo_init_conc], 0)
         self.assertEqual(initial_species_population['specie_2[c]'], initial_species_population['specie_4[c]'])
         for concentration in self.model.get_concentrations():
-            self.assertGreater(initial_species_population[concentration.species.id()], 0)
+            self.assertGreater(initial_species_population[concentration.species.id], 0)
 
         local_species_population = MultialgorithmSimulation.make_local_species_pop(self.model)
         self.assertEqual(local_species_population.read_one(0, specie_wo_init_conc), 0)

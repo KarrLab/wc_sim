@@ -13,9 +13,9 @@ from argparse import Namespace
 from scipy.constants import Avogadro
 from itertools import chain
 
-from wc_lang.io import Reader
-from wc_lang.core import (Model, Submodel, Compartment, Reaction, SpeciesType, Species, SpeciesCoefficient,
+from wc_lang import (Model, Submodel, Compartment, Reaction, SpeciesType, Species, SpeciesCoefficient,
     Concentration, ConcentrationUnit, Observable, ExpressionMethods)
+from wc_lang.io import Reader
 from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation
 from wc_sim.multialgorithm.dynamic_components import DynamicModel, DynamicCompartment
 from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
@@ -171,6 +171,7 @@ class TestDynamicModel(unittest.TestCase):
         species = []
         for st_idx in range(num_species_types):
             specie = comp.species.create(species_type=species_types[st_idx])
+            specie.id = specie.gen_id(specie.species_type.id, specie.compartment.id)
             conc = Concentration(species=specie, value=0, units=ConcentrationUnit.M)
             species.append(specie)
 
@@ -184,8 +185,8 @@ class TestDynamicModel(unittest.TestCase):
         for i in range(num_non_dependent_observables):
             expr_parts = []
             for j in range(i+1):
-                expr_parts.append("{}*{}".format(j, species[j].get_id()))
-                objects[Species][species[j].get_id()] = species[j]
+                expr_parts.append("{}*{}".format(j, species[j].id))
+                objects[Species][species[j].id] = species[j]
             expr = ' + '.join(expr_parts)
             obj = ExpressionMethods.make_obj(model, Observable, 'obs_nd_{}'.format(i), expr, objects)
             self.assertTrue(obj.expression.validate() is None)
@@ -205,7 +206,7 @@ class TestDynamicModel(unittest.TestCase):
             dependent_observables.append(obj)
 
         # make a LocalSpeciesPopulation
-        init_pop = dict(zip([s.id() for s in species], list(range(num_species_types))))
+        init_pop = dict(zip([s.id for s in species], list(range(num_species_types))))
         lsp = MakeTestLSP(initial_population=init_pop).local_species_pop
 
         # make a DynamicModel
