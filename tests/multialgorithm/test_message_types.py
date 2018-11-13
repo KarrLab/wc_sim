@@ -7,7 +7,7 @@
 
 import unittest
 
-import wc_sim.multialgorithm.message_types as message_types
+from wc_sim.multialgorithm import message_types
 from wc_sim.multialgorithm.message_types import ContinuousChange
 
 def make_message(msg_type, args):
