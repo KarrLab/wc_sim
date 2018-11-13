@@ -18,7 +18,7 @@ import copy
 from wc_sim.core.sim_metadata import SimulationMetadata
 from wc_sim.log.checkpoint import Checkpoint, CheckpointLogger
 import wc_sim.core.sim_config
-import wc_lang.core
+import wc_lang
 import wc_utils.util.types
 
 
@@ -157,9 +157,9 @@ def build_mock_model():
     * 1 reaction
     * 1 submodel
     '''
-    model = wc_lang.core.Model()
+    model = wc_lang.Model()
 
-    submodel = model.submodels.create(id='submodel', algorithm=wc_lang.core.SubmodelAlgorithm.ssa)
+    submodel = model.submodels.create(id='submodel', algorithm=wc_lang.SubmodelAlgorithm.ssa)
 
     compartment_c = model.compartments.create(id='c', initial_volume=1.)
     compartment_e = model.compartments.create(id='e', initial_volume=1.)
@@ -167,16 +167,16 @@ def build_mock_model():
     species_type_L = model.species_types.create(id='L', molecular_weight=10)
     species_type_R = model.species_types.create(id='R', molecular_weight=10)
 
-    species_L = wc_lang.core.Species(species_type=species_type_L, compartment=compartment_c)
-    species_R = wc_lang.core.Species(species_type=species_type_R, compartment=compartment_c)
+    species_L = wc_lang.Species(id='L[c]', species_type=species_type_L, compartment=compartment_c)
+    species_R = wc_lang.Species(id='R[c]', species_type=species_type_R, compartment=compartment_c)
     species = [species_L, species_R]
 
-    wc_lang.core.Concentration(species=species_L, value=1., units='molecules')
-    wc_lang.core.Concentration(species=species_R, value=0., units='molecules')
+    wc_lang.Concentration(species=species_L, value=1., units='molecules')
+    wc_lang.Concentration(species=species_R, value=0., units='molecules')
 
     reaction = submodel.reactions.create(id='reaction')
-    reaction.rate_laws.create(direction=wc_lang.core.RateLawDirection.forward,
-                              equation=wc_lang.core.RateLawEquation(expression='0.0'))
+    reaction.rate_laws.create(direction=wc_lang.RateLawDirection.forward,
+                              equation=wc_lang.RateLawEquation(expression='0.0'))
     reaction.participants.create(species=species_L, coefficient=-1)
     reaction.participants.create(species=species_R, coefficient=1)
 
