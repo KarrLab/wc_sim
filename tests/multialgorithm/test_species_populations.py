@@ -204,7 +204,7 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
         for row in expected_changes.split('\n')[2:]:
             (specie, c, e) = row.strip().split()
             for com in 'c e'.split():
-                id = wc_lang.core.Species.gen_id(specie, com)
+                id = wc_lang.Species.gen_id(specie, com)
                 expected_final_pops[id] += float(eval(com))
 
         self.verify_simulation(expected_final_pops, sim_end)
@@ -239,7 +239,7 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         self.species_ids = species_ids = []
         for species_type_id in species_type_ids[:2]:
             for compartment_id in compartment_ids[:2]:
-                species_ids.append(wc_lang.core.Species.gen_id(species_type_id, compartment_id))
+                species_ids.append(wc_lang.Species.gen_id(species_type_id, compartment_id))
         self.init_populations = dict(zip(species_ids, species_nums))
         self.flux = 1
         self.init_fluxes = init_fluxes = dict(zip(species_ids, [self.flux]*len(species_ids)))

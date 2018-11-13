@@ -11,9 +11,8 @@ import datetime
 import numpy
 
 from wc_utils.util.rand import RandomStateManager
-import wc_lang
+from wc_lang import Model
 from wc_lang.io import Reader
-from wc_lang.core import Model
 from wc_lang.prepare import PrepareModel, CheckModel
 from wc_sim.core import sim_config
 from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
@@ -56,7 +55,7 @@ class Simulation(object):
         """
         Args:
             model (:obj:`str` or `Model`): either a path to file(s) describing a `wc_lang` model, or
-                a `wc_lang.Model` instance
+                a `Model` instance
             sim_config (:obj:`sim_config.SimulationConfig`, optional): a simulation configuration
 
         Raises:

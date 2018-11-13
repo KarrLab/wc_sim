@@ -10,7 +10,7 @@
 
 from matplotlib import pyplot
 from matplotlib import ticker
-from wc_lang.core import Model, Submodel
+from wc_lang import Model, Submodel
 from scipy.constants import Avogadro
 import numpy as np
 import re

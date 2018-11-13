@@ -13,7 +13,7 @@ import pandas
 import numpy
 from capturer import CaptureOutput
 
-from wc_lang.core import SpeciesType
+from wc_lang import SpeciesType
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm.simulation import Simulation
 from wc_sim.multialgorithm.run_results import RunResults
