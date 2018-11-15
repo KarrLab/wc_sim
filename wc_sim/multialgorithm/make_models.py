@@ -184,7 +184,7 @@ class MakeModels(object):
 
         Args:
             model_type (:obj:`str`): model type description
-            init_vols (:obj:`list` of `float`, optional): initial volume of each compartment; default=1E-16
+            init_vols (:obj:`list` of :obj:`float`, optional): initial volume of each compartment; default=1E-16
             molecular_weight (:obj:`float`): the MW of each species type; default=10
             num_submodels (:obj:`int`): number of submodels
             default_specie_copy_number (:obj:`int`): default population of all species in their compartments

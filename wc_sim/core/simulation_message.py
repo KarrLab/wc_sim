@@ -115,7 +115,7 @@ class SimulationMessageInterface(object, metaclass=ABCMeta):
         """ Provide a list of the attributes names for this `SimulationMessage`
 
         Returns:
-            :obj:`list` of `str`: the attributes in this `SimulationMessage`
+            :obj:`list` of :obj:`str`: the attributes in this `SimulationMessage`
         """
         return self.__slots__
 

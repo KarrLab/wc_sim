@@ -36,7 +36,7 @@ class SimulationEngine(object):
     Attributes:
         time (:obj:`float`): the simulations's current time
         simulation_objects (:obj:`dict` of `SimulationObject`): all simulation objects, keyed by name
-        shared_state (:obj:`list` of `object`, optional): the shared state of the simulation, needed to
+        shared_state (:obj:`list` of :obj:`object`, optional): the shared state of the simulation, needed to
             log or checkpoint the entire state of a simulation; all objects in `shared_state` must
             implement `SharedStateInterface`
         debug_log (:obj:`bool`, optional): whether to output a debug log

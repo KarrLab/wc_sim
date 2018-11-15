@@ -32,7 +32,7 @@ class DynamicCompartment(object):
         init_volume (:obj:`float`): initial volume specified in the `wc_lang` model
         species_population (:obj:`LocalSpeciesPopulation`): an object that represents
             the populations of species in this `DynamicCompartment`
-        species_ids (:obj:`list` of `str`): the IDs of the species stored
+        species_ids (:obj:`list` of :obj:`str`): the IDs of the species stored
             in this dynamic compartment; if `None`, use the IDs of all species in `species_population`
     """
     def __init__(self, compartment, species_population, species_ids=None):
@@ -42,7 +42,7 @@ class DynamicCompartment(object):
             compartment (:obj:`Compartment`): the corresponding static `wc_lang` `Compartment`
             species_population (:obj:`LocalSpeciesPopulation`): an object that represents
                 the populations of species in this `DynamicCompartment`
-            species_ids (:obj:`list` of `str`, optional): the IDs of the species stored
+            species_ids (:obj:`list` of :obj:`str`, optional): the IDs of the species stored
                 in this compartment; defaults to the IDs of all species in `species_population`
 
         Raises:
@@ -284,7 +284,7 @@ class DynamicModel(object):
 
         Args:
             time (:obj:`float`): the simulation time
-            observables_to_eval (:obj:`list` of `str`, optional): if provided, ids of the observables to
+            observables_to_eval (:obj:`list` of :obj:`str`, optional): if provided, ids of the observables to
                 evaluate; otherwise, evaluate all observables
 
         Returns:

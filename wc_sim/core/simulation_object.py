@@ -138,7 +138,7 @@ class EventQueue(object):
         with the same event_time (aka receive_time), pass them all to the object in a list.
 
         Returns:
-            :obj:`list` of `Event`: the earliest event(s), sorted by message type priority. If no
+            :obj:`list` of :obj:`Event`: the earliest event(s), sorted by message type priority. If no
                 events are available the list is empty.
         """
         if not self.event_heap:
@@ -426,7 +426,7 @@ class SimulationObject(object):
         Args:
             subclass (:obj:`SimulationObject`): a subclass of `SimulationObject` that is registering
                 the types of simulation messages it sends
-            sent_messages (:obj:`list` of `SimulationMessage`): a list of the `SimulationMessage`
+            sent_messages (:obj:`list` of :obj:`SimulationMessage`): a list of the `SimulationMessage`
                 type's which can be sent by `SimulationObject`'s of type `subclass`
         """
         for sent_message_type in sent_messages:
@@ -450,7 +450,7 @@ class SimulationObject(object):
         from `SimulationEngine`.
 
         Attributes:
-            event_list (:obj:`list` of `Event`): the `Event` message(s) in the simulation event
+            event_list (:obj:`list` of :obj:`Event`): the `Event` message(s) in the simulation event
 
         Raises:
             :obj:`SimulatorError`: if a message in `event_list` has an invalid type

@@ -33,12 +33,12 @@ class DynamicSubmodel(ApplicationSimulationObject):
     Attributes:
         id (:obj:`str`): unique id of this dynamic submodel / simulation object
         dynamic_model (:obj:`DynamicModel`): the aggregate state of a simulation
-        reactions (:obj:`list` of `Reaction`): the reactions modeled by this dynamic submodel
+        reactions (:obj:`list` of :obj:`Reaction`): the reactions modeled by this dynamic submodel
         rates (:obj:`np.array`): array to hold reaction rates
-        species (:obj:`list` of `Species`): the species that participate in the reactions modeled
+        species (:obj:`list` of :obj:`Species`): the species that participate in the reactions modeled
             by this dynamic submodel, with their initial concentrations
-        parameters (:obj:`list` of `Parameter`): the model's parameters
-        dynamic_compartments (:obj:`list` of `DynamicCompartment`): the dynamic compartments containing
+        parameters (:obj:`list` of :obj:`Parameter`): the model's parameters
+        dynamic_compartments (:obj:`list` of :obj:`DynamicCompartment`): the dynamic compartments containing
             species that participate in reactions that this dynamic submodel models, including adjacent
             compartments used by its transfer reactions
         local_species_population (:obj:`LocalSpeciesPopulation`): the store that maintains this

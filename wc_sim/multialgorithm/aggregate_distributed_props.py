@@ -177,7 +177,7 @@ class DistributedProperty(object):  # pragma: no cover; # TODO(Arthur): cover af
         num_periods (:obj:`int`): the number of periods for which this property has been collected;
             used by `AggregateDistributedProps` to create event times that equal integral numbers
             of periods 
-        contributors (:obj:`list` of `SimulationObject`): `SimulationObject`'s which must be queried
+        contributors (:obj:`list` of :obj:`SimulationObject`): `SimulationObject`'s which must be queried
             to establish this property
         value_history (:obj:`dict`): time -> `dict`: `SimulationObject` -> value; history of distributed
             values for this property

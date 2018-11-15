@@ -119,7 +119,7 @@ class MultialgorithmSimulation(object):
         init_populations (:obj:`dict` from species id to population): the initial populations of
             species, as specified by `model`
         simulation (:obj:`SimulationEngine`): the initialized simulation
-        simulation_submodels (:obj:`list` of `DynamicSubmodel`): the simulation's submodels
+        simulation_submodels (:obj:`list` of :obj:`DynamicSubmodel`): the simulation's submodels
         checkpointing_sim_obj (:obj:`MultialgorithmicCheckpointingSimObj`): the checkpointing object;
             `None` if absent
         species_pop_objs (:obj:`dict` of `SpeciesPopSimObject`): shared species

@@ -136,7 +136,7 @@ class AccessSpeciesPopulations(AccessSpeciesPopulationInterface):   # pragma: no
         Args:
             store_name (:obj:`str`): the globally unique name of a species population store. `LOCAL_POP_STORE`
                 is a special name that identifies the local population store for private species
-            specie_ids (:obj:`list` of `str`): a list of species ids
+            specie_ids (:obj:`list` of :obj:`str`): a list of species ids
 
         Raises:
             :obj:`SpeciesPopulationError`: if store `store_name` is unknown
@@ -200,7 +200,7 @@ class AccessSpeciesPopulations(AccessSpeciesPopulationInterface):   # pragma: no
         `from wc_sim.multialgorithm.species_pop_sim_object.SpeciesPopSimObject` instance.
 
         Args:
-            specie_ids (:obj:`list` of `str`): a list of species identifiers
+            specie_ids (:obj:`list` of :obj:`str`): a list of species identifiers
 
         Returns:
             dict: a map from store_name -> a set of species_ids whose populations are stored
@@ -759,7 +759,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
 
         Args:
             compartment_id (:obj:`str`): the ID of the compartment
-            species_ids (:obj:`list` of `str`, optional): identifiers of the species whose mass will be obtained;
+            species_ids (:obj:`list` of :obj:`str`, optional): identifiers of the species whose mass will be obtained;
                 if not provided, then compute the mass of all species in the compartment
 
         Returns:
@@ -849,9 +849,9 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
 
         Args:
             numpy_format (:obj:`bool`, optional): if set, return history in a 3 dimensional numpy array
-            specie_type_ids (:obj:`list` of `str`, optional): the ids of specie_types in the
+            specie_type_ids (:obj:`list` of :obj:`str`, optional): the ids of specie_types in the
                 `Model` being simulated
-            compartment_ids (:obj:`list` of `str`, optional): the ids of the compartments in the
+            compartment_ids (:obj:`list` of :obj:`str`, optional): the ids of the compartments in the
                 `Model` being simulated
 
         Returns:

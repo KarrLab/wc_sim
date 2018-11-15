@@ -111,8 +111,8 @@ class DynamicExpression(DynamicComponent):
 
     Attributes:
         expression (:obj:`str`): the expression defined in the `wc_lang` Model
-        wc_sim_tokens (:obj:`list` of `WcSimToken`): a tokenized, compressed representation of `expression`
-        expr_substrings (:obj:`list` of `str`): strings which are joined to form the string which is 'eval'ed
+        wc_sim_tokens (:obj:`list` of :obj:`WcSimToken`): a tokenized, compressed representation of `expression`
+        expr_substrings (:obj:`list` of :obj:`str`): strings which are joined to form the string which is 'eval'ed
         local_ns (:obj:`dict`): pre-computed local namespace of functions used in `expression`
     """
 
