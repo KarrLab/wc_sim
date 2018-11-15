@@ -91,7 +91,7 @@ class ModelUtilities(object):
         Args:
             species (:obj:`Species`): a `Species` instance; the `species.concentration.units` must
                 be `None` or a value selected from `ConcentrationUnit`; `None` is interpreted as
-                `ConcentrationUnit.M`; `ConcentrationUnit['moles dm^-2']` is not supported
+                `ConcentrationUnit.M`; `ConcentrationUnit['mol dm^-2']` is not supported
 
         Returns:
             `int`: the `species'` copy number
@@ -108,8 +108,8 @@ class ModelUtilities(object):
                 units = ConcentrationUnit.M.value
             if not units in ModelUtilities.CONCENTRATION_UNIT_VALUES:
                 raise ValueError("units '{}' not a value in ConcentrationUnit".format(units))
-            if units == ConcentrationUnit['moles dm^-2'].value:
-                raise ValueError("ConcentrationUnit 'moles dm^-2' not supported")
+            if units == ConcentrationUnit['mol dm^-2'].value:
+                raise ValueError("ConcentrationUnit 'mol dm^-2' not supported")
             if units == ConcentrationUnit['molecules'].value:
                 return conc.value
             unit_magnitudes = 3 * (units - ConcentrationUnit.M.value)

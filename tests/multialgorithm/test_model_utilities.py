@@ -121,7 +121,7 @@ class TestModelUtilities(unittest.TestCase):
         copy_number = conc_to_molecules(species['no_concentration'])
         self.assertEqual(copy_number, 0)
         with self.assertRaises(ValueError):
-            conc_to_molecules(species['moles dm^-2'])
+            conc_to_molecules(species['mol dm^-2'])
 
         species_tmp = wc_lang.Species(id=wc_lang.Species.gen_id(species_type.id, compartment_c.id),
                                       species_type=species_type,
