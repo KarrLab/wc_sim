@@ -99,7 +99,8 @@ class TestDynamicSubmodel(unittest.TestCase):
             "dynamic submodel .* cannot compute concentration in compartment .* with volume=0")
 
     def test_calc_reaction_rates(self):
-        expected_rates = {'reaction_2': 0.0, 'reaction_4': 2.0}
+        # reaction_4 is adjusted w V*NA factor to account for calculating rxn rate in copy space         
+        expected_rates = {'reaction_2': 0.0, 'reaction_4': 13791.0}
         for dynamic_submodel in self.dynamic_submodels.values():
             rates = dynamic_submodel.calc_reaction_rates()
             for index,rxn in enumerate(dynamic_submodel.reactions):

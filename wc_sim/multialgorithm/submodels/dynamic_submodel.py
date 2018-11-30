@@ -154,11 +154,20 @@ class DynamicSubmodel(ApplicationSimulationObject):
             :obj:`np.ndarray`: a numpy array of reaction rates, indexed by reaction index
         """
         # TODO(Arthur): optimization: get concentrations only for modifiers in the reactions
-        species_concentrations = self.get_specie_concentrations()
-        for idx_reaction, rxn in enumerate(self.reactions):            
+        # species_concentrations = self.get_specie_concentrations()
+        species_counts = self.get_specie_counts()
+
+        for idx_reaction, rxn in enumerate(self.reactions):
             if rxn.rate_laws:
                 parameter_values = {param.id: param.value for param in rxn.rate_laws[0].equation.parameters}
-                self.rates[idx_reaction] = RateLawUtils.eval_rate_law(rxn.rate_laws[0], species_concentrations, parameter_values)
+                self.rates[idx_reaction] = RateLawUtils.eval_rate_law(rxn.rate_laws[0], species_counts, parameter_values)
+
+                #Balazs debug
+                #if rxn.id=='transcription_tu_1_1' or rxn.id=='degrad_tu_1_1' :
+                #    if random.random() > 0.95:
+                #        print('Rate of reaction {}: {}'.format(rxn.id, self.rates[idx_reaction]))
+
+
         # TODO(Arthur): optimization: get this if to work:
         # if self.logger.isEnabledFor(self.logger.getEffectiveLevel()):
         # print('self.logger.getEffectiveLevel())', self.logger.getEffectiveLevel())

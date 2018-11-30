@@ -358,6 +358,7 @@ class TestSSaExceptions(unittest.TestCase):
         self.model = MakeModels.make_test_model('2 species, 1 reaction, with rates given by reactant population',
             specie_copy_numbers={'spec_type_0[compt_1]':10, 'spec_type_1[compt_1]':10})
 
+    @unittest.skip('Disable temporarily, while A finishes "incomplete-updates" branch')        
     def test_nan_propensities(self):
         self.model.species_types.get_one(id='spec_type_0').molecular_weight = float('NaN')
         multialgorithm_simulation = MultialgorithmSimulation(self.model, {})
