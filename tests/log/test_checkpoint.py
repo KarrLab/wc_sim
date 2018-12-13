@@ -181,7 +181,7 @@ def build_mock_model():
     reaction.participants.create(species=species_R, coefficient=1)
 
     model.parameters.create(id='fraction_dry_weight', value=1., units='dimensionless')
-    model.parameters.create(id='cell_cycle_length', value=30. * 60, units='s'),
+    model.parameters.create(id='cell_cycle_len', value=30. * 60, units='s'),
 
     return model
 
