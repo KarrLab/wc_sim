@@ -1,28 +1,23 @@
 """ Test dynamic components of a multialgorithm simulation
 
-:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2018-02-07
 :Copyright: 2018, Karr Lab
 :License: MIT
 """
 
-import os
-import unittest
-import warnings
-from argparse import Namespace
 from scipy.constants import Avogadro
-from itertools import chain
-
-from wc_lang import (Model, Submodel, Compartment, Reaction, SpeciesType, Species, SpeciesCoefficient,
-    Concentration, ConcentrationUnit, Observable, ExpressionMethods)
+from wc_lang import (Model, Compartment, Species,
+                     DistributionInitConcentration, ConcentrationUnit, Observable)
+from wc_lang.expression import Expression
 from wc_lang.io import Reader
-from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation
 from wc_sim.multialgorithm.dynamic_components import DynamicModel, DynamicCompartment
 from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
-from wc_sim.multialgorithm.dynamic_expressions import DynamicObservable
-from wc_sim.multialgorithm.species_populations import MakeTestLSP
-from wc_sim.multialgorithm.make_models import MakeModels
+from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation, MakeTestLSP
+import os
+import unittest
+import warnings
 
 
 class TestDynamicCompartment(unittest.TestCase):
@@ -33,7 +28,7 @@ class TestDynamicCompartment(unittest.TestCase):
         # make a LocalSpeciesPopulation
         self.num_species = 100
         species_nums = list(range(0, self.num_species))
-        self.species_ids = list(map(lambda x: "specie_{}[{}]".format(x, comp_id), species_nums))
+        self.species_ids = list(map(lambda x: "species_{}[{}]".format(x, comp_id), species_nums))
         self.all_pops = 1E6
         self.init_populations = dict(zip(self.species_ids, [self.all_pops]*len(species_nums)))
         self.all_m_weights = 50
@@ -41,19 +36,19 @@ class TestDynamicCompartment(unittest.TestCase):
         self.local_species_pop = LocalSpeciesPopulation('test', self.init_populations, self.molecular_weights)
 
         # make a DynamicCompartment
-        self.initial_volume=1E-17
-        self.compartment = Compartment(id=comp_id, name='name', initial_volume=self.initial_volume)
+        self.mean_init_volume = 1E-17
+        self.compartment = Compartment(id=comp_id, name='name', mean_init_volume=self.mean_init_volume)
         self.dynamic_compartment = DynamicCompartment(self.compartment, self.local_species_pop, self.species_ids)
 
     def test_simple_dynamic_compartment(self):
 
         # test DynamicCompartment
-        self.assertEqual(self.dynamic_compartment.volume(), self.compartment.initial_volume)
+        self.assertEqual(self.dynamic_compartment.volume(), self.compartment.mean_init_volume)
         self.assertIn(self.dynamic_compartment.id, str(self.dynamic_compartment))
         self.assertIn("Fold change volume: 1.0", str(self.dynamic_compartment))
         estimated_mass = self.num_species*self.all_pops*self.all_m_weights/Avogadro
         self.assertAlmostEqual(self.dynamic_compartment.mass(), estimated_mass)
-        estimated_density = estimated_mass/self.initial_volume
+        estimated_density = estimated_mass/self.mean_init_volume
         self.assertAlmostEqual(self.dynamic_compartment.density(), estimated_density)
 
         # self.compartment containing just the first element of self.species_ids
@@ -69,18 +64,18 @@ class TestDynamicCompartment(unittest.TestCase):
             self.assertIn("initial mass is 0, so constant_density is 0, and volume will remain constant", str(w[-1].message))
 
         # check that 'volume remains constant'
-        self.assertEqual(dynamic_compartment.volume(), self.compartment.initial_volume)
-        local_species_pop.adjust_discretely(0, {self.species_ids[0]:5})
+        self.assertEqual(dynamic_compartment.volume(), self.compartment.mean_init_volume)
+        local_species_pop.adjust_discretely(0, {self.species_ids[0]: 5})
         self.assertTrue(0 < dynamic_compartment.mass())
-        self.assertEqual(dynamic_compartment.volume(), self.compartment.initial_volume)
+        self.assertEqual(dynamic_compartment.volume(), self.compartment.mean_init_volume)
 
     def test_dynamic_compartment_exceptions(self):
 
-        compartment = Compartment(id='id', name='name', initial_volume=0)
+        compartment = Compartment(id='id', name='name', mean_init_volume=0)
         with self.assertRaises(MultialgorithmError):
             DynamicCompartment(compartment, self.local_species_pop, self.species_ids)
 
-        compartment = Compartment(id='id', name='name', initial_volume=float('nan'))
+        compartment = Compartment(id='id', name='name', mean_init_volume=float('nan'))
         with self.assertRaises(MultialgorithmError):
             DynamicCompartment(compartment, self.local_species_pop, self.species_ids)
 
@@ -92,7 +87,7 @@ class TestDynamicModel(unittest.TestCase):
 
     def read_model(self, model_filename):
         # read and initialize a model
-        self.model = Reader().run(model_filename, strict=False)
+        self.model = Reader().run(model_filename)
         multialgorithm_simulation = MultialgorithmSimulation(self.model, None)
         dynamic_compartments = multialgorithm_simulation.dynamic_compartments
         self.dynamic_model = DynamicModel(self.model, multialgorithm_simulation.local_species_population, dynamic_compartments)
@@ -129,9 +124,9 @@ class TestDynamicModel(unittest.TestCase):
             'cell mass': 8.260E-16,
             'cell volume': 4.58E-17,
             'compartments': {'c':
-                {'mass': 8.260E-16,
-                'name': 'Cell',
-                'volume': 4.58E-17}}
+                             {'mass': 8.260E-16,
+                              'name': 'Cell',
+                              'volume': 4.58E-17}}
         }
         computed_aggregate_state = self.dynamic_model.get_aggregate_state()
         self.compare_aggregate_states(expected_aggregate_state, computed_aggregate_state)
@@ -149,9 +144,9 @@ class TestDynamicModel(unittest.TestCase):
             'cell mass': 9.160E-19,
             'cell volume': 4.58E-17,
             'compartments': {'c':
-                {'mass': 9.160E-19,
-                'name': 'Cell',
-                'volume': 4.58E-17}}
+                             {'mass': 9.160E-19,
+                              'name': 'Cell',
+                              'volume': 4.58E-17}}
         }
         self.compare_aggregate_states(expected_aggregate_state, computed_aggregate_state)
 
@@ -160,7 +155,7 @@ class TestDynamicModel(unittest.TestCase):
         model = Model()
         comp = model.compartments.create(id='comp_0')
         submodel = model.submodels.create(id='submodel')
-        model.parameters.create(id='fractionDryWeight', value=0.3)
+        model.parameters.create(id='fractionDryWeight', value=0.3, units='dimensionless')
 
         num_species_types = 10
         species_types = []
@@ -170,15 +165,17 @@ class TestDynamicModel(unittest.TestCase):
 
         species = []
         for st_idx in range(num_species_types):
-            specie = comp.species.create(species_type=species_types[st_idx])
+            specie = model.species.create(species_type=species_types[st_idx], compartment=comp)
             specie.id = specie.gen_id(specie.species_type.id, specie.compartment.id)
-            conc = Concentration(species=specie, value=0, units=ConcentrationUnit.M)
+            conc = model.distribution_init_concentrations.create(
+                id=DistributionInitConcentration.gen_id(specie.id),
+                species=specie, mean=0, units=ConcentrationUnit.M)
             species.append(specie)
 
         # create some observables
         objects = {
-            Species:{},
-            Observable:{}
+            Species: {},
+            Observable: {}
         }
         num_non_dependent_observables = 5
         non_dependent_observables = []
@@ -188,7 +185,7 @@ class TestDynamicModel(unittest.TestCase):
                 expr_parts.append("{}*{}".format(j, species[j].id))
                 objects[Species][species[j].id] = species[j]
             expr = ' + '.join(expr_parts)
-            obj = ExpressionMethods.make_obj(model, Observable, 'obs_nd_{}'.format(i), expr, objects)
+            obj = Expression.make_obj(model, Observable, 'obs_nd_{}'.format(i), expr, objects)
             self.assertTrue(obj.expression.validate() is None)
             non_dependent_observables.append(obj)
 
@@ -201,7 +198,7 @@ class TestDynamicModel(unittest.TestCase):
                 expr_parts.append("{}*{}".format(j, nd_obs_id))
                 objects[Observable][nd_obs_id] = non_dependent_observables[j]
             expr = ' + '.join(expr_parts)
-            obj = ExpressionMethods.make_obj(model, Observable, 'obs_d_{}'.format(i), expr, objects)
+            obj = Expression.make_obj(model, Observable, 'obs_d_{}'.format(i), expr, objects)
             self.assertTrue(obj.expression.validate() is None)
             dependent_observables.append(obj)
 

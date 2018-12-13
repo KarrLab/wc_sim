@@ -1,6 +1,6 @@
 """ A static set of message types and their content for multialgorithmic whole-cell simulations
 
-:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2016-06-10
 :Copyright: 2016-2018, Karr Lab
 :License: MIT
@@ -14,16 +14,16 @@ Declare
 Event message types, bodies and reply message:
 
     AdjustPopulationByDiscreteSubmodel
-        a discrete (stochastic) model increases or decreases some species copy numbers: data: dict: 
+        a discrete (stochastic) model increases or decreases some species copy numbers: data: dict:
         species_name -> population_change; no reply message
 
     AdjustPopulationByContinuousSubmodel
-        a continuous model integrated by a time-step simulation increases or decreases some species 
+        a continuous model integrated by a time-step simulation increases or decreases some species
         copy numbers: data: dict: species_name -> (population_change, population_flux); no reply message
 
-    GetPopulation    
+    GetPopulation
         set of species whose population is needed; data: set: species_name(s)
-    
+
     GivePopulation
         response to GetPopulation; dict: species_name -> population
 
@@ -39,6 +39,7 @@ from collections import namedtuple
 
 from wc_sim.core.simulation_message import SimulationMessage
 
+
 class AdjustPopulationByDiscreteSubmodel(SimulationMessage):
     """ A WC simulator message sent by a discrete time submodel to adjust species counts.
 
@@ -48,7 +49,10 @@ class AdjustPopulationByDiscreteSubmodel(SimulationMessage):
     """
     attributes = ["population_change"]
 
+
 ContinuousChange_namedtuple = namedtuple('ContinuousChange_namedtuple', 'change, flux')
+
+
 class ContinuousChange(ContinuousChange_namedtuple):
     """ A namedtuple to be used in the body of an AdjustPopulationByContinuousSubmodel message
     """
@@ -62,12 +66,12 @@ class ContinuousChange(ContinuousChange_namedtuple):
         # https://docs.python.org/2.7/library/collections.html#collections.namedtuple documents
         # namedtuple and this approach for extending its functionality
         for f in self._fields:
-            v = getattr(self,f)
+            v = getattr(self, f)
             try:
                 float(v)
             except:
                 raise ValueError("ContinuousChange.type_check(): {} is '{}' "
-                    "which cannot be cast to a float".format(f, v))
+                                 "which cannot be cast to a float".format(f, v))
 
     def __new__(cls, change, flux):
         """ Initialize a ContinuousChange.
@@ -78,6 +82,7 @@ class ContinuousChange(ContinuousChange_namedtuple):
         self = super().__new__(cls, change, flux)
         self.type_check()
         return self
+
 
 class AdjustPopulationByContinuousSubmodel(SimulationMessage):
     """ A WC simulator message sent by a continuous submodel to adjust species counts.
@@ -93,6 +98,7 @@ class AdjustPopulationByContinuousSubmodel(SimulationMessage):
     """
     attributes = ['population_change']
 
+
 class GetPopulation(SimulationMessage):
     """ A WC simulator message sent by a submodel to obtain some current specie populations.
 
@@ -101,6 +107,7 @@ class GetPopulation(SimulationMessage):
         requested.
     """
     attributes = ['species']
+
 
 class GivePopulation(SimulationMessage):
     """ A WC simulator message sent by a species pop object to report some current specie populations.
@@ -112,6 +119,7 @@ class GivePopulation(SimulationMessage):
 
 # TODO(Arthur): make a pair of messages that Get and Give the population of one specie
 
+
 class AggregateProperty(SimulationMessage):
     """ A WC simulator message sent to aggregate a property
 
@@ -119,6 +127,7 @@ class AggregateProperty(SimulationMessage):
         property_name (:obj:`str`): the name of the requested property
     """
     attributes = ['property_name']
+
 
 """
 We support two different types of get-property messages, GetCurrentProperty and GetHistoricalProperty,
@@ -133,6 +142,7 @@ at least over some time period. Handling it generates an error if the property i
 at the requested time.
 """
 
+
 class GetHistoricalProperty(SimulationMessage):
     """ A WC simulator message sent to obtain a property at a time that's not in the future
 
@@ -142,6 +152,7 @@ class GetHistoricalProperty(SimulationMessage):
     """
     attributes = ['property_name', 'time']
 
+
 class GetCurrentProperty(SimulationMessage):
     """ A WC simulator message sent to obtain a property at the receiver's current time
 
@@ -149,6 +160,7 @@ class GetCurrentProperty(SimulationMessage):
         property_name (:obj:`str`): the name of the requested property
     """
     attributes = ['property_name']
+
 
 class GiveProperty(SimulationMessage):
     """ A WC simulator message sent by a simulation object to report a property
@@ -160,22 +172,26 @@ class GiveProperty(SimulationMessage):
     """
     attributes = ['property_name', 'time', 'value']
 
+
 class ExecuteSsaReaction(SimulationMessage):
-    """ A WC simulator message sent by a SSASubmodel to itself to schedule an SSA reaction execution.
+    """ A WC simulator message sent by a SsaSubmodel to itself to schedule an SSA reaction execution.
 
     Attributes:
-        reaction_index (int): the index of the selected reaction in `SSASubmodel.reactions`.
+        reaction_index (int): the index of the selected reaction in `SsaSubmodel.reactions`.
     """
     attributes = ['reaction_index']
 
+
 class SsaWait(SimulationMessage):
-    """ A WC simulator message sent by a SSASubmodel to itself to temporarily suspend activity
+    """ A WC simulator message sent by a SsaSubmodel to itself to temporarily suspend activity
     because no reactions are runnable.
     """
+
 
 class RunFba(SimulationMessage):
     """ A WC simulator message sent by a DfbaSubmodel to itself to schedule the next FBA execution.
     """
+
 
 ALL_MESSAGE_TYPES = [
     AdjustPopulationByDiscreteSubmodel,    # A discrete model changes the population.

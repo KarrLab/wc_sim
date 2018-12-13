@@ -1,4 +1,4 @@
-""" Use wc_sim to simulate a model of the transcription, 
+""" Use wc_sim to simulate a model of the transcription,
 translation, and RNA and protein degradation of 3 genes, each
 with 1 RNA and 1 protein species
 

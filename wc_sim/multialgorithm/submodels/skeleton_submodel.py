@@ -1,6 +1,6 @@
 """ A simplistic, configurable submodel for testing submodels and the simulator
 
-:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2016_12_06
 :Copyright: 2016-2018, Karr Lab
 :License: MIT
@@ -24,11 +24,11 @@ class SkeletonSubmodel(DynamicSubmodel):
     """
     REACTION_TO_EXECUTE = 'REACTION_TO_EXECUTE'
     INTER_REACTION_TIME = 'INTER_REACTION_TIME'
-    def __init__(self, id, dynamic_model, reactions, species, parameters, dynamic_compartments,
+    def __init__(self, id, dynamic_model, reactions, species, dynamic_compartments,
         local_species_population, behavior):
         self.behavior = behavior
         self.next_reaction = 0
-        super().__init__(id, dynamic_model, reactions, species, parameters, dynamic_compartments,
+        super().__init__(id, dynamic_model, reactions, species, dynamic_compartments,
             local_species_population)
 
     # The next three methods override DynamicSubmodel methods.

@@ -10,16 +10,18 @@ import os
 import datetime
 import numpy
 
-from wc_utils.util.rand import RandomStateManager
-from wc_lang import Model
+from test.support import EnvironmentVarGuard
+from wc_lang import Model, Validator
 from wc_lang.io import Reader
-from wc_lang.prepare import PrepareModel, CheckModel
+from wc_lang.transform import PrepareForWcSimTransform
 from wc_sim.core import sim_config
-from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
-from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
-from wc_sim.multialgorithm.run_results import RunResults
 from wc_sim.core.sim_metadata import SimulationMetadata, ModelMetadata, AuthorMetadata, RunMetadata
 from wc_sim.core.simulation_engine import SimulationEngine
+from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
+from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
+from wc_sim.multialgorithm.run_results import RunResults
+from wc_utils.util.rand import RandomStateManager
+from wc_utils.util.string import indent_forest
 
 '''
 usage:
@@ -67,7 +69,7 @@ class Simulation(object):
         elif isinstance(model, str):
             # read model
             self.model_path = os.path.abspath(os.path.expanduser(model))
-            self.model = Reader().run(self.model_path, strict=False)
+            self.model = Reader().run(self.model_path)
             if self.model is None:
                 raise MultialgorithmError("No model found in model file '{}'".format(self.model_path))
         else:
@@ -80,8 +82,10 @@ class Simulation(object):
         """ Prepare simulation model and metadata
         """
         # prepare & check the model
-        PrepareModel(self.model).run()
-        CheckModel(self.model).run()
+        PrepareForWcSimTransform().run(self.model)
+        errors = Validator().run(self.model)
+        if errors:
+            raise ValueError(indent_forest(['The model is invalid:', [errors]]))
 
         # create metadata
         self.simulation_metadata = self._create_metadata()

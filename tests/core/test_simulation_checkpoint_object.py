@@ -1,6 +1,6 @@
 """ Test the simulation checkpoint objects
 
-:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2018-05-03
 :Copyright: 2017-2018, Karr Lab
 :License: MIT
@@ -130,7 +130,7 @@ class TestCheckpointSimulationObjects(unittest.TestCase):
 
     def test_checkpoint_simulation_object(self):
         '''
-        Run a simulation with CheckpointSimulationObject and another object. 
+        Run a simulation with CheckpointSimulationObject and another object.
         Take checkpoints and test them.
         '''
         # prepare
@@ -147,7 +147,7 @@ class TestCheckpointSimulationObjects(unittest.TestCase):
         # check results
         self.assertEqual(expected_num_events, num_events)
         expected_checkpoint_times = [float(t) for t in
-            range(0, self.checkpoint_period * int(run_time/self.checkpoint_period) + 1, self.checkpoint_period)]
+                                     range(0, self.checkpoint_period * int(run_time/self.checkpoint_period) + 1, self.checkpoint_period)]
         checkpoints = Checkpoint.list_checkpoints(self.checkpoint_dir)
         self.assertEqual(expected_checkpoint_times, checkpoints)
         checkpoint = Checkpoint.get_checkpoint(self.checkpoint_dir)

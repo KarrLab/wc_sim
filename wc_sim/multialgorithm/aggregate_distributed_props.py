@@ -1,6 +1,6 @@
 '''Compute distributed properties of multi-algorithmic whole-cell model simulations.
 
-:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2017-03-15
 :Copyright: 2016-2018, Karr Lab
 :License: MIT
@@ -9,7 +9,9 @@
 from scipy.constants import Avogadro
 from collections import defaultdict
 import bisect
-import builtins, math, sys
+import builtins
+import math
+import sys
 
 from wc_sim.core.simulation_object import Event, SimulationObject, ApplicationSimulationObject
 from wc_sim.multialgorithm.debug_logs import logs as debug_logs
@@ -20,6 +22,8 @@ from .debug_logs import logs as debug_logs
 config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 
 # TODO(Arthur): cover after MVP wc_sim done
+
+
 class AggregateDistributedProps(ApplicationSimulationObject):   # pragma: no cover
     '''Obtain and provide properties of a multi-algorithmic whole-cell model simulation
     that require retrieving distributed data.
@@ -34,7 +38,7 @@ class AggregateDistributedProps(ApplicationSimulationObject):   # pragma: no cov
     Event messages used to obtain properties:
 
     * `AggregateProperty`: aggregate a property. Events sent by an `AggregateDistributedProps` to itself,
-       regulating a distributed property's periodicity. 
+       regulating a distributed property's periodicity.
     * `GetHistoricalProperty`: request a property. A GetHistoricalProperty message sent to an `AggregateDistributedProps`
        requests the aggregate property. One sent to another object requests the local property.
     * `GiveProperty`: a response to a `GetHistoricalProperty` message, containing the property's value.
@@ -65,11 +69,11 @@ class AggregateDistributedProps(ApplicationSimulationObject):   # pragma: no cov
         return 'object state to be provided'
 
     def add_property(self, distributed_property):
-        '''Add a DistributedProperty 
+        '''Add a DistributedProperty
 
         Args:
             distributed_property (:obj:`DistributedProperty`): a DistributedProperty that will
-                be managed by this `AggregateDistributedProps` 
+                be managed by this `AggregateDistributedProps`
         '''
         self.properties[distributed_property.name] = distributed_property
         self.process_aggregate_property_event(distributed_property.name, initial_event=True)
@@ -105,8 +109,8 @@ class AggregateDistributedProps(ApplicationSimulationObject):   # pragma: no cov
         self.properties[property_name].request_values(self, next_property_time)
         # send self-clocking AggregateProperty
         self.send_event(next_property_time-self.time,
-            self,
-            message_types.AggregateProperty(property_name))
+                        self,
+                        message_types.AggregateProperty(property_name))
 
     def handle_aggregate_property_event(self, event):
         '''Process an event message `AggregateProperty`
@@ -115,7 +119,7 @@ class AggregateDistributedProps(ApplicationSimulationObject):   # pragma: no cov
             event (:obj:`Event`): an event message about a `DistributedProperty`
         '''
         property_name = self.get_property(event)
-        self.process_aggregate_property_event(property_name)        
+        self.process_aggregate_property_event(property_name)
 
     def handle_get_historical_property_event(self, event):
         '''Provide an aggregate property value to a requestor
@@ -137,8 +141,8 @@ class AggregateDistributedProps(ApplicationSimulationObject):   # pragma: no cov
             raise ValueError(msg)
 
         self.send_event(0,
-            event.sending_object,
-            message_types.GiveProperty(property_name, time, value))
+                        event.sending_object,
+                        message_types.GiveProperty(property_name, time, value))
 
     def handle_give_property_event(self, event):
         '''Record a property value from a contributor
@@ -154,12 +158,12 @@ class AggregateDistributedProps(ApplicationSimulationObject):   # pragma: no cov
 
     # Register the handlers for event messages received by an `AggregateDistributedProps`
     event_handlers = [
-                # At any time instant, process message types in this order
-                (message_types.AggregateProperty, handle_aggregate_property_event),
-                (message_types.GiveProperty, handle_give_property_event),
-                (message_types.GetHistoricalProperty, handle_get_historical_property_event),
-                # todo: add a handler for GetCurrentProperty
-            ]
+        # At any time instant, process message types in this order
+        (message_types.AggregateProperty, handle_aggregate_property_event),
+        (message_types.GiveProperty, handle_give_property_event),
+        (message_types.GetHistoricalProperty, handle_get_historical_property_event),
+        # todo: add a handler for GetCurrentProperty
+    ]
 
     # register the message types sent
     messages_sent = SENT_MESSAGE_TYPES
@@ -167,7 +171,7 @@ class AggregateDistributedProps(ApplicationSimulationObject):   # pragma: no cov
 
 class DistributedProperty(object):  # pragma: no cover; # TODO(Arthur): cover after MVP wc_sim done
     '''A distributed property
-    
+
     Maintain the state of an aggregate distributed property. The property is a single value,
     collected periodically from a set of contributing `SimulationObject`'s.
 
@@ -176,7 +180,7 @@ class DistributedProperty(object):  # pragma: no cover; # TODO(Arthur): cover af
         period (:obj:`float`): the periodicity at which the property is aggregated
         num_periods (:obj:`int`): the number of periods for which this property has been collected;
             used by `AggregateDistributedProps` to create event times that equal integral numbers
-            of periods 
+            of periods
         contributors (:obj:`list` of :obj:`SimulationObject`): `SimulationObject`'s which must be queried
             to establish this property
         value_history (:obj:`dict`): time -> `dict`: `SimulationObject` -> value; history of distributed
@@ -186,6 +190,7 @@ class DistributedProperty(object):  # pragma: no cover; # TODO(Arthur): cover af
         aggregation_function (:obj:`method`): static method that aggregates values for this property
         kwargs (:obj:`dict`): arguments keyword arguments for `aggregation_function`
     '''
+
     def __init__(self, name, period, contributors, aggregation_function, **kwargs):
         self.name = name
         self.period = period
@@ -216,7 +221,7 @@ class DistributedProperty(object):  # pragma: no cover; # TODO(Arthur): cover af
         epsilon = config_multialgorithm['epsilon']
         for contributor in self.contributors:
             the_aggregate_distributed_props.send_event(self.period-epsilon, contributor,
-                message_types.GetHistoricalProperty(self.name, time))
+                                                       message_types.GetHistoricalProperty(self.name, time))
 
     def record_value(self, contributor, time, value):
         '''Record a contributed value of a distributed property
@@ -268,19 +273,19 @@ class DistributedProperty(object):  # pragma: no cover; # TODO(Arthur): cover af
             index = bisect.bisect_left(times, time)
             lesser = 'start of list'
             greater = 'end of list'
-            if 0<=index-1:
+            if 0 <= index-1:
                 lesser = times[index-1]
-            if index<len(times):
+            if index < len(times):
                 greater = times[index]
             raise ValueError("get_aggregate_value: looking for time {}; "
-                "nearest times are '{}' and '{}'".format(time, lesser, greater))
+                             "nearest times are '{}' and '{}'".format(time, lesser, greater))
 
 
 class DistributedPropertyFactory(object):   # pragma: no cover; # TODO(Arthur): cover after MVP wc_sim done
 
     @staticmethod
     def make_distributed_property(property_name, distributed_property_name, period,
-        aggregation_function, **kwargs):
+                                  aggregation_function, **kwargs):
         '''Create a partially instantiated `DistributedProperty`
 
         Args:
@@ -313,9 +318,9 @@ class DistributedPropertyFactory(object):   # pragma: no cover; # TODO(Arthur): 
 
         # create distributed_property
         distributed_property = DistributedProperty(distributed_property_name,
-                    period,
-                    None,
-                    _aggregation_function,
-                    **kwargs)
+                                                   period,
+                                                   None,
+                                                   _aggregation_function,
+                                                   **kwargs)
         # return partially instantiated distributed_property
         return distributed_property

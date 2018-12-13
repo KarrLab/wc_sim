@@ -5,12 +5,12 @@
 :Copyright: 2018, Karr Lab
 :License: MIT
 """
-import sys
 import argparse
-
+import sys
+from wc_sim.core.simulation_engine import SimulationEngine
 from wc_sim.core.simulation_message import SimulationMessage
 from wc_sim.core.simulation_object import ApplicationSimulationObject
-from wc_sim.core.simulation_engine import SimulationEngine
+
 
 class MessageSentToSelf(SimulationMessage):
     "A message that's sent to self"
@@ -63,7 +63,7 @@ class RunMinimalSimulation(object):
 
         # create a simulator
         simulator = SimulationEngine()
-        
+
         # create a simulation object and add it to the simulation
         simulator.add_object(MinimalSimulationObject('minimal_sim_obj', args.delay))
 
@@ -71,6 +71,7 @@ class RunMinimalSimulation(object):
         simulator.initialize()
         num_events = simulator.simulate(args.end_time)
         return(num_events)
+
 
 if __name__ == '__main__':  # pragma: no cover     # reachable only from command line
     try:

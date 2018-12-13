@@ -1,5 +1,5 @@
 '''
-:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2017-04-10
 :Copyright: 2016-2018, Karr Lab
 :License: MIT
@@ -25,7 +25,7 @@ class TestModelUtilities(unittest.TestCase):
 
     def setUp(self):
         # read a model
-        self.model = Reader().run(self.MODEL_FILENAME, strict=False)
+        self.model = Reader().run(self.MODEL_FILENAME)
 
     def test_find_private_species(self):
         # since set() operations are being used, this test does not ensure that the methods being
@@ -33,48 +33,48 @@ class TestModelUtilities(unittest.TestCase):
         # code under different circumstances and ensuring identical output
         private_species = ModelUtilities.find_private_species(self.model)
 
-        mod1_expected_species_ids = ['specie_1[c]', 'specie_1[e]', 'specie_2[e]']
+        mod1_expected_species_ids = ['species_1[c]', 'species_1[e]', 'species_2[e]']
         mod1_expected_species = wc_lang.Species.get(mod1_expected_species_ids, self.model.get_species())
         self.assertEqual(set(private_species[self.get_submodel(self.model, 'submodel_1')]),
-            set(mod1_expected_species))
+                         set(mod1_expected_species))
 
-        mod2_expected_species_ids = ['specie_4[c]', 'specie_5[c]', 'specie_6[c]']
+        mod2_expected_species_ids = ['species_5[c]', 'species_6[c]']
         mod2_expected_species = wc_lang.Species.get(mod2_expected_species_ids, self.model.get_species())
         self.assertEqual(set(private_species[self.get_submodel(self.model, 'submodel_2')]),
-            set(mod2_expected_species))
+                         set(mod2_expected_species))
 
         private_species = ModelUtilities.find_private_species(self.model, return_ids=True)
         self.assertEqual(set(private_species['submodel_1']), set(mod1_expected_species_ids))
         self.assertEqual(set(private_species['submodel_2']), set(mod2_expected_species_ids))
 
-    @unittest.skip("to be fixed")
     def test_find_shared_species(self):
         self.assertEqual(set(ModelUtilities.find_shared_species(self.model)),
-            set(wc_lang.Species.get(['specie_2[c]', 'specie_3[c]'], self.model.get_species())))
+                         set(wc_lang.Species.get(['species_2[c]', 'species_3[c]', 'species_4[c]', 'H2O[e]', 'H2O[c]'],
+                                                 self.model.get_species())))
 
         self.assertEqual(set(ModelUtilities.find_shared_species(self.model, return_ids=True)),
-            set(['specie_2[c]', 'specie_3[c]']))
+                         set(['species_2[c]', 'species_3[c]', 'species_4[c]', 'H2O[e]', 'H2O[c]']))
 
-    def test_parse_specie_id(self):
-        self.assertEqual(ModelUtilities.parse_specie_id('good_id[good_compt]'), ('good_id', 'good_compt'))
+    def test_parse_species_id(self):
+        self.assertEqual(ModelUtilities.parse_species_id('good_id[good_compt]'), ('good_id', 'good_compt'))
         with self.assertRaises(ValueError):
-            ModelUtilities.parse_specie_id('1_bad_good_id[good_compt]')
+            ModelUtilities.parse_species_id('1_bad_good_id[good_compt]')
         with self.assertRaises(ValueError):
-            ModelUtilities.parse_specie_id('good_id[_bad_compt]')
+            ModelUtilities.parse_species_id('good_id[_bad_compt]')
 
     def test_get_species_types(self):
         self.assertEqual(ModelUtilities.get_species_types([]), [])
 
-        specie_type_ids = [specie_type.id for specie_type in self.model.get_species_types()]
-        specie_ids = [specie.serialize() for specie in self.model.get_species()]
-        self.assertEqual(sorted(ModelUtilities.get_species_types(specie_ids)), sorted(specie_type_ids))
+        species_type_ids = [species_type.id for species_type in self.model.get_species_types()]
+        species_ids = [specie.serialize() for specie in self.model.get_species()]
+        self.assertEqual(sorted(ModelUtilities.get_species_types(species_ids)), sorted(species_type_ids))
 
     def test_concentration_to_molecules(self):
         model = wc_lang.Model()
 
         submodel = model.submodels.create(id='submodel', algorithm=wc_lang.SubmodelAlgorithm.ssa)
 
-        compartment_c = model.compartments.create(id='c', initial_volume=1.)
+        compartment_c = model.compartments.create(id='c', mean_init_volume=1.)
 
         species_types = {}
         for cu in wc_lang.ConcentrationUnit:
@@ -86,21 +86,22 @@ class TestModelUtilities(unittest.TestCase):
 
         species = {}
         for key, species_type in species_types.items():
-            species[key] = wc_lang.Species(id=wc_lang.Species.gen_id(species_type.id, compartment_c.id), 
+            species[key] = wc_lang.Species(id=wc_lang.Species.gen_id(species_type.id, compartment_c.id),
                                            species_type=species_type,
                                            compartment=compartment_c)
 
         conc_value = 2.
-        for key,specie in species.items():
+        for key, specie in species.items():
             if key in wc_lang.ConcentrationUnit.__members__:
-                wc_lang.Concentration(species=specie, value=conc_value, units=wc_lang.ConcentrationUnit.__members__[key].value)
+                wc_lang.DistributionInitConcentration(species=specie, mean=conc_value,
+                                                      units=wc_lang.ConcentrationUnit.__members__[key].value)
             elif key == 'no_units':
-                wc_lang.Concentration(species=specie, value=conc_value)
+                wc_lang.DistributionInitConcentration(species=specie, mean=conc_value)
             elif key == 'no_concentration':
                 continue
 
         conc_to_molecules = ModelUtilities.concentration_to_molecules
-        copy_number = conc_to_molecules(species['molecules'])
+        copy_number = conc_to_molecules(species['molecule'])
         self.assertEqual(copy_number, conc_value)
         copy_number = conc_to_molecules(species['M'])
         self.assertEqual(copy_number, conc_value * Avogadro)
@@ -120,18 +121,18 @@ class TestModelUtilities(unittest.TestCase):
         self.assertAlmostEqual(copy_number, 10**-18 * conc_value * Avogadro, delta=1)
         copy_number = conc_to_molecules(species['no_concentration'])
         self.assertEqual(copy_number, 0)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(KeyError):
             conc_to_molecules(species['mol dm^-2'])
 
         species_tmp = wc_lang.Species(id=wc_lang.Species.gen_id(species_type.id, compartment_c.id),
                                       species_type=species_type,
                                       compartment=compartment_c)
-        wc_lang.Concentration(species=species_tmp, value=conc_value, units='molecules')
+        wc_lang.DistributionInitConcentration(species=species_tmp, mean=conc_value, units='molecule')
         with self.assertRaises(ValueError):
             ModelUtilities.concentration_to_molecules(species_tmp)
         species_tmp2 = wc_lang.Species(id=wc_lang.Species.gen_id(species_type.id, compartment_c.id),
                                        species_type=species_type,
                                        compartment=compartment_c)
-        wc_lang.Concentration(species=species_tmp2, value=conc_value, units=0)
+        wc_lang.DistributionInitConcentration(species=species_tmp2, mean=conc_value, units=0)
         with self.assertRaises(ValueError):
             ModelUtilities.concentration_to_molecules(species_tmp2)

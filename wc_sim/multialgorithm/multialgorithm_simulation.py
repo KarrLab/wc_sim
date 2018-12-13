@@ -1,38 +1,24 @@
 """ Initialize a multialgorithm simulation from a language model and run-time parameters.
 
-:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2017-02-07
 :Copyright: 2016-2018, Karr Lab
 :License: MIT
 """
 
-import re
-import numpy as np
-from scipy.constants import Avogadro
-from collections import defaultdict
-from math import ceil, floor, exp, log, log10, isnan
-import tokenize, token
-
-from obj_model import utils
-from wc_utils.util.list import difference, det_dedupe
-from wc_utils.util.misc import obj_to_str
-from wc_lang import SubmodelAlgorithm, Model, SpeciesType, Species, RateLawEquation
+from wc_lang import SubmodelAlgorithm, Model, Species
 from wc_sim.multialgorithm.dynamic_components import DynamicModel, DynamicCompartment
 from wc_sim.core.simulation_engine import SimulationEngine
-from wc_sim.multialgorithm import message_types
 from wc_sim.multialgorithm.model_utilities import ModelUtilities
-from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation, AccessSpeciesPopulations
-from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
-from wc_sim.multialgorithm.submodels.dynamic_submodel import DynamicSubmodel
-from wc_sim.multialgorithm.submodels.ssa import SSASubmodel
-from wc_sim.multialgorithm.submodels.fba import FbaSubmodel
-from wc_sim.multialgorithm.species_populations import LOCAL_POP_STORE, Specie, SpeciesPopSimObject
 from wc_sim.multialgorithm.multialgorithm_checkpointing import MultialgorithmicCheckpointingSimObj
-from wc_sim.core.sim_metadata import SimulationMetadata
-
-from wc_sim.multialgorithm.config import core as config_core_multialgorithm
-config_multialgorithm = \
-    config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
+from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
+from wc_sim.multialgorithm.species_populations import (LocalSpeciesPopulation, AccessSpeciesPopulations,
+                                                       LOCAL_POP_STORE, SpeciesPopSimObject)
+from wc_sim.multialgorithm.submodels.dynamic_submodel import DynamicSubmodel
+from wc_sim.multialgorithm.submodels.fba import DfbaSubmodel
+from wc_sim.multialgorithm.submodels.ssa import SsaSubmodel
+from wc_utils.util.list import det_dedupe
+from wc_utils.util.misc import obj_to_str
 
 # TODO(Arthur): use lists instead of sets to ensure deterministic behavior
 # TODO(Arthur): add logging
@@ -54,7 +40,7 @@ Inputs:
     * Optionally, extra config
 
 Output:
-    
+
     * Simulation partitioned into submodels and cell state, including:
 
         * Initialized submodel and state simulation objects
@@ -68,7 +54,7 @@ DS:
 Algs:
 
     * Partition into Submodels and Cell State:
-    
+
         #. Determine shared & private species
         #. Determine partition
         #. Create shared species object(s)
@@ -104,9 +90,11 @@ species copy number changes through shared population.
 
 # TODO (Arthur): put in config file
 DEFAULT_VALUES = dict(
-    shared_specie_store='SHARED_SPECIE_STORE',
-    checkpointing_sim_obj = 'CHECKPOINTING_SIM_OBJ'
+    shared_species_store='SHARED_SPECIE_STORE',
+    checkpointing_sim_obj='CHECKPOINTING_SIM_OBJ'
 )
+
+
 class MultialgorithmSimulation(object):
     """ Initialize a multialgorithm simulation from a language model and run-time parameters
 
@@ -124,7 +112,7 @@ class MultialgorithmSimulation(object):
             `None` if absent
         species_pop_objs (:obj:`dict` of `SpeciesPopSimObject`): shared species
             populations stored in `SimulationObject`'s
-        shared_specie_store_name (:obj:`str`): the name for the shared specie store
+        shared_species_store_name (:obj:`str`): the name for the shared specie store
         dynamic_model (:obj:`DynamicModel`): the dynamic state of a model
         private_species (:obj:`dict` of `set`): map from `DynamicSubmodel` to a set of the species
                 modeled by only the submodel
@@ -135,12 +123,12 @@ class MultialgorithmSimulation(object):
             compartment in `model`
     """
 
-    def __init__(self, model, args, shared_specie_store_name=DEFAULT_VALUES['shared_specie_store']):
+    def __init__(self, model, args, shared_species_store_name=DEFAULT_VALUES['shared_species_store']):
         """
         Args:
             model (:obj:`Model`): the model being simulated
             args (:obj:`dict`): parameters for the simulation
-            shared_specie_store_name (:obj:`str`, optional): the name of the shared species store
+            shared_species_store_name (:obj:`str`, optional): the name of the shared species store
         """
         self.model = model
         self.args = args
@@ -149,7 +137,7 @@ class MultialgorithmSimulation(object):
         self.simulation_submodels = {}
         self.checkpointing_sim_obj = None
         self.species_pop_objs = {}
-        self.shared_specie_store_name = shared_specie_store_name
+        self.shared_species_store_name = shared_species_store_name
         self.local_species_population = self.make_local_species_pop(self.model)
         self.dynamic_compartments = self.create_dynamic_compartments(self.model, self.local_species_population)
         self.dynamic_model = None
@@ -188,11 +176,11 @@ class MultialgorithmSimulation(object):
         Returns:
             `dict`: species_type_id -> molecular weight
         """
-        specie_weights = {}
-        for specie_id in species:
-            (specie_type_id, _) = ModelUtilities.parse_specie_id(specie_id)
-            specie_weights[specie_id] = self.model.species_types.get_one(id=specie_type_id).molecular_weight
-        return specie_weights
+        species_weights = {}
+        for species_id in species:
+            (species_type_id, _) = ModelUtilities.parse_species_id(species_id)
+            species_weights[species_id] = self.model.species_types.get_one(id=species_type_id).molecular_weight
+        return species_weights
 
     def create_shared_species_pop_objs(self):
         """ Create the shared species object.
@@ -200,11 +188,11 @@ class MultialgorithmSimulation(object):
         Returns:
             dict: `dict` mapping id to `SpeciesPopSimObject` objects for the simulation
         """
-        species_pop_sim_obj = SpeciesPopSimObject(self.shared_specie_store_name,
-            {specie_id:self.init_populations[specie_id] for specie_id in self.shared_species},
-            molecular_weights=self.molecular_weights_for_species(self.shared_species))
+        species_pop_sim_obj = SpeciesPopSimObject(self.shared_species_store_name,
+                                                  {species_id: self.init_populations[species_id] for species_id in self.shared_species},
+                                                  molecular_weights=self.molecular_weights_for_species(self.shared_species))
         self.simulation.add_object(species_pop_sim_obj)
-        return {self.shared_specie_store_name:species_pop_sim_obj}
+        return {self.shared_species_store_name: species_pop_sim_obj}
 
     # TODO(Arthur): test after MVP wc_sim done
     def create_access_species_pop(self, lang_submodel):   # pragma: no cover
@@ -217,13 +205,13 @@ class MultialgorithmSimulation(object):
             :obj:`AccessSpeciesPopulations`: an `AccessSpeciesPopulations` for the `lang_submodel`
         """
         # make LocalSpeciesPopulations & molecular weights
-        initial_population = {specie_id:self.init_populations[specie_id]
-            for specie_id in self.private_species[lang_submodel.id]}
+        initial_population = {species_id: self.init_populations[species_id]
+                              for species_id in self.private_species[lang_submodel.id]}
         molecular_weights = self.molecular_weights_for_species(self.private_species[lang_submodel.id])
 
         # DFBA submodels need initial fluxes
         if lang_submodel.algorithm == SubmodelAlgorithm.dfba:
-            initial_fluxes = {specie_id:0 for specie_id in self.private_species[lang_submodel.id]}
+            initial_fluxes = {species_id: 0 for species_id in self.private_species[lang_submodel.id]}
         else:
             initial_fluxes = None
         local_species_population = LocalSpeciesPopulation(
@@ -234,13 +222,13 @@ class MultialgorithmSimulation(object):
 
         # make AccessSpeciesPopulations object
         access_species_population = AccessSpeciesPopulations(local_species_population,
-            self.species_pop_objs)
+                                                             self.species_pop_objs)
 
         # configure species locations in the access_species_population
         access_species_population.add_species_locations(LOCAL_POP_STORE,
-            self.private_species[lang_submodel.id])
-        access_species_population.add_species_locations(self.shared_specie_store_name,
-            self.shared_species)
+                                                        self.private_species[lang_submodel.id])
+        access_species_population.add_species_locations(self.shared_species_store_name,
+                                                        self.shared_species)
         return access_species_population
 
     @staticmethod
@@ -251,7 +239,7 @@ class MultialgorithmSimulation(object):
             model (:obj:`Model`): a `wc_lang` model
 
         Returns:
-            :obj:`dict`: a map specie_id -> population, for all species in `model`
+            :obj:`dict`: a map species_id -> population, for all species in `model`
         """
         init_populations = {}
         for specie in model.get_species():
@@ -315,9 +303,9 @@ class MultialgorithmSimulation(object):
 
         molecular_weights = {}
         for specie in model.get_species():
-            (specie_type_id, _) = ModelUtilities.parse_specie_id(specie.id)
+            (species_type_id, _) = ModelUtilities.parse_species_id(specie.id)
             # TODO(Arthur): make get_one more robust, or do linear search
-            molecular_weights[specie.id] = model.species_types.get_one(id=specie_type_id).molecular_weight
+            molecular_weights[specie.id] = model.species_types.get_one(id=species_type_id).molecular_weight
 
         # Species used by continuous time submodels (like DFBA and ODE) need initial fluxes
         # which indicate that the species is modeled by a continuous time submodel.
@@ -369,12 +357,11 @@ class MultialgorithmSimulation(object):
         for lang_submodel in self.model.get_submodels():
 
             if lang_submodel.algorithm == SubmodelAlgorithm.ssa:
-                simulation_submodel = SSASubmodel(
+                simulation_submodel = SsaSubmodel(
                     lang_submodel.id,
                     self.dynamic_model,
                     list(lang_submodel.reactions),
                     lang_submodel.get_species(),
-                    lang_submodel.parameters,
                     self.get_dynamic_compartments(lang_submodel),
                     self.local_species_population
                 )
@@ -383,12 +370,11 @@ class MultialgorithmSimulation(object):
                 # TODO(Arthur): make DFBA submodels work
                 continue
 
-                simulation_submodel = FbaSubmodel(
+                simulation_submodel = DfbaSubmodel(
                     lang_submodel.id,
                     self.dynamic_model,
                     list(lang_submodel.reactions),
                     lang_submodel.get_species(),
-                    lang_submodel.parameters,
                     self.get_dynamic_compartments(lang_submodel),
                     self.local_species_population,
                     self.args['fba_time_step']
@@ -415,5 +401,5 @@ class MultialgorithmSimulation(object):
         """
 
         return obj_to_str(self, ['args', 'checkpointing_sim_obj', 'dynamic_compartments', 'dynamic_model',
-            'init_populations', 'local_species_population', 'model', 'private_species', 'shared_specie_store_name',
-            'shared_species', 'simulation', 'simulation_submodels', 'species_pop_objs'])
+                                 'init_populations', 'local_species_population', 'model', 'private_species', 'shared_species_store_name',
+                                 'shared_species', 'simulation', 'simulation_submodels', 'species_pop_objs'])

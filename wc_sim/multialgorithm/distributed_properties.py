@@ -1,6 +1,6 @@
 '''Define distributed properties of multi-algorithmic DES simulations of whole-cell models
 
-:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2017-05-30
 :Copyright: 2016-2018, Karr Lab
 :License: MIT

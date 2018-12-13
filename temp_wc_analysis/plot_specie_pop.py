@@ -1,6 +1,6 @@
 """Plot a specie population's dynamics. Inputs logging log.
 
-:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2016-07-12
 :Copyright: 2016-2018, Karr Lab
 :License: MIT
@@ -106,7 +106,7 @@ class PlotPopulationDynamics(object):
             ( start_event.population, start_event.population + ( end_event.time-start_event.time)*flux) )
 
     @staticmethod
-    def plot_specie_population_dynamics( args, events ):
+    def plot_species_population_dynamics( args, events ):
         """Plot a specie population's dynamics.
         """
 
@@ -162,7 +162,7 @@ class PlotPopulationDynamics(object):
     def main():
         args = PlotPopulationDynamics.parse_cli_args()
         event_list = PlotPopulationDynamics.parse_log( args.log_file )
-        PlotPopulationDynamics.plot_specie_population_dynamics( args, event_list )
+        PlotPopulationDynamics.plot_species_population_dynamics( args, event_list )
         PlotPopulationDynamics.output_plot( args )
 
 if __name__ == '__main__':

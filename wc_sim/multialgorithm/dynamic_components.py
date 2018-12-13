@@ -1,6 +1,6 @@
 """ Dynamic components of a multialgorithm simulation
 
-:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2018-02-07
 :Copyright: 2017-2018, Karr Lab
 :License: MIT
@@ -50,7 +50,7 @@ class DynamicCompartment(object):
         """
         self.id = compartment.id
         self.name = compartment.name
-        self.init_volume = compartment.initial_volume
+        self.init_volume = compartment.mean_init_volume
         self.species_population = species_population
         self.species_ids = species_ids
         if math.isnan(self.init_volume):
@@ -196,19 +196,19 @@ class DynamicModel(object):
         self.dynamic_observables = {}
         for observable in model.observables:
             self.dynamic_observables[observable.id] = DynamicObservable(self, self.species_population, observable,
-                observable.expression.analyzed_expr)
+                observable.expression._parsed_expression)
 
         # create dynamic functions
         self.dynamic_functions = {}
         for function in model.functions:
             self.dynamic_functions[function.id] = DynamicFunction(self, self.species_population, function,
-                function.expression.analyzed_expr)
+                function.expression._parsed_expression)
 
         # create dynamic stop conditions
         self.dynamic_stop_conditions = {}
         for stop_condition in model.stop_conditions:
             self.dynamic_stop_conditions[stop_condition.id] = DynamicStopCondition(self, self.species_population,
-                stop_condition, stop_condition.expression.analyzed_expr)
+                stop_condition, stop_condition.expression._parsed_expression)
 
         # prepare dynamic expressions
         for dynamic_expression_group in [self.dynamic_observables, self.dynamic_functions,
@@ -337,7 +337,7 @@ class DynamicModel(object):
         species_counts = np.zeros((len(model.species), len(model.compartments)))
         for species in model.species:
             for compartment in model.compartments:
-                specie_id = Species.gen_id(species.id, compartment.id)
+                species_id = Species.gen_id(species.id, compartment.id)
                 species_counts[ species.index, compartment.index ] = \
-                    model.local_species_population.read_one(now, specie_id)
+                    model.local_species_population.read_one(now, species_id)
         return species_counts

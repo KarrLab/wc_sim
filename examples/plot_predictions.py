@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """ Plot DataFrame of simulation checkpoint series
 
-:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2018-05-15
 :Copyright: 2018, Karr Lab
 :License: MIT

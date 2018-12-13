@@ -1,7 +1,7 @@
 """ Classes to represent the metadata of a simulation run
 
 :Author: Jonathan Karr <karr@mssm.edu>
-:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2017-08-18
 :Copyright: 2016-2018, Karr Lab
 :License: MIT

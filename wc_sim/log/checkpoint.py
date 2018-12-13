@@ -59,7 +59,7 @@ class Checkpoint(object):
         Args:
             dirname (:obj:`str`): directory to read/write checkpoint data
             time (:obj:`float`, optional): time in seconds of desired checkpoint; if not provided,
-                the most recent checkpoint is returned 
+                the most recent checkpoint is returned
 
         Returns:
             :obj:`Checkpoint`: the most recent checkpoint before time `time`, or the most recent

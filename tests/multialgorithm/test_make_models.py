@@ -1,18 +1,17 @@
 """
-:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2017-02-08
 :Copyright: 2017-2018, Karr Lab
 :License: MIT
 """
 
-import unittest
+from wc_lang import RateLawDirection
+from wc_lang.io import Reader, Writer
+from wc_sim.multialgorithm.make_models import MakeModel, RateLawType
 import os
 import shutil
 import tempfile
-
-from wc_lang import RateLawDirection
-from wc_lang.io import Writer, Reader
-from wc_sim.multialgorithm.make_models import MakeModels, RateLawType
+import unittest
 
 
 class TestMakeModels(unittest.TestCase):
@@ -20,12 +19,12 @@ class TestMakeModels(unittest.TestCase):
     def setUp(self):
         self.test_dir = tempfile.mkdtemp()
         self.model_types = ['no reactions',
-            '1 species, 1 reaction',
-            '2 species, 1 reaction',
-            '2 species, a pair of symmetrical reactions with constant rates',
-            '2 species, a pair of symmetrical reactions rates given by reactant population',
-            '2 species, a pair of symmetrical reactions rates given by product population',
-        ]
+                            '1 species, 1 reaction',
+                            '2 species, 1 reaction',
+                            '2 species, a pair of symmetrical reactions with constant rates',
+                            '2 species, a pair of symmetrical reactions rates given by reactant population',
+                            '2 species, a pair of symmetrical reactions rates given by product population',
+                            ]
 
     def tearDown(self):
         shutil.rmtree(self.test_dir)
@@ -53,15 +52,15 @@ class TestMakeModels(unittest.TestCase):
             (2, 1, True, RateLawType.reactant_pop),
             (2, 1, True, RateLawType.product_pop)
         ]
-        for model_type,expected_params in zip(self.model_types, expected_params_list):
-            params = MakeModels.get_model_type_params(model_type)
+        for model_type, expected_params in zip(self.model_types, expected_params_list):
+            params = MakeModel.get_model_type_params(model_type)
             self.assertEqual(params, expected_params)
 
         # test make_test_model
         for model_type in self.model_types:
             for num_submodels in [1, 10]:
-                model = MakeModels.make_test_model(model_type, num_submodels=num_submodels,
-                    transform_prep_and_check=False)
+                model = MakeModel.make_test_model(model_type, num_submodels=num_submodels,
+                                                  transform_prep_and_check=False)
                 self.assertEqual(model.validate(), None)
 
                 # test round-tripping
@@ -77,7 +76,7 @@ class TestMakeModels(unittest.TestCase):
         # unittest one of the models made
         # TODO (ARTHUR): test with multiple submodels
         # TODO (ARTHUR): test observables
-        model = MakeModels.make_test_model(self.model_types[4])
+        model = MakeModel.make_test_model(self.model_types[4])
         self.assertEqual(model.id, 'test_model')
         comp = model.compartments[0]
         self.assertEqual(comp.id, 'compt_1')
@@ -92,11 +91,11 @@ class TestMakeModels(unittest.TestCase):
         for r in submodel.reactions:
             self.assertFalse(r.reversible)
             rl = r.rate_laws[0]
-            ratelaw_elements.add((rl.direction, rl.equation.expression))
+            ratelaw_elements.add((rl.direction, rl.expression.expression))
         expected_rate_laws = set([
-            # direction, equation expression
-            (RateLawDirection.forward, 'spec_type_0[compt_1]'),   # forward
-            (RateLawDirection.forward, 'spec_type_1[compt_1]'),   # backward, but reversed
+            # direction, expression.expression
+            (RateLawDirection.forward, 'k_cat_1_1_for * spec_type_0[compt_1] / Avogadro / compt_1'),   # forward
+            (RateLawDirection.forward, 'k_cat_1_1_bck * spec_type_1[compt_1] / Avogadro / compt_1'),   # backward, but reversed
         ])
         self.assertEqual(ratelaw_elements, expected_rate_laws)
 
@@ -114,22 +113,22 @@ class TestMakeModels(unittest.TestCase):
         self.assertEqual(participant_elements, expected_participants)
         self.assertIn('fractionDryWeight', [p.id for p in model.get_parameters()])
 
-        # test default_specie_copy_number, specie_copy_numbers, and init_vols
+        # test default_species_copy_number, species_copy_numbers, and init_vols
         default_cn = 2000000
         spec_type_0_cn = 100000
         init_vols = [1E-13]
-        model = MakeModels.make_test_model(self.model_types[4], default_specie_copy_number=default_cn,
-            specie_copy_numbers={'spec_type_0[compt_1]':spec_type_0_cn}, init_vols=init_vols)
+        model = MakeModel.make_test_model(self.model_types[4], default_species_copy_number=default_cn,
+                                          species_copy_numbers={'spec_type_0[compt_1]': spec_type_0_cn}, init_vols=init_vols)
         concentrations = []
-        for concentration in model.get_concentrations():
-            concentrations.append((concentration.species.species_type.id, concentration.value))
+        for concentration in model.get_distribution_init_concentrations():
+            concentrations.append((concentration.species.species_type.id, concentration.mean))
         concentrations = tuple(concentrations)
         expected_concentrations = (
-            ('spec_type_0', MakeModels.convert_pop_conc(spec_type_0_cn, init_vols[0])),
-            ('spec_type_1', MakeModels.convert_pop_conc(default_cn, init_vols[0])),
+            ('spec_type_0', MakeModel.convert_pop_conc(spec_type_0_cn, init_vols[0])),
+            ('spec_type_1', MakeModel.convert_pop_conc(default_cn, init_vols[0])),
         )
         self.assertEqual(concentrations, expected_concentrations)
 
         # test exception
         with self.assertRaises(ValueError):
-            MakeModels.make_test_model('3 reactions')
+            MakeModel.make_test_model('3 reactions')

@@ -1,4 +1,4 @@
-""" Use wc_sim to simulate a model of the translation 
+""" Use wc_sim to simulate a model of the translation
 and metabolism of a bacterium
 
 :Author: Jonathan Karr <jonrkarr@gmail.com>
@@ -52,7 +52,7 @@ def plot(model, results, filename):
     ala_c = pops['ala[c]']
     h2o_c = pops['h2o[c]']
     prot_c = pops['prot[c]']
-    cell_100_ag=pops['cell_100_ag[c]']
+    cell_100_ag = pops['cell_100_ag[c]']
 
     states = results.get('aggregate_states')
     mass = states['c']['mass']
@@ -84,7 +84,7 @@ def plot(model, results, filename):
     axes1[1][0].set_ylim((55.0-0.1, 55+0.1))
     axes1[1][0].ticklabel_format(useOffset=False)
     #axes1[1][0].set_xlabel('Time (h)')
-    axes1[1][0].set_ylabel('Ext water (M)')    
+    axes1[1][0].set_ylabel('Ext water (M)')
 
     axes1[1][1].plot(time / 3600, h2o_c / (cell_100_ag * 6.71e-17 / 511) / 6.022e23 * 1e0)
     axes1[1][1].set_xlim((time[0] / 3600, time[-1] / 3600))

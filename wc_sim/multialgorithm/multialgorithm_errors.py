@@ -1,10 +1,11 @@
 """Define multi-algoritmic simulation errors.
 
-:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2016-12-12
 :Copyright: 2016-2018, Karr Lab
 :License: MIT
 """
+
 
 class Error(Exception):
     """ Base class for exceptions involving multi-algoritmic simulation
@@ -12,6 +13,7 @@ class Error(Exception):
     Attributes:
         message (:obj:`str`): the exception's message
     """
+
     def __init__(self, message=None):
         super().__init__(message)
 
@@ -22,6 +24,7 @@ class MultialgorithmError(Error):
     Attributes:
         message (:obj:`str`): the exception's message
     """
+
     def __init__(self, message=None):
         super().__init__(message)
 
@@ -32,6 +35,7 @@ class SpeciesPopulationError(Error):
     Attributes:
         message (:obj:`str`): the exception's message
     """
+
     def __init__(self, message=None):
         super().__init__(message)
 
@@ -50,12 +54,13 @@ class NegativePopulationError(Error):
             time since the last continuous update
     """
     # TODO(Arthur): perhaps call super() with message
+
     def __init__(self, method, specie, last_population, population_decrease, delta_time=None):
-        self.method=method
-        self.specie=specie
-        self.last_population=last_population
-        self.population_decrease=population_decrease
-        self.delta_time=delta_time
+        self.method = method
+        self.specie = specie
+        self.last_population = last_population
+        self.population_decrease = population_decrease
+        self.delta_time = delta_time
 
     def __eq__(self, other):
         """ Determine whether two instances have the same content """
@@ -68,7 +73,7 @@ class NegativePopulationError(Error):
 
     def __hash__(self):
         return hash((self.method, self.specie, self.last_population, self.population_decrease,
-            self.delta_time))
+                     self.delta_time))
 
     def __str__(self):
         rv = "{}(): negative population predicted for '{}', with decline from {:g} to {:g}".format(
@@ -81,4 +86,3 @@ class NegativePopulationError(Error):
                 return rv + " over {:g} time unit".format(self.delta_time)
             else:
                 return rv + " over {:g} time units".format(self.delta_time)
-            

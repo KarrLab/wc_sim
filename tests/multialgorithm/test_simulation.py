@@ -1,27 +1,25 @@
 """ Test simple simulation
 
-:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2018-05-26
 :Copyright: 2018, Karr Lab
 :License: MIT
 """
 
 import os
-import unittest
-import time
+import pandas
 import shutil
 import tempfile
-import pandas
-from copy import copy
+import time
+import unittest
 from capturer import CaptureOutput
-
+from copy import copy
 from wc_sim.core import sim_config
 from wc_sim.core.sim_metadata import SimulationMetadata
 from wc_sim.log.checkpoint import Checkpoint
-from wc_lang import SpeciesType
 from wc_sim.multialgorithm.simulation import Simulation
 from wc_sim.multialgorithm.run_results import RunResults
-from wc_sim.multialgorithm.make_models import MakeModels
+from wc_sim.multialgorithm.make_models import MakeModel
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 
 TOY_MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', '2_species_1_reaction.xlsx')
@@ -38,10 +36,10 @@ class TestSimulation(unittest.TestCase):
     def run_simulation(self, simulation):
         with CaptureOutput(relay=False):
             num_events, results_dir = simulation.run(end_time=100, results_dir=self.results_dir,
-                checkpoint_period=10)
+                                                     checkpoint_period=10)
 
         # TODO(Arthur): add more specific tests
-        self.assertTrue(0<num_events)
+        self.assertTrue(0 < num_events)
         self.assertTrue(os.path.isdir(results_dir))
         run_results = RunResults(results_dir)
 
@@ -52,18 +50,18 @@ class TestSimulation(unittest.TestCase):
         self.run_simulation(Simulation(TOY_MODEL_FILENAME))
 
     def test_simulation_model_in_memory(self):
-        model = MakeModels.make_test_model('2 species, 1 reaction', transform_prep_and_check=False)
+        model = MakeModel.make_test_model('2 species, 1 reaction', transform_prep_and_check=False)
         self.run_simulation(Simulation(model))
 
     def test_simulation_errors(self):
         with self.assertRaisesRegex(MultialgorithmError, 'model must be a wc_lang Model or a pathname'):
             Simulation(2)
-        model = MakeModels.make_test_model('2 species, 1 reaction, with rates given by reactant population',
-            specie_copy_numbers={'spec_type_0[compt_1]':10, 'spec_type_1[compt_1]':0}, init_vols=[1E-22])
+        model = MakeModel.make_test_model('2 species, 1 reaction, with rates given by reactant population',
+                                          species_copy_numbers={'spec_type_0[compt_1]': 10, 'spec_type_1[compt_1]': 0}, init_vols=[1E-22])
         with CaptureOutput(relay=False) as capturer:
             Simulation(model).run(1000)
             self.assertIn('simulation with 1 SSA submodel and total propensities = 0 cannot progress',
-                capturer.get_text())
+                          capturer.get_text())
 
     def test_simulate_wo_output_files(self):
         with CaptureOutput(relay=False):
@@ -75,7 +73,7 @@ class TestSimulation(unittest.TestCase):
         end_time = 30
         with CaptureOutput(relay=False):
             num_events, results_dir = Simulation(TOY_MODEL_FILENAME).run(end_time=end_time,
-                results_dir=self.results_dir, checkpoint_period=10)
+                                                                         results_dir=self.results_dir, checkpoint_period=10)
 
         # check time, and simulation config in checkpoints
         for time in Checkpoint.list_checkpoints(results_dir):
@@ -92,7 +90,7 @@ class TestSimulation(unittest.TestCase):
             tmp_results_dir = tempfile.mkdtemp()
             with CaptureOutput(relay=False):
                 num_events, results_dir = Simulation(TOY_MODEL_FILENAME).run(end_time=20,
-                    results_dir=tmp_results_dir, checkpoint_period=5, seed=seed)
+                                                                             results_dir=tmp_results_dir, checkpoint_period=5, seed=seed)
             results[seed] = {}
             results[seed]['num_events'] = num_events
             run_results[seed] = RunResults(results_dir)
@@ -108,7 +106,7 @@ class TestSimulation(unittest.TestCase):
             tmp_results_dir = tempfile.mkdtemp()
             with CaptureOutput(relay=False):
                 num_events, results_dir = Simulation(TOY_MODEL_FILENAME).run(end_time=20,
-                    results_dir=tmp_results_dir, checkpoint_period=5, seed=seed)
+                                                                             results_dir=tmp_results_dir, checkpoint_period=5, seed=seed)
             results[rep] = {}
             results[rep]['num_events'] = num_events
             run_results[rep] = RunResults(results_dir)
@@ -146,14 +144,14 @@ class TestProcessAndValidateArgs(unittest.TestCase):
             self.simulation._create_metadata()
 
         self.simulation.sim_config = sim_config.SimulationConfig(time_max=self.args['end_time'],
-            time_step=self.args['time_step']) 
+                                                                 time_step=self.args['time_step'])
         simulation_metadata = self.simulation._create_metadata()
         for attr in SimulationMetadata.ATTRIBUTES:
             self.assertTrue(getattr(simulation_metadata, attr) is not None)
 
     def test_create_metadata_2(self):
         # no time_step
-        self.simulation.sim_config = sim_config.SimulationConfig(time_max=self.args['end_time']) 
+        self.simulation.sim_config = sim_config.SimulationConfig(time_max=self.args['end_time'])
         del self.args['time_step']
         simulation_metadata = self.simulation._create_metadata()
         self.assertEqual(simulation_metadata.simulation.time_step, 1)
@@ -179,7 +177,7 @@ class TestProcessAndValidateArgs(unittest.TestCase):
             with self.assertRaises(MultialgorithmError):
                 self.simulation.process_and_validate_args(self.args)
         except FileExistsError:
-           pass
+            pass
 
     def test_ckpt_dir_processing_4(self):
         # timestamped sub-directory of checkpoints-dir already exists
@@ -210,7 +208,7 @@ class TestProcessAndValidateArgs(unittest.TestCase):
         self.assertIn(relative_tmp_dir.replace('~', ''), self.args['results_dir'])
 
     def test_process_and_validate_args3(self):
-        self.args['checkpoint_period'] =7
+        self.args['checkpoint_period'] = 7
         with self.assertRaises(MultialgorithmError):
             self.simulation.process_and_validate_args(self.args)
 
@@ -224,9 +222,9 @@ class TestProcessAndValidateArgs(unittest.TestCase):
     def test_process_and_validate_args5(self):
         # test error detection
         errors = dict(
-            end_time = [-3, 0],
-            checkpoint_period = [-2, 0, self.args['end_time'] + 1],
-            time_step = [-2, 0, self.args['end_time'] + 1],
+            end_time=[-3, 0],
+            checkpoint_period=[-2, 0, self.args['end_time'] + 1],
+            time_step=[-2, 0, self.args['end_time'] + 1],
         )
         for arg, error_vals in errors.items():
             for error_val in error_vals:

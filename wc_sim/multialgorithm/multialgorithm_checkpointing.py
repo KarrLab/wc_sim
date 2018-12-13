@@ -14,7 +14,7 @@ from wc_utils.util.misc import obj_to_str
 from wc_sim.log.checkpoint import Checkpoint
 from wc_sim.core.simulation_checkpoint_object import CheckpointSimulationObject, AccessStateObjectInterface
 from wc_sim.core.sim_metadata import SimulationMetadata
-from wc_sim.multialgorithm.submodels.ssa import SSASubmodel
+from wc_sim.multialgorithm.submodels.ssa import SsaSubmodel
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation
 
@@ -67,7 +67,7 @@ class AccessState(AccessStateObjectInterface):
         random_states['local_species_population'] = self.local_species_population.random_state.get_state()
         random_states['submodels'] = {}
         for submodel in self.multialgorithm_simulation.simulation_submodels:
-            if isinstance(submodel, SSASubmodel):
+            if isinstance(submodel, SsaSubmodel):
                 # only SSA submodels use random numbers
                 random_states['submodels'][submodel.id] = submodel.random_state.get_state()
         return random_states

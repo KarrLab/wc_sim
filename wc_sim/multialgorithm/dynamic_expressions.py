@@ -1,26 +1,24 @@
 """ Dynamic expressions
 
-:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2018-06-03
 :Copyright: 2018, Karr Lab
 :License: MIT
 """
 
-import re
-import os
-import warnings
-import tempfile
-import math
 from collections import namedtuple
-
-import obj_model
-from wc_utils.util.enumerate import CaseInsensitiveEnum
-import wc_utils.cache
-import wc_lang
-from wc_lang import (Species, Parameter, StopCondition, Function, Observable, ObjectiveFunction, RateLawEquation)
+from wc_lang.expression import WcTokenCodes, ParsedExpression
 from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
-from wc_lang.expression_utils import TokCodes
+from wc_utils.util.enumerate import CaseInsensitiveEnum
+import math
+import obj_model
+import os
+import re
+import tempfile
+import wc_lang
+import wc_utils.cache
+
 
 '''
 # TODO:
@@ -36,10 +34,10 @@ Expression eval design:
     Algorithms:
         evaling expression model types:
             special cases:
-                ObjectiveFunction: used by FBA, so express as needed by the FBA solver
-                RateLawEquation: needs special considaration of reactant order, intensive vs. extensive, volume, etc.
+                :obj:`wc_lang.DfbaObjective`: used by FBA, so express as needed by the FBA solver
+                :obj:`wc_lang.RateLaw`: needs special considaration of reactant order, intensive vs. extensive, volume, etc.
         evaling other model types used by expressions:
-            Reaction and BiomassReaction: flux units in ObjectiveFunction?
+            Reaction and BiomassReaction: flux units in :obj:`wc_lang.DfbaObjective`?
     Optimizations:
         evaluate parameters statically at initialization
         use memoization to avoid re-evaluation, if the benefit outweighs the overhead; like this:
@@ -60,14 +58,14 @@ class SimTokCodes(int, CaseInsensitiveEnum):
     other = 2
 
 
-# a token in DynamicExpression.wc_tokens
-WcSimToken = namedtuple('WcSimToken', 'tok_code, token_string, dynamic_expression')
+# a token in DynamicExpression._wc_tokens
+WcSimToken = namedtuple('WcSimToken', 'code, token_string, dynamic_expression')
 # make dynamic_expression optional: see https://stackoverflow.com/a/18348004
 WcSimToken.__new__.__defaults__ = (None, )
 WcSimToken.__doc__ += ': Token in a validated expression'
-WcSimToken.tok_code.__doc__ = 'SimTokCodes encoding'
+WcSimToken.code.__doc__ = 'SimTokCodes encoding'
 WcSimToken.token_string.__doc__ = "The token's string"
-WcSimToken.dynamic_expression.__doc__ = "When tok_code is dynamic_expression, the dynamic_expression instance"
+WcSimToken.dynamic_expression.__doc__ = "When code is dynamic_expression, the dynamic_expression instance"
 
 
 class DynamicComponent(object):
@@ -78,6 +76,7 @@ class DynamicComponent(object):
         local_species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
         id (:obj:`str`): unique id
     """
+
     def __init__(self, dynamic_model, local_species_population, wc_lang_model):
         """
         Args:
@@ -107,7 +106,7 @@ class DynamicComponent(object):
 
 
 class DynamicExpression(DynamicComponent):
-    """ Simulation representation of a mathematical expression, based on WcLangExpression
+    """ Simulation representation of a mathematical expression, based on :obj:`ParsedExpression`
 
     Attributes:
         expression (:obj:`str`): the expression defined in the `wc_lang` Model
@@ -122,7 +121,7 @@ class DynamicExpression(DynamicComponent):
             dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
             local_species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
             wc_lang_model (:obj:`obj_model.Model`): the corresponding `wc_lang` `Model`
-            wc_lang_expression (:obj:`WcLangExpression`): an analyzed and validated expression
+            wc_lang_expression (:obj:`ParsedExpression`): an analyzed and validated expression
 
         Raises:
             :obj:`MultialgorithmError`: if `wc_lang_expression` does not contain an analyzed,
@@ -132,8 +131,8 @@ class DynamicExpression(DynamicComponent):
         super().__init__(dynamic_model, local_species_population, wc_lang_model)
 
         # wc_lang_expression must have been successfully `tokenize`d.
-        if not wc_lang_expression.wc_tokens:
-            raise MultialgorithmError("wc_tokens cannot be empty - ensure that '{}' is valid".format(
+        if not wc_lang_expression._wc_tokens:
+            raise MultialgorithmError("_wc_tokens cannot be empty - ensure that '{}' is valid".format(
                 wc_lang_model))
         # optimization: self.wc_lang_expression will be deleted by prepare()
         self.wc_lang_expression = wc_lang_expression
@@ -151,19 +150,19 @@ class DynamicExpression(DynamicComponent):
 
         # create self.wc_sim_tokens, which contains WcSimTokens that refer to other DynamicExpressions
         self.wc_sim_tokens = []
-        # optimization: combine together adjacent wc_token.tok_codes other than wc_lang_obj_id
+        # optimization: combine together adjacent wc_token.tok_codes other than wc_obj_id
         next_static_tokens = ''
         function_names = set()
-        non_lang_obj_id_tokens = set([TokCodes.math_fun_id, TokCodes.number, TokCodes.op, TokCodes.other])
+        non_lang_obj_id_tokens = set([WcTokenCodes.math_func_id, WcTokenCodes.number, WcTokenCodes.op, WcTokenCodes.other])
 
         i = 0
-        while i <  len(self.wc_lang_expression.wc_tokens):
-            wc_token = self.wc_lang_expression.wc_tokens[i]
-            if wc_token.tok_code == TokCodes.math_fun_id:
+        while i < len(self.wc_lang_expression._wc_tokens):
+            wc_token = self.wc_lang_expression._wc_tokens[i]
+            if wc_token.code == WcTokenCodes.math_func_id:
                 function_names.add(wc_token.token_string)
-            if wc_token.tok_code in non_lang_obj_id_tokens:
+            if wc_token.code in non_lang_obj_id_tokens:
                 next_static_tokens = next_static_tokens + wc_token.token_string
-            elif wc_token.tok_code == TokCodes.wc_lang_obj_id:
+            elif wc_token.code == WcTokenCodes.wc_obj_id:
                 if next_static_tokens != '':
                     self.wc_sim_tokens.append(WcSimToken(SimTokCodes.other, next_static_tokens))
                     next_static_tokens = ''
@@ -173,10 +172,10 @@ class DynamicExpression(DynamicComponent):
                     raise MultialgorithmError("'{}.{} must be prepared to create '{}''".format(
                         wc_token.model.__class__.__name__, wc_token.model_id, self.id))
                 self.wc_sim_tokens.append(WcSimToken(SimTokCodes.dynamic_expression, wc_token.token_string,
-                    dynamic_expression))
+                                                     dynamic_expression))
             else:   # pragma    no cover
-                assert False, "unknown tok_code {} in {}".format(wc_token.tok_code, wc_token)
-            if wc_token.tok_code == TokCodes.wc_lang_obj_id and wc_token.model_type == Function:
+                assert False, "unknown code {} in {}".format(wc_token.code, wc_token)
+            if wc_token.code == WcTokenCodes.wc_obj_id and wc_token.model_type == wc_lang.Function:
                 # skip past the () syntactic sugar on functions
                 i += 2
             # advance to the next token
@@ -189,7 +188,7 @@ class DynamicExpression(DynamicComponent):
         # optimization: pre-allocate and pre-populate substrings for the expression to eval
         self.expr_substrings = []
         for sim_token in self.wc_sim_tokens:
-            if sim_token.tok_code == SimTokCodes.other:
+            if sim_token.code == SimTokCodes.other:
                 self.expr_substrings.append(sim_token.token_string)
             else:
                 self.expr_substrings.append('')
@@ -222,7 +221,7 @@ class DynamicExpression(DynamicComponent):
         assert hasattr(self, 'wc_sim_tokens'), "'{}' must use prepare() before eval()".format(
             self.id)
         for idx, sim_token in enumerate(self.wc_sim_tokens):
-            if sim_token.tok_code == SimTokCodes.dynamic_expression:
+            if sim_token.code == SimTokCodes.dynamic_expression:
                 self.expr_substrings[idx] = str(sim_token.dynamic_expression.eval(time))
         try:
             return eval(''.join(self.expr_substrings), {}, self.local_ns)
@@ -240,7 +239,7 @@ class DynamicExpression(DynamicComponent):
         string name
 
         Args:
-            model_type (:obj:`obj`): a `wc_lang` Model type represented by a subclass of `obj_model.Model`,
+            model_type (:obj:`Object`): a `wc_lang` Model type represented by a subclass of `obj_model.Model`,
                 an instance of `obj_model.Model`, or a string name for a `obj_model.Model`
 
         Returns:
@@ -260,11 +259,13 @@ class DynamicExpression(DynamicComponent):
             raise MultialgorithmError("model of type '{}' not found".format(model_type.__class__.__name__))
 
         if isinstance(model_type, str):
-            if model_type in globals():
-                model_type = globals()[model_type]
-                if not isinstance(model_type, str): # avoid infinite recursion # pragma no cover, but hand tested
-                    return DynamicExpression.get_dynamic_model_type(model_type)
+            model_type_type = getattr(wc_lang, model_type, None)
+            if model_type_type is not None:
+                if model_type_type in WC_LANG_MODEL_TO_DYNAMIC_MODEL:
+                    return WC_LANG_MODEL_TO_DYNAMIC_MODEL[model_type_type]
+                raise MultialgorithmError("model of type '{}' not found".format(model_type_type))
             raise MultialgorithmError("model type '{}' not defined".format(model_type))
+
         raise MultialgorithmError("model type '{}' has wrong type".format(model_type))
 
     @staticmethod
@@ -305,7 +306,7 @@ class DynamicExpression(DynamicComponent):
 
 
 class DynamicFunction(DynamicExpression):
-    """ The dynamic representation of a `Function`
+    """ The dynamic representation of a :obj:`wc_lang.Function`
     """
 
     def __init__(self, *args):
@@ -313,7 +314,7 @@ class DynamicFunction(DynamicExpression):
 
 
 class DynamicStopCondition(DynamicExpression):
-    """ The dynamic representation of a `StopCondition`
+    """ The dynamic representation of a :obj:`wc_lang.StopCondition`
     """
 
     def __init__(self, *args):
@@ -321,7 +322,7 @@ class DynamicStopCondition(DynamicExpression):
 
 
 class DynamicObservable(DynamicExpression):
-    """ The dynamic representation of an `Observable`
+    """ The dynamic representation of an :obj:`wc_lang.Observable`
     """
 
     def __init__(self, *args):
@@ -329,7 +330,7 @@ class DynamicObservable(DynamicExpression):
 
 
 class DynamicParameter(DynamicComponent):
-    """ The dynamic representation of a `Parameter`
+    """ The dynamic representation of a :obj:`wc_lang.Parameter`
     """
 
     def __init__(self, dynamic_model, local_species_population, wc_lang_model, value):
@@ -337,7 +338,7 @@ class DynamicParameter(DynamicComponent):
         Args:
             dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
             local_species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
-            wc_lang_model (:obj:`obj_model.Model`): the corresponding `wc_lang` `Parameter`
+            wc_lang_model (:obj:`obj_model.Model`): the corresponding :obj:`wc_lang.Parameter`
             value (:obj:`float`): the parameter's value
         """
         super().__init__(dynamic_model, local_species_population, wc_lang_model)
@@ -354,7 +355,7 @@ class DynamicParameter(DynamicComponent):
 
 
 class DynamicSpecies(DynamicComponent):
-    """ The dynamic representation of a `Species`
+    """ The dynamic representation of a :obj:`wc_lang.Species`
     """
 
     def __init__(self, dynamic_model, local_species_population, wc_lang_model):
@@ -362,10 +363,10 @@ class DynamicSpecies(DynamicComponent):
         Args:
             dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
             local_species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
-            wc_lang_model (:obj:`obj_model.Model`): the corresponding `wc_lang` `Species`
+            wc_lang_model (:obj:`obj_model.Model`): the corresponding :obj:`wc_lang.Species`
         """
         super().__init__(dynamic_model, local_species_population, wc_lang_model)
-        # Grab a reference to the right Species object used by local_species_population
+        # Grab a reference to the right wc_lang.Species object used by local_species_population
         self.species_obj = local_species_population._population[wc_lang_model.id]
 
     def eval(self, time):
@@ -377,16 +378,16 @@ class DynamicSpecies(DynamicComponent):
         return self.species_obj.get_population(time)
 
 
-class DynamicObjectiveFunction(DynamicExpression):
-    """ The dynamic representation of an `ObjectiveFunction`
+class DynamicDfbaObjective(DynamicExpression):
+    """ The dynamic representation of an :obj:`wc_lang.DfbaObjective`
     """
 
     def __init__(self, *args):
         super().__init__(*args)
 
 
-class DynamicRateLawEquation(DynamicExpression):
-    """ The dynamic representation of a `RateLawEquation`
+class DynamicRateLaw(DynamicExpression):
+    """ The dynamic representation of a :obj:`wc_lang.RateLaw`
     """
 
     def __init__(self, *args):
@@ -394,11 +395,11 @@ class DynamicRateLawEquation(DynamicExpression):
 
 
 WC_LANG_MODEL_TO_DYNAMIC_MODEL = {
-    Function: DynamicFunction,
-    Parameter: DynamicParameter,
-    Species: DynamicSpecies,
-    Observable: DynamicObservable,
-    StopCondition: DynamicStopCondition,
-    ObjectiveFunction: DynamicObjectiveFunction,
-    RateLawEquation: DynamicRateLawEquation
+    wc_lang.Function: DynamicFunction,
+    wc_lang.Parameter: DynamicParameter,
+    wc_lang.Species: DynamicSpecies,
+    wc_lang.Observable: DynamicObservable,
+    wc_lang.StopCondition: DynamicStopCondition,
+    wc_lang.DfbaObjective: DynamicDfbaObjective,
+    wc_lang.RateLaw: DynamicRateLaw,
 }

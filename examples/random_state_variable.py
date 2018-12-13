@@ -8,10 +8,10 @@
 import sys
 import argparse
 import random
-
 from wc_sim.core.simulation_message import SimulationMessage
 from wc_sim.core.simulation_object import ApplicationSimulationObject
 from wc_sim.core.simulation_engine import SimulationEngine
+
 
 class MessageSentToSelf(SimulationMessage):
     "A message that's sent to self"
@@ -24,6 +24,7 @@ class RandomStateVariableSimulationObject(ApplicationSimulationObject):
     * Event scheduling: schedule events randomly 1 or 4 seconds ahead
     * Event execution: randomly increment or decrement the state
     """
+
     def __init__(self, name, initial_value, output=True):
         self.state = initial_value
         self.output = output
@@ -71,7 +72,7 @@ class RunRandomStateVariableSimulation(object):
         parser.add_argument('initial_state', type=int, help="Initial state")
         parser.add_argument('end_time', type=float, help="End time for the simulation")
         parser.add_argument('--no-output', dest='output', action='store_false',
-            help="Don't write progress to stdout")
+                            help="Don't write progress to stdout")
         if cli_args is not None:
             args = parser.parse_args(cli_args)
         else:    # pragma: no cover     # reachable only from command line
@@ -83,16 +84,17 @@ class RunRandomStateVariableSimulation(object):
 
         # create a simulator
         simulator = SimulationEngine()
-        
+
         # create a simulation object and add it to the simulation
         simulator.add_object(RandomStateVariableSimulationObject('random state variable object',
-            args.initial_state, args.output))
+                                                                 args.initial_state, args.output))
 
         # run the simulation
         simulator.initialize()
         num_events = simulator.simulate(args.end_time)
         sys.stderr.write("Executed {} event(s).\n".format(num_events))
         return(num_events)
+
 
 if __name__ == '__main__':  # pragma: no cover     # reachable only from command line
     try:

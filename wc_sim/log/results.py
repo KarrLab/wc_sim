@@ -66,7 +66,7 @@ class Writer(object):
             'time': numpy.full((1, 1, n_steps + 1), numpy.nan),
         }
         for state in self.STATES:
-            size = getattr(self.state, state).shape or (1, 1)            
+            size = getattr(self.state, state).shape or (1, 1)
             self._simulation_results[state] = numpy.full(list(size) + [n_steps + 1], numpy.nan)
 
         # Initial index of current log slice
@@ -119,7 +119,7 @@ class Reader(object):
         self.log_path = log_path
 
     def run(self):
-        """ Read a log        
+        """ Read a log
 
         Returns:
             :obj:`dict`: logged results

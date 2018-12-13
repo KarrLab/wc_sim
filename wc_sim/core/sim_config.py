@@ -15,8 +15,8 @@ import libsedml
 import math
 import numpy
 import warnings
-import wc_lang
-from wc_lang import transform
+import wc_lang.transform
+from enum import Enum
 from wc_utils.util.misc import obj_to_str
 
 
@@ -115,12 +115,7 @@ class SimulationConfig(object):
         """
 
         for change in self.changes:
-            transform.ChangeValueTransform(
-                change.target_type,
-                change.target_id,
-                change.target_attr,
-                change.value,
-            ).run(model)
+            change.run(model)
 
     def apply_perturbations(self, model):
         """ Applies perturbations to model
@@ -182,49 +177,7 @@ class SimulationConfig(object):
         return obj_to_str(self, self.ATTRIBUTES)
 
 
-class Change(object):
-    """ Represents a change to a model
-
-    Attributes:
-        target_type (:obj:`type`): type of the target to change, E.g.
-            :obj:`wc_lang.Compartment`, :obj:`wc_lang.Function`
-        target_id (:obj:`str`): id of the target to change
-        target_attr (:obj:`list`): list of names of the nested attribute to change
-        value (:obj:`object`): new value
-    """
-    ATTRIBUTES = ['target_type', 'target_id', 'target_attr', 'value']
-
-    def __init__(self, target_type, target_id, target_attr, value):
-        """
-        Args:
-            target_type (:obj:`type`): type of the target to change, E.g. 
-                obj:`wc_lang.Compartment`, :obj:`wc_lang.Function`
-            target_id (:obj:`str`): id of the target to change
-            target_attr (:obj:`list`): list of names of the nested attribute to change
-            value (:obj:`object`): new value
-        """
-        self.target_type = target_type
-        self.target_id = target_id
-        self.target_attr = target_attr
-        self.value = value
-
-    def __eq__(self, other):
-        """ Compare two `Change` objects
-
-        Args:
-            other (:obj:`Object`): other object
-
-        Returns:
-            :obj:`bool`: true if `Change` objects are semantically equal
-        """
-        if other.__class__ is not self.__class__:
-            return False
-
-        for attr in self.ATTRIBUTES:
-            if getattr(other, attr) != getattr(self, attr):
-                return False
-
-        return True
+Change = wc_lang.transform.ChangeValueTransform
 
 
 class Perturbation(object):
@@ -395,23 +348,20 @@ class SedMl(object):
         changes = []
         mdl = cfg_ml.getModel(0)
         for change_ml in mdl.getListOfChanges():
-            target = change_ml.getTarget().split('.')
-            target_type = getattr(wc_lang, target[0])
-            target_id = target[1]
-            target_attr = target[2:]
-            value = float(change_ml.getNewValue())
-            changes.append(Change(target_type, target_id, target_attr, value))
+            target = change_ml.getTarget()
+            change = Change()
+            change.attr_path = Change.attr_path_from_str(change_ml.getTarget())
+            change.value = float(change_ml.getNewValue())
+            changes.append(change)
 
         # perturbations
         perturbations = []
         for task_ml in cfg_ml.getListOfTasks():
             change_ml = task_ml.getTaskChange(0)
-            target = change_ml.getTarget().split('.')
-            target_type = getattr(wc_lang, target[0])
-            target_id = target[1]
-            target_attr = target[2:]
-            value = float(libsedml.formulaToString(change_ml.getMath()))
-            change = Change(target_type, target_id, target_attr, value)
+
+            change = Change()
+            change.attr_path = Change.attr_path_from_str(change_ml.getTarget())
+            change.value = float(libsedml.formulaToString(change_ml.getMath()))
 
             range_ml = task_ml.getRange(0)
             if isinstance(range_ml, libsedml.SedUniformRange):
@@ -467,10 +417,7 @@ class SedMl(object):
         mdl = cfg_ml.createModel()
         for change in cfg.changes:
             change_ml = mdl.createChangeAttribute()
-            change_ml.setTarget('.'.join([
-                change.target_type.__name__,
-                change.target_id,
-            ] + change.target_attr))
+            change_ml.setTarget(change.attr_path_to_str())
             change_ml.setNewValue(str(change.value))
 
         # write perturbations
@@ -478,10 +425,7 @@ class SedMl(object):
             task_ml = cfg_ml.createRepeatedTask()
 
             change_ml = task_ml.createTaskChange()
-            change_ml.setTarget('.'.join([
-                perturbation.change.target_type.__name__,
-                perturbation.change.target_id,
-            ] + perturbation.change.target_attr))
+            change_ml.setTarget(perturbation.change.attr_path_to_str())
             change_ml.setMath(libsedml.parseFormula(str(perturbation.change.value)))
 
             if perturbation.end_time and not numpy.isnan(perturbation.end_time):

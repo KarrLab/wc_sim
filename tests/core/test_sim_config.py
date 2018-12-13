@@ -10,6 +10,7 @@ import libsedml
 import numpy
 import os
 import pytest
+import scipy.constants
 import tempfile
 import unittest
 import warnings
@@ -28,22 +29,32 @@ class TestSimulationConfig(unittest.TestCase):
         time_max = 100
         time_step = 2
         changes = [
-            sim_config.Change(
-                wc_lang.Reaction,
-                'rxn-1',
-                ['rate_laws', 'forward', 'k_cat'],
-                1),
-            sim_config.Change(
-                wc_lang.Species,
-                'species-type-1[compartment-1]',
-                ['concentration', 'value'],
-                2),
+            sim_config.Change([
+                ['reactions', {'id': 'rxn-1'}],
+                ['rate_laws', {'direction': wc_lang.RateLawDirection.forward}],
+                'expression',
+                ['parameters', {'id': 'k_cat'}],
+                'mean',
+            ], 1),
+            sim_config.Change([
+                ['species', {'id': 'species-type-1[compartment-1]'}],
+                'distribution_init_concentration',
+                'mean',
+            ], 2),
         ]
         perturbations = [
-            sim_config.Perturbation(sim_config.Change(
-                wc_lang.Reaction, 'rxn-1', ['rate_laws', '', 'k_cat'], 3), start_time=1),
-            sim_config.Perturbation(sim_config.Change(
-                wc_lang.Species, 'species-1[compartment-1]', ['concentration', 'value'], 4), start_time=0, end_time=10),
+            sim_config.Perturbation(sim_config.Change([
+                ['reactions', {'id': 'rxn-1'}],
+                ['rate_laws', {}],
+                'expression',
+                ['parameters', {'id': 'k_cat'}],
+                'mean',
+            ], 3), start_time=1),
+            sim_config.Perturbation(sim_config.Change([
+                ['species', {'id': 'species-1[compartment-1]'}],
+                'distribution_init_concentration',
+                'mean',
+            ], 4), start_time=0, end_time=10),
         ]
         random_seed = 3
         cfg = sim_config.SimulationConfig(time_max=time_max, time_step=time_step, changes=changes,
@@ -94,20 +105,46 @@ class TestSimulationConfig(unittest.TestCase):
 
     def test_apply_changes(self):
         cfg = sim_config.SimulationConfig(time_max=100, time_step=2)
-        cfg.changes.append(sim_config.Change(
-            wc_lang.Reaction,
-            'rxn_1',
-            ['rate_laws', 'forward', 'k_cat'],
-            2.5))
+        cfg.changes.append(sim_config.Change([
+            ['reactions', {'id': 'rxn_1'}],
+            ['rate_laws', {'direction': wc_lang.RateLawDirection.forward}],
+            'expression',
+            ['parameters', {'id': 'k_cat'}],
+            'value',
+        ], 2.5))
         model = wc_lang.Model()
+        comp_1 = model.compartments.create(id='comp_1')
+        species_type_1 = model.species_types.create(id='species_type_1')
+        species_1_comp_1 = model.species.create(id=wc_lang.Species.gen_id(species_type_1.id, comp_1.id),
+                                                species_type=species_type_1, compartment=comp_1)
         submodel = model.submodels.create(id='submodel_1')
-        rxn_1 = submodel.reactions.create(id='rxn_1')
-        rl_1 = rxn_1.rate_laws.create(direction=wc_lang.RateLawDirection.forward, k_cat=1)
-        eq_1 = rl_1.equation = wc_lang.RateLawEquation(expression='k_cat * x / (k_m + x)')
+        rxn_1 = model.reactions.create(id='rxn_1', submodel=submodel)
+        rl_1 = model.rate_laws.create(reaction=rxn_1, direction=wc_lang.RateLawDirection.forward, units=wc_lang.ReactionRateUnit['s^-1'])
+        k_cat = model.parameters.create(id='k_cat', value=1., units='s^-1')
+        K_m = model.parameters.create(id='K_m', value=1., units='M')
+        Avogadro = model.parameters.create(id='Avogadro', value=scipy.constants.Avogadro, units='molecule mol^-1')
+
+        objects = {
+            wc_lang.Compartment: {
+                comp_1.id: comp_1,
+            },
+            wc_lang.Species: {
+                species_1_comp_1.id: species_1_comp_1,
+            },
+            wc_lang.Parameter: {
+                k_cat.id: k_cat,
+                K_m.id: K_m,
+                Avogadro.id: Avogadro,
+            },
+        }
+        rl_1.expression, errors = wc_lang.RateLawExpression.deserialize(
+            '{} * {} / ({} + {} / {} / {})'.format(k_cat.id, species_1_comp_1.id,
+                                                   K_m.id, species_1_comp_1.id, Avogadro.id, comp_1.id), objects)
+        self.assertEqual(errors, None, str(errors))
 
         cfg.apply_changes(model)
 
-        self.assertEqual(rl_1.k_cat, 2.5)
+        self.assertEqual(k_cat.value, 2.5)
 
     @unittest.skip('Not yet implemented')
     def test_apply_perturbations(self):
@@ -129,29 +166,33 @@ class TestSedMlImportExport(unittest.TestCase):
         time_max = 100.0
         time_step = 2.0
         changes = [
-            sim_config.Change(
-                wc_lang.Reaction,
-                'rxn-1',
-                ['rate_laws', 'forward', 'k_cat'],
-                1),
-            sim_config.Change(
-                wc_lang.Species,
-                'species-1[compartment-1]',
-                ['concentration', 'value'],
-                2),
+            sim_config.Change([
+                ['reactions', {'id': 'rxn-1'}],
+                ['rate_laws', {'direction': wc_lang.RateLawDirection.forward}],
+                'expression',
+                ['parameters', {'id': 'k_cat'}],
+                'mean',
+            ], 1),
+            sim_config.Change([
+                ['species', {'id': 'species-1[compartment-1]'}],
+                'distribution_init_concentration',
+                'mean',
+            ], 2),
         ]
         perturbations = [
-            sim_config.Perturbation(sim_config.Change(
-                wc_lang.Reaction,
-                'rxn-1',
-                ['rate_laws', 'forward', 'k_cat'],
-                3
+            sim_config.Perturbation(sim_config.Change([
+                ['reactions', {'id': 'rxn-1'}],
+                ['rate_laws', {'direction': wc_lang.RateLawDirection.forward}],
+                'expression',
+                ['parameters', {'id': 'k_cat'}],
+                'mean',
+            ], 3
             ), start_time=1),
-            sim_config.Perturbation(sim_config.Change(
-                wc_lang.Species,
-                'species-1[compartment-1]',
-                ['concentration', 'value'],
-                4,
+            sim_config.Perturbation(sim_config.Change([
+                ['species', {'id': 'species-1[compartment-1]'}],
+                'distribution_init_concentration',
+                'mean',
+            ], 4,
             ), start_time=0, end_time=10),
         ]
         random_seed = 3
@@ -173,25 +214,12 @@ class TestSedMlImportExport(unittest.TestCase):
         self.assertEqual(random_seed, cfg2.random_seed)
 
         self.assertEqual(len(changes), len(cfg2.changes))
-        self.assertEqual(changes[0].target_type, cfg2.changes[0].target_type)
-        self.assertEqual(changes[0].target_id, cfg2.changes[0].target_id)
-        self.assertEqual(changes[0].target_attr, cfg2.changes[0].target_attr)
-        self.assertEqual(changes[1].target_type, cfg2.changes[1].target_type)
-        self.assertEqual(changes[1].target_id, cfg2.changes[1].target_id)
-        self.assertEqual(changes[1].target_attr, cfg2.changes[1].target_attr)
-        self.assertEqual(changes[0].value, cfg2.changes[0].value)
-        self.assertEqual(changes[1].value, cfg2.changes[1].value)
+        self.assertEqual(changes[0], cfg2.changes[0])
+        self.assertEqual(changes[1], cfg2.changes[1])
 
         self.assertEqual(len(perturbations), len(cfg2.perturbations))
-        self.assertEqual(perturbations[0].change.target_type, cfg2.perturbations[0].change.target_type)
-        self.assertEqual(perturbations[0].change.target_id, cfg2.perturbations[0].change.target_id)
-        self.assertEqual(perturbations[0].change.target_attr, cfg2.perturbations[0].change.target_attr)
-        self.assertEqual(perturbations[1].change.target_type, cfg2.perturbations[1].change.target_type)
-        self.assertEqual(perturbations[1].change.target_id, cfg2.perturbations[1].change.target_id)
-        self.assertEqual(perturbations[1].change.target_attr, cfg2.perturbations[1].change.target_attr)
-        self.assertEqual(perturbations[0].change.value, cfg2.perturbations[0].change.value)
-        self.assertEqual(perturbations[1].change.value, cfg2.perturbations[1].change.value)
-
+        self.assertEqual(perturbations[0].change, cfg2.perturbations[0].change)
+        self.assertEqual(perturbations[1].change, cfg2.perturbations[1].change)
         self.assertEqual(perturbations[0].start_time, cfg2.perturbations[0].start_time)
         self.assertEqual(perturbations[1].start_time, cfg2.perturbations[1].start_time)
         numpy.testing.assert_equal(perturbations[0].end_time, cfg2.perturbations[0].end_time)

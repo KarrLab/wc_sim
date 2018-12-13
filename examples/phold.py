@@ -19,23 +19,33 @@ from wc_sim.core.simulation_object import SimulationObject, ApplicationSimulatio
 from wc_sim.core.simulation_engine import SimulationEngine
 from examples.debug_logs import logs as debug_logs
 
+
 def obj_name(obj_num):
     # create object name from index
     return 'obj_{}'.format(obj_num)
+
 
 def obj_index(obj_name):
     # get object index from name
     return int(obj_name.split('_')[1])
 
+
 def exp_delay():
     return random.expovariate(1.0)
 
+
 class MessageSentToSelf(SimulationMessage):
     "A message that's sent to self"
+
+
 class MessageSentToOtherObject(SimulationMessage):
     "A message that's sent to another PHold simulation object"
+
+
 class InitMsg(SimulationMessage):
     'initialization message'
+
+
 MESSAGE_TYPES = [MessageSentToSelf, MessageSentToOtherObject, InitMsg]
 
 
@@ -62,7 +72,7 @@ class PholdSimulationObject(ApplicationSimulationObject):
                 index += 1
             receiver = self.simulator.simulation_objects[obj_name(index)]
             self.log_debug_msg("{:8.3f}: {} sending to {}".format(self.time, self.name,
-                obj_name(index)))
+                                                                  obj_name(index)))
 
         if receiver == self:
             message = MessageSentToSelf
@@ -96,11 +106,13 @@ class RunPhold(object):
             :obj:`argparse.Namespace`: parsed command line arguements
         """
         parser = argparse.ArgumentParser(description="Run PHOLD simulation. "
-            "Each PHOLD event either schedules an event for 'self' or for some other randomly selected LP, "
-            "in either case with an exponentially-distributed time-stamp increment having mean of 1.0. "
-            "See R. M. Fujimoto, Performance of Time Warp Under Synthetic Workloads, 1990 Distributed Simulation Conference, pp. 23-28, January 1990 and "
-            "Barnes PD, Carothers CD, Jefferson DR, Lapre JM. Warp Speed: Executing Time Warp on 1,966,080 Cores. "
-            "SIGSIM-PADS '13. Montreal: Association for Computing Machinery; 2013. p. 327-36. ")
+                                         "Each PHOLD event either schedules an event for 'self' or for some other randomly selected LP, "
+                                         "in either case with an exponentially-distributed time-stamp increment having mean of 1.0. "
+                                         "See R. M. Fujimoto, Performance of Time Warp Under Synthetic Workloads, "
+                                         "1990 Distributed Simulation Conference, pp. 23-28, January 1990 and "
+                                         "Barnes PD, Carothers CD, Jefferson DR, Lapre JM. Warp Speed: Executing Time Warp "
+                                         "on 1,966,080 Cores. "
+                                         "SIGSIM-PADS '13. Montreal: Association for Computing Machinery; 2013. p. 327-36. ")
         parser.add_argument('num_phold_procs', type=int, help="Number of PHOLD processes to run")
         parser.add_argument('frac_self_events', type=float, help="Fraction of events sent to self")
         parser.add_argument('end_time', type=float, help="End time for the simulation")
@@ -122,7 +134,7 @@ class RunPhold(object):
 
         # create a simulator
         simulator = SimulationEngine()
-        
+
         # create simulation objects, and send each one an initial event message to self
         for obj_id in range(args.num_phold_procs):
             phold_obj = PholdSimulationObject(obj_name(obj_id), args)
@@ -133,6 +145,7 @@ class RunPhold(object):
         event_num = simulator.simulate(args.end_time)
         sys.stderr.write("Executed {} events.\n".format(event_num))
         return(event_num)
+
 
 if __name__ == '__main__':  # pragma: no cover     # reachable only from command line
     try:

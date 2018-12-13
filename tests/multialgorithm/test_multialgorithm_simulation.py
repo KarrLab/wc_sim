@@ -1,49 +1,35 @@
 """
-:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2017-02-08
 :Copyright: 2017-2018, Karr Lab
 :License: MIT
 """
 
-import unittest
+from wc_lang.io import Reader
+from wc_lang.transform import PrepareForWcSimTransform
+from wc_sim.core.debug_logs import config
+from wc_sim.multialgorithm.config import core as config_core_multialgorithm
+from wc_sim.multialgorithm.make_models import MakeModel
+from wc_sim.multialgorithm.multialgorithm_checkpointing import (MultialgorithmicCheckpointingSimObj,
+                                                                MultialgorithmCheckpoint)
+from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
+from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
+from wc_sim.multialgorithm.run_results import RunResults
+from wc_utils.util.dict import DictUtil
+import copy
+import cProfile
 import os
-import math
-import re
-import numpy as np
+import pstats
 import shutil
 import tempfile
-import cProfile
-import pstats
-from scipy.constants import Avogadro
-import pandas
-import copy
 import time
-
-from wc_utils.util.dict import DictUtil
-from obj_model import utils
-from wc_lang import (Model, Submodel,  SpeciesType, SpeciesTypeType, Species,
-                          Reaction, Compartment,
-                          SpeciesCoefficient, Parameter,
-                          RateLaw, RateLawDirection, RateLawEquation, SubmodelAlgorithm, Concentration,
-                          BiomassComponent, BiomassReaction, StopCondition)
-from wc_lang.io import Reader, Writer
-from wc_lang.prepare import PrepareModel, CheckModel
-from wc_lang.transform import SplitReversibleReactionsTransform
-from wc_sim.multialgorithm.make_models import MakeModels
-from wc_sim.multialgorithm.model_utilities import ModelUtilities
-from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
-from wc_sim.multialgorithm.config import core as config_core_multialgorithm
-from wc_sim.multialgorithm.multialgorithm_checkpointing import (MultialgorithmicCheckpointingSimObj,
-    MultialgorithmCheckpoint)
-from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
-from wc_sim.multialgorithm.run_results import RunResults
-
-from wc_sim.core.simulation_checkpoint_object import CheckpointSimulationObject
-from wc_sim.core.debug_logs import logs, config
+import unittest
 
 config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 
 # TODO(Arthur): transcode & eval invariants
+
+
 class Invariant(object):
     """ Support invariant expressions on species concentrations for model testing
 
@@ -80,9 +66,10 @@ class TestMultialgorithmSimulation(unittest.TestCase):
 
     def setUp(self):
         # read and initialize a model
-        self.model = Reader().run(self.MODEL_FILENAME, strict=False)
+        self.model = Reader().run(self.MODEL_FILENAME)
+        PrepareForWcSimTransform().run(self.model)
         self.args = dict(fba_time_step=1,
-            results_dir=None)
+                         results_dir=None)
         self.multialgorithm_simulation = MultialgorithmSimulation(self.model, self.args)
         self.results_dir = tempfile.mkdtemp()
 
@@ -93,20 +80,20 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         multi_alg_sim = self.multialgorithm_simulation
         self.assertEqual(multi_alg_sim.molecular_weights_for_species(set()), {})
         expected = {
-            'specie_6[c]':6,
-            'H2O[c]':18.0152
+            'species_6[c]': 6,
+            'H2O[c]': 18.0152
         }
         self.assertEqual(multi_alg_sim.molecular_weights_for_species(set(expected.keys())),
-            expected)
+                         expected)
 
     def test_partition_species(self):
         self.multialgorithm_simulation.partition_species()
         expected_priv_species = dict(
-            submodel_1=['specie_1[e]', 'specie_2[e]', 'specie_1[c]'],
-            submodel_2=['specie_4[c]', 'specie_5[c]', 'specie_6[c]']
+            submodel_1=['species_1[e]', 'species_2[e]', 'species_1[c]'],
+            submodel_2=['species_5[c]', 'species_6[c]']
         )
         self.assertEqual(self.multialgorithm_simulation.private_species, expected_priv_species)
-        expected_shared_species = set(['specie_2[c]', 'specie_3[c]', 'H2O[e]', 'H2O[c]'])
+        expected_shared_species = set(['species_2[c]', 'species_3[c]', 'species_4[c]', 'H2O[e]', 'H2O[c]'])
         self.assertEqual(self.multialgorithm_simulation.shared_species, expected_shared_species)
 
     def test_dynamic_compartments(self):
@@ -121,32 +108,32 @@ class TestMultialgorithmSimulation(unittest.TestCase):
 
     def test_static_methods(self):
         initial_species_population = MultialgorithmSimulation.get_initial_species_pop(self.model)
-        specie_wo_init_conc = 'specie_3[c]'
-        self.assertEqual(initial_species_population[specie_wo_init_conc], 0)
-        self.assertEqual(initial_species_population['specie_2[c]'], initial_species_population['specie_4[c]'])
-        for concentration in self.model.get_concentrations():
-            self.assertGreater(initial_species_population[concentration.species.id], 0)
+        species_wo_init_conc = 'species_3[c]'
+        self.assertEqual(initial_species_population[species_wo_init_conc], 0)
+        self.assertEqual(initial_species_population['species_2[c]'], initial_species_population['species_4[c]'])
+        for concentration in self.model.get_distribution_init_concentrations():
+            self.assertGreaterEqual(initial_species_population[concentration.species.id], 0)
 
         local_species_population = MultialgorithmSimulation.make_local_species_pop(self.model)
-        self.assertEqual(local_species_population.read_one(0, specie_wo_init_conc), 0)
+        self.assertEqual(local_species_population.read_one(0, species_wo_init_conc), 0)
 
     def test_build_simulation(self):
         args = dict(fba_time_step=1,
-            results_dir=self.results_dir,
-            checkpoint_period=10)
+                    results_dir=self.results_dir,
+                    checkpoint_period=10)
         multialgorithm_simulation = MultialgorithmSimulation(self.model, args)
         simulation_engine, _ = multialgorithm_simulation.build_simulation()
         # 3 objects: 2 submodels, and the checkpointing obj:
         self.assertEqual(len(simulation_engine.simulation_objects.keys()), 3)
         self.assertEqual(type(multialgorithm_simulation.checkpointing_sim_obj),
-            MultialgorithmicCheckpointingSimObj)
+                         MultialgorithmicCheckpointingSimObj)
         self.assertEqual(multialgorithm_simulation.dynamic_model.get_num_submodels(), 2)
         self.assertTrue(callable(simulation_engine.stop_condition))
 
     def test_stop_condition(self):
         args = dict(fba_time_step=1,
-            results_dir=self.results_dir,
-            checkpoint_period=10)
+                    results_dir=self.results_dir,
+                    checkpoint_period=10)
         multialgorithm_simulation = MultialgorithmSimulation(self.model, args)
         simulation_engine, _ = multialgorithm_simulation.build_simulation()
         self.assertTrue(callable(simulation_engine.stop_condition))
@@ -157,21 +144,21 @@ class TestRunSSASimulation(unittest.TestCase):
     def setUp(self):
         self.results_dir = tempfile.mkdtemp()
         self.args = dict(fba_time_step=1,
-            results_dir=self.results_dir,
-            checkpoint_period=10)
+                         results_dir=self.results_dir,
+                         checkpoint_period=10)
         self.out_dir = tempfile.mkdtemp()
 
     def tearDown(self):
         shutil.rmtree(self.results_dir)
         shutil.rmtree(self.out_dir)
 
-    def make_model_and_simulation(self, model_type, num_submodels, specie_copy_numbers=None, init_vols=None):
+    def make_model_and_simulation(self, model_type, num_submodels, species_copy_numbers=None, init_vols=None):
         # make simple model
         if init_vols is not None:
             if not isinstance(init_vols, list):
                 init_vols = [init_vols]*num_submodels
-        model = MakeModels.make_test_model(model_type, num_submodels=num_submodels,
-            specie_copy_numbers=specie_copy_numbers, init_vols=init_vols)
+        model = MakeModel.make_test_model(model_type, num_submodels=num_submodels,
+                                          species_copy_numbers=species_copy_numbers, init_vols=init_vols)
         multialgorithm_simulation = MultialgorithmSimulation(model, self.args)
         simulation_engine, _ = multialgorithm_simulation.build_simulation()
         return (model, multialgorithm_simulation, simulation_engine)
@@ -187,16 +174,16 @@ class TestRunSSASimulation(unittest.TestCase):
             t += checkpoint_period
         return checkpoint_times
 
-    def perform_ssa_test_run(self, model_type, run_time, initial_specie_copy_numbers,
-        expected_mean_copy_numbers, delta, num_submodels=1, invariants=None, iterations=3, init_vols=None):
+    def perform_ssa_test_run(self, model_type, run_time, initial_species_copy_numbers,
+                             expected_mean_copy_numbers, delta, num_submodels=1, invariants=None, iterations=3, init_vols=None):
         """ Test SSA by comparing expected and actual simulation copy numbers
 
         Args:
             model_type (:obj:`str`): model type description
             run_time (:obj:`float`): duration of the simulation run
-            initial_specie_copy_numbers (:obj:`dict`): initial specie counts, with IDs as keys and counts as values
+            initial_species_copy_numbers (:obj:`dict`): initial specie counts, with IDs as keys and counts as values
             expected_mean_copy_numbers (:obj:`dict`): expected final mean specie counts, in same format as
-                `initial_specie_copy_numbers`
+                `initial_species_copy_numbers`
             delta (:obj:`int`): maximum allowed difference between expected and actual counts
             num_submodels (:obj:`int`): number of submodels to create
             invariants (:obj:`list`, optional): list of invariant relationships, to be tested
@@ -208,30 +195,30 @@ class TestRunSSASimulation(unittest.TestCase):
         # TODO(Arthur): provide some invariant objects
         invariant_objs = [] if invariants is None else [Invariant(value) for value in invariants]
 
-        final_specie_counts = []
+        final_species_counts = []
         for i in range(iterations):
             model, multialgorithm_simulation, simulation_engine = self.make_model_and_simulation(
                 model_type,
                 num_submodels=num_submodels,
-                specie_copy_numbers=initial_specie_copy_numbers,
+                species_copy_numbers=initial_species_copy_numbers,
                 init_vols=init_vols)
             local_species_pop = multialgorithm_simulation.local_species_population
             simulation_engine.initialize()
             simulation_engine.simulate(run_time)
-            final_specie_counts.append(local_species_pop.read(run_time))
+            final_species_counts.append(local_species_pop.read(run_time))
 
-        mean_final_specie_counts = dict.fromkeys(list(initial_specie_copy_numbers.keys()), 0)
+        mean_final_species_counts = dict.fromkeys(list(initial_species_copy_numbers.keys()), 0)
         if expected_mean_copy_numbers:
-            for final_specie_count in final_specie_counts:
-                for k,v in final_specie_count.items():
-                    mean_final_specie_counts[k] += v
-            for k,v in mean_final_specie_counts.items():
-                mean_final_specie_counts[k] = v/iterations
-                if k not in mean_final_specie_counts:
-                    print(k,  'not in mean_final_specie_counts',  list(mean_final_specie_counts.keys()))
+            for final_species_count in final_species_counts:
+                for k, v in final_species_count.items():
+                    mean_final_species_counts[k] += v
+            for k, v in mean_final_species_counts.items():
+                mean_final_species_counts[k] = v/iterations
+                if k not in mean_final_species_counts:
+                    print(k,  'not in mean_final_species_counts',  list(mean_final_species_counts.keys()))
                 if k not in expected_mean_copy_numbers:
                     print(k,  'not in expected_mean_copy_numbers',  list(expected_mean_copy_numbers.keys()))
-                self.assertAlmostEqual(mean_final_specie_counts[k], expected_mean_copy_numbers[k], delta=delta)
+                self.assertAlmostEqual(mean_final_species_counts[k], expected_mean_copy_numbers[k], delta=delta)
         for invariant_obj in invariant_objs:
             self.assertTrue(invariant_obj.eval())
 
@@ -241,10 +228,10 @@ class TestRunSSASimulation(unittest.TestCase):
     def test_run_ssa_suite(self):
         specie = 'spec_type_0[compt_1]'
         self.perform_ssa_test_run('1 species, 1 reaction',
-            run_time=999,       # tests checkpoint history in which the last checkpoint time < run time
-            initial_specie_copy_numbers={specie:3000},
-            expected_mean_copy_numbers={specie:2000},
-            delta=50)
+                                  run_time=999,       # tests checkpoint history in which the last checkpoint time < run time
+                                  initial_species_copy_numbers={specie: 3000},
+                                  expected_mean_copy_numbers={specie: 2000},
+                                  delta=50)
         # species counts, and cell mass and volume steadily decline
         prev_ckpt = None
         for time in MultialgorithmCheckpoint.list_checkpoints(self.results_dir):
@@ -258,45 +245,46 @@ class TestRunSSASimulation(unittest.TestCase):
             prev_ckpt = ckpt
 
         self.perform_ssa_test_run('2 species, 1 reaction',
-            run_time=1000,
-            initial_specie_copy_numbers={'spec_type_0[compt_1]':3000, 'spec_type_1[compt_1]':0},
-            expected_mean_copy_numbers={'spec_type_0[compt_1]':2000,  'spec_type_1[compt_1]':1000},
-            delta=50)
+                                  run_time=1000,
+                                  initial_species_copy_numbers={'spec_type_0[compt_1]': 3000, 'spec_type_1[compt_1]': 0},
+                                  expected_mean_copy_numbers={'spec_type_0[compt_1]': 2000,  'spec_type_1[compt_1]': 1000},
+                                  delta=50)
 
     def test_runtime_errors(self):
         init_spec_type_0_pop = 2000
         # this model consumes all the reactants, driving propensities to 0:
         with self.assertRaisesRegex(MultialgorithmError,
-            "simulation with 1 SSA submodel and total propensities = 0 cannot progress"):
+                                    "simulation with 1 SSA submodel and total propensities = 0 cannot progress"):
             self.perform_ssa_test_run('2 species, 1 reaction, with rates given by reactant population',
-                run_time=5000,
-                initial_specie_copy_numbers={'spec_type_0[compt_1]':init_spec_type_0_pop, 'spec_type_1[compt_1]':0},
-                expected_mean_copy_numbers={},
-                delta=0,
-                init_vols=1E-22)
+                                      run_time=5000,
+                                      initial_species_copy_numbers={
+                                          'spec_type_0[compt_1]': init_spec_type_0_pop, 'spec_type_1[compt_1]': 0},
+                                      expected_mean_copy_numbers={},
+                                      delta=0,
+                                      init_vols=1E-22)
 
     def test_run_multiple_ssa_submodels(self):
         # 1 submodel per compartment, no transfer reactions
         num_submodels = 3
         init_spec_type_0_pop = 200
-        initial_specie_copy_numbers = {}
+        initial_species_copy_numbers = {}
         expected_mean_copy_numbers = {}
         for i in range(num_submodels):
             compt_idx = i + 1
-            specie_0_id = 'spec_type_0[compt_{}]'.format(compt_idx)
-            specie_1_id = 'spec_type_1[compt_{}]'.format(compt_idx)
-            initial_specie_copy_numbers[specie_0_id] = init_spec_type_0_pop
-            initial_specie_copy_numbers[specie_1_id] = 0
-            expected_mean_copy_numbers[specie_0_id] = 0
-            expected_mean_copy_numbers[specie_1_id] = init_spec_type_0_pop
+            species_0_id = 'spec_type_0[compt_{}]'.format(compt_idx)
+            species_1_id = 'spec_type_1[compt_{}]'.format(compt_idx)
+            initial_species_copy_numbers[species_0_id] = init_spec_type_0_pop
+            initial_species_copy_numbers[species_1_id] = 0
+            expected_mean_copy_numbers[species_0_id] = 0
+            expected_mean_copy_numbers[species_1_id] = init_spec_type_0_pop
 
         self.perform_ssa_test_run('2 species, 1 reaction, with rates given by reactant population',
-            num_submodels=num_submodels,
-            run_time=1000,
-            initial_specie_copy_numbers=initial_specie_copy_numbers,
-            expected_mean_copy_numbers=expected_mean_copy_numbers,
-            delta=0,
-            init_vols=1E-22)
+                                  num_submodels=num_submodels,
+                                  run_time=1000,
+                                  initial_species_copy_numbers=initial_species_copy_numbers,
+                                  expected_mean_copy_numbers=expected_mean_copy_numbers,
+                                  delta=0,
+                                  init_vols=1E-22)
 
     def suspend_logging(self):
         self.saved_config = copy.deepcopy(config)
@@ -334,13 +322,13 @@ class TestRunSSASimulation(unittest.TestCase):
             num_events = simulation_engine.simulate(end_sim_time)
             run_time = time.process_time() - start_time
             unprofiled_perf.append("{}\t{}\t{:8.3f}\t{:8.3f}".format(num_ssa_submodels, num_events,
-                run_time, num_events/run_time))
+                                                                     run_time, num_events/run_time))
 
             # profile
             simulation_engine = self.prep_simulation(num_ssa_submodels)
             out_file = os.path.join(self.out_dir, "profile_out_{}.out".format(num_ssa_submodels))
-            locals = {'simulation_engine':simulation_engine,
-                'end_sim_time':end_sim_time}
+            locals = {'simulation_engine': simulation_engine,
+                      'end_sim_time': end_sim_time}
             cProfile.runctx('num_events = simulation_engine.simulate(end_sim_time)', {}, locals, filename=out_file)
             profile = pstats.Stats(out_file)
             print("Profile for {} simulation objects:".format(num_ssa_submodels))
@@ -352,13 +340,14 @@ class TestRunSSASimulation(unittest.TestCase):
         print("\n".join(unprofiled_perf))
         self.restore_logging()
 
+
 class TestSSaExceptions(unittest.TestCase):
 
     def setUp(self):
-        self.model = MakeModels.make_test_model('2 species, 1 reaction, with rates given by reactant population',
-            specie_copy_numbers={'spec_type_0[compt_1]':10, 'spec_type_1[compt_1]':10})
+        self.model = MakeModel.make_test_model('2 species, 1 reaction, with rates given by reactant population',
+                                               species_copy_numbers={'spec_type_0[compt_1]': 10, 'spec_type_1[compt_1]': 10})
 
-    @unittest.skip('Disable temporarily, while A finishes "incomplete-updates" branch')        
+    @unittest.skip('Disable temporarily, while A finishes "incomplete-updates" branch')
     def test_nan_propensities(self):
         self.model.species_types.get_one(id='spec_type_0').molecular_weight = float('NaN')
         multialgorithm_simulation = MultialgorithmSimulation(self.model, {})
@@ -378,6 +367,6 @@ class TestSSaExceptions(unittest.TestCase):
     # TODO(Arthur): delete unused parts of CheckpointLogger
     # TODO(Arthur): control pytest warnings
 
-    # TODO(Arthur): catch MultialgorithmErrors from get_specie_concentrations, and elsewhere
+    # TODO(Arthur): catch MultialgorithmErrors from get_species_concentrations, and elsewhere
     # TODO(Arthur): fit exponential to reaction, with rates given by reactant population
     # TODO(Arthur): perhaps raise warning for high concentration / molecule species like H20 in rate laws

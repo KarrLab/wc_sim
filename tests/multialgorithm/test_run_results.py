@@ -6,18 +6,17 @@
 :License: MIT
 """
 
-import unittest
+
+import numpy
+import pandas
 import shutil
 import tempfile
-import pandas
-import numpy
+import unittest
 from capturer import CaptureOutput
-
-from wc_lang import SpeciesType
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm.simulation import Simulation
 from wc_sim.multialgorithm.run_results import RunResults
-from wc_sim.multialgorithm.make_models import MakeModels
+from wc_sim.multialgorithm.make_models import MakeModel
 
 
 class TestRunResults(unittest.TestCase):
@@ -26,13 +25,13 @@ class TestRunResults(unittest.TestCase):
         # create stored checkpoints and metadata
         self.temp_dir = tempfile.mkdtemp()
         # create and run simulation
-        model = MakeModels.make_test_model('2 species, 1 reaction')
+        model = MakeModel.make_test_model('2 species, 1 reaction')
         simulation = Simulation(model)
         self.checkpoint_period = 10
         self.max_time = 100
         with CaptureOutput(relay=False) as capturer:
             _, self.results_dir = simulation.run(end_time=self.max_time, results_dir=self.temp_dir,
-                checkpoint_period=self.checkpoint_period)
+                                                 checkpoint_period=self.checkpoint_period)
 
     def tearDown(self):
         shutil.rmtree(self.temp_dir)

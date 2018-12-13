@@ -1,6 +1,6 @@
 """ A sub-model that employs Gillespie's Stochastic Simulation Algorithm (SSA) to model a set of reactions.
 
-:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2016-07-14
 :Copyright: 2016-2018, Karr Lab
 :License: MIT
@@ -27,7 +27,7 @@ config_multialgorithm = \
     config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 
 
-class SSASubmodel(DynamicSubmodel):
+class SsaSubmodel(DynamicSubmodel):
     """ Use the Stochastic Simulation Algorithm to predict the dynamics of chemical species in a container
 
     This implementation supports a partition of the species populations into private, locally stored
@@ -74,7 +74,7 @@ class SSASubmodel(DynamicSubmodel):
 
     """
 
-    # message types sent by SSASubmodel
+    # message types sent by SsaSubmodel
     SENT_MESSAGE_TYPES = [
         message_types.AdjustPopulationByDiscreteSubmodel,
         message_types.ExecuteSsaReaction,
@@ -95,7 +95,7 @@ class SSASubmodel(DynamicSubmodel):
     event_handlers = [(sim_msg_type, 'handle_{}_msg'.format(sim_msg_type.__name__))
         for sim_msg_type in MESSAGE_TYPES_BY_PRIORITY]
 
-    def __init__(self, id, dynamic_model, reactions, species, parameters, dynamic_compartments,
+    def __init__(self, id, dynamic_model, reactions, species, dynamic_compartments,
         local_species_population, default_center_of_mass=None):
         """ Initialize an SSA submodel object.
 
@@ -105,7 +105,6 @@ class SSASubmodel(DynamicSubmodel):
             reactions (:obj:`list` of :obj:`Reaction`): the reactions modeled by this SSA submodel
             species (:obj:`list` of :obj:`Species`): the species that participate in the reactions modeled
                 by this SSA submodel, with their initial concentrations
-            parameters (:obj:`list` of :obj:`Parameter`): the model's parameters
             dynamic_compartments (:obj:`dict`): `DynamicCompartment`s, keyed by id, that contain
                 species which participate in reactions that this SSA submodel models, including
                 adjacent compartments used by its transfer reactions
@@ -117,7 +116,7 @@ class SSASubmodel(DynamicSubmodel):
         Raises:
             MultialgorithmError: if the initial SSA wait exponential moving average is not positive
         """
-        super().__init__(id, dynamic_model, reactions, species, parameters, dynamic_compartments, local_species_population)
+        super().__init__(id, dynamic_model, reactions, species, dynamic_compartments, local_species_population)
 
         self.num_SsaWaits=0
         # The 'initial_ssa_wait_ema' must be positive, as otherwise an infinite sequence of SsaWait
@@ -303,7 +302,7 @@ class SSASubmodel(DynamicSubmodel):
         self.schedule_next_events()
 
     def log_event(self, event):
-        """ Log a SSASubmodel simulation event.
+        """ Log a SsaSubmodel simulation event.
 
         Args:
             event (:obj:`Event`): a simulation event

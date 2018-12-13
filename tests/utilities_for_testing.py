@@ -1,6 +1,6 @@
 """ Utilities for testing
 
-:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2018-05-16
 :Copyright: 2018, Karr Lab
 :License: MIT

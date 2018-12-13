@@ -1,7 +1,7 @@
 """ Test simulation metadata object
 
 :Author: Jonathan Karr <karr@mssm.edu>
-:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2017-08-18
 :Copyright: 2016-2018, Karr Lab
 :License: MIT
@@ -30,29 +30,33 @@ class TestMetadata(unittest.TestCase):
         self.model_different.branch = self.model_equal.branch + 'x'
 
         changes = [
-            sim_config.Change(
-                wc_lang.Reaction,
-                'rxn-1',
-                ['rate_laws', 'forward', 'k_m'],
-                1),
-            sim_config.Change(
-                wc_lang.Species,
-                'species-1[compartment-1]',
-                ['concentration', 'value'],
-                1),
+            sim_config.Change([
+                ['reactions', {'id': 'rxn-1'}],
+                ['rate_laws', {'direction': wc_lang.RateLawDirection.forward}],
+                'expression',
+                ['parameters', {'type': wc_lang.ParameterType.K_m}],
+                'value',
+            ], 1),
+            sim_config.Change([
+                ['species', {'id': 'species-1[compartment-1]'}],
+                'distribution_init_concentration',
+                'mean',
+            ], 1),
         ]
         perturbations = [
-            sim_config.Perturbation(sim_config.Change(
-                wc_lang.Reaction,
-                'rxn-1',
-                ['rate_laws', 'forward', 'k_m'],
-                1,
+            sim_config.Perturbation(sim_config.Change([
+                ['reactions', {'id': 'rxn-1'}],
+                ['rate_laws', {'direction': wc_lang.RateLawDirection.forward}],
+                'expression',
+                ['parameters', {'type': wc_lang.ParameterType.K_m}],
+                'value',
+            ], 1,
             ), start_time=5),
-            sim_config.Perturbation(sim_config.Change(
-                wc_lang.Species,
-                'species-1[compartment-1]',
-                ['concentration', 'value'],
-                1,
+            sim_config.Perturbation(sim_config.Change([
+                ['species', {'id': 'species-1[compartment-1]'}],
+                'distribution_init_concentration',
+                'mean',
+            ], 1,
             ), start_time=0, end_time=10),
         ]
         simulation = sim_config.SimulationConfig(time_max=100, time_step=1, changes=changes,

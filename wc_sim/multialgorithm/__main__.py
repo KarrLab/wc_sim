@@ -1,33 +1,16 @@
 #!/usr/bin/env python3
 """ Command line program for WC simulation
 
-:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Author: Jonathan Karr <karr@mssm.edu>
 :Date: 2018-04-18
 :Copyright: 2018, Karr Lab
 :License: MIT
 """
 
-import argparse
-from argparse import Namespace
-import cement
-import os
-import getpass
-import sys
-import socket
-import datetime
-import warnings
-import pandas
-
-from wc_sim.core.sim_metadata import SimulationMetadata, ModelMetadata, AuthorMetadata, RunMetadata
-from wc_sim.core.sim_config import SimulationConfig
-from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
-from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
-from wc_lang.io import Reader
-from wc_lang.prepare import PrepareModel, CheckModel
-from wc_sim.multialgorithm.multialgorithm_checkpointing import MultialgorithmCheckpoint
 from wc_sim.multialgorithm.simulation import Simulation
-from wc_sim.multialgorithm.run_results import RunResults
+import cement
+import warnings
 
 # ignore 'setting concentration' warnings
 warnings.filterwarnings('ignore', '.*setting concentration.*', )

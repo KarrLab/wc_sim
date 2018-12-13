@@ -1,7 +1,7 @@
 """ A Flux Balance Analysis (FBA) sub-model that represents a set of reactions
 
 :Author: Jonathan Karr, karr@mssm.edu
-:Author: Arthur Goldberg, Arthur.Goldberg@mssm.edu
+:Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2016-07-14
 :Copyright: 2016-2018, Karr Lab
 :License: MIT
@@ -25,9 +25,9 @@ from wc_sim.multialgorithm.submodels.dynamic_submodel import DynamicSubmodel
 from wc_utils.util.misc import isclass_by_name
 
 
-class FbaSubmodel(DynamicSubmodel):
+class DfbaSubmodel(DynamicSubmodel):
     """
-    FbaSubmodel employs Flux Balance Analysis to predict the reaction fluxes of
+    DfbaSubmodel employs Flux Balance Analysis to predict the reaction fluxes of
     a set of chemical species in a 'well-mixed' container constrained by maximizing
     biomass increase.
 
@@ -53,7 +53,7 @@ class FbaSubmodel(DynamicSubmodel):
         GivePopulation
     """
 
-    # Message types sent by FbaSubmodel
+    # Message types sent by DfbaSubmodel
     SENT_MESSAGE_TYPES = [
         message_types.RunFba,
         message_types.AdjustPopulationByContinuousSubmodel,
@@ -66,7 +66,7 @@ class FbaSubmodel(DynamicSubmodel):
         message_types.RunFba,
     ]
 
-    def __init__(self, id, dynamic_model, reactions, species, parameters, dynamic_compartment,
+    def __init__(self, id, dynamic_model, reactions, species, dynamic_compartment,
         local_species_population, time_step):
         """ Initialize an FBA submodel
 
@@ -77,7 +77,7 @@ class FbaSubmodel(DynamicSubmodel):
             dynamic_model (:obj:`DynamicModel`): the aggregate state of a simulation
             time_step: float; time between FBA executions
         """
-        super().__init__(id, dynamic_model, reactions, species, parameters, dynamic_compartment, local_species_population)
+        super().__init__(id, dynamic_model, reactions, species, dynamic_compartment, local_species_population)
         self.algorithm = 'FBA'
         if time_step <= 0:
             raise MultialgorithmError("time_step must be positive, but is {}".format(time_step))
@@ -147,8 +147,7 @@ class FbaSubmodel(DynamicSubmodel):
                 self.exchangedSpecies.append(ExchangedSpecies(
                     id=species.serialize(),
                     species_index=i_species,
-                    fba_reaction_index=cobraModel.reactions.index(cbRxn),
-                    is_carbon_containing=species.species_type.is_carbon_containing()))
+                    fba_reaction_index=cobraModel.reactions.index(cbRxn)))
 
         # add biomass exchange reaction
         cbRxn = CobraReaction(
@@ -172,20 +171,13 @@ class FbaSubmodel(DynamicSubmodel):
         }
 
         # exchange reactions
-        carbonExRate = self.get_component_by_id('carbonExchangeRate', 'parameters').value
-        nonCarbonExRate = self.get_component_by_id('nonCarbonExchangeRate', 'parameters').value
         self.exchangeRateBounds = {
             'lower': np.full(len(cobraModel.reactions), -np.nan),
             'upper': np.full(len(cobraModel.reactions), np.nan),
         }
-
         for exSpecies in self.exchangedSpecies:
-            if self.get_component_by_id(exSpecies.id, 'species').species.is_carbon_containing():
-                self.exchangeRateBounds['lower'][exSpecies.fba_reaction_index] = -carbonExRate
-                self.exchangeRateBounds['upper'][exSpecies.fba_reaction_index] = carbonExRate
-            else:
-                self.exchangeRateBounds['lower'][exSpecies.fba_reaction_index] = -nonCarbonExRate
-                self.exchangeRateBounds['upper'][exSpecies.fba_reaction_index] = nonCarbonExRate
+            self.exchangeRateBounds['lower'][exSpecies.fba_reaction_index] = self.reactions[exSpecies.fba_reaction_index].flux_min
+            self.exchangeRateBounds['upper'][exSpecies.fba_reaction_index] = self.reactions[exSpecies.fba_reaction_index].flux_max
 
         """Setup reactions"""
         self.metabolismProductionReaction = {
@@ -255,12 +247,12 @@ class FbaSubmodel(DynamicSubmodel):
             * self.model.volume * Avogadro)
 
         # external nutrients availability
-        specie_counts = self.get_specie_counts()
+        species_counts = self.get_species_counts()
         for exSpecies in self.exchangedSpecies:
             upperBounds[exSpecies.fba_reaction_index] = max(0,
                                                             np.minimum(
                                                                 upperBounds[
-                                                                    exSpecies.fba_reaction_index], specie_counts[
+                                                                    exSpecies.fba_reaction_index], species_counts[
                                                                     exSpecies.id])
                                                             / self.time_step)
 
@@ -276,7 +268,7 @@ class FbaSubmodel(DynamicSubmodel):
 
     # todo: restructure
     def handle_event(self, event_list):
-        """Handle a FbaSubmodel simulation event.
+        """Handle a DfbaSubmodel simulation event.
 
         In this shared-memory FBA, the only event is RunFba, and event_list should
         always contain one event.
@@ -325,19 +317,16 @@ class ExchangedSpecies(object):
         id (:obj:`str`): id
         species_index (:obj:`int`): index of exchanged species within list of species
         fba_reaction_index (:obj:`int`): index of species' exchange reaction within list of cobra model reactions
-        is_carbon_containing(:obj:`bool`): indicates if exchanged species contains carbon
     """
 
-    def __init__(self, id, species_index, fba_reaction_index, is_carbon_containing):
+    def __init__(self, id, species_index, fba_reaction_index):
         """ Construct an object to represent an exchanged species and its exchange reaction
 
         Args:
             id (:obj:`str`): id
             species_index (:obj:`int`): index of exchanged species within list of species
             fba_reaction_index (:obj:`int`): index of species' exchange reaction within list of cobra model reactions
-            is_carbon_containing(:obj:`bool`): indicates if exchanged species contains carbon
         """
         self.id = id
         self.species_index = species_index
         self.fba_reaction_index = fba_reaction_index
-        self.is_carbon_containing = is_carbon_containing

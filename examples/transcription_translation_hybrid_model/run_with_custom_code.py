@@ -1,4 +1,4 @@
-""" Use custom code to simulate a model of the transcription, 
+""" Use custom code to simulate a model of the transcription,
 translation, and RNA and protein degradation of 3 genes, each
 with 1 RNA and 1 protein species
 
@@ -135,7 +135,7 @@ def sim_ode(rxns, rate_params, init_species, init_time, time_max, checkpoint_per
         species = {species_id: y for species_id, y in zip(species_ids, ys)}
         locals = {**species, **rate_params}
         dys = numpy.zeros(ys.shape)
-        for rxn in rxns.values():            
+        for rxn in rxns.values():
             rate = eval(rxn['rate_law'], locals)
             for part in rxn['parts']:
                 i_species = species_ids.index(part['species'])
@@ -210,22 +210,22 @@ def sim_hyb(rxns, rate_params, init_species, init_time, time_max, checkpoint_per
 
 
 def plot(
-    species_ssa, time_ssa, 
-    species_ode, time_ode, 
-    species_hyb, time_hyb, 
-    exp_avg_species, filename):
+        species_ssa, time_ssa,
+        species_ode, time_ode,
+        species_hyb, time_hyb,
+        exp_avg_species, filename):
     fig, axes = pyplot.subplots(nrows=2, ncols=1)
 
     # RNA
     avg = numpy.mean(species_ssa['rna'])
     axes[0].plot(time_ssa / 3600, species_ssa['rna'], label='SSA <{0:.1f}>'.format(avg))
-    
+
     avg = numpy.mean(species_ode['rna'])
     axes[0].plot(time_ode / 3600, species_ode['rna'], label='ODE <{0:.1f}>'.format(avg))
-    
+
     avg = numpy.mean(species_hyb['rna'])
     axes[0].plot(time_hyb / 3600, species_hyb['rna'], label='Hybrid <{0:.1f}>'.format(avg))
-    
+
     axes[0].plot([0, time_ssa[-1] / 3600], [avg, avg], label='Avg: {}'.format(exp_avg_species['rna']))
     axes[0].set_xlim((time_ssa[0] / 3600, time_ssa[-1] / 3600))
     axes[0].set_ylim((0., 10.0))
@@ -236,10 +236,10 @@ def plot(
     # Protein
     avg = numpy.mean(species_ssa['prot'])
     axes[1].plot(time_ssa / 3600, species_ssa['prot'], label='SSA <{0:.0f}>'.format(avg))
-    
+
     avg = numpy.mean(species_ode['prot'])
     axes[1].plot(time_ode / 3600, species_ode['prot'], label='ODE <{0:.0f}>'.format(avg))
-    
+
     avg = numpy.mean(species_hyb['prot'])
     axes[1].plot(time_hyb / 3600, species_hyb['prot'], label='Hybrid <{0:.0f}>'.format(avg))
 
@@ -257,8 +257,7 @@ def plot(
 ssa_species_log, ssa_time_log = sim_ssa(rxns, rate_params, init_species, init_time, time_max, checkpoint_period)
 ode_species_log, ode_time_log = sim_ode(rxns, rate_params, init_species, init_time, time_max, checkpoint_period)
 hyb_species_log, hyb_time_log = sim_hyb(rxns, rate_params, init_species, init_time, time_max, checkpoint_period)
-plot(ssa_species_log, ssa_time_log, 
-    ode_species_log, ode_time_log, 
-    hyb_species_log, hyb_time_log, 
-    exp_avg_species, 'custom_results.pdf')
-
+plot(ssa_species_log, ssa_time_log,
+     ode_species_log, ode_time_log,
+     hyb_species_log, hyb_time_log,
+     exp_avg_species, 'custom_results.pdf')

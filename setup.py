@@ -35,7 +35,7 @@ setuptools.setup(
             'multialgorithm/config/core.default.cfg',
             'multialgorithm/config/core.schema.cfg',
             'multialgorithm/config/debug.default.cfg',
-            'examples/config/debug.default.cfg',            
+            'examples/config/debug.default.cfg',
         ],
     },
     entry_points={
