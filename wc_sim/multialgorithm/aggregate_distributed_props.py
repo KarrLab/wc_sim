@@ -6,7 +6,6 @@
 :License: MIT
 '''
 
-from scipy.constants import Avogadro
 from collections import defaultdict
 import bisect
 import builtins

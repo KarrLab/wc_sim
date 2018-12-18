@@ -780,7 +780,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
                 except KeyError as e:
                     raise SpeciesPopulationError("molecular weight not available for '{}'".format(
                         species_id))
-        return mass/Avogadro
+        return mass / Avogadro
 
     def log_event(self, message, specie):
         """ Log an event that modifies a specie's population
