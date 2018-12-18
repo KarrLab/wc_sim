@@ -10,7 +10,6 @@
 # TODO(Arthur): IMPORTANT: temporary: refactor and replace
 
 #required libraries
-from scipy.constants import Avogadro
 from temp_wc_analysis import analysis
 from wc_utils.util.rand import RandomStateManager
 import numpy as np

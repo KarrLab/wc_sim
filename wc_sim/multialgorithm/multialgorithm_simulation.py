@@ -151,6 +151,8 @@ class MultialgorithmSimulation(object):
         """
         self.partition_species()
         self.dynamic_model = DynamicModel(self.model, self.local_species_population, self.dynamic_compartments)
+        for comp in self.dynamic_compartments.values():
+            comp.dynamic_model = self.dynamic_model
         self.dynamic_model.set_stop_condition(self.simulation)
         if 'results_dir' in self.args and self.args['results_dir']:
             self.checkpointing_sim_obj = self.create_multialgorithm_checkpointing(
@@ -256,13 +258,8 @@ class MultialgorithmSimulation(object):
             :obj:`dict`: mapping: compartment id -> `DynamicCompartment` for the
                 `DynamicCompartment`(s) that a new `DynamicSubmodel` needs
         """
-        compartments = []
-        for rxn in submodel.reactions:
-            for participant in rxn.participants:
-                compartments.append(participant.species.compartment)
-        compartments = det_dedupe(compartments)
         dynamic_compartments = {}
-        for comp in compartments:
+        for comp in submodel.get_compartments():
             dynamic_compartments[comp.id] = self.dynamic_compartments[comp.id]
         return dynamic_compartments
 
@@ -282,7 +279,7 @@ class MultialgorithmSimulation(object):
         # make DynamicCompartments
         dynamic_compartments = {}
         for compartment in model.get_compartments():
-            dynamic_compartments[compartment.id] = DynamicCompartment(compartment, local_species_pop)
+            dynamic_compartments[compartment.id] = DynamicCompartment(None, local_species_pop, compartment)
         return dynamic_compartments
 
     @staticmethod

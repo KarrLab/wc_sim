@@ -114,6 +114,15 @@ class TestSimulationConfig(unittest.TestCase):
         ], 2.5))
         model = wc_lang.Model()
         comp_1 = model.compartments.create(id='comp_1')
+
+        comp_1.init_density = model.parameters.create(id='density_comp_1', value=1100, units='g l^-1')
+        volume = model.functions.create(id='volume_comp_1', units='l')
+        volume.expression, error = wc_lang.FunctionExpression.deserialize('{} / {}'.format(comp_1.id, comp_1.init_density.id), {
+            wc_lang.Compartment: {comp_1.id: comp_1},
+            wc_lang.Parameter: {comp_1.init_density.id: comp_1.init_density},
+            })
+        assert error is None, str(error)
+
         species_type_1 = model.species_types.create(id='species_type_1')
         species_1_comp_1 = model.species.create(id=wc_lang.Species.gen_id(species_type_1.id, comp_1.id),
                                                 species_type=species_type_1, compartment=comp_1)
@@ -131,15 +140,18 @@ class TestSimulationConfig(unittest.TestCase):
             wc_lang.Species: {
                 species_1_comp_1.id: species_1_comp_1,
             },
+            wc_lang.Function: {
+                volume.id: volume,
+            },
             wc_lang.Parameter: {
                 k_cat.id: k_cat,
                 K_m.id: K_m,
-                Avogadro.id: Avogadro,
-            },
+                Avogadro.id: Avogadro,                
+            },            
         }
         rl_1.expression, errors = wc_lang.RateLawExpression.deserialize(
-            '{} * {} / ({} + {} / {} / {})'.format(k_cat.id, species_1_comp_1.id,
-                                                   K_m.id, species_1_comp_1.id, Avogadro.id, comp_1.id), objects)
+            '{} * {} / ({} * {} * {} + {})'.format(k_cat.id, species_1_comp_1.id,
+                                                   K_m.id, Avogadro.id, volume.id, species_1_comp_1.id), objects)
         self.assertEqual(errors, None, str(errors))
 
         cfg.apply_changes(model)

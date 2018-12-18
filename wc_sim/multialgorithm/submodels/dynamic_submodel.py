@@ -74,13 +74,13 @@ class DynamicSubmodel(ApplicationSimulationObject):
     # TODO(Arthur): cover after MVP wc_sim done
     messages_sent = [message_types.GiveProperty]    # pragma: no cover
 
-    def get_compartment_volumes(self):
-        """ Get the volume of each compartment
+    def get_compartment_masses(self):
+        """ Get the mass (g) of each compartment
 
         Returns:
-            :obj:`dict`: dictionary that maps the ids of compartments to their volumes
+            :obj:`dict`: dictionary that maps the ids of compartments to their masses (g)
         """
-        return {id: comp.volume() for id, comp in self.dynamic_compartments.items()}
+        return {id: comp.mass() for id, comp in self.dynamic_compartments.items()}
 
     def get_species_ids(self):
         """ Get ids of species used by this dynamic submodel
@@ -151,13 +151,13 @@ class DynamicSubmodel(ApplicationSimulationObject):
         # TODO(Arthur): optimization: get concentrations only for modifiers in the reactions
         # species_concentrations = self.get_species_concentrations()
         species_counts = self.get_species_counts()
-        compartment_volumes = self.get_compartment_volumes()
+        compartment_masses = self.get_compartment_masses()
 
         for idx_reaction, rxn in enumerate(self.reactions):
             if rxn.rate_laws:
                 self.rates[idx_reaction] = rxn.rate_laws[0].expression._parsed_expression.eval(
                     species_counts=species_counts,
-                    compartment_volumes=compartment_volumes)
+                    compartment_masses=compartment_masses)
 
         # TODO(Arthur): optimization: get this if to work:
         # if self.logger.isEnabledFor(self.logger.getEffectiveLevel()):

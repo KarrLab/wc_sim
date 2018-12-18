@@ -437,7 +437,7 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
     """
     todo: test the distributed property MASS
     def test_mass(self):
-        self.mass = sum([self.initial_population[species_id]*self.molecular_weight[species_id]/Avogadro
+        self.mass = sum([self.initial_population[species_id] * self.molecular_weight[species_id] / Avogadro
             for species_id in self.species_ids])
         mock_obj = MockSimulationObject('mock_name', self, None, self.mass)
         self.simulator.add_object(mock_obj)

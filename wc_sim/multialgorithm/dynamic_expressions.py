@@ -6,19 +6,15 @@
 :License: MIT
 """
 
+from . import dynamic_components
 from collections import namedtuple
-from wc_lang.expression import WcTokenCodes, ParsedExpression
-from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation
+from wc_lang.expression import WcTokenCodes
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
+from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation
 from wc_utils.util.enumerate import CaseInsensitiveEnum
 import math
 import obj_model
-import os
-import re
-import tempfile
 import wc_lang
-import wc_utils.cache
-
 
 '''
 # TODO:
@@ -249,20 +245,20 @@ class DynamicExpression(DynamicComponent):
             :obj:`MultialgorithmError`: if the corresponding dynamic component type cannot be determined
         """
         if isinstance(model_type, type) and issubclass(model_type, obj_model.Model):
-            if model_type in WC_LANG_MODEL_TO_DYNAMIC_MODEL:
-                return WC_LANG_MODEL_TO_DYNAMIC_MODEL[model_type]
+            if model_type in dynamic_components.WC_LANG_MODEL_TO_DYNAMIC_MODEL:
+                return dynamic_components.WC_LANG_MODEL_TO_DYNAMIC_MODEL[model_type]
             raise MultialgorithmError("model class of type '{}' not found".format(model_type.__name__))
 
         if isinstance(model_type, obj_model.Model):
-            if model_type.__class__ in WC_LANG_MODEL_TO_DYNAMIC_MODEL:
-                return WC_LANG_MODEL_TO_DYNAMIC_MODEL[model_type.__class__]
+            if model_type.__class__ in dynamic_components.WC_LANG_MODEL_TO_DYNAMIC_MODEL:
+                return dynamic_components.WC_LANG_MODEL_TO_DYNAMIC_MODEL[model_type.__class__]
             raise MultialgorithmError("model of type '{}' not found".format(model_type.__class__.__name__))
 
         if isinstance(model_type, str):
             model_type_type = getattr(wc_lang, model_type, None)
             if model_type_type is not None:
-                if model_type_type in WC_LANG_MODEL_TO_DYNAMIC_MODEL:
-                    return WC_LANG_MODEL_TO_DYNAMIC_MODEL[model_type_type]
+                if model_type_type in dynamic_components.WC_LANG_MODEL_TO_DYNAMIC_MODEL:
+                    return dynamic_components.WC_LANG_MODEL_TO_DYNAMIC_MODEL[model_type_type]
                 raise MultialgorithmError("model of type '{}' not found".format(model_type_type))
             raise MultialgorithmError("model type '{}' not defined".format(model_type))
 
@@ -392,14 +388,3 @@ class DynamicRateLaw(DynamicExpression):
 
     def __init__(self, *args):
         super().__init__(*args)
-
-
-WC_LANG_MODEL_TO_DYNAMIC_MODEL = {
-    wc_lang.Function: DynamicFunction,
-    wc_lang.Parameter: DynamicParameter,
-    wc_lang.Species: DynamicSpecies,
-    wc_lang.Observable: DynamicObservable,
-    wc_lang.StopCondition: DynamicStopCondition,
-    wc_lang.DfbaObjective: DynamicDfbaObjective,
-    wc_lang.RateLaw: DynamicRateLaw,
-}

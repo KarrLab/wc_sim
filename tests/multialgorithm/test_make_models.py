@@ -94,8 +94,8 @@ class TestMakeModels(unittest.TestCase):
             ratelaw_elements.add((rl.direction, rl.expression.expression))
         expected_rate_laws = set([
             # direction, expression.expression
-            (RateLawDirection.forward, 'k_cat_1_1_for * spec_type_0[compt_1] / Avogadro / compt_1'),   # forward
-            (RateLawDirection.forward, 'k_cat_1_1_bck * spec_type_1[compt_1] / Avogadro / compt_1'),   # backward, but reversed
+            (RateLawDirection.forward, 'k_cat_1_1_for * spec_type_0[compt_1] / Avogadro / volume_compt_1'),   # forward
+            (RateLawDirection.forward, 'k_cat_1_1_bck * spec_type_1[compt_1] / Avogadro / volume_compt_1'),   # backward, but reversed
         ])
         self.assertEqual(ratelaw_elements, expected_rate_laws)
 
