@@ -7,6 +7,7 @@
 :License: MIT
 """
 
+from obj_model.expression import Expression
 from scipy.constants import Avogadro
 from wc_lang import (Model, Submodel, SubmodelAlgorithm, Compartment,
                      SpeciesType, SpeciesTypeType, Species,
@@ -14,7 +15,6 @@ from wc_lang import (Model, Submodel, SubmodelAlgorithm, Compartment,
                      Reaction, RateLawDirection, RateLawExpression, Parameter,
                      DistributionInitConcentration, ConcentrationUnit,
                      Validator)
-from wc_lang.expression import Expression
 from wc_lang.transform import PrepareForWcSimTransform
 from wc_utils.util.enumerate import CaseInsensitiveEnum
 from wc_utils.util.string import indent_forest

@@ -6,13 +6,13 @@
 """
 
 from math import log
+from obj_model.expression import Expression
 from wc_lang import (Model,
                      Species, MoleculeCountUnit,
                      DistributionInitConcentration, ConcentrationUnit,
                      Observable, Function, FunctionExpression,
                      StopCondition, StopConditionUnit,
                      Parameter)
-from wc_lang.expression import Expression
 from wc_sim.multialgorithm.dynamic_components import DynamicModel
 from wc_sim.multialgorithm.dynamic_expressions import (SimTokCodes, WcSimToken,
                                                        DynamicFunction, DynamicExpression, DynamicParameter)
@@ -99,8 +99,8 @@ class TestDynamicExpression(unittest.TestCase):
 
     def test_dynamic_expression_errors(self):
         # remove the Function's tokenized result
-        self.fun1.expression._parsed_expression._wc_tokens = []
-        with self.assertRaisesRegex(MultialgorithmError, "_wc_tokens cannot be empty - ensure that '.*' is valid"):
+        self.fun1.expression._parsed_expression._obj_model_tokens = []
+        with self.assertRaisesRegex(MultialgorithmError, "_obj_model_tokens cannot be empty - ensure that '.*' is valid"):
             DynamicFunction(self.dynamic_model, self.local_species_population,
                             self.fun1, self.fun1.expression._parsed_expression)
 

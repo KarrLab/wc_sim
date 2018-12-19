@@ -8,7 +8,7 @@
 
 from . import dynamic_components
 from collections import namedtuple
-from wc_lang.expression import WcTokenCodes
+from obj_model.expression import ObjModelTokenCodes
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation
 from wc_utils.util.enumerate import CaseInsensitiveEnum
@@ -54,7 +54,7 @@ class SimTokCodes(int, CaseInsensitiveEnum):
     other = 2
 
 
-# a token in DynamicExpression._wc_tokens
+# a token in DynamicExpression._obj_model_tokens
 WcSimToken = namedtuple('WcSimToken', 'code, token_string, dynamic_expression')
 # make dynamic_expression optional: see https://stackoverflow.com/a/18348004
 WcSimToken.__new__.__defaults__ = (None, )
@@ -127,8 +127,8 @@ class DynamicExpression(DynamicComponent):
         super().__init__(dynamic_model, local_species_population, wc_lang_model)
 
         # wc_lang_expression must have been successfully `tokenize`d.
-        if not wc_lang_expression._wc_tokens:
-            raise MultialgorithmError("_wc_tokens cannot be empty - ensure that '{}' is valid".format(
+        if not wc_lang_expression._obj_model_tokens:
+            raise MultialgorithmError("_obj_model_tokens cannot be empty - ensure that '{}' is valid".format(
                 wc_lang_model))
         # optimization: self.wc_lang_expression will be deleted by prepare()
         self.wc_lang_expression = wc_lang_expression
@@ -146,32 +146,32 @@ class DynamicExpression(DynamicComponent):
 
         # create self.wc_sim_tokens, which contains WcSimTokens that refer to other DynamicExpressions
         self.wc_sim_tokens = []
-        # optimization: combine together adjacent wc_token.tok_codes other than wc_obj_id
+        # optimization: combine together adjacent obj_model_token.tok_codes other than obj_id
         next_static_tokens = ''
         function_names = set()
-        non_lang_obj_id_tokens = set([WcTokenCodes.math_func_id, WcTokenCodes.number, WcTokenCodes.op, WcTokenCodes.other])
+        non_lang_obj_id_tokens = set([ObjModelTokenCodes.math_func_id, ObjModelTokenCodes.number, ObjModelTokenCodes.op, ObjModelTokenCodes.other])
 
         i = 0
-        while i < len(self.wc_lang_expression._wc_tokens):
-            wc_token = self.wc_lang_expression._wc_tokens[i]
-            if wc_token.code == WcTokenCodes.math_func_id:
-                function_names.add(wc_token.token_string)
-            if wc_token.code in non_lang_obj_id_tokens:
-                next_static_tokens = next_static_tokens + wc_token.token_string
-            elif wc_token.code == WcTokenCodes.wc_obj_id:
+        while i < len(self.wc_lang_expression._obj_model_tokens):
+            obj_model_token = self.wc_lang_expression._obj_model_tokens[i]
+            if obj_model_token.code == ObjModelTokenCodes.math_func_id:
+                function_names.add(obj_model_token.token_string)
+            if obj_model_token.code in non_lang_obj_id_tokens:
+                next_static_tokens = next_static_tokens + obj_model_token.token_string
+            elif obj_model_token.code == ObjModelTokenCodes.obj_id:
                 if next_static_tokens != '':
                     self.wc_sim_tokens.append(WcSimToken(SimTokCodes.other, next_static_tokens))
                     next_static_tokens = ''
                 try:
-                    dynamic_expression = self.get_dynamic_component(wc_token.model, wc_token.model_id)
+                    dynamic_expression = self.get_dynamic_component(obj_model_token.model, obj_model_token.model_id)
                 except:
                     raise MultialgorithmError("'{}.{} must be prepared to create '{}''".format(
-                        wc_token.model.__class__.__name__, wc_token.model_id, self.id))
-                self.wc_sim_tokens.append(WcSimToken(SimTokCodes.dynamic_expression, wc_token.token_string,
+                        obj_model_token.model.__class__.__name__, obj_model_token.model_id, self.id))
+                self.wc_sim_tokens.append(WcSimToken(SimTokCodes.dynamic_expression, obj_model_token.token_string,
                                                      dynamic_expression))
             else:   # pragma    no cover
-                assert False, "unknown code {} in {}".format(wc_token.code, wc_token)
-            if wc_token.code == WcTokenCodes.wc_obj_id and wc_token.model_type == wc_lang.Function:
+                assert False, "unknown code {} in {}".format(obj_model_token.code, obj_model_token)
+            if obj_model_token.code == ObjModelTokenCodes.obj_id and obj_model_token.model_type == wc_lang.Function:
                 # skip past the () syntactic sugar on functions
                 i += 2
             # advance to the next token

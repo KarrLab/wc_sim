@@ -9,7 +9,7 @@
 from scipy.constants import Avogadro
 from wc_lang import (Model, Compartment, Species,
                      DistributionInitConcentration, ConcentrationUnit, Observable)
-from wc_lang.expression import Expression
+from wc_lang import ObservableExpression
 from wc_lang.io import Reader
 from wc_sim.multialgorithm.dynamic_components import DynamicModel, DynamicCompartment
 from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
@@ -185,7 +185,7 @@ class TestDynamicModel(unittest.TestCase):
                 expr_parts.append("{}*{}".format(j, species[j].id))
                 objects[Species][species[j].id] = species[j]
             expr = ' + '.join(expr_parts)
-            obj = Expression.make_obj(model, Observable, 'obs_nd_{}'.format(i), expr, objects)
+            obj = ObservableExpression.make_obj(model, Observable, 'obs_nd_{}'.format(i), expr, objects)
             self.assertTrue(obj.expression.validate() is None)
             non_dependent_observables.append(obj)
 
@@ -198,7 +198,7 @@ class TestDynamicModel(unittest.TestCase):
                 expr_parts.append("{}*{}".format(j, nd_obs_id))
                 objects[Observable][nd_obs_id] = non_dependent_observables[j]
             expr = ' + '.join(expr_parts)
-            obj = Expression.make_obj(model, Observable, 'obs_d_{}'.format(i), expr, objects)
+            obj = ObservableExpression.make_obj(model, Observable, 'obs_d_{}'.format(i), expr, objects)
             self.assertTrue(obj.expression.validate() is None)
             dependent_observables.append(obj)
 

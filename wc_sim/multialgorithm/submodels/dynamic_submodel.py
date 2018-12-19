@@ -8,7 +8,7 @@
 """
 
 from scipy.constants import Avogadro
-from wc_lang import Species, Reaction, Parameter
+from wc_lang import Compartment, Species, Reaction, Parameter
 from wc_sim.core.simulation_object import ApplicationSimulationObject
 from wc_sim.multialgorithm import message_types, distributed_properties
 from wc_sim.multialgorithm.debug_logs import logs as debug_logs
@@ -155,9 +155,10 @@ class DynamicSubmodel(ApplicationSimulationObject):
 
         for idx_reaction, rxn in enumerate(self.reactions):
             if rxn.rate_laws:
-                self.rates[idx_reaction] = rxn.rate_laws[0].expression._parsed_expression.eval(
-                    species_counts=species_counts,
-                    compartment_masses=compartment_masses)
+                self.rates[idx_reaction] = rxn.rate_laws[0].expression._parsed_expression.eval({
+                    Species: species_counts,
+                    Compartment: compartment_masses,
+                    })
 
         # TODO(Arthur): optimization: get this if to work:
         # if self.logger.isEnabledFor(self.logger.getEffectiveLevel()):
