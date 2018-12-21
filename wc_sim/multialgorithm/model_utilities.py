@@ -82,7 +82,7 @@ class ModelUtilities(object):
     CONCENTRATION_UNIT_VALUES = set([unit.value for unit in ConcentrationUnit.__members__.values()])
 
     @staticmethod
-    def concentration_to_molecules(species):
+    def concentration_to_molecules(species, volume):
         '''Provide the initial copy number of `species` from its concentration
 
         Copy number is be rounded to the closest integer to avoid truncating small populations.
@@ -114,7 +114,7 @@ class ModelUtilities(object):
             unit_magnitudes = 3 * (units - ConcentrationUnit.M.value)
             factor = 10 ** -unit_magnitudes
             # population must be rounded to the closest integer to avoid truncating small populations
-            return int(round(factor * conc.mean * species.compartment.mean_init_volume * Avogadro))
+            return int(round(factor * conc.mean * volume * Avogadro))
 
     @staticmethod
     def parse_species_id(species_id):

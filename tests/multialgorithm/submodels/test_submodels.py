@@ -71,13 +71,19 @@ class TestDynamicSubmodel(unittest.TestCase):
 
     def expected_molar_conc(self, dynamic_submodel, species_id):
         species = list(filter(lambda s: s.id == species_id, dynamic_submodel.species))[0]
-        copy_num = ModelUtilities.concentration_to_molecules(species)
-        return copy_num / (species.compartment.mean_init_volume * Avogadro)
+        volume = species.compartment.mean_init_volume
+        copy_num = ModelUtilities.concentration_to_molecules(species, volume)
+        volume = dynamic_submodel.dynamic_compartments[species.compartment.id].volume()
+        return copy_num / (volume * Avogadro)
 
     def test_get_species_concentrations(self):
         for dynamic_submodel in self.dynamic_submodels.values():
             for species_id, value in dynamic_submodel.get_species_concentrations().items():
-                self.assertEqual(self.expected_molar_conc(dynamic_submodel, species_id), value)
+                expected = self.expected_molar_conc(dynamic_submodel, species_id)
+                if expected:
+                    self.assertLess(numpy.abs(expected - value) / expected, 1e-3)
+                else:
+                    self.assertEqual(expected, value)
 
         for dynamic_submodel in self.misconfigured_dynamic_submodels.values():
             with self.assertRaises(MultialgorithmError) as context:

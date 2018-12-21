@@ -101,25 +101,25 @@ class TestModelUtilities(unittest.TestCase):
                 continue
 
         conc_to_molecules = ModelUtilities.concentration_to_molecules
-        copy_number = conc_to_molecules(species['molecule'])
+        copy_number = conc_to_molecules(species['molecule'], species['molecule'].compartment.mean_init_volume)
         self.assertEqual(copy_number, conc_value)
-        copy_number = conc_to_molecules(species['M'])
+        copy_number = conc_to_molecules(species['M'], species['M'].compartment.mean_init_volume)
         self.assertEqual(copy_number, conc_value * Avogadro)
-        copy_number = conc_to_molecules(species['no_units'])
+        copy_number = conc_to_molecules(species['no_units'], species['no_units'].compartment.mean_init_volume)
         self.assertEqual(copy_number, conc_value * Avogadro)
-        copy_number = conc_to_molecules(species['mM'])
+        copy_number = conc_to_molecules(species['mM'], species['mM'].compartment.mean_init_volume)
         self.assertEqual(copy_number, 10**-3 * conc_value * Avogadro)
-        copy_number = conc_to_molecules(species['uM'])
+        copy_number = conc_to_molecules(species['uM'], species['uM'].compartment.mean_init_volume)
         self.assertEqual(copy_number, 10**-6 * conc_value * Avogadro)
-        copy_number = conc_to_molecules(species['nM'])
+        copy_number = conc_to_molecules(species['nM'], species['nM'].compartment.mean_init_volume)
         self.assertEqual(copy_number, 10**-9 * conc_value * Avogadro)
-        copy_number = conc_to_molecules(species['pM'])
+        copy_number = conc_to_molecules(species['pM'], species['pM'].compartment.mean_init_volume)
         self.assertEqual(copy_number, 10**-12 * conc_value * Avogadro)
-        copy_number = conc_to_molecules(species['fM'])
+        copy_number = conc_to_molecules(species['fM'], species['fM'].compartment.mean_init_volume)
         self.assertAlmostEqual(copy_number, 10**-15 * conc_value * Avogadro, delta=1)
-        copy_number = conc_to_molecules(species['aM'])
+        copy_number = conc_to_molecules(species['aM'], species['aM'].compartment.mean_init_volume)
         self.assertAlmostEqual(copy_number, 10**-18 * conc_value * Avogadro, delta=1)
-        copy_number = conc_to_molecules(species['no_concentration'])
+        copy_number = conc_to_molecules(species['no_concentration'], species['no_concentration'].compartment.mean_init_volume)
         self.assertEqual(copy_number, 0)
         with self.assertRaises(KeyError):
             conc_to_molecules(species['mol dm^-2'])
@@ -129,10 +129,10 @@ class TestModelUtilities(unittest.TestCase):
                                       compartment=compartment_c)
         wc_lang.DistributionInitConcentration(species=species_tmp, mean=conc_value, units='molecule')
         with self.assertRaises(ValueError):
-            ModelUtilities.concentration_to_molecules(species_tmp)
+            ModelUtilities.concentration_to_molecules(species_tmp, species_tmp.compartment.mean_init_volume)
         species_tmp2 = wc_lang.Species(id=wc_lang.Species.gen_id(species_type.id, compartment_c.id),
                                        species_type=species_type,
                                        compartment=compartment_c)
         wc_lang.DistributionInitConcentration(species=species_tmp2, mean=conc_value, units=0)
         with self.assertRaises(ValueError):
-            ModelUtilities.concentration_to_molecules(species_tmp2)
+            ModelUtilities.concentration_to_molecules(species_tmp2, species_tmp2.compartment.mean_init_volume)

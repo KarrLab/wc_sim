@@ -7,9 +7,9 @@
 """
 
 import math
-import numpy as np
-import wc_lang
+import numpy
 import warnings
+import wc_lang
 
 from obj_model import utils
 from wc_lang import Species, Compartment
@@ -57,9 +57,17 @@ class DynamicCompartment(DynamicComponent):
 
         self.id = wc_lang_model.id
         self.name = wc_lang_model.name
-        self.init_volume = wc_lang_model.mean_init_volume
+
         self.species_population = species_population
         self.species_ids = species_ids
+
+        if wc_lang_model.distribution_init_volume == wc_lang.RandomDistribution.normal:
+            mean = wc_lang_model.mean_init_volume
+            std = wc_lang_model.std_init_volume
+            self.init_volume = species_population.random_state.normal(mean, std)
+        else:
+            raise MultialgorithmError('Initial volume must be normally distributed')
+
         if math.isnan(self.init_volume):
             raise MultialgorithmError("DynamicCompartment {}: init_volume is NaN, but must be a positive "
                                       "number.".format(self.name))
@@ -69,7 +77,8 @@ class DynamicCompartment(DynamicComponent):
         if 0 == self.mass():
             warnings.warn("DynamicCompartment '{}': initial mass is 0, so constant_density is 0, and "
                           "volume will remain constant".format(self.name))
-        self.constant_density = self.mass()/self.init_volume
+        self.constant_density = self.mass() / self.init_volume
+        wc_lang_model.init_density.value = self.constant_density
 
     def mass(self):
         """ Provide the total current mass of all species in this `DynamicCompartment`
@@ -112,7 +121,7 @@ class DynamicCompartment(DynamicComponent):
         values.append("Constant density (g/L): {}".format(self.constant_density))
         values.append("Current mass (g): {}".format(self.mass()))
         values.append("Current volume (L): {}".format(self.volume()))
-        values.append("Fold change volume: {}".format(self.volume()/self.init_volume))
+        values.append("Fold change volume: {}".format(self.volume() / self.init_volume))
         return "DynamicCompartment:\n{}".format('\n'.join(values))
 
 
@@ -341,7 +350,7 @@ class DynamicModel(object):
             simulation.set_stop_condition(stop_condition)
 
     def get_species_count_array(self, now):     # pragma no cover   not used
-        """ Map current species counts into an np array
+        """ Map current species counts into an numpy array
 
         Args:
             now (:obj:`float`): the current simulation time
@@ -349,7 +358,7 @@ class DynamicModel(object):
         Returns:
             numpy array, #species x # compartments, containing count of specie in compartment
         """
-        species_counts = np.zeros((len(model.species), len(model.compartments)))
+        species_counts = numpy.zeros((len(model.species), len(model.compartments)))
         for species in model.species:
             for compartment in model.compartments:
                 species_id = Species.gen_id(species.id, compartment.id)

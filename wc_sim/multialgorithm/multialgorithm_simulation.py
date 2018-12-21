@@ -244,8 +244,9 @@ class MultialgorithmSimulation(object):
             :obj:`dict`: a map species_id -> population, for all species in `model`
         """
         init_populations = {}
-        for specie in model.get_species():
-            init_populations[specie.id] = ModelUtilities.concentration_to_molecules(specie)
+        for species in model.get_species():
+            init_populations[species.id] = ModelUtilities.concentration_to_molecules(
+                species, species.compartment.mean_init_volume)
         return init_populations
 
     def get_dynamic_compartments(self, submodel):

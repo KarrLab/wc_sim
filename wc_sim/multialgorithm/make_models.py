@@ -105,7 +105,9 @@ class MakeModel(object):
 
         # Compartment
         comp = model.compartments.create(id='compt_{}'.format(submodel_num),
-                                         name='compartment num {}'.format(submodel_num), mean_init_volume=init_vol)
+                                         name='compartment num {}'.format(submodel_num),
+                                         mean_init_volume=init_vol,
+                                         std_init_volume=init_vol / 10.)
         objects[Compartment][comp.id] = comp
 
         density = comp.init_density = model.parameters.create(id='density_compt_{}'.format(submodel_num), value=1100, units='g l^-1')
@@ -167,13 +169,17 @@ class MakeModel(object):
             elif rate_law_type.name == 'reactant_pop':
                 param = model.parameters.create(id='k_cat_{}_1_for'.format(submodel_num),
                                                 value=1., units='M^-1 s^-1')
-                expression_str = '{} * {} / {} / {}'.format(param.id, forward_reactant.id,
-                                                            avogadro_param.id, forward_reactant.compartment.init_density.function_expressions[0].function.id)
+                expression_str = '{} * {} / {} / {}'.format(
+                    param.id, forward_reactant.id,
+                    avogadro_param.id,
+                    forward_reactant.compartment.init_density.function_expressions[0].function.id)
             elif rate_law_type.name == 'product_pop':
                 param = model.parameters.create(id='k_cat_{}_1_for'.format(submodel_num),
                                                 value=1., units='M^-1 s^-1')
-                expression_str = '{} * {} / {} / {}'.format(param.id, forward_product.id,
-                                                            avogadro_param.id, forward_product.compartment.init_density.function_expressions[0].function.id)
+                expression_str = '{} * {} / {} / {}'.format(
+                    param.id, forward_product.id,
+                    avogadro_param.id,
+                    forward_product.compartment.init_density.function_expressions[0].function.id)
             objects[Parameter][param.id] = param
             expression_obj = expressions.get(expression_str, None)
             if not expression_obj:
@@ -198,13 +204,17 @@ class MakeModel(object):
                 elif rate_law_type.name == 'reactant_pop':
                     param = model.parameters.create(id='k_cat_{}_1_bck'.format(submodel_num),
                                                     value=1., units='M^-1 s^-1')
-                    expression_str = '{} * {} / {} / {}'.format(param.id, backward_reactant.id,
-                                                                avogadro_param.id, backward_reactant.compartment.init_density.function_expressions[0].function.id)
+                    expression_str = '{} * {} / {} / {}'.format(
+                        param.id, backward_reactant.id,
+                        avogadro_param.id,
+                        backward_reactant.compartment.init_density.function_expressions[0].function.id)
                 elif rate_law_type.name == 'product_pop':
                     param = model.parameters.create(id='k_cat_{}_1_bck'.format(submodel_num),
                                                     value=1., units='M^-1 s^-1')
-                    expression_str = '{} * {} / {} / {}'.format(param.id, backward_product.id,
-                                                                avogadro_param.id, backward_product.compartment.init_density.function_expressions[0].function.id)
+                    expression_str = '{} * {} / {} / {}'.format(
+                        param.id, backward_product.id,
+                        avogadro_param.id,
+                        backward_product.compartment.init_density.function_expressions[0].function.id)
                 objects[Parameter][param.id] = param
                 expression_obj = expressions.get(expression_str, None)
                 if not expression_obj:
