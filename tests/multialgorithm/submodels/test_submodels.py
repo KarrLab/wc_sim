@@ -17,6 +17,7 @@ from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.multialgorithm.submodels.dynamic_submodel import DynamicSubmodel
 from wc_sim.multialgorithm.submodels.skeleton_submodel import SkeletonSubmodel
+from wc_utils.util.rand import RandomStateManager
 from wc_utils.util.string import indent_forest
 from scipy.constants import Avogadro
 import numpy
@@ -45,7 +46,7 @@ def make_dynamic_submodel_params(model, lang_submodel):
 
 class TestDynamicSubmodel(unittest.TestCase):
 
-    def setUp(self):
+    def setUp(self, std_init_concentrations=None):
         warnings.simplefilter("ignore")
 
         self.MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures',
@@ -54,6 +55,11 @@ class TestDynamicSubmodel(unittest.TestCase):
         prepare_model(self.model)
         self.dynamic_submodels = {}
         self.misconfigured_dynamic_submodels = {}
+
+        if std_init_concentrations is not None:
+            for conc in self.model.distribution_init_concentrations:
+                conc.std = 0
+
         for lang_submodel in self.model.get_submodels():
             self.dynamic_submodels[lang_submodel.id] = DynamicSubmodel(
                 *make_dynamic_submodel_params(self.model, lang_submodel))
@@ -72,16 +78,19 @@ class TestDynamicSubmodel(unittest.TestCase):
     def expected_molar_conc(self, dynamic_submodel, species_id):
         species = list(filter(lambda s: s.id == species_id, dynamic_submodel.species))[0]
         volume = species.compartment.mean_init_volume
-        copy_num = ModelUtilities.concentration_to_molecules(species, volume)
+        copy_num = ModelUtilities.concentration_to_molecules(species, volume, RandomStateManager.instance())
         volume = dynamic_submodel.dynamic_compartments[species.compartment.id].volume()
         return copy_num / (volume * Avogadro)
 
     def test_get_species_concentrations(self):
+        self.setUp(std_init_concentrations=0)
+
         for dynamic_submodel in self.dynamic_submodels.values():
             for species_id, value in dynamic_submodel.get_species_concentrations().items():
+
                 expected = self.expected_molar_conc(dynamic_submodel, species_id)
                 if expected:
-                    self.assertLess(numpy.abs(expected - value) / expected, 1e-3)
+                    self.assertLess(numpy.abs(expected - value) / expected, 2.5e-1)
                 else:
                     self.assertEqual(expected, value)
 
@@ -93,7 +102,8 @@ class TestDynamicSubmodel(unittest.TestCase):
 
         # test volume=0 exception; must create model with 0<mass and then decrease counts
         model = MakeModel().make_test_model('1 species, 1 reaction',
-                                            species_copy_numbers={'spec_type_0[compt_1]': 1})
+                                            species_copy_numbers={'spec_type_0[compt_1]': 1},
+                                            species_stds={'spec_type_0[compt_1]': 0})
         dynamic_submodel = DynamicSubmodel(*make_dynamic_submodel_params(model, model.submodels[0]))
         dynamic_submodel.local_species_population.adjust_discretely(0, {'spec_type_0[compt_1]': -1})
         with self.assertRaises(MultialgorithmError) as context:
@@ -102,6 +112,8 @@ class TestDynamicSubmodel(unittest.TestCase):
                          "dynamic submodel .* cannot compute concentration in compartment .* with volume=0")
 
     def test_calc_reaction_rates(self):
+        self.setUp(std_init_concentrations=0.)
+
         # reaction_4 is adjusted w V * NA factor to account for calculating rxn rate in copy space
         expected_rates = {
             'reaction_2': 0.0,
@@ -197,6 +209,9 @@ class TestSkeletonSubmodel(unittest.TestCase):
     def test_skeleton_submodel(self):
         behavior = {SkeletonSubmodel.INTER_REACTION_TIME: 2}
         lang_submodel = self.model.get_submodels()[0]
+        for conc in self.model.distribution_init_concentrations:
+            conc.std = 0
+
         end_time = 100
         skeleton_submodel = self.make_sim_w_skeleton_submodel(lang_submodel, behavior)
         self.assertEqual(self.simulator.simulate(end_time),

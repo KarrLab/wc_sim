@@ -15,6 +15,7 @@ from wc_sim.multialgorithm.dynamic_components import DynamicModel, DynamicCompar
 from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation, MakeTestLSP
+from wc_utils.util.rand import RandomStateManager
 import numpy
 import os
 import unittest
@@ -34,12 +35,14 @@ class TestDynamicCompartment(unittest.TestCase):
         self.init_populations = dict(zip(self.species_ids, [self.all_pops]*len(species_nums)))
         self.all_m_weights = 50
         self.molecular_weights = dict(zip(self.species_ids, [self.all_m_weights]*len(species_nums)))
-        self.local_species_pop = LocalSpeciesPopulation('test', self.init_populations, self.molecular_weights)
+        self.local_species_pop = LocalSpeciesPopulation('test', self.init_populations, self.molecular_weights,
+                                                        random_state=RandomStateManager.instance())
 
         # make a DynamicCompartment
         self.mean_init_volume = 1E-17
-        
-        self.compartment = Compartment(id=comp_id, name='name', mean_init_volume=self.mean_init_volume, std_init_volume=self.mean_init_volume / 10.)
+
+        self.compartment = Compartment(id=comp_id, name='name', mean_init_volume=self.mean_init_volume,
+                                       std_init_volume=self.mean_init_volume / 10.)
         self.compartment.init_density = Parameter(id='density_{}'.format(comp_id), value=1100., units='g l^-1')
 
         self.dynamic_compartment = DynamicCompartment(None, self.local_species_pop, self.compartment, self.species_ids)
@@ -57,7 +60,8 @@ class TestDynamicCompartment(unittest.TestCase):
             densities.append(self.dynamic_compartment.density())
         self.assertLess(numpy.abs((numpy.mean(volumes) - self.compartment.mean_init_volume) / self.compartment.mean_init_volume), 0.25)
         self.assertIn(self.dynamic_compartment.id, str(self.dynamic_compartment))
-        self.assertLess(numpy.abs((self.dynamic_compartment.volume() - self.dynamic_compartment.init_volume) / self.dynamic_compartment.init_volume), 1e-3)
+        self.assertLess(numpy.abs((self.dynamic_compartment.volume() - self.dynamic_compartment.init_volume) /
+                                  self.dynamic_compartment.init_volume), 1e-3)
         estimated_mass = self.num_species * self.all_pops * self.all_m_weights / Avogadro
         self.assertLess(numpy.abs((numpy.mean(masses) - estimated_mass) / estimated_mass), 0.25)
         estimated_density = estimated_mass / self.mean_init_volume
@@ -70,7 +74,8 @@ class TestDynamicCompartment(unittest.TestCase):
 
         # set population of species to 0
         init_populations = dict(zip(self.species_ids, [0] * len(self.species_ids)))
-        local_species_pop = LocalSpeciesPopulation('test2', init_populations, self.molecular_weights)
+        local_species_pop = LocalSpeciesPopulation('test2', init_populations, self.molecular_weights,
+                                                   random_state=RandomStateManager.instance())
         volumes = []
         for i_trial in range(10):
             with warnings.catch_warnings(record=True) as w:
@@ -141,8 +146,8 @@ class TestDynamicModel(unittest.TestCase):
         self.assertEqual(self.dynamic_model.fraction_dry_weight, 0.3)
 
         # expected values computed in tests/multialgorithm/fixtures/test_model_with_mass_computation.xlsx
-        self.almost_equal_test(numpy.mean(cell_masses), 8.260E-16)
-        self.almost_equal_test(numpy.mean(cell_dry_weights), 2.48E-16)
+        self.almost_equal_test(numpy.mean(cell_masses), 8.260E-16, frac_diff=1e-1)
+        self.almost_equal_test(numpy.mean(cell_dry_weights), 2.48E-16, frac_diff=1e-1)
         expected_aggregate_state = {
             'cell mass': 8.260E-16,
             'cell volume': 4.58E-17,
@@ -173,9 +178,9 @@ class TestDynamicModel(unittest.TestCase):
         self.assertEqual(self.dynamic_model.fraction_dry_weight, 0)
 
         # expected values computed in tests/multialgorithm/fixtures/test_dry_model_with_mass_computation.xlsx
-        self.almost_equal_test(numpy.mean(cell_masses), 9.160E-19)
-        self.almost_equal_test(numpy.mean(cell_dry_weights), 9.160E-19)
-        aggregate_state = self.dynamic_model.get_aggregate_state()        
+        self.almost_equal_test(numpy.mean(cell_masses), 9.160E-19, frac_diff=1e-1)
+        self.almost_equal_test(numpy.mean(cell_dry_weights), 9.160E-19, frac_diff=1e-1)
+        aggregate_state = self.dynamic_model.get_aggregate_state()
         expected_aggregate_state = {
             'cell mass': 9.160E-19,
             'cell volume': 4.58E-17,

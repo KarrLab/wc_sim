@@ -8,7 +8,9 @@
 
 import numpy as np
 from numpy import all
-import os, unittest, copy
+import os
+import unittest
+import copy
 import re
 import string
 import sys
@@ -25,30 +27,33 @@ from wc_sim.core.simulation_object import SimulationObject
 from wc_sim.core.simulation_message import SimulationMessage
 from wc_sim.multialgorithm import message_types
 from wc_sim.multialgorithm.species_populations import (LOCAL_POP_STORE, Specie, SpeciesPopSimObject,
-    SpeciesPopulationCache, LocalSpeciesPopulation, MakeTestLSP, AccessSpeciesPopulations)
+                                                       SpeciesPopulationCache, LocalSpeciesPopulation, MakeTestLSP, AccessSpeciesPopulations)
 from wc_sim.multialgorithm.multialgorithm_errors import NegativePopulationError, SpeciesPopulationError
 from wc_sim.multialgorithm import distributed_properties
 from wc_utils.util.rand import RandomStateManager
 from tests.core.mock_simulation_object import MockSimulationObject
 
+
 def store_i(i):
     return "store_{}".format(i)
+
 
 def species_l(l):
     return "species_{}".format(l)
 
-remote_pop_stores = {store_i(i):None for i in range(1, 4)}
+
+remote_pop_stores = {store_i(i): None for i in range(1, 4)}
 species_ids = [species_l(l) for l in list(string.ascii_lowercase)[0:5]]
 
 
 class TestAccessSpeciesPopulations(unittest.TestCase):
 
     MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures',
-        'test_model_for_access_species_populations.xlsx')
+                                  'test_model_for_access_species_populations.xlsx')
 
     # MODEL_FILENAME_STEADY_STATE contains a model with no net population change every 2 sec.
     MODEL_FILENAME_STEADY_STATE = os.path.join(os.path.dirname(__file__), 'fixtures',
-        'test_model_for_access_species_populations_steady_state.xlsx')
+                                               'test_model_for_access_species_populations_steady_state.xlsx')
 
     def setUp(self):
         self.an_ASP = AccessSpeciesPopulations(None, remote_pop_stores)
@@ -83,34 +88,33 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
         with self.assertRaises(SpeciesPopulationError) as cm:
             self.an_ASP.add_species_locations(store_i(1), species_ids[:2])
         self.assertIn("species ['species_a', 'species_b'] already have assigned locations.",
-            str(cm.exception))
+                      str(cm.exception))
 
         with self.assertRaises(SpeciesPopulationError) as cm:
             self.an_ASP.del_species_locations([species_l('d'), species_l('c')])
         self.assertIn("species ['species_c', 'species_d'] are not in the location map",
-            str(cm.exception))
+                      str(cm.exception))
 
         with self.assertRaises(SpeciesPopulationError) as cm:
             self.an_ASP.locate_species([species_l('d'), species_l('c')])
         self.assertIn("species ['species_c', 'species_d'] are not in the location map",
-            str(cm.exception))
+                      str(cm.exception))
 
     def test_other_exceptions(self):
         with self.assertRaises(SpeciesPopulationError) as cm:
-            AccessSpeciesPopulations(None, {'a':None, LOCAL_POP_STORE:None})
+            AccessSpeciesPopulations(None, {'a': None, LOCAL_POP_STORE: None})
         self.assertIn("{} not a valid remote_pop_store name".format(LOCAL_POP_STORE),
-            str(cm.exception))
+                      str(cm.exception))
         with self.assertRaises(SpeciesPopulationError) as cm:
             self.an_ASP.read_one(0, 'no_such_specie')
         self.assertEqual(str(cm.exception), "read_one: specie 'no_such_specie' not in the location map.")
-
 
     @unittest.skip("skip until MultialgorithmSimulation().initialize() is ready")
     def test_population_changes(self):
         """ Test population changes that occur without using event messages."""
         self.set_up_simulation(self.MODEL_FILENAME)
         theASP = self.submodels['dfba_submodel'].access_species_population
-        init_val=100
+        init_val = 100
         self.assertEqual(theASP.read_one(0, 'species_1[c]'), init_val)
         self.assertEqual(theASP.read(0, set(['species_1[c]'])), {'species_1[c]': init_val})
 
@@ -118,9 +122,9 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
             theASP.read(0, set(['species_2[c]']))
         self.assertIn("read: species ['species_2[c]'] not in cache.", str(cm.exception))
 
-        adjustment=-10
-        self.assertEqual(theASP.adjust_discretely(0, {'species_1[c]':adjustment}),
-            ['LOCAL_POP_STORE'])
+        adjustment = -10
+        self.assertEqual(theASP.adjust_discretely(0, {'species_1[c]': adjustment}),
+                         ['LOCAL_POP_STORE'])
         self.assertEqual(theASP.read_one(0, 'species_1[c]'), init_val+adjustment)
 
         with self.assertRaises(SpeciesPopulationError) as cm:
@@ -128,21 +132,21 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
         self.assertIn("read_one: specie 'species_none' not in the location map.", str(cm.exception))
 
         self.assertEqual(sorted(theASP.adjust_discretely(0,
-            {'species_1[c]': adjustment, 'species_2[c]': adjustment})),
-                sorted(['shared_store_1', 'LOCAL_POP_STORE']))
+                                                         {'species_1[c]': adjustment, 'species_2[c]': adjustment})),
+                         sorted(['shared_store_1', 'LOCAL_POP_STORE']))
         self.assertEqual(theASP.read_one(0, 'species_1[c]'), init_val + 2*adjustment)
 
-        self.assertEqual(theASP.adjust_continuously(1, {'species_1[c]':(adjustment, 0)}),
-            ['LOCAL_POP_STORE'])
+        self.assertEqual(theASP.adjust_continuously(1, {'species_1[c]': (adjustment, 0)}),
+                         ['LOCAL_POP_STORE'])
         self.assertEqual(theASP.read_one(1, 'species_1[c]'), init_val + 3*adjustment)
 
-        flux=1
-        time=2
-        delay=3
-        self.assertEqual(theASP.adjust_continuously(time, {'species_1[c]':(adjustment, flux)}),
-            ['LOCAL_POP_STORE'])
+        flux = 1
+        time = 2
+        delay = 3
+        self.assertEqual(theASP.adjust_continuously(time, {'species_1[c]': (adjustment, flux)}),
+                         ['LOCAL_POP_STORE'])
         self.assertEqual(theASP.read_one(time+delay, 'species_1[c]'),
-            init_val + 4*adjustment + delay*flux)
+                         init_val + 4*adjustment + delay*flux)
 
         with self.assertRaises(SpeciesPopulationError) as cm:
             theASP.prefetch(0, ['species_1[c]', 'species_2[c]'])
@@ -187,18 +191,18 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
         self.initialize_simulation(self.MODEL_FILENAME)
 
         # run the simulation
-        sim_end=3
+        sim_end = 3
         self.simulator.simulate(sim_end)
 
         # test final populations
         # Expected changes, based on the reactions executed
-        expected_changes="""
-        specie	c	e
-        species_1	-2	0
-        species_2	-2	0
-        species_3	3	-2
-        species_4	0	-1
-        species_5	0	1"""
+        expected_changes = """
+        specie  c   e
+        species_1   -2  0
+        species_2   -2  0
+        species_3   3   -2
+        species_4   0   -1
+        species_5   0   1"""
 
         expected_final_pops = copy.deepcopy(self.init_populations)
         for row in expected_changes.split('\n')[2:]:
@@ -218,7 +222,7 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
         self.initialize_simulation(self.MODEL_FILENAME_STEADY_STATE)
 
         # run the simulation
-        sim_end=100
+        sim_end = 100
         self.simulator.simulate(sim_end)
         expected_final_pops = self.init_populations
         self.verify_simulation(expected_final_pops, sim_end)
@@ -245,20 +249,21 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         self.init_fluxes = init_fluxes = dict(zip(species_ids, [self.flux]*len(species_ids)))
         self.molecular_weights = dict(zip(species_ids, species_nums))
         self.local_species_pop = LocalSpeciesPopulation('test', self.init_populations,
-            self.molecular_weights, initial_fluxes=init_fluxes)
+                                                        self.molecular_weights, initial_fluxes=init_fluxes, random_state=RandomStateManager.instance())
         self.local_species_pop_no_init_flux = LocalSpeciesPopulation(
-            'test', self.init_populations, self.molecular_weights)
+            'test', self.init_populations, self.molecular_weights, random_state=RandomStateManager.instance())
 
     def test_init(self):
         self.assertEqual(self.local_species_pop_no_init_flux._all_species(), set(self.species_ids))
-        an_LSP = LocalSpeciesPopulation('test', {}, {}, retain_history=False)
+        an_LSP = LocalSpeciesPopulation('test', {}, {}, random_state=RandomStateManager.instance(),
+                                        retain_history=False)
         an_LSP.init_cell_state_specie('s1', 2)
         self.assertEqual(an_LSP.read(0, {'s1'}), {'s1': 2})
 
         with self.assertRaises(SpeciesPopulationError) as context:
             an_LSP.init_cell_state_specie('s1', 2)
         self.assertIn("species_id 's1' already stored by this LocalSpeciesPopulation",
-            str(context.exception))
+                      str(context.exception))
 
         with self.assertRaises(SpeciesPopulationError) as context:
             an_LSP.report_history()
@@ -269,9 +274,9 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         self.assertIn("history not recorded", str(context.exception))
 
         with self.assertRaises(SpeciesPopulationError) as context:
-            LocalSpeciesPopulation('test', {'s1': 2, 's2': 1}, {})
+            LocalSpeciesPopulation('test', {'s1': 2, 's2': 1}, {}, random_state=RandomStateManager.instance())
         self.assertIn("Cannot init LocalSpeciesPopulation because some species are missing weights",
-            str(context.exception))
+                      str(context.exception))
 
     def test_optional_species_argument(self):
         self.assertEqual(self.local_species_pop_no_init_flux.read(0), self.init_populations)
@@ -285,7 +290,7 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
     def test_read_one(self):
         test_specie = 'species_2[c2]'
         self.assertEqual(self.local_species_pop_no_init_flux.read_one(1, test_specie),
-            self.init_populations[test_specie])
+                         self.init_populations[test_specie])
         with self.assertRaises(SpeciesPopulationError) as context:
             self.local_species_pop_no_init_flux.read_one(2, 'unknown_species_id')
         self.assertIn("request for population of unknown specie(s): 'unknown_species_id'", str(context.exception))
@@ -312,7 +317,7 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         if flux:
             # counts: 1 initialization + 3 discrete adjustment + 2*flux:
             self.assertEqual(the_local_species_pop.read(2, {first_specie}),  {first_specie: 4+2*flux})
-            the_local_species_pop.adjust_continuously(2, {first_specie:(9, 0)})
+            the_local_species_pop.adjust_continuously(2, {first_specie: (9, 0)})
             # counts: 1 initialization + 3 discrete adjustment + 9 continuous adjustment + 0 flux = 13:
             self.assertEqual(the_local_species_pop.read(2, {first_specie}),  {first_specie: 13})
 
@@ -322,7 +327,7 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
     def test_discrete_and_hybrid(self):
 
         for (local_species_pop, flux) in [(self.local_species_pop, self.flux),
-            (self.local_species_pop_no_init_flux, None)]:
+                                          (self.local_species_pop_no_init_flux, None)]:
             self.reusable_assertions(local_species_pop, flux)
 
     def test_adjustment_exceptions(self):
@@ -330,7 +335,7 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         # test_species_ids = ['species_2[c2]', 'species_1[c1]']
         with self.assertRaises(SpeciesPopulationError) as context:
             self.local_species_pop.adjust_discretely(time,
-                dict(zip(self.species_ids, [-10]*len(self.species_ids))))
+                                                     dict(zip(self.species_ids, [-10]*len(self.species_ids))))
         self.assertIn("adjust_discretely error(s) at time {}".format(time), str(context.exception))
         self.assertIn("negative population predicted", str(context.exception))
 
@@ -346,7 +351,8 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
     def test_history(self):
 
         an_LSP_wo_recording_history = LocalSpeciesPopulation('test',
-            self.init_populations, self.init_populations, retain_history=False)
+                                                             self.init_populations, self.init_populations, random_state=RandomStateManager.instance(),
+                                                             retain_history=False)
 
         with self.assertRaises(SpeciesPopulationError) as context:
             an_LSP_wo_recording_history.report_history()
@@ -357,7 +363,8 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         self.assertIn("history not recorded", str(context.exception))
 
         an_LSP_recording_history = LocalSpeciesPopulation('test',
-            self.init_populations, self.init_populations, retain_history=True)
+                                                          self.init_populations, self.init_populations, random_state=RandomStateManager.instance(),
+                                                          retain_history=True)
         self.assertTrue(an_LSP_recording_history._recording_history())
         next_time = 1
         first_specie = self.species_ids[0]
@@ -366,14 +373,14 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         with self.assertRaises(SpeciesPopulationError) as context:
             an_LSP_recording_history._record_history()
         self.assertIn("time of previous _record_history() (1) not less than current time",
-            str(context.exception))
+                      str(context.exception))
 
         history = an_LSP_recording_history.report_history()
         self.assertEqual(history['time'], [0, next_time])
         first_species_history = [1.0, 1.0]
         self.assertEqual(history['population'][first_specie], first_species_history)
         self.assertIn(
-            '\t'.join(map(lambda x:str(x), [first_specie, 2] + first_species_history)),
+            '\t'.join(map(lambda x: str(x), [first_specie, 2] + first_species_history)),
             an_LSP_recording_history.history_debug())
 
         # test numpy array history
@@ -383,7 +390,7 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         species_type_ids = self.species_type_ids
         compartment_ids = self.compartment_ids
         time_hist, species_counts_hist = an_LSP_recording_history.report_history(numpy_format=True,
-            species_type_ids=species_type_ids, compartment_ids=compartment_ids)
+                                                                                 species_type_ids=species_type_ids, compartment_ids=compartment_ids)
         self.assertTrue((time_hist == np.array([0, next_time])).all())
         for time_idx in [0, 1]:
             self.assertEqual(species_counts_hist[0, 0, time_idx], first_species_history[time_idx])
@@ -403,13 +410,13 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         mass_of_species_1_in_c1 = \
             self.init_populations['species_1[c1]'] * self.molecular_weights['species_1[c1]'] / Avogadro
         self.assertAlmostEqual(self.local_species_pop.compartmental_mass('c1', species_ids=['species_1[c1]']),
-            mass_of_species_1_in_c1, places=30)
+                               mass_of_species_1_in_c1, places=30)
 
         unknown_species = 'species_x[c1]'
         with self.assertRaises(SpeciesPopulationError) as context:
             self.local_species_pop.compartmental_mass('c1', species_ids=[unknown_species])
         self.assertIn("molecular weight not available for '{}'".format(unknown_species),
-            str(context.exception))
+                      str(context.exception))
 
     def test_make_test_lsp(self):
         make_test_lsp = MakeTestLSP()
@@ -430,7 +437,7 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         make_test_lsp_3 = MakeTestLSP(name=name, initial_population=make_test_lsp.initial_population)
         self.assertEqual(make_test_lsp_3.initial_population, make_test_lsp.initial_population)
         make_test_lsp_4 = MakeTestLSP(initial_population=make_test_lsp.initial_population,
-            molecular_weights=make_test_lsp.molecular_weights)
+                                      molecular_weights=make_test_lsp.molecular_weights)
         self.assertEqual(make_test_lsp_4.initial_population, make_test_lsp.initial_population)
         self.assertEqual(make_test_lsp_4.molecular_weights, make_test_lsp.molecular_weights)
 
@@ -447,6 +454,7 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         self.simulator.simulate(2)
     """
 
+
 class TestSpeciesPopulationCache(unittest.TestCase):
 
     def setUp(self):
@@ -455,7 +463,7 @@ class TestSpeciesPopulationCache(unittest.TestCase):
         self.species_ids = make_test_lsp.species_ids
         local_species_population = make_test_lsp.local_species_pop
 
-        remote_pop_stores = {store_i(i):None for i in range(1, 4)}
+        remote_pop_stores = {store_i(i): None for i in range(1, 4)}
         self.an_ASP = AccessSpeciesPopulations(local_species_population, remote_pop_stores)
         self.an_ASP.add_species_locations(store_i(1), self.species_ids)
         self.an_ASP.add_species_locations(LOCAL_POP_STORE, ["species_0"])
@@ -468,39 +476,39 @@ class TestSpeciesPopulationCache(unittest.TestCase):
         s = self.species_ids[0]
         self.assertEqual(self.species_population_cache.read_one(1, s), population_dict[s])
         self.assertEqual(self.species_population_cache.read(1, self.species_ids),
-            population_dict)
+                         population_dict)
 
     def test_species_population_cache_exceptions(self):
         with self.assertRaises(SpeciesPopulationError) as context:
             self.species_population_cache.cache_population(1, {"species_0": 3})
         self.assertIn("some species are stored in the AccessSpeciesPopulations's local store: "
-            "['species_0'].", str(context.exception))
+                      "['species_0'].", str(context.exception))
 
         self.species_population_cache.cache_population(0, {"species_1[comp_id]": 3})
         with self.assertRaises(SpeciesPopulationError) as context:
             self.species_population_cache.cache_population(-1, {"species_1[comp_id]": 3})
         self.assertIn("cache_population: caching an earlier population: species_id: species_1[comp_id]; "
-            "current time: -1 <= previous time 0.", str(context.exception))
+                      "current time: -1 <= previous time 0.", str(context.exception))
 
         with self.assertRaises(SpeciesPopulationError) as context:
             self.species_population_cache.read_one(1, 'species_none')
         self.assertIn("SpeciesPopulationCache.read_one: specie 'species_none' not in cache.",
-            str(context.exception))
+                      str(context.exception))
 
         with self.assertRaises(SpeciesPopulationError) as context:
             self.species_population_cache.read_one(1, 'species_1[comp_id]')
         self.assertIn("cache age of 1 too big for read at time 1 of specie 'species_1[comp_id]'",
-            str(context.exception))
+                      str(context.exception))
 
         with self.assertRaises(SpeciesPopulationError) as context:
             self.species_population_cache.read(0, ['species_none'])
         self.assertIn("SpeciesPopulationCache.read: species ['species_none'] not in cache.",
-            str(context.exception))
+                      str(context.exception))
 
         with self.assertRaises(SpeciesPopulationError) as context:
             self.species_population_cache.read(1, ['species_1[comp_id]'])
         self.assertIn(".read: species ['species_1[comp_id]'] not reading recently cached value(s)",
-            str(context.exception))
+                      str(context.exception))
 
 
 class TestSpecie(unittest.TestCase):
@@ -526,7 +534,7 @@ class TestSpecie(unittest.TestCase):
 
         s4 = Specie('specie', self.random_state, 10, initial_flux=0)
         self.assertEqual("species_name: specie; last_population: 10; continuous_time: 0; "
-            "continuous_flux: 0", str(s4))
+                         "continuous_flux: 0", str(s4))
         self.assertRegex(s4.row(), r'specie\t10\..*\t0\..*\t0\..*')
 
         with self.assertRaises(SpeciesPopulationError) as context:
@@ -548,7 +556,7 @@ class TestSpecie(unittest.TestCase):
         with self.assertRaises(SpeciesPopulationError) as context:
             s4.get_population()
         self.assertIn('get_population(): time needed because continuous adjustment received at time',
-            str(context.exception))
+                      str(context.exception))
 
         with self.assertRaises(SpeciesPopulationError) as context:
             s4.get_population(3)
@@ -578,7 +586,7 @@ class TestSpecie(unittest.TestCase):
         config_multialgorithm['interpolate'] = existing_interpolate
 
     def test_NegativePopulationError(self):
-        s='species_3'
+        s = 'species_3'
         args = ('m', s, 2, -4.0)
         n1 = NegativePopulationError(*args)
         self.assertEqual(n1.specie, s)
@@ -590,12 +598,12 @@ class TestSpecie(unittest.TestCase):
 
         p = "m(): negative population predicted for 'species_3', with decline from 3 to -1"
         self.assertEqual(str(n1), p)
-        n1.delta_time=2
+        n1.delta_time = 2
         self.assertEqual(str(n1), p + " over 2 time units")
-        n1.delta_time=1
+        n1.delta_time = 1
         self.assertEqual(str(n1), p + " over 1 time unit")
 
-        d = {n1:1}
+        d = {n1: 1}
         self.assertTrue(n1 in d)
 
     def test_raise_NegativePopulationError(self):
@@ -632,7 +640,7 @@ class TestSpecie(unittest.TestCase):
             pop = s1.get_population()
             self.assertTrue(pop in [10, 11])
 
-        mean = np.mean([s1.get_population() for i in range(samples) ])
+        mean = np.mean([s1.get_population() for i in range(samples)])
         min = 10 + binom.ppf(0.01, n=samples, p=0.5) / samples
         max = 10 + binom.ppf(0.99, n=samples, p=0.5) / samples
         self.assertTrue(min <= mean <= max)
@@ -641,6 +649,7 @@ class TestSpecie(unittest.TestCase):
         s1.continuous_adjustment(0, 1, 0.25)
         for i in range(samples):
             self.assertEqual(s1.get_population(3), 11.0)
+
 
 """ Run a simulation with another simulation object to test SpeciesPopSimObject.
 
@@ -658,7 +667,7 @@ class MockSimulationTestingObject(MockSimulationObject):
         return 'object state to be provided'
 
     def send_debugging_events(self, species_pop_sim_obj, update_time, update_message, update_msg_body,
-        get_pop_time, get_pop_msg_body):
+                              get_pop_time, get_pop_msg_body):
         self.send_event(update_time, species_pop_sim_obj, update_msg_body)
         self.send_event(get_pop_time, species_pop_sim_obj, get_pop_msg_body)
 
@@ -670,9 +679,9 @@ class MockSimulationTestingObject(MockSimulationObject):
         species_id = self.kwargs['species_id']
         expected_value = self.kwargs['expected_value']
         self.test_case.assertEqual(the_population[species_id], expected_value,
-            msg="At event_time {} for specie '{}': the correct population "
-                "is {} but the actual population is {}.".format(
-                event.event_time, species_id, expected_value, the_population[species_id]))
+                                   msg="At event_time {} for specie '{}': the correct population "
+                                   "is {} but the actual population is {}.".format(
+            event.event_time, species_id, expected_value, the_population[species_id]))
 
     def handle_GiveProperty_event(self, event):
         """ Perform a unit test on the mass of a SpeciesPopSimObject"""
@@ -681,21 +690,21 @@ class MockSimulationTestingObject(MockSimulationObject):
         self.test_case.assertEqual(event.message.value, self.kwargs['expected_value'])
 
     # register the event handler for each type of message received
-    event_handlers =[
-            (message_types.GivePopulation, handle_GivePopulation_event),
-            (message_types.GiveProperty, handle_GiveProperty_event)]
+    event_handlers = [
+        (message_types.GivePopulation, handle_GivePopulation_event),
+        (message_types.GiveProperty, handle_GiveProperty_event)]
 
     # register the message types sent
     messages_sent = [message_types.GetPopulation,
-            message_types.AdjustPopulationByDiscreteSubmodel,
-            message_types.AdjustPopulationByContinuousSubmodel,
-            message_types.GetCurrentProperty]
+                     message_types.AdjustPopulationByDiscreteSubmodel,
+                     message_types.AdjustPopulationByContinuousSubmodel,
+                     message_types.GetCurrentProperty]
 
 
 class TestSpeciesPopSimObjectWithAnotherSimObject(unittest.TestCase):
 
     def try_update_species_pop_sim_obj(self, species_id, init_pop, mol_weight, init_flux, update_message,
-        msg_body, update_time, get_pop_time, expected_value):
+                                       msg_body, update_time, get_pop_time, expected_value):
         """ Run a simulation that tests an update of a SpeciesPopSimObject by a update_msg_type message.
 
         initialize simulation:
@@ -710,15 +719,17 @@ class TestSpeciesPopSimObjectWithAnotherSimObject(unittest.TestCase):
         """
         self.simulator = SimulationEngine()
 
-        if get_pop_time<=update_time:
+        if get_pop_time <= update_time:
             raise SpeciesPopulationError('get_pop_time<=update_time')
         species_pop_sim_obj = SpeciesPopSimObject('test_name',
-            {species_id:init_pop}, {species_id:mol_weight}, initial_fluxes={species_id:init_flux})
+                                                  {species_id: init_pop}, {species_id: mol_weight}, 
+                                                  initial_fluxes={species_id: init_flux},
+                                                  random_state=RandomStateManager.instance())
         mock_obj = MockSimulationTestingObject('mock_name', self,
-            species_id=species_id, expected_value=expected_value)
+                                               species_id=species_id, expected_value=expected_value)
         self.simulator.add_objects([species_pop_sim_obj, mock_obj])
         mock_obj.send_debugging_events(species_pop_sim_obj, update_time, update_message, msg_body,
-            get_pop_time, message_types.GetPopulation({species_id}))
+                                       get_pop_time, message_types.GetPopulation({species_id}))
         self.simulator.initialize()
 
         self.assertEqual(self.simulator.simulate(get_pop_time+1), 3)
@@ -733,10 +744,10 @@ class TestSpeciesPopSimObjectWithAnotherSimObject(unittest.TestCase):
                 for update_time in range(1, 4):
 
                     self.try_update_species_pop_sim_obj(s_id, s_init_pop, 0, s_init_flux,
-                        message_types.AdjustPopulationByDiscreteSubmodel,
-                        message_types.AdjustPopulationByDiscreteSubmodel({s_id:update_adjustment}),
-                        update_time, get_pop_time,
-                        s_init_pop + update_adjustment + get_pop_time*s_init_flux)
+                                                        message_types.AdjustPopulationByDiscreteSubmodel,
+                                                        message_types.AdjustPopulationByDiscreteSubmodel({s_id: update_adjustment}),
+                                                        update_time, get_pop_time,
+                                                        s_init_pop + update_adjustment + get_pop_time*s_init_flux)
 
         """
         Test AdjustPopulationByContinuousSubmodel.
@@ -751,16 +762,17 @@ class TestSpeciesPopSimObjectWithAnotherSimObject(unittest.TestCase):
                 for update_time in range(1, 4):
                     for updated_flux in range(-1, 2):
                         self.try_update_species_pop_sim_obj(s_id, s_init_pop, 0, s_init_flux,
-                            message_types.AdjustPopulationByContinuousSubmodel,
-                            message_types.AdjustPopulationByContinuousSubmodel({s_id:
-                                message_types.ContinuousChange(update_adjustment, updated_flux)}),
-                            update_time, get_pop_time,
-                            s_init_pop + update_adjustment +
-                                (get_pop_time-update_time)*updated_flux)
+                                                            message_types.AdjustPopulationByContinuousSubmodel,
+                                                            message_types.AdjustPopulationByContinuousSubmodel({s_id:
+                                                                                                                message_types.ContinuousChange(update_adjustment, updated_flux)}),
+                                                            update_time, get_pop_time,
+                                                            s_init_pop + update_adjustment +
+                                                            (get_pop_time-update_time)*updated_flux)
 
 
+class InitMsg1(SimulationMessage):
+    pass
 
-class InitMsg1(SimulationMessage): pass
 
 class TestSpeciesPopSimObject(unittest.TestCase):
 
@@ -770,23 +782,23 @@ class TestSpeciesPopSimObject(unittest.TestCase):
         self.initial_population = dict(zip(self.species_ids, range(3)))
         self.molecular_weight = dict(zip(self.species_ids, [10]*3))
         self.test_species_pop_sim_obj = SpeciesPopSimObject('test_name', self.initial_population,
-            self.molecular_weight)
+                                                            self.molecular_weight, 
+                                                            random_state=RandomStateManager.instance())
         self.simulator.add_object(self.test_species_pop_sim_obj)
 
     def test_init(self):
         for s in self.initial_population.keys():
-            self.assertEqual(self.test_species_pop_sim_obj.read_one(0,s), self.initial_population[s])
+            self.assertEqual(self.test_species_pop_sim_obj.read_one(0, s), self.initial_population[s])
 
     def test_invalid_event_types(self):
 
         with self.assertRaises(SimulatorError) as context:
             self.test_species_pop_sim_obj.send_event(1.0, self.test_species_pop_sim_obj, InitMsg1())
         self.assertIn("'wc_sim.multialgorithm.species_populations.SpeciesPopSimObject' simulation "
-            "objects not registered to send", str(context.exception))
+                      "objects not registered to send", str(context.exception))
 
         with self.assertRaises(SimulatorError) as context:
             self.test_species_pop_sim_obj.send_event(1.0, self.test_species_pop_sim_obj,
-                message_types.GivePopulation(7))
+                                                     message_types.GivePopulation(7))
         self.assertIn("'wc_sim.multialgorithm.species_populations.SpeciesPopSimObject' simulation "
-            "objects not registered to receive", str(context.exception))
-
+                      "objects not registered to receive", str(context.exception))

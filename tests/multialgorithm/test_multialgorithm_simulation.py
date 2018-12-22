@@ -16,8 +16,10 @@ from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.multialgorithm.run_results import RunResults
 from wc_utils.util.dict import DictUtil
+from wc_utils.util.rand import RandomStateManager
 import copy
 import cProfile
+import numpy
 import os
 import pstats
 import shutil
@@ -67,6 +69,8 @@ class TestMultialgorithmSimulation(unittest.TestCase):
     def setUp(self):
         # read and initialize a model
         self.model = Reader().run(self.MODEL_FILENAME)
+        for conc in self.model.distribution_init_concentrations:
+            conc.std = 0.
         PrepareForWcSimTransform().run(self.model)
         self.args = dict(fba_time_step=1,
                          results_dir=None)
@@ -107,14 +111,15 @@ class TestMultialgorithmSimulation(unittest.TestCase):
             self.assertEqual(set(submodel_dynamic_compartments.keys()), set(expected_compartments[submodel_id]))
 
     def test_static_methods(self):
-        initial_species_population = MultialgorithmSimulation.get_initial_species_pop(self.model)
+        initial_species_population = MultialgorithmSimulation.get_initial_species_pop(self.model, numpy.random.RandomState())
         species_wo_init_conc = 'species_3[c]'
         self.assertEqual(initial_species_population[species_wo_init_conc], 0)
         self.assertEqual(initial_species_population['species_2[c]'], initial_species_population['species_4[c]'])
         for concentration in self.model.get_distribution_init_concentrations():
             self.assertGreaterEqual(initial_species_population[concentration.species.id], 0)
 
-        local_species_population = MultialgorithmSimulation.make_local_species_pop(self.model)
+        local_species_population = MultialgorithmSimulation.make_local_species_pop(self.model,
+                                                                                   RandomStateManager.instance())
         self.assertEqual(local_species_population.read_one(0, species_wo_init_conc), 0)
 
     def test_build_simulation(self):
@@ -152,13 +157,15 @@ class TestRunSSASimulation(unittest.TestCase):
         shutil.rmtree(self.results_dir)
         shutil.rmtree(self.out_dir)
 
-    def make_model_and_simulation(self, model_type, num_submodels, species_copy_numbers=None, init_vols=None):
+    def make_model_and_simulation(self, model_type, num_submodels, species_copy_numbers=None, species_stds=None, init_vols=None):
         # make simple model
         if init_vols is not None:
             if not isinstance(init_vols, list):
                 init_vols = [init_vols]*num_submodels
         model = MakeModel.make_test_model(model_type, num_submodels=num_submodels,
-                                          species_copy_numbers=species_copy_numbers, init_vols=init_vols)
+                                          species_copy_numbers=species_copy_numbers,
+                                          species_stds=species_stds,
+                                          init_vols=init_vols)
         multialgorithm_simulation = MultialgorithmSimulation(model, self.args)
         simulation_engine, _ = multialgorithm_simulation.build_simulation()
         return (model, multialgorithm_simulation, simulation_engine)
@@ -174,7 +181,7 @@ class TestRunSSASimulation(unittest.TestCase):
             t += checkpoint_period
         return checkpoint_times
 
-    def perform_ssa_test_run(self, model_type, run_time, initial_species_copy_numbers,
+    def perform_ssa_test_run(self, model_type, run_time, initial_species_copy_numbers, initial_species_stds,
                              expected_mean_copy_numbers, delta, num_submodels=1, invariants=None, iterations=3, init_vols=None):
         """ Test SSA by comparing expected and actual simulation copy numbers
 
@@ -201,6 +208,7 @@ class TestRunSSASimulation(unittest.TestCase):
                 model_type,
                 num_submodels=num_submodels,
                 species_copy_numbers=initial_species_copy_numbers,
+                species_stds=initial_species_stds,
                 init_vols=init_vols)
             local_species_pop = multialgorithm_simulation.local_species_population
             simulation_engine.initialize()
@@ -230,6 +238,7 @@ class TestRunSSASimulation(unittest.TestCase):
         self.perform_ssa_test_run('1 species, 1 reaction',
                                   run_time=999,       # tests checkpoint history in which the last checkpoint time < run time
                                   initial_species_copy_numbers={specie: 3000},
+                                  initial_species_stds={specie: 0},
                                   expected_mean_copy_numbers={specie: 2000},
                                   delta=50)
         # species counts, and cell mass and volume steadily decline
@@ -247,6 +256,7 @@ class TestRunSSASimulation(unittest.TestCase):
         self.perform_ssa_test_run('2 species, 1 reaction',
                                   run_time=1000,
                                   initial_species_copy_numbers={'spec_type_0[compt_1]': 3000, 'spec_type_1[compt_1]': 0},
+                                  initial_species_stds={'spec_type_0[compt_1]': 0, 'spec_type_1[compt_1]': 0},
                                   expected_mean_copy_numbers={'spec_type_0[compt_1]': 2000,  'spec_type_1[compt_1]': 1000},
                                   delta=50)
 
@@ -258,7 +268,11 @@ class TestRunSSASimulation(unittest.TestCase):
             self.perform_ssa_test_run('2 species, 1 reaction, with rates given by reactant population',
                                       run_time=5000,
                                       initial_species_copy_numbers={
-                                          'spec_type_0[compt_1]': init_spec_type_0_pop, 'spec_type_1[compt_1]': 0},
+                                          'spec_type_0[compt_1]': init_spec_type_0_pop,
+                                          'spec_type_1[compt_1]': 0},
+                                      initial_species_stds={
+                                          'spec_type_0[compt_1]': 0,
+                                          'spec_type_1[compt_1]': 0},
                                       expected_mean_copy_numbers={},
                                       delta=0,
                                       init_vols=1E-22)
@@ -268,6 +282,7 @@ class TestRunSSASimulation(unittest.TestCase):
         num_submodels = 3
         init_spec_type_0_pop = 200
         initial_species_copy_numbers = {}
+        initial_species_stds = {}
         expected_mean_copy_numbers = {}
         for i in range(num_submodels):
             compt_idx = i + 1
@@ -275,6 +290,8 @@ class TestRunSSASimulation(unittest.TestCase):
             species_1_id = 'spec_type_1[compt_{}]'.format(compt_idx)
             initial_species_copy_numbers[species_0_id] = init_spec_type_0_pop
             initial_species_copy_numbers[species_1_id] = 0
+            initial_species_stds[species_0_id] = 0
+            initial_species_stds[species_1_id] = 0
             expected_mean_copy_numbers[species_0_id] = 0
             expected_mean_copy_numbers[species_1_id] = init_spec_type_0_pop
 
@@ -282,6 +299,7 @@ class TestRunSSASimulation(unittest.TestCase):
                                   num_submodels=num_submodels,
                                   run_time=1000,
                                   initial_species_copy_numbers=initial_species_copy_numbers,
+                                  initial_species_stds=initial_species_stds,
                                   expected_mean_copy_numbers=expected_mean_copy_numbers,
                                   delta=0,
                                   init_vols=1E-22)
@@ -345,7 +363,9 @@ class TestSSaExceptions(unittest.TestCase):
 
     def setUp(self):
         self.model = MakeModel.make_test_model('2 species, 1 reaction, with rates given by reactant population',
-                                               species_copy_numbers={'spec_type_0[compt_1]': 10, 'spec_type_1[compt_1]': 10})
+                                               species_copy_numbers={'spec_type_0[compt_1]': 10, 'spec_type_1[compt_1]': 10},
+                                               species_stds={'spec_type_0[compt_1]': 0, 'spec_type_1[compt_1]': 0},
+                                               )
 
     @unittest.skip('Disable temporarily, while A finishes "incomplete-updates" branch')
     def test_nan_propensities(self):

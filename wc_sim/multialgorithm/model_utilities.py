@@ -7,9 +7,12 @@
 '''
 
 import collections
+import numpy
 import re
+from enum import Enum
+from numpy.random import RandomState
 from scipy.constants import Avogadro
-from wc_lang import ConcentrationUnit
+from wc_lang import ConcentrationUnit, RandomDistribution
 from wc_utils.util.list import difference
 
 
@@ -79,18 +82,18 @@ class ModelUtilities(object):
             return set([shared_specie.serialize() for shared_specie in shared_species])
         return(shared_species)
 
-    CONCENTRATION_UNIT_VALUES = set([unit.value for unit in ConcentrationUnit.__members__.values()])
-
     @staticmethod
-    def concentration_to_molecules(species, volume):
+    def concentration_to_molecules(species, volume, random_state):
         '''Provide the initial copy number of `species` from its concentration
 
         Copy number is be rounded to the closest integer to avoid truncating small populations.
 
         Args:
             species (:obj:`Species`): a `Species` instance; the `species.concentration.units` must
-                be `None` or a value selected from `ConcentrationUnit`; `None` is interpreted as
-                `ConcentrationUnit.M`; `ConcentrationUnit['mol dm^-2']` is not supported
+                be an instance of `ConcentrationUnit`; `ConcentrationUnit['mol dm^-2']` is not supported
+            volume (:obj:`float`): volume for calculating copy numbers
+            random_state (:obj:`RandomState`): random state for sampling from distribution of initial
+                concentrations
 
         Returns:
             `int`: the `species'` copy number
@@ -98,23 +101,31 @@ class ModelUtilities(object):
         Raises:
             :obj:`ValueError`: if the concentration uses illegal or unsupported units
         '''
-        conc = species.distribution_init_concentration
-        if conc is None:
+        dist_conc = species.distribution_init_concentration
+        if dist_conc is None:
             return 0
         else:
-            units = conc.units
-            if units is None:
-                units = ConcentrationUnit.M.value
-            elif not units in ModelUtilities.CONCENTRATION_UNIT_VALUES:
-                raise ValueError("units '{}' not a value in ConcentrationUnit".format(units))
+            if dist_conc.distribution != RandomDistribution.normal:
+                raise ValueError('Unsupported random distribution `{}`'.format(dist_conc.distribution.name))
+            mean = dist_conc.mean
+            std = dist_conc.std
+            if numpy.isnan(std):
+                std = mean / 10.
+            conc = random_state.normal(mean, std)
+
+            units = dist_conc.units
+            if units == ConcentrationUnit.molecule:
+                return conc
+            elif isinstance(units, ConcentrationUnit) and ConcentrationUnit.Meta[units]['volume_units']['kind'] == 'litre':
+                scale = 10 ** ConcentrationUnit.Meta[units]['substance_units']['scale']
+                # population must be rounded to the closest integer to avoid truncating small populations
+                return int(round(scale * conc * volume * Avogadro))
             # elif units == ConcentrationUnit['mol dm^-2']:
             #    raise ValueError("ConcentrationUnit 'mol dm^-2' not supported")
-            elif units == ConcentrationUnit['molecule']:
-                return conc.mean
-            unit_magnitudes = 3 * (units - ConcentrationUnit.M.value)
-            factor = 10 ** -unit_magnitudes
-            # population must be rounded to the closest integer to avoid truncating small populations
-            return int(round(factor * conc.mean * volume * Avogadro))
+            elif isinstance(units, Enum):                
+                raise ValueError("Unsupported unit '{}'".format(units.name))
+            else:
+                raise ValueError("Unsupported unit '{}'".format(units))
 
     @staticmethod
     def parse_species_id(species_id):

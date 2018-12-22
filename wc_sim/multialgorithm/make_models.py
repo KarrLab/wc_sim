@@ -65,7 +65,8 @@ class MakeModel(object):
 
     @classmethod
     def add_test_submodel(cls, model, model_type, submodel_num, init_vol, species_types,
-                          default_species_copy_number, species_copy_numbers, expressions):
+                          default_species_copy_number, default_species_std, 
+                          species_copy_numbers, species_stds, expressions):
         """ Create a test submodel
 
         * 1 compartment
@@ -80,11 +81,14 @@ class MakeModel(object):
             init_vol (:obj:`float`): initial volume of the compartment
             species_types (:obj:`list` of :obj:`SpeciesType`): species types
             default_species_copy_number (:obj:`int`): default population of all species in their compartments
+            default_species_std (:obj:`int`):
             species_copy_numbers (:obj:`dict`): populations for particular species, which overrides `default_species_copy_number`
+            species_stds (:obj:`dict`):
             expressions (:obj:`dict`):
         """
         # local: compartment, species, conc, reaction, rate law, init_vol,
         default_concentration = cls.convert_pop_conc(default_species_copy_number, init_vol)
+        default_std = cls.convert_pop_conc(default_species_std, init_vol)
 
         num_species, num_reactions, reversible, rate_law_type = cls.get_model_type_params(model_type)
 
@@ -129,15 +133,21 @@ class MakeModel(object):
             species.append(specie)
             objects[Species][specie.id] = specie
             if species_copy_numbers is not None and specie.id in species_copy_numbers:
-                concentration = cls.convert_pop_conc(species_copy_numbers[specie.id], init_vol)
+                mean = cls.convert_pop_conc(species_copy_numbers[specie.id], init_vol)
+                if species_stds:
+                    std = cls.convert_pop_conc(species_stds[specie.id], init_vol)
+                else:
+                    std = mean / 10.
                 DistributionInitConcentration(
                     id=DistributionInitConcentration.gen_id(specie.id),
-                    species=specie, mean=concentration, units=ConcentrationUnit.M.value,
+                    species=specie, mean=mean, std=std,
+                    units=ConcentrationUnit.M.value,
                     model=model)
             else:
                 DistributionInitConcentration(
                     id=DistributionInitConcentration.gen_id(specie.id),
-                    species=specie, mean=default_concentration, units=ConcentrationUnit.M.value,
+                    species=specie, mean=default_concentration, std=default_std,
+                    units=ConcentrationUnit.M.value,
                     model=model)
             obs_id = 'obs_{}_{}'.format(submodel_num, i)
             expr = "1.5 * {}".format(specie.id)
@@ -232,7 +242,9 @@ class MakeModel(object):
                         charge=0,
                         num_submodels=1,
                         default_species_copy_number=1000000,
+                        default_species_std=100000,
                         species_copy_numbers=None,
+                        species_stds=None,
                         transfer_reactions=False,
                         transform_prep_and_check=True):
         """ Create a test model with multiple SSA submodels
@@ -244,7 +256,9 @@ class MakeModel(object):
             charge (:obj:`int`, optional): charge of each species type; default=0
             num_submodels (:obj:`int`, optional): number of submodels
             default_species_copy_number (:obj:`int`, optional): default population of all species in their compartments
+            default_species_std (:obj:`int`, optional):
             species_copy_numbers (:obj:`dict`, optional): populations for particular species, which overrides `default_species_copy_number`
+            species_stds (:obj:`dict`, optional):
             transfer_reactions (:obj:`bool`, optional): whether the model contains transfer reactions between
                 compartments; to be implemented
             transform_prep_and_check (:obj:`bool`, optional): whether to transform, prepare and check the model
@@ -289,7 +303,9 @@ class MakeModel(object):
             submodel_num = i + 1
             cls.add_test_submodel(model, model_type, submodel_num, init_vols[i],
                                   species_types, default_species_copy_number=default_species_copy_number,
-                                  species_copy_numbers=species_copy_numbers, expressions=expressions)
+                                  default_species_std=default_species_std,
+                                  species_copy_numbers=species_copy_numbers, species_stds=species_stds, 
+                                  expressions=expressions)
 
         # Parameters
         model.parameters.create(id='fractionDryWeight', value=0.3, units='dimensionless')

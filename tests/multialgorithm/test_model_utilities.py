@@ -5,13 +5,13 @@
 :License: MIT
 '''
 
+import numpy
 import os
 import unittest
-from argparse import Namespace
-from scipy.constants import Avogadro
-
 import wc_lang
+from argparse import Namespace
 from obj_model import utils
+from scipy.constants import Avogadro
 from wc_lang.io import Reader
 from wc_sim.multialgorithm.model_utilities import ModelUtilities
 
@@ -91,48 +91,55 @@ class TestModelUtilities(unittest.TestCase):
                                            compartment=compartment_c)
 
         conc_value = 2.
+        std_value = 0.
         for key, specie in species.items():
             if key in wc_lang.ConcentrationUnit.__members__:
-                wc_lang.DistributionInitConcentration(species=specie, mean=conc_value,
-                                                      units=wc_lang.ConcentrationUnit.__members__[key].value)
+                wc_lang.DistributionInitConcentration(species=specie, mean=conc_value, std=std_value,
+                                                      units=wc_lang.ConcentrationUnit[key])
             elif key == 'no_units':
-                wc_lang.DistributionInitConcentration(species=specie, mean=conc_value)
+                wc_lang.DistributionInitConcentration(species=specie, mean=conc_value, std=std_value)
             elif key == 'no_concentration':
                 continue
 
         conc_to_molecules = ModelUtilities.concentration_to_molecules
-        copy_number = conc_to_molecules(species['molecule'], species['molecule'].compartment.mean_init_volume)
+        random_state = numpy.random.RandomState()
+        copy_number = conc_to_molecules(species['molecule'], species['molecule'].compartment.mean_init_volume, random_state)
         self.assertEqual(copy_number, conc_value)
-        copy_number = conc_to_molecules(species['M'], species['M'].compartment.mean_init_volume)
+        copy_number = conc_to_molecules(species['M'], species['M'].compartment.mean_init_volume, random_state)
         self.assertEqual(copy_number, conc_value * Avogadro)
-        copy_number = conc_to_molecules(species['no_units'], species['no_units'].compartment.mean_init_volume)
+        copy_number = conc_to_molecules(species['no_units'], species['no_units'].compartment.mean_init_volume, random_state)
         self.assertEqual(copy_number, conc_value * Avogadro)
-        copy_number = conc_to_molecules(species['mM'], species['mM'].compartment.mean_init_volume)
+        copy_number = conc_to_molecules(species['mM'], species['mM'].compartment.mean_init_volume, random_state)
         self.assertEqual(copy_number, 10**-3 * conc_value * Avogadro)
-        copy_number = conc_to_molecules(species['uM'], species['uM'].compartment.mean_init_volume)
+        copy_number = conc_to_molecules(species['uM'], species['uM'].compartment.mean_init_volume, random_state)
         self.assertEqual(copy_number, 10**-6 * conc_value * Avogadro)
-        copy_number = conc_to_molecules(species['nM'], species['nM'].compartment.mean_init_volume)
+        copy_number = conc_to_molecules(species['nM'], species['nM'].compartment.mean_init_volume, random_state)
         self.assertEqual(copy_number, 10**-9 * conc_value * Avogadro)
-        copy_number = conc_to_molecules(species['pM'], species['pM'].compartment.mean_init_volume)
+        copy_number = conc_to_molecules(species['pM'], species['pM'].compartment.mean_init_volume, random_state)
         self.assertEqual(copy_number, 10**-12 * conc_value * Avogadro)
-        copy_number = conc_to_molecules(species['fM'], species['fM'].compartment.mean_init_volume)
+        copy_number = conc_to_molecules(species['fM'], species['fM'].compartment.mean_init_volume, random_state)
         self.assertAlmostEqual(copy_number, 10**-15 * conc_value * Avogadro, delta=1)
-        copy_number = conc_to_molecules(species['aM'], species['aM'].compartment.mean_init_volume)
+        copy_number = conc_to_molecules(species['aM'], species['aM'].compartment.mean_init_volume, random_state)
         self.assertAlmostEqual(copy_number, 10**-18 * conc_value * Avogadro, delta=1)
-        copy_number = conc_to_molecules(species['no_concentration'], species['no_concentration'].compartment.mean_init_volume)
+        copy_number = conc_to_molecules(species['no_concentration'],
+                                        species['no_concentration'].compartment.mean_init_volume, random_state)
         self.assertEqual(copy_number, 0)
         with self.assertRaises(KeyError):
-            conc_to_molecules(species['mol dm^-2'])
+            conc_to_molecules(species['mol dm^-2'], species['no_concentration'].compartment.mean_init_volume,
+                              random_state)
 
         species_tmp = wc_lang.Species(id=wc_lang.Species.gen_id(species_type.id, compartment_c.id),
                                       species_type=species_type,
                                       compartment=compartment_c)
-        wc_lang.DistributionInitConcentration(species=species_tmp, mean=conc_value, units='molecule')
+        wc_lang.DistributionInitConcentration(species=species_tmp, mean=conc_value, std=std_value, 
+            units='molecule')
         with self.assertRaises(ValueError):
-            ModelUtilities.concentration_to_molecules(species_tmp, species_tmp.compartment.mean_init_volume)
+            ModelUtilities.concentration_to_molecules(species_tmp, species_tmp.compartment.mean_init_volume,
+                random_state)
         species_tmp2 = wc_lang.Species(id=wc_lang.Species.gen_id(species_type.id, compartment_c.id),
                                        species_type=species_type,
                                        compartment=compartment_c)
-        wc_lang.DistributionInitConcentration(species=species_tmp2, mean=conc_value, units=0)
+        wc_lang.DistributionInitConcentration(species=species_tmp2, mean=conc_value, std=std_value, units=0)
         with self.assertRaises(ValueError):
-            ModelUtilities.concentration_to_molecules(species_tmp2, species_tmp2.compartment.mean_init_volume)
+            ModelUtilities.concentration_to_molecules(species_tmp2, species_tmp2.compartment.mean_init_volume,
+                random_state)

@@ -48,10 +48,14 @@ class TestSsaSubmodel(unittest.TestCase):
             'spec_type_0[compt_1]': spec_type_0_cn,
             'spec_type_1[compt_1]': 2 * spec_type_0_cn
         }
+        species_stds = {
+            'spec_type_0[compt_1]': 0,
+            'spec_type_1[compt_1]': 0,
+        }
         # with constant reaction rates, all propensities are equal
         model = MakeModel.make_test_model(
             '2 species, a pair of symmetrical reactions with constant rates',
-            species_copy_numbers=species_copy_numbers)
+            species_copy_numbers=species_copy_numbers, species_stds=species_stds)
         ssa_submodel = self.make_ssa_submodel(model)
         propensities, _ = ssa_submodel.determine_reaction_propensities()
         self.assertEqual(propensities[0], propensities[1])
@@ -59,7 +63,7 @@ class TestSsaSubmodel(unittest.TestCase):
         # with rates given by reactant population, propensities proportional to copy number
         model = MakeModel.make_test_model(
             '2 species, a pair of symmetrical reactions rates given by reactant population',
-            species_copy_numbers=species_copy_numbers)
+            species_copy_numbers=species_copy_numbers, species_stds=species_stds)
         ssa_submodel = self.make_ssa_submodel(model)
         propensities, _ = ssa_submodel.determine_reaction_propensities()
         self.assertEqual(2*propensities[0], propensities[1])
