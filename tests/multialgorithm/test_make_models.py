@@ -111,7 +111,6 @@ class TestMakeModels(unittest.TestCase):
             tuple(sorted((('spec_type_1[compt_1]', -1), ('spec_type_0[compt_1]',  1)))),    # reversed
         ])
         self.assertEqual(participant_elements, expected_participants)
-        self.assertIn('fractionDryWeight', [p.id for p in model.get_parameters()])
 
         # test default_species_copy_number, species_copy_numbers, and init_vols
         default_cn = 2000000

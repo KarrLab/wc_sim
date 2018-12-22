@@ -135,19 +135,14 @@ class TestDynamicModel(unittest.TestCase):
     # TODO(Arthur): test with multiple compartments
     def test_dynamic_model(self):
         cell_masses = []
-        cell_dry_weights = []
         computed_aggregate_states = []
         for i_trial in range(10):
             self.read_model(self.MODEL_FILENAME)
             cell_masses.append(self.dynamic_model.cell_mass())
-            cell_dry_weights.append(self.dynamic_model.cell_dry_weight())
             computed_aggregate_states.append(self.dynamic_model.get_aggregate_state())
-
-        self.assertEqual(self.dynamic_model.fraction_dry_weight, 0.3)
 
         # expected values computed in tests/multialgorithm/fixtures/test_model_with_mass_computation.xlsx
         self.almost_equal_test(numpy.mean(cell_masses), 8.260E-16, frac_diff=1e-1)
-        self.almost_equal_test(numpy.mean(cell_dry_weights), 2.48E-16, frac_diff=1e-1)
         expected_aggregate_state = {
             'cell mass': 8.260E-16,
             'cell volume': 4.58E-17,
@@ -168,18 +163,14 @@ class TestDynamicModel(unittest.TestCase):
 
     def test_dry_dynamic_model(self):
         cell_masses = []
-        cell_dry_weights = []
         computed_aggregate_states = []
         for i_trial in range(10):
             self.read_model(self.DRY_MODEL_FILENAME)
             cell_masses.append(self.dynamic_model.cell_mass())
-            cell_dry_weights.append(self.dynamic_model.cell_dry_weight())
             computed_aggregate_states.append(self.dynamic_model.get_aggregate_state())
-        self.assertEqual(self.dynamic_model.fraction_dry_weight, 0)
 
         # expected values computed in tests/multialgorithm/fixtures/test_dry_model_with_mass_computation.xlsx
         self.almost_equal_test(numpy.mean(cell_masses), 9.160E-19, frac_diff=1e-1)
-        self.almost_equal_test(numpy.mean(cell_dry_weights), 9.160E-19, frac_diff=1e-1)
         aggregate_state = self.dynamic_model.get_aggregate_state()
         expected_aggregate_state = {
             'cell mass': 9.160E-19,
@@ -204,7 +195,6 @@ class TestDynamicModel(unittest.TestCase):
         model = Model()
         comp = model.compartments.create(id='comp_0')
         submodel = model.submodels.create(id='submodel')
-        model.parameters.create(id='fractionDryWeight', value=0.3, units='dimensionless')
 
         num_species_types = 10
         species_types = []

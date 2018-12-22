@@ -16,15 +16,15 @@ import wc_lang.io
 model_filename = 'model.xlsx'
 results_parent_dirname = 'results'
 checkpoint_period = 100.
+end_time = 3600. * 8.
 
 # read model
 model = wc_lang.io.Reader().run(model_filename)
-cell_cycle_len = model.parameters.get_one(id='cell_cycle_len').value
 
 # run simulation
 seed = 100
 sim = Simulation(model)
-_, results_dirname = sim.run(end_time=cell_cycle_len,
+_, results_dirname = sim.run(end_time=end_time,
                              seed=seed,
                              results_dir=results_parent_dirname,
                              checkpoint_period=checkpoint_period)
@@ -35,7 +35,7 @@ results = RunResults(results_dirname)
 
 def plot(model, results, filename):
     # get expected results
-    cell_cycle_len = model.parameters.get_one(id='cell_cycle_len').value
+    mean_doubling_time = model.parameters.get_one(id='mean_doubling_time').value
 
     cytosol = model.compartments.get_one(id='c')
     extracellular_space = model.compartments.get_one(id='e')
@@ -97,7 +97,7 @@ def plot(model, results, filename):
     axes1[2][0].set_visible(False)
 
     axes1[2][1].plot(time / 3600, prot_c, label='Sim')
-    axes1[2][1].plot(time / 3600, 1500 * numpy.exp(numpy.log(2) / cell_cycle_len * time), label='Exp')
+    axes1[2][1].plot(time / 3600, 1500 * numpy.exp(numpy.log(2) / mean_doubling_time * time), label='Exp')
     axes1[2][1].set_xlim((time[0] / 3600, time[-1] / 3600))
     #axes1[2][1].set_ylim((1300., 3400.))
     axes1[2][1].set_xlabel('Time (h)')

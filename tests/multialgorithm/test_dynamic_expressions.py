@@ -37,7 +37,6 @@ class TestDynamicExpression(unittest.TestCase):
         self.param_value = 4
         objects[Parameter]['param'] = param = model.parameters.create(id='param', value=self.param_value,
                                                                       units='dimensionless')
-        model.parameters.create(id='fractionDryWeight', value=0.3, units='dimensionless')
 
         self.fun_expr = expr = 'param - 2 + max(param, 10)'
         fun1 = Expression.make_obj(model, Function, 'fun1', expr, objects)
@@ -207,9 +206,6 @@ class TestAllDynamicExpressionTypes(unittest.TestCase):
             wc_lang_obj.units = units
             objects[model_type][obj_id] = wc_lang_obj
             expected_values[wc_lang_obj.id] = expected_value
-
-        # needed for simulation:
-        model.parameters.create(id='fractionDryWeight', value=0.3, units='dimensionless')
 
         self.local_species_population = MakeTestLSP(initial_population=self.init_pop).local_species_pop
         self.dynamic_model = DynamicModel(self.model, self.local_species_population, {})

@@ -156,9 +156,6 @@ class DynamicModel(object):
             indexed by their ids
         dynamic_parameters (:obj:`dict` of `DynamicParameter`): the simulation's parameters,
             indexed by their ids
-        fraction_dry_weight (:obj:`float`): fraction of the cell's weight which is not water
-            a constant
-        water_in_model (:obj:`bool`): if set, the model represents water
     """
 
     def __init__(self, model, species_population, dynamic_compartments):
@@ -185,19 +182,7 @@ class DynamicModel(object):
             if dynamic_compartment.id == EXTRACELLULAR_COMPARTMENT_ID:
                 continue
             self.cellular_dyn_compartments.append(dynamic_compartment)
-
-        # Does the model represent water?
-        self.water_in_model = True
-        for compartment in model.get_compartments():
-            water_in_compartment_id = Species.gen_id(WATER_ID, compartment.id)
-            if water_in_compartment_id not in [s.id for s in compartment.species]:
-                self.water_in_model = False
-                break
-
-        # cell dry weight
-        self.fraction_dry_weight = utils.get_component_by_id(model.get_parameters(),
-                                                             'fractionDryWeight').value
-
+            
         # === create dynamic objects that are not expressions ===
         # create dynamic parameters
         self.dynamic_parameters = {}
@@ -262,17 +247,6 @@ class DynamicModel(object):
             :obj:`float`: the cell's volume (L)
         """
         return sum([dynamic_compartment.volume() for dynamic_compartment in self.cellular_dyn_compartments])
-
-    def cell_dry_weight(self):
-        """ Compute the cell's dry weight
-
-        Returns:
-            :obj:`float`: the cell's dry weight (g)
-        """
-        if self.water_in_model:
-            return self.fraction_dry_weight * self.cell_mass()
-        else:
-            return self.cell_mass()
 
     def get_growth(self):
         """ Report the cell's growth in cell/s, relative to the cell's initial volume

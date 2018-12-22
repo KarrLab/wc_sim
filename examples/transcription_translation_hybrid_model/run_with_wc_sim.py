@@ -17,13 +17,14 @@ import wc_lang.io
 model_filename = 'model.xlsx'
 results_parent_dirname = 'results'
 checkpoint_period = 100.
+end_time = 3600. * 8.
 
 # read model
 model = wc_lang.io.Reader().run(model_filename)
 
 # run simulation
 sim = Simulation(model)
-_, results_dirname = sim.run(end_time=model.parameters.get_one(id='cell_cycle_len').value,
+_, results_dirname = sim.run(end_time=end_time,
                              results_dir=results_parent_dirname,
                              checkpoint_period=checkpoint_period)
 results = RunResults(results_dirname)

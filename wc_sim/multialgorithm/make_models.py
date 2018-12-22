@@ -307,9 +307,6 @@ class MakeModel(object):
                                   species_copy_numbers=species_copy_numbers, species_stds=species_stds, 
                                   expressions=expressions)
 
-        # Parameters
-        model.parameters.create(id='fractionDryWeight', value=0.3, units='dimensionless')
-
         if transform_prep_and_check:
             # prepare & check the model
             PrepareForWcSimTransform().run(model)

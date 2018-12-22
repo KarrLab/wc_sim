@@ -257,9 +257,10 @@ class DfbaSubmodel(DynamicSubmodel):
                                                             / self.time_step)
 
         # exchange bounds
-        lowerBounds = np.fmin(lowerBounds, self.model.dryWeight / 3600 * Avogadro
+        cell_mass = self.model.cell_mass()
+        lowerBounds = np.fmin(lowerBounds, cell_mass / 3600 * Avogadro
                               * 1e-3 * self.exchangeRateBounds['lower'])
-        upperBounds = np.fmin(upperBounds, self.model.dryWeight / 3600 * Avogadro
+        upperBounds = np.fmin(upperBounds, cell_mass / 3600 * Avogadro
                               * 1e-3 * self.exchangeRateBounds['upper'])
 
         for i_rxn, rxn in enumerate(self.cobraModel.reactions):
