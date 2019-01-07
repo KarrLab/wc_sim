@@ -5,7 +5,7 @@
 :License: MIT
 """
 
-from wc_lang import RateLawDirection
+from wc_lang import Model, RateLawDirection
 from wc_lang.io import Reader, Writer
 from wc_sim.multialgorithm.make_models import MakeModel, RateLawType
 import os
@@ -67,8 +67,8 @@ class TestMakeModels(unittest.TestCase):
                 file = model_type.replace(' ', '_').replace(',', '')
                 file = "{}_{}_submodels.xlsx".format(file, num_submodels)
                 filename = os.path.join(self.test_dir, file)
-                Writer().run(model, filename, set_repo_metadata_from_path=False)
-                round_trip_model = Reader().run(filename)
+                Writer().run(filename, model, set_repo_metadata_from_path=False)
+                round_trip_model = Reader().run(filename)[Model][0]
                 self.assertEqual(round_trip_model.validate(), None)
                 self.assertTrue(round_trip_model.is_equal(model))
                 self.assertEqual(model.difference(round_trip_model), '')

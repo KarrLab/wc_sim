@@ -7,7 +7,7 @@
 """
 
 from obj_model.utils import get_component_by_id
-from wc_lang import Validator
+from wc_lang import Model, Validator
 from wc_lang.io import Reader
 from wc_lang.transform import PrepareForWcSimTransform
 from wc_sim.core.simulation_engine import SimulationEngine
@@ -51,7 +51,7 @@ class TestDynamicSubmodel(unittest.TestCase):
 
         self.MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures',
                                            'test_submodel_no_shared_species.xlsx')
-        self.model = Reader().run(self.MODEL_FILENAME)
+        self.model = Reader().run(self.MODEL_FILENAME)[Model][0]
         prepare_model(self.model)
         self.dynamic_submodels = {}
         self.misconfigured_dynamic_submodels = {}
@@ -194,7 +194,7 @@ class TestSkeletonSubmodel(unittest.TestCase):
         warnings.simplefilter("ignore")
         self.MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures',
                                            'test_submodel_no_shared_species.xlsx')
-        self.model = Reader().run(self.MODEL_FILENAME)
+        self.model = Reader().run(self.MODEL_FILENAME)[Model][0]
         prepare_model(self.model)
 
     def make_sim_w_skeleton_submodel(self, lang_submodel, behavior):

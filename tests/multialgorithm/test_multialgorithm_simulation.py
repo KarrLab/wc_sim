@@ -5,6 +5,7 @@
 :License: MIT
 """
 
+from wc_lang import Model
 from wc_lang.io import Reader
 from wc_lang.transform import PrepareForWcSimTransform
 from wc_sim.core.debug_logs import config
@@ -68,7 +69,7 @@ class TestMultialgorithmSimulation(unittest.TestCase):
 
     def setUp(self):
         # read and initialize a model
-        self.model = Reader().run(self.MODEL_FILENAME)
+        self.model = Reader().run(self.MODEL_FILENAME)[Model][0]
         for conc in self.model.distribution_init_concentrations:
             conc.std = 0.
         PrepareForWcSimTransform().run(self.model)

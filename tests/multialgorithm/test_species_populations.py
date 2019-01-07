@@ -19,7 +19,6 @@ import unittest
 from scipy.constants import Avogadro
 from scipy.stats import binom
 
-from wc_lang.io import Reader
 import wc_lang
 from wc_sim.core.errors import SimulatorError
 from wc_sim.core.simulation_engine import SimulationEngine

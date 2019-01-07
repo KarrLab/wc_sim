@@ -8,8 +8,8 @@
 
 from scipy.constants import Avogadro
 from wc_lang import (Model, Compartment, Species, Parameter,
-                     DistributionInitConcentration, ConcentrationUnit, Observable)
-from wc_lang import ObservableExpression
+                     DistributionInitConcentration, ConcentrationUnit, 
+                     Observable, ObservableExpression)
 from wc_lang.io import Reader
 from wc_sim.multialgorithm.dynamic_components import DynamicModel, DynamicCompartment
 from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
@@ -107,7 +107,7 @@ class TestDynamicModel(unittest.TestCase):
 
     def read_model(self, model_filename):
         # read and initialize a model
-        self.model = Reader().run(model_filename)
+        self.model = Reader().run(model_filename)[Model][0]
         multialgorithm_simulation = MultialgorithmSimulation(self.model, None)
         dynamic_compartments = multialgorithm_simulation.dynamic_compartments
         self.dynamic_model = DynamicModel(self.model, multialgorithm_simulation.local_species_population, dynamic_compartments)

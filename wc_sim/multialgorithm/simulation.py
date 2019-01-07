@@ -69,7 +69,7 @@ class Simulation(object):
         elif isinstance(model, str):
             # read model
             self.model_path = os.path.abspath(os.path.expanduser(model))
-            self.model = Reader().run(self.model_path)
+            self.model = Reader().run(self.model_path)[Model][0]
             if self.model is None:
                 raise MultialgorithmError("No model found in model file '{}'".format(self.model_path))
         else:

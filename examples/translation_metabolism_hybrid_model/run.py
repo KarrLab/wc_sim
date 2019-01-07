@@ -11,6 +11,7 @@ from matplotlib import pyplot
 from wc_sim.multialgorithm.simulation import Simulation
 from wc_sim.multialgorithm.run_results import RunResults
 import numpy
+import wc_lang
 import wc_lang.io
 
 model_filename = 'model.xlsx'
@@ -19,7 +20,7 @@ checkpoint_period = 100.
 end_time = 3600. * 8.
 
 # read model
-model = wc_lang.io.Reader().run(model_filename)
+model = wc_lang.io.Reader().run(model_filename)[wc_lang.Model][0]
 
 # run simulation
 seed = 100
