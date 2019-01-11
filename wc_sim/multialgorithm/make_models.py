@@ -129,7 +129,7 @@ class MakeModel(object):
         species = []
         for i in range(num_species):
             specie = comp.species.create(species_type=species_types[i], model=model)
-            specie.id = specie.gen_id(specie.species_type.id, specie.compartment.id)
+            specie.id = specie.gen_id()
             species.append(specie)
             objects[Species][specie.id] = specie
             if species_copy_numbers is not None and specie.id in species_copy_numbers:
@@ -138,17 +138,16 @@ class MakeModel(object):
                     std = cls.convert_pop_conc(species_stds[specie.id], init_vol)
                 else:
                     std = mean / 10.
-                DistributionInitConcentration(
-                    id=DistributionInitConcentration.gen_id(specie.id),
+                conc = DistributionInitConcentration(
                     species=specie, mean=mean, std=std,
                     units=ConcentrationUnit.M.value,
                     model=model)
             else:
-                DistributionInitConcentration(
-                    id=DistributionInitConcentration.gen_id(specie.id),
+                conc = DistributionInitConcentration(
                     species=specie, mean=default_concentration, std=default_std,
                     units=ConcentrationUnit.M.value,
                     model=model)
+            conc.id = conc.gen_id()
             obs_id = 'obs_{}_{}'.format(submodel_num, i)
             expr = "1.5 * {}".format(specie.id)
             objects[Observable][obs_id] = obs_plain = \
@@ -199,7 +198,7 @@ class MakeModel(object):
             rl = reaction.rate_laws.create(
                 direction=RateLawDirection.forward, expression=expression_obj,
                 model=model)
-            rl.id = rl.gen_id(rl.reaction.id, rl.direction.name)
+            rl.id = rl.gen_id()
 
             if num_species == 2:
                 reaction.participants.create(species=forward_product, coefficient=1)
@@ -233,7 +232,7 @@ class MakeModel(object):
                     expressions[expression_str] = expression_obj
                 rl = reaction.rate_laws.create(direction=RateLawDirection.backward, expression=expression_obj,
                                                model=model)
-                rl.id = rl.gen_id(rl.reaction.id, rl.direction.name)
+                rl.id = rl.gen_id()
 
     @classmethod
     def make_test_model(cls, model_type,

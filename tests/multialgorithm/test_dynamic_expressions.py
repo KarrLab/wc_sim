@@ -157,11 +157,11 @@ class TestAllDynamicExpressionTypes(unittest.TestCase):
 
         for c_id, st_id in zip(comp_ids, st_ids):
             specie = model.species.create(species_type=species_types[st_id], compartment=compartments[c_id])
-            specie.id = specie.gen_id(specie.species_type.id, specie.compartment.id)
+            specie.id = specie.gen_id()
             objects[Species][specie.id] = specie
-            model.distribution_init_concentrations.create(
-                id=DistributionInitConcentration.gen_id(specie.id),
+            conc = model.distribution_init_concentrations.create(
                 species=specie, mean=0, units=ConcentrationUnit.M)
+            conc.id = conc.gen_id()
 
         self.init_pop = {
             'a[c1]': 10,

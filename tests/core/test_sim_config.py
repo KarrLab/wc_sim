@@ -124,8 +124,8 @@ class TestSimulationConfig(unittest.TestCase):
         assert error is None, str(error)
 
         species_type_1 = model.species_types.create(id='species_type_1')
-        species_1_comp_1 = model.species.create(id=wc_lang.Species.gen_id(species_type_1.id, comp_1.id),
-                                                species_type=species_type_1, compartment=comp_1)
+        species_1_comp_1 = model.species.create(species_type=species_type_1, compartment=comp_1)
+        species_1_comp_1.id = species_1_comp_1.gen_id()
         submodel = model.submodels.create(id='submodel_1')
         rxn_1 = model.reactions.create(id='rxn_1', submodel=submodel)
         rl_1 = model.rate_laws.create(reaction=rxn_1, direction=wc_lang.RateLawDirection.forward, units=wc_lang.ReactionRateUnit['s^-1'])

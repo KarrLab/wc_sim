@@ -10,7 +10,7 @@
 def get_species_and_compartment_from_name(species_id):
     """Parse a species-compartment name in the form species_type[compartment] into (species_type, compartment)
 
-    The inverse of `Species.gen_id()`.
+    The inverse of `Species.gen_id_static()`.
 
     Args:
         species_id: string; an identifier for a species in a compartment

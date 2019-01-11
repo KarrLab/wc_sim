@@ -86,9 +86,9 @@ class TestModelUtilities(unittest.TestCase):
 
         species = {}
         for key, species_type in species_types.items():
-            species[key] = wc_lang.Species(id=wc_lang.Species.gen_id(species_type.id, compartment_c.id),
-                                           species_type=species_type,
+            species[key] = wc_lang.Species(species_type=species_type,
                                            compartment=compartment_c)
+            species[key].id = species[key].gen_id()
 
         conc_value = 2.
         std_value = 0.
@@ -128,17 +128,17 @@ class TestModelUtilities(unittest.TestCase):
             conc_to_molecules(species['mol dm^-2'], species['no_concentration'].compartment.mean_init_volume,
                               random_state)
 
-        species_tmp = wc_lang.Species(id=wc_lang.Species.gen_id(species_type.id, compartment_c.id),
-                                      species_type=species_type,
+        species_tmp = wc_lang.Species(species_type=species_type,
                                       compartment=compartment_c)
+        species_tmp.id = species_tmp.gen_id()
         wc_lang.DistributionInitConcentration(species=species_tmp, mean=conc_value, std=std_value, 
             units='molecule')
         with self.assertRaises(ValueError):
             ModelUtilities.concentration_to_molecules(species_tmp, species_tmp.compartment.mean_init_volume,
                 random_state)
-        species_tmp2 = wc_lang.Species(id=wc_lang.Species.gen_id(species_type.id, compartment_c.id),
-                                       species_type=species_type,
+        species_tmp2 = wc_lang.Species(species_type=species_type,
                                        compartment=compartment_c)
+        species_tmp2.id = species_tmp2.gen_id()
         wc_lang.DistributionInitConcentration(species=species_tmp2, mean=conc_value, std=std_value, units=0)
         with self.assertRaises(ValueError):
             ModelUtilities.concentration_to_molecules(species_tmp2, species_tmp2.compartment.mean_init_volume,

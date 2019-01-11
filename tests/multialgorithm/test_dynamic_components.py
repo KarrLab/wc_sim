@@ -205,10 +205,10 @@ class TestDynamicModel(unittest.TestCase):
         species = []
         for st_idx in range(num_species_types):
             specie = model.species.create(species_type=species_types[st_idx], compartment=comp)
-            specie.id = specie.gen_id(specie.species_type.id, specie.compartment.id)
+            specie.id = specie.gen_id()
             conc = model.distribution_init_concentrations.create(
-                id=DistributionInitConcentration.gen_id(specie.id),
                 species=specie, mean=0, units=ConcentrationUnit.M)
+            conc.id = conc.gen_id()
             species.append(specie)
 
         # create some observables
