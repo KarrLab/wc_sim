@@ -19,22 +19,22 @@ rxns = {
     'transcription': {
         'parts': [{'species': 'rna', 'coefficient': 1}],
         'rate_law': 'k_transcription',
-        'algorithm': 'ssa',
+        'framework': 'ssa',
     },
     'translation': {
         'parts': [{'species': 'prot', 'coefficient': 1}],
         'rate_law': 'k_translation * (rna / (km_translation + rna))',
-        'algorithm': 'ode',
+        'framework': 'ode',
     },
     'rna_deg': {
         'parts': [{'species': 'rna', 'coefficient': -1}],
         'rate_law': 'k_rna_deg * rna',
-        'algorithm': 'ssa',
+        'framework': 'ssa',
     },
     'prot_deg': {
         'parts': [{'species': 'prot', 'coefficient': -1}],
         'rate_law': 'k_prot_deg * prot',
-        'algorithm': 'ode',
+        'framework': 'ode',
     },
 }
 
@@ -167,7 +167,7 @@ def sim_hyb(rxns, rate_params, init_species, init_time, time_max, checkpoint_per
     rxns_ssa = []
     rxns_ode = {}
     for rxn_id, rxn in rxns.items():
-        if rxn['algorithm'] == 'ssa':
+        if rxn['framework'] == 'ssa':
             rxns_ssa.append(rxn)
         else:
             rxns_ode[rxn_id] = rxn

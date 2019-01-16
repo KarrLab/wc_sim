@@ -34,7 +34,7 @@ class TestSimulationConfig(unittest.TestCase):
                 ['rate_laws', {'direction': wc_lang.RateLawDirection.forward}],
                 'expression',
                 ['parameters', {'id': 'k_cat'}],
-                'mean',
+                'value',
             ], 1),
             sim_config.Change([
                 ['species', {'id': 'species-type-1[compartment-1]'}],
@@ -48,7 +48,7 @@ class TestSimulationConfig(unittest.TestCase):
                 ['rate_laws', {}],
                 'expression',
                 ['parameters', {'id': 'k_cat'}],
-                'mean',
+                'value',
             ], 3), start_time=1),
             sim_config.Perturbation(sim_config.Change([
                 ['species', {'id': 'species-1[compartment-1]'}],
@@ -183,7 +183,7 @@ class TestSedMlImportExport(unittest.TestCase):
                 ['rate_laws', {'direction': wc_lang.RateLawDirection.forward}],
                 'expression',
                 ['parameters', {'id': 'k_cat'}],
-                'mean',
+                'value',
             ], 1),
             sim_config.Change([
                 ['species', {'id': 'species-1[compartment-1]'}],
@@ -197,7 +197,7 @@ class TestSedMlImportExport(unittest.TestCase):
                 ['rate_laws', {'direction': wc_lang.RateLawDirection.forward}],
                 'expression',
                 ['parameters', {'id': 'k_cat'}],
-                'mean',
+                'value',
             ], 3
             ), start_time=1),
             sim_config.Perturbation(sim_config.Change([

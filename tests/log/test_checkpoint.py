@@ -17,6 +17,7 @@ import copy
 
 from wc_sim.core.sim_metadata import SimulationMetadata
 from wc_sim.log.checkpoint import Checkpoint, CheckpointLogger
+from wc_utils.util.ontology import wcm_ontology
 import wc_sim.core.sim_config
 import wc_lang
 import wc_utils.util.types
@@ -159,7 +160,7 @@ def build_mock_model():
     '''
     model = wc_lang.Model()
 
-    submodel = model.submodels.create(id='submodel', algorithm=wc_lang.SubmodelAlgorithm.ssa)
+    submodel = model.submodels.create(id='submodel', framework=wcm_ontology['WCM:stochastic_simulation_algorithm'])
 
     compartment_c = model.compartments.create(id='c', mean_init_volume=1.)
     compartment_e = model.compartments.create(id='e', mean_init_volume=1.)

@@ -12,7 +12,7 @@ import re
 from enum import Enum
 from numpy.random import RandomState
 from scipy.constants import Avogadro
-from wc_lang import ConcentrationUnit, RandomDistribution
+from wc_lang import ConcentrationUnit
 from wc_utils.util.list import difference
 
 
@@ -105,7 +105,7 @@ class ModelUtilities(object):
         if dist_conc is None:
             return 0
         else:
-            if dist_conc.distribution != RandomDistribution.normal:
+            if getattr(dist_conc.distribution, 'id') != 'WCM:normal_distribution': # normal
                 raise ValueError('Unsupported random distribution `{}`'.format(dist_conc.distribution.name))
             mean = dist_conc.mean
             std = dist_conc.std
