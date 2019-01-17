@@ -1,8 +1,9 @@
 """ Dynamic components of a multialgorithm simulation
 
 :Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
+:Author: Jonathan Karr <karr@mssm.edu>
 :Date: 2018-02-07
-:Copyright: 2017-2018, Karr Lab
+:Copyright: 2017-2019, Karr Lab
 :License: MIT
 """
 

@@ -1,6 +1,7 @@
 """ Store and retrieve combined results of a multialgorithmic simulation run
 
 :Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
+:Author: Jonathan Karr <karr@mssm.edu>
 :Date: 2018-05-20
 :Copyright: 2018, Karr Lab
 :License: MIT
