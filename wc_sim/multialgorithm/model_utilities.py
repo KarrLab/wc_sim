@@ -111,11 +111,11 @@ class ModelUtilities(object):
             std = dist_conc.std
             if numpy.isnan(std):
                 std = mean / 10.
-            conc = random_state.normal(mean, std)
+            conc = max(0., random_state.normal(mean, std))
 
             units = dist_conc.units
             if units == ConcentrationUnit.molecule:
-                return conc
+                return round(conc)
             elif isinstance(units, ConcentrationUnit) and ConcentrationUnit.Meta[units]['volume_units']['kind'] == 'litre':
                 scale = 10 ** ConcentrationUnit.Meta[units]['substance_units']['scale']
                 # population must be rounded to the closest integer to avoid truncating small populations

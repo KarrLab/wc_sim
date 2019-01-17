@@ -67,7 +67,7 @@ class DynamicCompartment(DynamicComponent):
             std = wc_lang_model.std_init_volume
             if numpy.isnan(std):
                 std = mean / 10.
-            self.init_volume = species_population.random_state.normal(mean, std)
+            self.init_volume = max(0., species_population.random_state.normal(mean, std))
         else:
             raise MultialgorithmError('Initial volume must be normally distributed')
 
