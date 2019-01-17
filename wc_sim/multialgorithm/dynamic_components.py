@@ -35,7 +35,6 @@ class DynamicCompartment(DynamicComponent):
         name (:obj:`str`): name of this `DynamicCompartment`, copied from `compartment`
         init_volume (:obj:`float`): initial volume specified in the `wc_lang` model
         init_mass (:obj:`float`): initial mass
-        constant_density (:obj:`float`)
         species_population (:obj:`LocalSpeciesPopulation`): an object that represents
             the populations of species in this `DynamicCompartment`
         species_ids (:obj:`list` of :obj:`str`): the IDs of the species stored
@@ -84,8 +83,7 @@ class DynamicCompartment(DynamicComponent):
         if 0 == self.init_mass:
             warnings.warn("DynamicCompartment '{}': initial mass is 0".format(self.name))        
         
-        self.constant_density = self.init_mass / self.init_volume
-        wc_lang_model.init_density.value = self.constant_density
+        wc_lang_model.init_density.value = self.init_mass / self.init_volume
 
     def mass(self):
         """ Provide the total current mass of all species in this `DynamicCompartment`
@@ -104,9 +102,9 @@ class DynamicCompartment(DynamicComponent):
         values = []
         values.append("ID: " + self.id)
         values.append("Name: " + self.name)
-        values.append("Initial volume (L): {}".format(self.init_volume))
+        values.append("Initial volume (l^-1): {}".format(self.init_volume))
+        values.append("Initial density (g l^-1): {}".format(self.init_mass / self.init_volume))
         values.append("Initial mass (g): {}".format(self.init_mass))
-        values.append("Constant density (g/L): {}".format(self.constant_density))
         values.append("Current mass (g): {}".format(self.mass()))
         values.append("Fold change mass: {}".format(self.mass() / self.init_mass))
         return "DynamicCompartment:\n{}".format('\n'.join(values))
