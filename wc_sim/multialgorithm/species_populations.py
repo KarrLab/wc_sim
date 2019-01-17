@@ -1181,7 +1181,7 @@ class Specie(object):
             initial_flux (number, optional): initial flux for the specie; required for species whose
                 population is estimated, at least in part, by a continuous model
         """
-        assert 0 <= initial_population, '__init__(): population should be >= 0'
+        assert 0 <= initial_population, '__init__(): {} population {} should be >= 0'.format(species_name, initial_population)
         self.species_name = species_name
         self.random_state = random_state
         self.last_population = initial_population
