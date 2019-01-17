@@ -2,7 +2,7 @@
 translation, and RNA and protein degradation of 3 genes, each
 with 1 RNA and 1 protein species
 
-:Author: Jonathan Karr <jonrkarr@gmail.com>
+:Author: Jonathan Karr <karr@mssm.edu>
 :Date: 2018-10-23
 :Copyright: 2018, Karr Lab
 :License: MIT

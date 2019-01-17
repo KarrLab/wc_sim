@@ -1,7 +1,7 @@
 """ Test multialgorithm main program
 
 :Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
-:Author: Jonathan Karr <jonrkarr@gmail.com>
+:Author: Jonathan Karr <karr@mssm.edu>
 :Date: 2018-05-17
 :Copyright: 2018, Karr Lab
 :License: MIT

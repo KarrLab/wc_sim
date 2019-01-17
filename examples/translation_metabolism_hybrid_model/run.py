@@ -1,7 +1,7 @@
 """ Use wc_sim to simulate a model of the translation
 and metabolism of a bacterium
 
-:Author: Jonathan Karr <jonrkarr@gmail.com>
+:Author: Jonathan Karr <karr@mssm.edu>
 :Date: 2018-10-23
 :Copyright: 2018, Karr Lab
 :License: MIT

@@ -1,6 +1,6 @@
 """ A Flux Balance Analysis (FBA) sub-model that represents a set of reactions
 
-:Author: Jonathan Karr, karr@mssm.edu
+:Author: Jonathan Karr <karr@mssm.edu>
 :Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2016-07-14
 :Copyright: 2016-2018, Karr Lab

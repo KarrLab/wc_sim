@@ -1,6 +1,6 @@
 """ Tests API
 
-:Author: Jonathan Karr <jonrkarr@gmail.com>
+:Author: Jonathan Karr <karr@mssm.edu>
 :Date: 2018-03-12
 :Copyright: 2018, Karr Lab
 :License: MIT

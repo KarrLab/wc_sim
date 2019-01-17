@@ -1,6 +1,6 @@
 """
 :Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
-:Author: Jonathan Karr <jonrkarr@gmail.com>
+:Author: Jonathan Karr <karr@mssm.edu>
 :Date: 2016-10-01
 :Copyright: 2016-2018, Karr Lab
 :License: MIT

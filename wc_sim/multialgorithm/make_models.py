@@ -1,7 +1,7 @@
 """ Make simple models for testing
 
 :Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
-:Author: Jonathan Karr <jonrkarr@gmail.com>
+:Author: Jonathan Karr <karr@mssm.edu>
 :Date: 2018-04-27
 :Copyright: 2018, Karr Lab
 :License: MIT

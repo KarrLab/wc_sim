@@ -2,7 +2,7 @@
 
 '''Simulates metabolism submodel
 
-:Author: Jonathan Karr, karr@mssm.edu
+:Author: Jonathan Karr <karr@mssm.edu>
 :Date: 2016-03-24
 :Copyright: 2016-2018, Karr Lab
 :License: MIT
