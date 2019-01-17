@@ -99,36 +99,6 @@ class DynamicSubmodel(ApplicationSimulationObject):
         species_ids = set(self.get_species_ids())
         return self.local_species_population.read(self.time, species_ids)
 
-    def get_species_concentrations(self):
-        """ Get the current species concentrations for this dynamic submodel
-
-        Concentrations are obtained from species counts.
-        concentration ~ count/volume
-        Provide concentrations for only species stored in this dynamic submodel's compartments, whose
-        volume is known.
-
-        Returns:
-            :obj:`dict`: a map: species_id -> species concentration
-
-        Raises:
-            :obj:`MultialgorithmError:` if a dynamic compartment cannot be found for a specie being modeled,
-                or if the compartments volume is 0
-        """
-        species_counts = self.get_species_counts()
-        concentrations = {}
-        for species_id in self.get_species_ids():
-            (_, compartment_id) = get_species_and_compartment_from_name(species_id)
-            if compartment_id not in self.dynamic_compartments:
-                raise MultialgorithmError("dynamic submodel '{}' lacks dynamic compartment '{}' for specie '{}'".format(
-                    self.id, compartment_id, species_id))
-            dynamic_compartment = self.dynamic_compartments[compartment_id]
-            if dynamic_compartment.volume() == 0:
-                raise MultialgorithmError("dynamic submodel '{}' cannot compute concentration in "
-                                          "compartment '{}' with volume=0".format(self.id, compartment_id))
-
-            concentrations[species_id] = species_counts[species_id] / (dynamic_compartment.volume() * Avogadro)
-        return concentrations
-
     def get_num_submodels(self):
         """ Provide the number of submodels
 
@@ -148,8 +118,7 @@ class DynamicSubmodel(ApplicationSimulationObject):
         Returns:
             :obj:`np.ndarray`: a numpy array of reaction rates, indexed by reaction index
         """
-        # TODO(Arthur): optimization: get concentrations only for modifiers in the reactions
-        # species_concentrations = self.get_species_concentrations()
+        # TODO(Arthur): optimization: get counts only for modifiers in the reactions
         species_counts = self.get_species_counts()
         compartment_masses = self.get_compartment_masses()
 

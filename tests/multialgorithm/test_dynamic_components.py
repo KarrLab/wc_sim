@@ -17,6 +17,7 @@ from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation, MakeTestLSP
 from wc_utils.util.rand import RandomStateManager
 import numpy
+import numpy.testing
 import os
 import unittest
 import warnings
@@ -50,22 +51,13 @@ class TestDynamicCompartment(unittest.TestCase):
     def test_simple_dynamic_compartment(self):
 
         # test DynamicCompartment
-        volumes = []
         masses = []
-        densities = []
         for i_trial in range(10):
             self.dynamic_compartment = DynamicCompartment(None, self.local_species_pop, self.compartment, self.species_ids)
-            volumes.append(self.dynamic_compartment.volume())
             masses.append(self.dynamic_compartment.mass())
-            densities.append(self.dynamic_compartment.density())
-        self.assertLess(numpy.abs((numpy.mean(volumes) - self.compartment.mean_init_volume) / self.compartment.mean_init_volume), 0.25)
         self.assertIn(self.dynamic_compartment.id, str(self.dynamic_compartment))
-        self.assertLess(numpy.abs((self.dynamic_compartment.volume() - self.dynamic_compartment.init_volume) /
-                                  self.dynamic_compartment.init_volume), 1e-3)
         estimated_mass = self.num_species * self.all_pops * self.all_m_weights / Avogadro
         self.assertLess(numpy.abs((numpy.mean(masses) - estimated_mass) / estimated_mass), 0.25)
-        estimated_density = estimated_mass / self.mean_init_volume
-        self.assertLess(numpy.abs((numpy.mean(densities) - estimated_density) / estimated_density), 0.25)
 
         # self.compartment containing just the first element of self.species_ids
         self.dynamic_compartment = DynamicCompartment(None, self.local_species_pop, self.compartment, self.species_ids[:1])
@@ -76,18 +68,17 @@ class TestDynamicCompartment(unittest.TestCase):
         init_populations = dict(zip(self.species_ids, [0] * len(self.species_ids)))
         local_species_pop = LocalSpeciesPopulation('test2', init_populations, self.molecular_weights,
                                                    random_state=RandomStateManager.instance())
-        volumes = []
         for i_trial in range(10):
             with warnings.catch_warnings(record=True) as w:
                 dynamic_compartment = DynamicCompartment(None, local_species_pop, self.compartment, self.species_ids)
-                self.assertIn("initial mass is 0, so constant_density is 0, and volume will remain constant", str(w[-1].message))
-            volumes.append(dynamic_compartment.volume())
+                self.assertIn("initial mass is 0", str(w[-1].message))
+            self.assertEqual(dynamic_compartment.init_mass, 0.)
+            self.assertEqual(dynamic_compartment.mass(), 0.)
 
-        # check that 'volume remains constant'
-        self.assertLess(numpy.abs((numpy.mean(volumes) - self.compartment.mean_init_volume) / self.compartment.mean_init_volume), 0.25)
+        # check that 'mass increases'
+        self.assertEqual(dynamic_compartment.mass(), 0.)
         local_species_pop.adjust_discretely(0, {self.species_ids[0]: 5})
-        self.assertTrue(0 < dynamic_compartment.mass())
-        self.assertEqual(dynamic_compartment.volume(), volumes[-1])
+        self.assertEqual(dynamic_compartment.mass(), 5 * self.all_m_weights / Avogadro)
 
     def test_dynamic_compartment_exceptions(self):
 
@@ -120,9 +111,7 @@ class TestDynamicModel(unittest.TestCase):
     def compare_aggregate_states(self, expected_aggregate_state, computed_aggregate_state, frac_diff=1e-1):
         list_of_nested_keys_to_test = [
             ['cell mass'],
-            ['cell volume'],
             ['compartments', 'c', 'mass'],
-            ['compartments', 'c', 'volume']
         ]
         for nested_keys_to_test in list_of_nested_keys_to_test:
             expected = expected_aggregate_state
@@ -145,19 +134,15 @@ class TestDynamicModel(unittest.TestCase):
         self.almost_equal_test(numpy.mean(cell_masses), 8.260E-16, frac_diff=1e-1)
         expected_aggregate_state = {
             'cell mass': 8.260E-16,
-            'cell volume': 4.58E-17,
             'compartments': {'c':
                              {'mass': 8.260E-16,
-                              'name': 'Cell',
-                              'volume': 4.58E-17}}
+                              'name': 'Cell'}}
         }
         computed_aggregate_state = {
             'cell mass': numpy.mean([s['cell mass'] for s in computed_aggregate_states]),
-            'cell volume': numpy.mean([s['cell volume'] for s in computed_aggregate_states]),
             'compartments': {'c':
                              {'mass': numpy.mean([s['compartments']['c']['mass'] for s in computed_aggregate_states]),
-                              'name': 'Cell',
-                              'volume': numpy.mean([s['compartments']['c']['volume'] for s in computed_aggregate_states])}}
+                              'name': 'Cell'}}
         }
         self.compare_aggregate_states(expected_aggregate_state, computed_aggregate_state, frac_diff=2.5e-1)
 
@@ -174,19 +159,15 @@ class TestDynamicModel(unittest.TestCase):
         aggregate_state = self.dynamic_model.get_aggregate_state()
         expected_aggregate_state = {
             'cell mass': 9.160E-19,
-            'cell volume': 4.58E-17,
             'compartments': {'c':
                              {'mass': 9.160E-19,
-                              'name': 'Cell',
-                              'volume': 4.58E-17}}
+                              'name': 'Cell'}}
         }
         computed_aggregate_state = {
             'cell mass': numpy.mean([s['cell mass'] for s in computed_aggregate_states]),
-            'cell volume': numpy.mean([s['cell volume'] for s in computed_aggregate_states]),
             'compartments': {'c':
                              {'mass': numpy.mean([s['compartments']['c']['mass'] for s in computed_aggregate_states]),
-                              'name': 'Cell',
-                              'volume': numpy.mean([s['compartments']['c']['volume'] for s in computed_aggregate_states])}}
+                              'name': 'Cell'}}
         }
         self.compare_aggregate_states(expected_aggregate_state, computed_aggregate_state, frac_diff=2.5e-1)
 

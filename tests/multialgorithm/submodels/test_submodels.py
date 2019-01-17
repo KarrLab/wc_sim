@@ -82,35 +82,6 @@ class TestDynamicSubmodel(unittest.TestCase):
         volume = dynamic_submodel.dynamic_compartments[species.compartment.id].volume()
         return copy_num / (volume * Avogadro)
 
-    def test_get_species_concentrations(self):
-        self.setUp(std_init_concentrations=0)
-
-        for dynamic_submodel in self.dynamic_submodels.values():
-            for species_id, value in dynamic_submodel.get_species_concentrations().items():
-
-                expected = self.expected_molar_conc(dynamic_submodel, species_id)
-                if expected:
-                    self.assertLess(numpy.abs(expected - value) / expected, 2.5e-1)
-                else:
-                    self.assertEqual(expected, value)
-
-        for dynamic_submodel in self.misconfigured_dynamic_submodels.values():
-            with self.assertRaises(MultialgorithmError) as context:
-                dynamic_submodel.get_species_concentrations()
-            self.assertRegex(str(context.exception),
-                             "dynamic submodel .* lacks dynamic compartment .* for specie .*")
-
-        # test volume=0 exception; must create model with 0<mass and then decrease counts
-        model = MakeModel().make_test_model('1 species, 1 reaction',
-                                            species_copy_numbers={'spec_type_0[compt_1]': 1},
-                                            species_stds={'spec_type_0[compt_1]': 0})
-        dynamic_submodel = DynamicSubmodel(*make_dynamic_submodel_params(model, model.submodels[0]))
-        dynamic_submodel.local_species_population.adjust_discretely(0, {'spec_type_0[compt_1]': -1})
-        with self.assertRaises(MultialgorithmError) as context:
-            dynamic_submodel.get_species_concentrations()
-        self.assertRegex(str(context.exception),
-                         "dynamic submodel .* cannot compute concentration in compartment .* with volume=0")
-
     def test_calc_reaction_rates(self):
         self.setUp(std_init_concentrations=0.)
 

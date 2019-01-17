@@ -27,13 +27,15 @@ class DynamicCompartment(DynamicComponent):
     """ A dynamic compartment
 
     A `DynamicCompartment` tracks the dynamic aggregate state of a compartment, primarily its
-    mass and volume. A `DynamicCompartment` is created for each `wc_lang` `Compartment` in a whole-cell
+    mass. A `DynamicCompartment` is created for each `wc_lang` `Compartment` in a whole-cell
     model.
 
     Attributes:
         id (:obj:`str`): id of this `DynamicCompartment`, copied from `compartment`
         name (:obj:`str`): name of this `DynamicCompartment`, copied from `compartment`
         init_volume (:obj:`float`): initial volume specified in the `wc_lang` model
+        init_mass (:obj:`float`): initial mass
+        constant_density (:obj:`float`)
         species_population (:obj:`LocalSpeciesPopulation`): an object that represents
             the populations of species in this `DynamicCompartment`
         species_ids (:obj:`list` of :obj:`str`): the IDs of the species stored
@@ -77,10 +79,12 @@ class DynamicCompartment(DynamicComponent):
         if self.init_volume <= 0:
             raise MultialgorithmError("DynamicCompartment {}: init_volume ({}) must be a positive number.".format(
                 self.name, self.init_volume))
-        if 0 == self.mass():
-            warnings.warn("DynamicCompartment '{}': initial mass is 0, so constant_density is 0, and "
-                          "volume will remain constant".format(self.name))
-        self.constant_density = self.mass() / self.init_volume
+        
+        self.init_mass = self.mass()
+        if 0 == self.init_mass:
+            warnings.warn("DynamicCompartment '{}': initial mass is 0".format(self.name))        
+        
+        self.constant_density = self.init_mass / self.init_volume
         wc_lang_model.init_density.value = self.constant_density
 
     def mass(self):
@@ -90,26 +94,6 @@ class DynamicCompartment(DynamicComponent):
             :obj:`float`: this compartment's total current mass (g)
         """
         return self.species_population.compartmental_mass(self.id)
-
-    def volume(self):
-        """ Provide the current volume of this `DynamicCompartment`
-
-        This compartment's density is assumed to be constant
-
-        Returns:
-            :obj:`float`: this compartment's current volume (L)
-        """
-        if self.constant_density == 0:
-            return self.init_volume
-        return self.mass() / self.constant_density
-
-    def density(self):
-        """ Provide the density of this `DynamicCompartment`, which is assumed to be constant
-
-        Returns:
-            :obj:`float`: this compartment's density (g/L)
-        """
-        return self.constant_density
 
     def __str__(self):
         """ Provide a string representation of this `DynamicCompartment`
@@ -121,16 +105,15 @@ class DynamicCompartment(DynamicComponent):
         values.append("ID: " + self.id)
         values.append("Name: " + self.name)
         values.append("Initial volume (L): {}".format(self.init_volume))
+        values.append("Initial mass (g): {}".format(self.init_mass))
         values.append("Constant density (g/L): {}".format(self.constant_density))
         values.append("Current mass (g): {}".format(self.mass()))
-        values.append("Current volume (L): {}".format(self.volume()))
-        values.append("Fold change volume: {}".format(self.volume() / self.init_volume))
+        values.append("Fold change mass: {}".format(self.mass() / self.init_mass))
         return "DynamicCompartment:\n{}".format('\n'.join(values))
 
 
 # TODO(Arthur): define these in config data, which may come from wc_lang
 EXTRACELLULAR_COMPARTMENT_ID = 'e'
-WATER_ID = 'H2O'
 
 
 class DynamicModel(object):
@@ -239,25 +222,6 @@ class DynamicModel(object):
         # TODO(Arthur): how should water be treated in mass calculations?
         return sum([dynamic_compartment.mass() for dynamic_compartment in self.cellular_dyn_compartments])
 
-    def cell_volume(self):
-        """ Compute the cell's volume
-
-        Sum the volume of all `DynamicCompartment`s that are not extracellular.
-
-        Returns:
-            :obj:`float`: the cell's volume (L)
-        """
-        return sum([dynamic_compartment.volume() for dynamic_compartment in self.cellular_dyn_compartments])
-
-    def get_growth(self):
-        """ Report the cell's growth in cell/s, relative to the cell's initial volume
-
-        Returns:
-            (:obj:`float`): growth in cell/s, relative to the cell's initial volume
-        """
-        # TODO(Arthur): implement growth
-        pass
-
     def get_aggregate_state(self):
         """ Report the cell's aggregate state
 
@@ -266,7 +230,6 @@ class DynamicModel(object):
         """
         aggregate_state = {
             'cell mass': self.cell_mass(),
-            'cell volume': self.cell_volume()
         }
 
         compartments = {}
@@ -274,7 +237,6 @@ class DynamicModel(object):
             compartments[dynamic_compartment.id] = {
                 'name': dynamic_compartment.name,
                 'mass': dynamic_compartment.mass(),
-                'volume': dynamic_compartment.volume(),
             }
         aggregate_state['compartments'] = compartments
         return aggregate_state

@@ -251,7 +251,6 @@ class TestRunSSASimulation(unittest.TestCase):
                 species_pops, observables, aggregate_state = RunResults.get_state_components(ckpt.state)
                 self.assertTrue(species_pops[specie] < prev_species_pops[specie])
                 self.assertTrue(aggregate_state['cell mass'] < prev_aggregate_state['cell mass'])
-                self.assertTrue(aggregate_state['cell volume'] < prev_aggregate_state['cell volume'])
             prev_ckpt = ckpt
 
         self.perform_ssa_test_run('2 species, 1 reaction',
@@ -388,6 +387,6 @@ class TestSSaExceptions(unittest.TestCase):
     # TODO(Arthur): delete unused parts of CheckpointLogger
     # TODO(Arthur): control pytest warnings
 
-    # TODO(Arthur): catch MultialgorithmErrors from get_species_concentrations, and elsewhere
+    # TODO(Arthur): catch MultialgorithmErrors from get_species_counts, and elsewhere
     # TODO(Arthur): fit exponential to reaction, with rates given by reactant population
     # TODO(Arthur): perhaps raise warning for high concentration / molecule species like H20 in rate laws

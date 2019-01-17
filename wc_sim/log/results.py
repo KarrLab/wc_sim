@@ -18,7 +18,6 @@ class Writer(object):
 
     Currently, this includes:
     * Time (s)
-    * Volume (L)
     * Mass (g)
     * Species counts (molecules)
 
@@ -34,8 +33,7 @@ class Writer(object):
     # .. todo:: implement parallelizable logging system
 
     STATES = (
-        'volume',
-        'growth',
+        'mass',
         'species_counts',
     )
 

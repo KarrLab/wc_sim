@@ -144,15 +144,15 @@ class RunResults(object):
             checkpoint = Checkpoint.get_checkpoint(self.results_dir, time=time)
             species_populations, observables, aggregate_state = self.get_state_components(checkpoint.state)
 
-            for species_id,population in species_populations.items():
+            for species_id, population in species_populations.items():
                 population_df.loc[time, species_id] = population
 
             for observable_id, observable in observables.items():
                 observables_df.loc[time, observable_id] = observable
 
             compartment_states = aggregate_state['compartments']
-            for compartment_id,agg_states in compartment_states.items():
-                for property,value in agg_states.items():
+            for compartment_id, agg_states in compartment_states.items():
+                for property, value in agg_states.items():
                     aggregate_states_df.loc[time, (compartment_id, property)] = value
 
             random_states_s[time] = pickle.dumps(checkpoint.random_state)

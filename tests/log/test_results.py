@@ -42,11 +42,8 @@ class TestLogging(unittest.TestCase):
 
         numpy.testing.assert_array_equal(results['time'], numpy.arange(0., 11., 1.).reshape((1, 1, 11)))
 
-        numpy.testing.assert_array_equal(results['volume'][:, :, 0], numpy.full((1, 2), 1.))
-        numpy.testing.assert_array_equal(results['volume'][:, :, -1], numpy.full((1, 2), 2.))
-
-        numpy.testing.assert_array_equal(results['growth'][:, :, 0], numpy.full((1, 2), 1.))
-        numpy.testing.assert_array_equal(results['growth'][:, :, -1], numpy.full((1, 2), 2.))
+        numpy.testing.assert_array_equal(results['mass'][:, :, 0], numpy.full((1, 2), 1.))
+        numpy.testing.assert_array_equal(results['mass'][:, :, -1], numpy.full((1, 2), 2.))
 
         self.assertEqual(results['species_counts'].shape, (5, 2, 11))
 
@@ -60,9 +57,8 @@ class ExampleSimulator(object):
 
         state = mock.Mock(
             time=0.,
-            volume=numpy.ones((1, 2)),
-            growth=numpy.ones((1, 2)),
-            species_counts=numpy.random.random_integers(0, 100, size=(5, 2)),
+            mass=numpy.ones((1, 2)),
+            species_counts=numpy.random.randint(0, 100, size=(5, 2)),
         )
 
         # initialize log
@@ -75,9 +71,8 @@ class ExampleSimulator(object):
             time += time_step
 
             state.time = time
-            state.volume = numpy.full((1, 2), math.exp(math.log(2) * time / time_max))
-            state.growth = numpy.full((1, 2), math.exp(math.log(2) * time / time_max))
-            state.species_counts = numpy.random.random_integers(0, 100, size=(5, 2))
+            state.mass = numpy.full((1, 2), math.exp(math.log(2) * time / time_max))
+            state.species_counts = numpy.random.randint(0, 100, size=(5, 2))
 
             writer.append(time)
 
