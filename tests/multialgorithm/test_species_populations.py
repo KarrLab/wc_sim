@@ -568,9 +568,8 @@ class TestSpecie(unittest.TestCase):
         self.assertRegex(Specie.heading(), 'species_name\t.*')
 
         # raise asserts
-        with self.assertRaises(AssertionError) as context:
+        with self.assertRaisesRegex(AssertionError, '__init__\(\): .*? population .*? should be >= 0'):
             Specie('specie', self.random_state, -10)
-        self.assertIn('__init__(): population should be >= 0', str(context.exception))
 
     def test_species_with_interpolation_false(self):
         # change the interpolation
