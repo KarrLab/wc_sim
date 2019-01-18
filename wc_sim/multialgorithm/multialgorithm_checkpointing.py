@@ -1,6 +1,7 @@
 """ Take periodic checkpoints in a multialgorithmic simulation
 
 :Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
+:Author: Jonathan Karr <karr@mssm.edu>
 :Date: 2018-05-08
 :Copyright: 2018, Karr Lab
 :License: MIT
@@ -50,7 +51,8 @@ class AccessState(AccessStateObjectInterface):
         state = {
             'population': self.local_species_population.read(time),
             'aggregate_state': self.dynamic_model.get_aggregate_state(),
-            'observables': self.dynamic_model.eval_dynamic_observables(time)
+            'observables': self.dynamic_model.eval_dynamic_observables(time),
+            'functions': self.dynamic_model.eval_dynamic_functions(time),
         }
         return state
 

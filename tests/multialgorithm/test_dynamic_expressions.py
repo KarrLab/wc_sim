@@ -10,7 +10,8 @@ from obj_model.expression import Expression
 from wc_lang import (Model,
                      Species, MoleculeCountUnit,
                      DistributionInitConcentration, ConcentrationUnit,
-                     Observable, Function, FunctionExpression,
+                     Observable, ObservableExpression,
+                     Function, FunctionExpression,
                      StopCondition, StopConditionUnit,
                      Parameter)
 from wc_sim.multialgorithm.dynamic_components import DynamicModel
@@ -217,7 +218,8 @@ class TestAllDynamicExpressionTypes(unittest.TestCase):
         print()
         print("Measure {} evals of each Dynamic expression:".format(number))
         for dynamic_obj_dict in [self.dynamic_model.dynamic_observables,
-                                 self.dynamic_model.dynamic_functions, self.dynamic_model.dynamic_stop_conditions]:
+                                 self.dynamic_model.dynamic_functions, 
+                                 self.dynamic_model.dynamic_stop_conditions]:
             for id, dynamic_expression in dynamic_obj_dict.items():
                 self.assertEqual(self.expected_values[id], dynamic_expression.eval(0))
                 eval_time = timeit.timeit(stmt='dynamic_expression.eval(0)', number=number,

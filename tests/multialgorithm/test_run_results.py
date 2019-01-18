@@ -46,7 +46,7 @@ class TestRunResults(unittest.TestCase):
             self.assertTrue(run_results_1.get(component).equals(run_results_2.get(component)))
 
         expected_times = pandas.Float64Index(numpy.linspace(0, self.max_time, 1 + self.max_time/self.checkpoint_period))
-        for component in ['populations', 'observables', 'aggregate_states', 'random_states']:
+        for component in ['populations', 'observables', 'functions', 'aggregate_states', 'random_states']:
             component_data = run_results_1.get(component)
             self.assertFalse(component_data.empty)
             self.assertTrue(component_data.index.equals(expected_times))

@@ -9,8 +9,9 @@
 
 from scipy.constants import Avogadro
 from wc_lang import (Model, Compartment, Species, Parameter,
-                     DistributionInitConcentration, ConcentrationUnit, 
-                     Observable, ObservableExpression)
+                     DistributionInitConcentration, ConcentrationUnit,
+                     Observable, ObservableExpression,
+                     Function, FunctionExpression)
 from wc_lang.io import Reader
 from wc_sim.multialgorithm.dynamic_components import DynamicModel, DynamicCompartment
 from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
@@ -240,3 +241,72 @@ class TestDynamicModel(unittest.TestCase):
                 for d_index in range(index+1):
                     expected_val += d_index * sum([i*i for i in range(d_index+1)])
                 self.assertEqual(expected_val, obs_val)
+
+    def test_eval_dynamic_functions(self):
+        # make a Model
+        model = Model()
+        comp = model.compartments.create(id='comp_0')
+        submodel = model.submodels.create(id='submodel')
+
+        num_species_types = 10
+        species_types = []
+        for i in range(num_species_types):
+            st = model.species_types.create(id='st_{}'.format(i))
+            species_types.append(st)
+
+        species = []
+        for st_idx in range(num_species_types):
+            specie = model.species.create(species_type=species_types[st_idx], compartment=comp)
+            specie.id = specie.gen_id()
+            conc = model.distribution_init_concentrations.create(
+                species=specie, mean=0, units=ConcentrationUnit.M)
+            conc.id = conc.gen_id()
+            species.append(specie)
+
+        # create some functions
+        objects = {
+            Species: {},
+            Function: {}
+        }
+        num_non_dependent_functions = 5
+        non_dependent_functions = []
+        for i in range(num_non_dependent_functions):
+            expr_parts = []
+            for j in range(i + 1):
+                expr_parts.append("{} * {}".format(j, species[j].id))
+                objects[Species][species[j].id] = species[j]
+            expr = ' + '.join(expr_parts)
+            obj = FunctionExpression.make_obj(model, Function, 'func_nd_{}'.format(i), expr, objects)
+            self.assertTrue(obj.expression.validate() is None)
+            non_dependent_functions.append(obj)
+
+        num_dependent_functions = 4
+        dependent_functions = []
+        for i in range(num_dependent_functions):
+            expr_parts = []
+            for j in range(i+1):
+                nd_func_id = 'func_nd_{}'.format(j)
+                expr_parts.append("{}*{}".format(j, nd_func_id))
+                objects[Function][nd_func_id] = non_dependent_functions[j]
+            expr = ' + '.join(expr_parts)            
+            obj = FunctionExpression.make_obj(model, Function, 'func_d_{}'.format(i), expr, objects)
+            self.assertTrue(obj.expression.validate() is None)
+            dependent_functions.append(obj)
+
+        # make a LocalSpeciesPopulation
+        init_pop = dict(zip([s.id for s in species], list(range(num_species_types))))
+        lsp = MakeTestLSP(initial_population=init_pop).local_species_pop
+
+        # make a DynamicModel
+        dyn_mdl = DynamicModel(model, lsp, {})
+        # check that dynamic functions have the right values
+        for func_id, func_val in dyn_mdl.eval_dynamic_functions(0).items():
+            index = int(func_id.split('_')[-1])
+            if 'func_nd_' in func_id:
+                expected_val = float(sum([i*i for i in range(index+1)]))
+                self.assertEqual(expected_val, func_val)
+            elif 'func_d_' in func_id:
+                expected_val = 0
+                for d_index in range(index+1):
+                    expected_val += d_index * sum([i * i for i in range(d_index + 1)])
+                self.assertEqual(expected_val, func_val)

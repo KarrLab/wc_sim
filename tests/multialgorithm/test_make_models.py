@@ -76,6 +76,7 @@ class TestMakeModels(unittest.TestCase):
         # unittest one of the models made
         # TODO (ARTHUR): test with multiple submodels
         # TODO (ARTHUR): test observables
+        # TODO (ARTHUR): test functions
         model = MakeModel.make_test_model(self.model_types[4])
         self.assertEqual(model.id, 'test_model')
         comp = model.compartments[0]

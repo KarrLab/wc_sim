@@ -762,13 +762,14 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
                 time, '\n'.join(errors)))
 
     # TODO(Arthur): probably don't need compartment_id, because compartment is part of the species_ids
-    def compartmental_mass(self, compartment_id, species_ids=None):
+    def compartmental_mass(self, compartment_id, species_ids=None, time=None):
         """ Compute the current mass of some, or all, species in a compartment
 
         Args:
             compartment_id (:obj:`str`): the ID of the compartment
             species_ids (:obj:`list` of :obj:`str`, optional): identifiers of the species whose mass will be obtained;
                 if not provided, then compute the mass of all species in the compartment
+            time (number, optional): the current simulation time
 
         Returns:
             :obj:`float`: the current total mass of the specified species in compartment `compartment_id`, in grams
@@ -778,12 +779,14 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         """
         if species_ids is None:
             species_ids = self._all_species()
+        if time is None:
+            time = self.time
         mass = 0.
         for species_id in species_ids:
             _, comp = get_species_and_compartment_from_name(species_id)
             if comp == compartment_id:
                 try:
-                    mass += self._molecular_weights[species_id] * self.read_one(self.time, species_id)
+                    mass += self._molecular_weights[species_id] * self.read_one(time, species_id)
                 except KeyError as e:
                     raise SpeciesPopulationError("molecular weight not available for '{}'".format(
                         species_id))

@@ -149,7 +149,10 @@ class DynamicExpression(DynamicComponent):
         # optimization: combine together adjacent obj_model_token.tok_codes other than obj_id
         next_static_tokens = ''
         function_names = set()
-        non_lang_obj_id_tokens = set([ObjModelTokenCodes.math_func_id, ObjModelTokenCodes.number, ObjModelTokenCodes.op, ObjModelTokenCodes.other])
+        non_lang_obj_id_tokens = set([ObjModelTokenCodes.math_func_id,
+                                      ObjModelTokenCodes.number,
+                                      ObjModelTokenCodes.op,
+                                      ObjModelTokenCodes.other])
 
         i = 0
         while i < len(self.wc_lang_expression._obj_model_tokens):
@@ -167,13 +170,11 @@ class DynamicExpression(DynamicComponent):
                 except:
                     raise MultialgorithmError("'{}.{} must be prepared to create '{}''".format(
                         obj_model_token.model.__class__.__name__, obj_model_token.model_id, self.id))
-                self.wc_sim_tokens.append(WcSimToken(SimTokCodes.dynamic_expression, obj_model_token.token_string,
+                self.wc_sim_tokens.append(WcSimToken(SimTokCodes.dynamic_expression,
+                                                     obj_model_token.token_string,
                                                      dynamic_expression))
-            else:   # pragma    no cover
+            else:   # pragma: no cover
                 assert False, "unknown code {} in {}".format(obj_model_token.code, obj_model_token)
-            if obj_model_token.code == ObjModelTokenCodes.obj_id and obj_model_token.model_type == wc_lang.Function:
-                # skip past the () syntactic sugar on functions
-                i += 2
             # advance to the next token
             i += 1
         if next_static_tokens != '':

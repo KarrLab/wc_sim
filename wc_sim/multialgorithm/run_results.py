@@ -30,6 +30,7 @@ class RunResults(object):
         'populations',          # predicted populations of species at all checkpoint times
         'aggregate_states',     # predicted aggregate states of the cell over the simulation
         'observables',          # predicted values of all observables over the simulation
+        'functions',            # predicted values of all functions over the simulation
         'random_states',        # states of the simulation's random number geerators over the simulation
         'metadata',             # the simulation's global metadata
     }
@@ -53,11 +54,13 @@ class RunResults(object):
         else:
 
             # create the HDF file containing the run results
-            population_df, observables_df, aggregate_states_df, random_states_s = self.convert_checkpoints()
+            population_df, observables_df, functions_df, aggregate_states_df, random_states_s = self.convert_checkpoints()
             # populations
             population_df.to_hdf(self._hdf_file(), 'populations')
             # observables
             observables_df.to_hdf(self._hdf_file(), 'observables')
+            # functions
+            functions_df.to_hdf(self._hdf_file(), 'functions')
             # aggregate states
             aggregate_states_df.to_hdf(self._hdf_file(), 'aggregate_states')
             # random states
@@ -112,25 +115,28 @@ class RunResults(object):
 
     @staticmethod
     def get_state_components(state):
-        return (state['population'], state['observables'], state['aggregate_state'])
+        return (state['population'], state['observables'], state['functions'], state['aggregate_state'])
 
     def convert_checkpoints(self):
         """ Convert the data in saved checkpoints into pandas dataframes
 
         Returns:
             :obj:`tuple` of pandas objects: dataframes of the components of a simulation checkpoint history
-                population_df, observables_df, aggregate_states_df, random_states_s
+                population_df, observables_df, functions_df, aggregate_states_df, random_states_s
         """
         # create pandas objects for species populations, aggregate states and simulation random states
         checkpoints = Checkpoint.list_checkpoints(self.results_dir)
         first_checkpoint = Checkpoint.get_checkpoint(self.results_dir, time=0)
-        species_pop, observables, aggregate_state = self.get_state_components(first_checkpoint.state)
+        species_pop, observables, functions, aggregate_state = self.get_state_components(first_checkpoint.state)
 
         species_ids = species_pop.keys()
         population_df = pandas.DataFrame(index=checkpoints, columns=species_ids, dtype=numpy.float64)
 
         observable_ids = observables.keys()
         observables_df = pandas.DataFrame(index=checkpoints, columns=observable_ids, dtype=numpy.float64)
+
+        function_ids = functions.keys()
+        functions_df = pandas.DataFrame(index=checkpoints, columns=function_ids, dtype=numpy.float64)
 
         compartments = list(aggregate_state['compartments'].keys())
         properties = list(aggregate_state['compartments'][compartments[0]].keys())
@@ -143,13 +149,16 @@ class RunResults(object):
         for time in Checkpoint.list_checkpoints(self.results_dir):
 
             checkpoint = Checkpoint.get_checkpoint(self.results_dir, time=time)
-            species_populations, observables, aggregate_state = self.get_state_components(checkpoint.state)
+            species_populations, observables, functions, aggregate_state = self.get_state_components(checkpoint.state)
 
             for species_id, population in species_populations.items():
                 population_df.loc[time, species_id] = population
 
             for observable_id, observable in observables.items():
                 observables_df.loc[time, observable_id] = observable
+
+            for function_id, function in functions.items():
+                functions_df.loc[time, function_id] = function
 
             compartment_states = aggregate_state['compartments']
             for compartment_id, agg_states in compartment_states.items():
@@ -158,4 +167,4 @@ class RunResults(object):
 
             random_states_s[time] = pickle.dumps(checkpoint.random_state)
 
-        return (population_df, observables_df, aggregate_states_df, random_states_s)
+        return (population_df, observables_df, functions_df, aggregate_states_df, random_states_s)

@@ -86,13 +86,24 @@ class DynamicCompartment(DynamicComponent):
         
         wc_lang_model.init_density.value = self.init_mass / self.init_volume
 
-    def mass(self):
+    def mass(self, time=None):
         """ Provide the total current mass of all species in this `DynamicCompartment`
+
+        Args:
+            time (number, optional): the current simulation time; 
 
         Returns:
             :obj:`float`: this compartment's total current mass (g)
         """
-        return self.species_population.compartmental_mass(self.id)
+        return self.species_population.compartmental_mass(self.id, time=time)
+
+    def eval(self, time=None):
+        """ Provide the population of this species
+
+        Args:
+            time (number, optional): the current simulation time; 
+        """
+        return self.mass(time=time)
 
     def __str__(self):
         """ Provide a string representation of this `DynamicCompartment`
@@ -204,7 +215,8 @@ class DynamicModel(object):
                 stop_condition, stop_condition.expression._parsed_expression)
 
         # prepare dynamic expressions
-        for dynamic_expression_group in [self.dynamic_observables, self.dynamic_functions,
+        for dynamic_expression_group in [self.dynamic_observables, 
+                                         self.dynamic_functions,
                                          self.dynamic_stop_conditions]:
             for dynamic_expression in dynamic_expression_group.values():
                 dynamic_expression.prepare()
@@ -258,6 +270,25 @@ class DynamicModel(object):
         for dyn_observable_id in observables_to_eval:
             evaluated_observables[dyn_observable_id] = self.dynamic_observables[dyn_observable_id].eval(time)
         return evaluated_observables
+
+    def eval_dynamic_functions(self, time, functions_to_eval=None):
+        """ Evaluate some dynamic functions at time `time`
+
+        Args:
+            time (:obj:`float`): the simulation time
+            functions_to_eval (:obj:`list` of :obj:`str`, optional): if provided, ids of the functions to
+                evaluate; otherwise, evaluate all functions
+
+        Returns:
+            :obj:`dict`: map from the IDs of dynamic functions in `functions_to_eval` to their
+                values at simulation time `time`
+        """
+        if functions_to_eval is None:
+            functions_to_eval = list(self.dynamic_functions.keys())
+        evaluated_functions = {}
+        for dyn_function_id in functions_to_eval:
+            evaluated_functions[dyn_function_id] = self.dynamic_functions[dyn_function_id].eval(time)
+        return evaluated_functions
 
     def get_num_submodels(self):
         """ Provide the number of submodels

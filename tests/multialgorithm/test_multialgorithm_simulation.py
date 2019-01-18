@@ -248,8 +248,8 @@ class TestRunSSASimulation(unittest.TestCase):
         for time in MultialgorithmCheckpoint.list_checkpoints(self.results_dir):
             ckpt = MultialgorithmCheckpoint.get_checkpoint(self.results_dir, time=time)
             if prev_ckpt:
-                prev_species_pops, prev_observables, prev_aggregate_state = RunResults.get_state_components(prev_ckpt.state)
-                species_pops, observables, aggregate_state = RunResults.get_state_components(ckpt.state)
+                prev_species_pops, prev_observables, prev_functions, prev_aggregate_state = RunResults.get_state_components(prev_ckpt.state)
+                species_pops, observables, functions, aggregate_state = RunResults.get_state_components(ckpt.state)
                 self.assertTrue(species_pops[specie] < prev_species_pops[specie])
                 self.assertTrue(aggregate_state['cell mass'] < prev_aggregate_state['cell mass'])
             prev_ckpt = ckpt

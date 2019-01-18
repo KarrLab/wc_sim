@@ -25,7 +25,7 @@ num_events, results_dir = simulation.run(end_time=30, results_dir=results_dir, c
 run_results = RunResults(results_dir)
 
 # view results
-# run_results contains 'populations', 'observables', 'aggregate_states', 'random_states', and 'metadata'
+# run_results contains 'populations', 'observables', 'functions', 'aggregate_states', 'random_states', and 'metadata'
 for component in RunResults.COMPONENTS:
     print('\ncomponent:', component)
     print(run_results.get(component))
