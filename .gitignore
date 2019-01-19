@@ -72,8 +72,11 @@ README.rst
 
 # temporary files
 .~lock*
+.~*.xlsx
 
 # Jupyter files #
 #################
 .ipynb_checkpoints
 
+# test results
+tests/multialgorithm/results/
