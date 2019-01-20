@@ -429,10 +429,10 @@ class MetabolismAndGeneExpressionTestCase(unittest.TestCase):
         ala_e_fold_change = pops['ala[e]'].values[-1] / pops['ala[e]'].values[0]
         amp_e_fold_change = pops['amp[e]'].values[-1] / pops['amp[e]'].values[0]
 
-        self.assertGreater(ala_c_fold_change, 1.9)
-        self.assertGreater(amp_c_fold_change, 1.9)
-        self.assertLess(ala_c_fold_change, 2.1)
-        self.assertLess(amp_c_fold_change, 2.1)
+        self.assertGreater(ala_c_fold_change, 1.75)
+        self.assertGreater(amp_c_fold_change, 1.75)
+        self.assertLess(ala_c_fold_change, 2.25)
+        self.assertLess(amp_c_fold_change, 2.25)
 
         self.assertGreater(ala_e_fold_change, 0.95)
         self.assertGreater(amp_e_fold_change, 0.95)
