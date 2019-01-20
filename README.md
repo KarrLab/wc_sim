@@ -1,4 +1,4 @@
-[//]: # ( [![PyPI package](https://img.shields.io/pypi/v/wc_sim.svg)](https://pypi.python.org/pypi/wc_sim) )
+[![PyPI package](https://img.shields.io/pypi/v/wc_sim.svg)](https://pypi.python.org/pypi/wc_sim)
 [![Documentation](https://readthedocs.org/projects/wc-sim/badge/?version=latest)](http://docs.karrlab.org/wc_sim)
 [![Test results](https://circleci.com/gh/KarrLab/wc_sim.svg?style=shield)](https://circleci.com/gh/KarrLab/wc_sim)
 [![Test coverage](https://coveralls.io/repos/github/KarrLab/wc_sim/badge.svg)](https://coveralls.io/github/KarrLab/wc_sim)
