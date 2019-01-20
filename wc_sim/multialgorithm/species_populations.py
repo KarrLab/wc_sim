@@ -889,7 +889,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             for species_type_index, species_type_id in list(enumerate(species_type_ids)):
                 for comp_index, compartment_id in list(enumerate(compartment_ids)):
                     for time_index in range(len(self._history['time'])):
-                        species_id = wc_lang.Species.gen_id_static(species_type_id, compartment_id)
+                        species_id = wc_lang.Species._gen_id(species_type_id, compartment_id)
                         if species_id in self._history['population']:
                             species_counts_hist[species_type_index, comp_index, time_index] = \
                                 self._history['population'][species_id][time_index]

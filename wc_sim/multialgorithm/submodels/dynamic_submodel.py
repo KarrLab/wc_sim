@@ -151,8 +151,7 @@ class DynamicSubmodel(ApplicationSimulationObject):
             :obj:`bool`: True if `reaction` is stoichiometrically enabled
         """
         for participant in reaction.participants:
-            species_id = Species.gen_id_static(participant.species.species_type.id,
-                                        participant.species.compartment.id)
+            species_id = participant.species.gen_id()
             count = self.local_species_population.read_one(self.time, species_id)
             # 'participant.coefficient < 0' determines whether the participant is a reactant
             is_reactant = participant.coefficient < 0
@@ -188,8 +187,7 @@ class DynamicSubmodel(ApplicationSimulationObject):
         """
         adjustments = {}
         for participant in reaction.participants:
-            species_id = Species.gen_id_static(participant.species.species_type.id,
-                                        participant.species.compartment.id)
+            species_id = participant.species.gen_id()
             if not species_id in adjustments:
                 adjustments[species_id] = 0
             adjustments[species_id] += participant.coefficient
