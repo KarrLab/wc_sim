@@ -394,8 +394,7 @@ class MetabolismAndGeneExpressionTestCase(unittest.TestCase):
         self.tempdir = tempfile.mkdtemp()
 
     def tearDown(self):
-        pass
-        # shutil.rmtree(self.tempdir)
+        shutil.rmtree(self.tempdir)
 
     def test(self):
         model_filename = os.path.join(os.path.dirname(__file__), 'fixtures', 'MetabolismAndGeneExpression.xlsx')
@@ -408,7 +407,6 @@ class MetabolismAndGeneExpressionTestCase(unittest.TestCase):
                                             results_dir=self.tempdir)
 
         # get results
-        print(results_dirname)
         results = RunResults(results_dirname)
 
         agg_states = results.get('aggregate_states')
