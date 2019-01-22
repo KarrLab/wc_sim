@@ -15,6 +15,7 @@ from scipy.constants import Avogadro
 from wc_lang.io import Reader
 from wc_sim.multialgorithm.model_utilities import ModelUtilities
 from wc_utils.util.ontology import wcm_ontology
+from wc_utils.util.units import unit_registry
 
 
 class TestModelUtilities(unittest.TestCase):
@@ -78,9 +79,11 @@ class TestModelUtilities(unittest.TestCase):
         compartment_c = model.compartments.create(id='c', mean_init_volume=1.)
 
         species_types = {}
-        for cu in wc_lang.ConcentrationUnit:
-            id = "species_type_{}".format(cu.name.replace(' ', '_'))
-            species_types[cu.name] = model.species_types.create(id=id, molecular_weight=10)
+        cus_species_types = {}
+        for cu in wc_lang.DistributionInitConcentration.units.choices:
+            id = str(cu).replace(' ', '_')
+            species_types[id] = model.species_types.create(id=id, molecular_weight=10)
+            cus_species_types[id] = cu
 
         for other in ['no_units', 'no_concentration', 'no_such_concentration_unit']:
             species_types[other] = model.species_types.create(id=other, molecular_weight=10)
@@ -94,9 +97,9 @@ class TestModelUtilities(unittest.TestCase):
         conc_value = 2.
         std_value = 0.
         for key, specie in species.items():
-            if key in wc_lang.ConcentrationUnit.__members__:
+            if key in cus_species_types:
                 wc_lang.DistributionInitConcentration(species=specie, mean=conc_value, std=std_value,
-                                                      units=wc_lang.ConcentrationUnit[key])
+                                                      units=cus_species_types[key])
             elif key == 'no_units':
                 wc_lang.DistributionInitConcentration(species=specie, mean=conc_value, std=std_value)
             elif key == 'no_concentration':
@@ -106,21 +109,21 @@ class TestModelUtilities(unittest.TestCase):
         random_state = numpy.random.RandomState()
         copy_number = conc_to_molecules(species['molecule'], species['molecule'].compartment.mean_init_volume, random_state)
         self.assertEqual(copy_number, conc_value)
-        copy_number = conc_to_molecules(species['M'], species['M'].compartment.mean_init_volume, random_state)
+        copy_number = conc_to_molecules(species['molar'], species['molar'].compartment.mean_init_volume, random_state)
         self.assertEqual(copy_number, conc_value * Avogadro)
         copy_number = conc_to_molecules(species['no_units'], species['no_units'].compartment.mean_init_volume, random_state)
         self.assertEqual(copy_number, conc_value * Avogadro)
-        copy_number = conc_to_molecules(species['mM'], species['mM'].compartment.mean_init_volume, random_state)
+        copy_number = conc_to_molecules(species['millimolar'], species['millimolar'].compartment.mean_init_volume, random_state)
         self.assertEqual(copy_number, 10**-3 * conc_value * Avogadro)
-        copy_number = conc_to_molecules(species['uM'], species['uM'].compartment.mean_init_volume, random_state)
+        copy_number = conc_to_molecules(species['micromolar'], species['micromolar'].compartment.mean_init_volume, random_state)
         self.assertEqual(copy_number, 10**-6 * conc_value * Avogadro)
-        copy_number = conc_to_molecules(species['nM'], species['nM'].compartment.mean_init_volume, random_state)
+        copy_number = conc_to_molecules(species['nanomolar'], species['nanomolar'].compartment.mean_init_volume, random_state)
         self.assertEqual(copy_number, 10**-9 * conc_value * Avogadro)
-        copy_number = conc_to_molecules(species['pM'], species['pM'].compartment.mean_init_volume, random_state)
+        copy_number = conc_to_molecules(species['picomolar'], species['picomolar'].compartment.mean_init_volume, random_state)
         self.assertEqual(copy_number, 10**-12 * conc_value * Avogadro)
-        copy_number = conc_to_molecules(species['fM'], species['fM'].compartment.mean_init_volume, random_state)
+        copy_number = conc_to_molecules(species['femtomolar'], species['femtomolar'].compartment.mean_init_volume, random_state)
         self.assertAlmostEqual(copy_number, 10**-15 * conc_value * Avogadro, delta=1)
-        copy_number = conc_to_molecules(species['aM'], species['aM'].compartment.mean_init_volume, random_state)
+        copy_number = conc_to_molecules(species['attomolar'], species['attomolar'].compartment.mean_init_volume, random_state)
         self.assertAlmostEqual(copy_number, 10**-18 * conc_value * Avogadro, delta=1)
         copy_number = conc_to_molecules(species['no_concentration'],
                                         species['no_concentration'].compartment.mean_init_volume, random_state)
@@ -137,6 +140,7 @@ class TestModelUtilities(unittest.TestCase):
         with self.assertRaises(ValueError):
             ModelUtilities.concentration_to_molecules(species_tmp, species_tmp.compartment.mean_init_volume,
                 random_state)
+        
         species_tmp2 = wc_lang.Species(species_type=species_type,
                                        compartment=compartment_c)
         species_tmp2.id = species_tmp2.gen_id()

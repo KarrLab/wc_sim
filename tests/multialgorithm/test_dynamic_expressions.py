@@ -8,17 +8,18 @@
 from math import log
 from obj_model.expression import Expression
 from wc_lang import (Model,
-                     Species, MoleculeCountUnit,
-                     DistributionInitConcentration, ConcentrationUnit,
+                     Species,
+                     DistributionInitConcentration,
                      Observable, ObservableExpression,
                      Function, FunctionExpression,
-                     StopCondition, StopConditionUnit,
+                     StopCondition,
                      Parameter)
 from wc_sim.multialgorithm.dynamic_components import DynamicModel
 from wc_sim.multialgorithm.dynamic_expressions import (SimTokCodes, WcSimToken,
                                                        DynamicFunction, DynamicExpression, DynamicParameter)
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm.species_populations import MakeTestLSP
+from wc_utils.util.units import unit_registry
 import re
 import timeit
 import unittest
@@ -37,7 +38,7 @@ class TestDynamicExpression(unittest.TestCase):
         }
         self.param_value = 4
         objects[Parameter]['param'] = param = model.parameters.create(id='param', value=self.param_value,
-                                                                      units='dimensionless')
+                                                                      units=unit_registry.parse_units('dimensionless'))
 
         self.fun_expr = expr = 'param - 2 + max(param, 10)'
         fun1 = Expression.make_obj(model, Function, 'fun1', expr, objects)
@@ -161,7 +162,7 @@ class TestAllDynamicExpressionTypes(unittest.TestCase):
             specie.id = specie.gen_id()
             objects[Species][specie.id] = specie
             conc = model.distribution_init_concentrations.create(
-                species=specie, mean=0, units=ConcentrationUnit.M)
+                species=specie, mean=0, units=unit_registry.parse_units('M'))
             conc.id = conc.gen_id()
 
         self.init_pop = {
@@ -172,8 +173,9 @@ class TestAllDynamicExpressionTypes(unittest.TestCase):
         # map wc_lang object -> expected value
         self.expected_values = expected_values = {}
         objects[Parameter]['param'] = param = model.parameters.create(id='param', value=4,
-                                                                      units='dimensionless')
-        objects[Parameter]['molecule_units'] = molecule_units = model.parameters.create(id='molecule_units', value=1., units='molecule')
+                                                                      units=unit_registry.parse_units('dimensionless'))
+        objects[Parameter]['molecule_units'] = molecule_units = model.parameters.create(id='molecule_units', value=1., 
+            units=unit_registry.parse_units('molecule'))
         expected_values[param] = param.value
         expected_values[molecule_units] = molecule_units.value
 
@@ -181,16 +183,16 @@ class TestAllDynamicExpressionTypes(unittest.TestCase):
         wc_lang_obj_specs = [
             # just reference param:
             (Function, 'param - 2 + max(param, 10)', 12, 'dimensionless'),
-            (StopCondition, '10 < 2 * log10(100) + 2 * param', True, StopConditionUnit.dimensionless),
+            (StopCondition, '10 < 2 * log10(100) + 2 * param', True, unit_registry.parse_units('dimensionless')),
             # reference other model types:
-            (Observable, 'a[c1]', 10, MoleculeCountUnit.molecule),
-            (Observable, '2 * a[c1] - b[c2]', 0, MoleculeCountUnit.molecule),
-            (Function, 'observable_1 + min(observable_2, 10 * molecule_units)', 10, MoleculeCountUnit.molecule),
-            (StopCondition, 'observable_1 < param * molecule_units + function_1', True, StopConditionUnit.dimensionless),
+            (Observable, 'a[c1]', 10, unit_registry.parse_units('molecule')),
+            (Observable, '2 * a[c1] - b[c2]', 0, unit_registry.parse_units('molecule')),
+            (Function, 'observable_1 + min(observable_2, 10 * molecule_units)', 10, unit_registry.parse_units('molecule')),
+            (StopCondition, 'observable_1 < param * molecule_units + function_1', True, unit_registry.parse_units('dimensionless')),
             # reference same model type:
-            (Observable, '3 * observable_1 + b[c2]', 50, MoleculeCountUnit.molecule),
-            (Function, '2 * function_2', 20, MoleculeCountUnit.molecule.name),
-            (Function, '3 * observable_1 + function_1 * molecule_units', 42, MoleculeCountUnit.molecule.name)
+            (Observable, '3 * observable_1 + b[c2]', 50, unit_registry.parse_units('molecule')),
+            (Function, '2 * function_2', 20, unit_registry.parse_units('molecule')),
+            (Function, '3 * observable_1 + function_1 * molecule_units', 42, unit_registry.parse_units('molecule'))
         ]
 
         self.expression_models = expression_models = [Function, StopCondition, Observable]

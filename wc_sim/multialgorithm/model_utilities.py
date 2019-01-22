@@ -8,12 +8,13 @@
 
 import collections
 import numpy
+import pint
 import re
 from enum import Enum
 from numpy.random import RandomState
 from scipy.constants import Avogadro
-from wc_lang import ConcentrationUnit
 from wc_utils.util.list import difference
+from wc_utils.util.units import unit_registry
 
 
 class ModelUtilities(object):
@@ -90,7 +91,7 @@ class ModelUtilities(object):
 
         Args:
             species (:obj:`Species`): a `Species` instance; the `species.concentration.units` must
-                be an instance of `ConcentrationUnit`; `ConcentrationUnit['mol dm^-2']` is not supported
+                be an instance of `unit_registry.Unit` and in `species.concentration.units.choices`
             volume (:obj:`float`): volume for calculating copy numbers
             random_state (:obj:`RandomState`): random state for sampling from distribution of initial
                 concentrations
@@ -113,19 +114,24 @@ class ModelUtilities(object):
                 std = mean / 10.
             conc = max(0., random_state.normal(mean, std))
 
-            units = dist_conc.units
-            if units == ConcentrationUnit.molecule:
-                return round(conc)
-            elif isinstance(units, ConcentrationUnit) and ConcentrationUnit.Meta[units]['volume_units']['kind'] == 'litre':
-                scale = 10 ** ConcentrationUnit.Meta[units]['substance_units']['scale']
+            if not isinstance(dist_conc.units, unit_registry.Unit):
+                raise ValueError('Unsupported units "{}"'.format(dist_conc.units))
+            units = unit_registry.parse_expression(str(dist_conc.units))
+
+            try:
+                scale = units.to(unit_registry.parse_units('molecule'))
+                return round(scale.magnitude * conc)
+            except pint.DimensionalityError:
+                pass
+            
+            try:
+                scale = units.to(unit_registry.parse_units('M'))
                 # population must be rounded to the closest integer to avoid truncating small populations
-                return int(round(scale * conc * volume * Avogadro))
-            # elif units == ConcentrationUnit['mol dm^-2']:
-            #    raise ValueError("ConcentrationUnit 'mol dm^-2' not supported")
-            elif isinstance(units, Enum):                
-                raise ValueError("Unsupported unit '{}'".format(units.name))
-            else:
-                raise ValueError("Unsupported unit '{}'".format(units))
+                return int(round(scale.magnitude * conc * volume * Avogadro))
+            except pint.DimensionalityError as error:
+                pass
+
+            raise ValueError("Unsupported unit '{}'".format(dist_conc.units))
 
     @staticmethod
     def parse_species_id(species_id):

@@ -11,6 +11,7 @@ from test.support import EnvironmentVarGuard
 from wc_sim.multialgorithm.run_results import RunResults
 from wc_sim.multialgorithm.simulation import Simulation
 from wc_utils.util.ontology import wcm_ontology
+from wc_utils.util.units import unit_registry
 import numpy
 import numpy.testing
 import os
@@ -56,14 +57,14 @@ class TwoSpeciesTestCase(unittest.TestCase):
         spec_constant.id = spec_constant.gen_id()
         spec_dynamic.id = spec_dynamic.gen_id()
         conc_constant = model.distribution_init_concentrations.create(
-            species=spec_constant, std=0., units=wc_lang.ConcentrationUnit.molecule)
+            species=spec_constant, std=0., units=unit_registry.parse_units('molecule'))
         conc_dynamic = model.distribution_init_concentrations.create(
-            species=spec_dynamic, std=0., units=wc_lang.ConcentrationUnit.molecule)
+            species=spec_dynamic, std=0., units=unit_registry.parse_units('molecule'))
         conc_constant.id = conc_constant.gen_id()
         conc_dynamic.id = conc_dynamic.gen_id()
 
-        density = comp.init_density = model.parameters.create(id='density', value=1., units='g l^-1')
-        volume = model.functions.create(id='volume', units='l')
+        density = comp.init_density = model.parameters.create(id='density', value=1., units=unit_registry.parse_units('g l^-1'))
+        volume = model.functions.create(id='volume', units=unit_registry.parse_units('l'))
         volume.expression, error = wc_lang.FunctionExpression.deserialize(f'{comp.id} / {density.id}', {
             wc_lang.Compartment: {comp.id: comp},
             wc_lang.Parameter: {density.id: density}})
@@ -78,7 +79,7 @@ class TwoSpeciesTestCase(unittest.TestCase):
         rxn_syn_constant.participants.create(species=spec_constant, coefficient=1)
         rl_syn_constant = model.rate_laws.create(reaction=rxn_syn_constant)
         rl_syn_constant.id = rl_syn_constant.gen_id()
-        k_syn_constant = model.parameters.create(id='k_syn_constant', value=0., units='s^-1')
+        k_syn_constant = model.parameters.create(id='k_syn_constant', value=0., units=unit_registry.parse_units('s^-1'))
         rl_syn_constant.expression, error = wc_lang.RateLawExpression.deserialize(k_syn_constant.id, {
             wc_lang.Parameter: {
                 k_syn_constant.id: k_syn_constant,
@@ -90,7 +91,7 @@ class TwoSpeciesTestCase(unittest.TestCase):
         rxn_deg_constant.participants.create(species=spec_constant, coefficient=-1)
         rl_deg_constant = model.rate_laws.create(reaction=rxn_deg_constant)
         rl_deg_constant.id = rl_deg_constant.gen_id()
-        k_deg_constant = model.parameters.create(id='k_deg_constant', value=0., units='s^-1 molecule^-1')
+        k_deg_constant = model.parameters.create(id='k_deg_constant', value=0., units=unit_registry.parse_units('s^-1 molecule^-1'))
         rl_deg_constant.expression, error = wc_lang.RateLawExpression.deserialize(f'{k_deg_constant.id} * {spec_constant.id}', {
             wc_lang.Parameter: {
                 k_deg_constant.id: k_deg_constant,
@@ -105,7 +106,7 @@ class TwoSpeciesTestCase(unittest.TestCase):
         rxn_syn_dynamic.participants.create(species=spec_dynamic, coefficient=1)
         rl_syn_dynamic = model.rate_laws.create(reaction=rxn_syn_dynamic)
         rl_syn_dynamic.id = rl_syn_dynamic.gen_id()
-        k_syn_dynamic = model.parameters.create(id='k_syn_dynamic', units='s^-1')
+        k_syn_dynamic = model.parameters.create(id='k_syn_dynamic', units=unit_registry.parse_units('s^-1'))
         rl_syn_dynamic.expression, error = wc_lang.RateLawExpression.deserialize(k_syn_dynamic.id, {
             wc_lang.Parameter: {
                 k_syn_dynamic.id: k_syn_dynamic,
@@ -117,7 +118,7 @@ class TwoSpeciesTestCase(unittest.TestCase):
         rxn_deg_dynamic.participants.create(species=spec_dynamic, coefficient=-1)
         rl_deg_dynamic = model.rate_laws.create(reaction=rxn_deg_dynamic)
         rl_deg_dynamic.id = rl_deg_dynamic.gen_id()
-        k_deg_dynamic = model.parameters.create(id='k_deg_dynamic', units='s^-1 molecule^-1')
+        k_deg_dynamic = model.parameters.create(id='k_deg_dynamic', units=unit_registry.parse_units('s^-1 molecule^-1'))
         rl_deg_dynamic.expression, error = wc_lang.RateLawExpression.deserialize(f'{k_deg_dynamic.id} * {spec_dynamic.id}', {
             wc_lang.Parameter: {
                 k_deg_dynamic.id: k_deg_dynamic,
@@ -129,7 +130,7 @@ class TwoSpeciesTestCase(unittest.TestCase):
         assert error is None, str(error)
 
         # other parameters
-        Avogadro = model.parameters.create(id='Avogadro', value=scipy.constants.Avogadro, units='molecule')
+        Avogadro = model.parameters.create(id='Avogadro', value=scipy.constants.Avogadro, units=unit_registry.parse_units('molecule'))
 
         # return model
         return model
@@ -297,7 +298,7 @@ class TwoSpeciesTestCase(unittest.TestCase):
         rxn_syn_dynamic = model.reactions.get_one(id='rxn_synthesis_dynamic')
         rl_syn_dynamic = rxn_syn_dynamic.rate_laws[0]
         k_syn_dynamic = model.parameters.get_one(id='k_syn_dynamic')
-        k_syn_dynamic.units = 's^-1 l^-1 molecule^-1'
+        k_syn_dynamic.units = unit_registry.parse_units('s^-1 l^-1 molecule^-1')
         Avogadro = model.parameters.get_one(id='Avogadro')
         rl_syn_dynamic.expression.parameters = []
         rl_syn_dynamic.expression, error = wc_lang.RateLawExpression.deserialize(f'{k_syn_dynamic.id} * {volume.id} * {Avogadro.id}', {

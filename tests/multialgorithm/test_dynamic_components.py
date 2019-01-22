@@ -9,7 +9,7 @@
 
 from scipy.constants import Avogadro
 from wc_lang import (Model, Compartment, Species, Parameter,
-                     DistributionInitConcentration, ConcentrationUnit,
+                     DistributionInitConcentration,
                      Observable, ObservableExpression,
                      Function, FunctionExpression)
 from wc_lang.io import Reader
@@ -18,6 +18,7 @@ from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimula
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation, MakeTestLSP
 from wc_utils.util.rand import RandomStateManager
+from wc_utils.util.units import unit_registry
 import numpy
 import numpy.testing
 import os
@@ -46,7 +47,7 @@ class TestDynamicCompartment(unittest.TestCase):
 
         self.compartment = Compartment(id=comp_id, name='name', mean_init_volume=self.mean_init_volume,
                                        std_init_volume=self.mean_init_volume / 10.)
-        self.compartment.init_density = Parameter(id='density_{}'.format(comp_id), value=1100., units='g l^-1')
+        self.compartment.init_density = Parameter(id='density_{}'.format(comp_id), value=1100., units=unit_registry.parse_units('g l^-1'))
 
         self.dynamic_compartment = DynamicCompartment(None, self.local_species_pop, self.compartment, self.species_ids)
 
@@ -190,7 +191,7 @@ class TestDynamicModel(unittest.TestCase):
             specie = model.species.create(species_type=species_types[st_idx], compartment=comp)
             specie.id = specie.gen_id()
             conc = model.distribution_init_concentrations.create(
-                species=specie, mean=0, units=ConcentrationUnit.M)
+                species=specie, mean=0, units=unit_registry.parse_units('M'))
             conc.id = conc.gen_id()
             species.append(specie)
 
@@ -259,7 +260,7 @@ class TestDynamicModel(unittest.TestCase):
             specie = model.species.create(species_type=species_types[st_idx], compartment=comp)
             specie.id = specie.gen_id()
             conc = model.distribution_init_concentrations.create(
-                species=specie, mean=0, units=ConcentrationUnit.M)
+                species=specie, mean=0, units=unit_registry.parse_units('M'))
             conc.id = conc.gen_id()
             species.append(specie)
 

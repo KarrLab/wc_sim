@@ -18,6 +18,7 @@ import copy
 from wc_sim.core.sim_metadata import SimulationMetadata
 from wc_sim.log.checkpoint import Checkpoint, CheckpointLogger
 from wc_utils.util.ontology import wcm_ontology
+from wc_utils.util.units import unit_registry
 import wc_sim.core.sim_config
 import wc_lang
 import wc_utils.util.types
@@ -172,8 +173,8 @@ def build_mock_model():
     species_R = wc_lang.Species(id='R[c]', species_type=species_type_R, compartment=compartment_c)
     species = [species_L, species_R]
 
-    wc_lang.Concentration(species=species_L, value=1., units='molecules')
-    wc_lang.Concentration(species=species_R, value=0., units='molecules')
+    wc_lang.Concentration(species=species_L, value=1., units=unit_registry.parse_units('molecule'))
+    wc_lang.Concentration(species=species_R, value=0., units=unit_registry.parse_units('molecule'))
 
     reaction = submodel.reactions.create(id='reaction')
     reaction.rate_laws.create(direction=wc_lang.RateLawDirection.forward,
@@ -181,7 +182,7 @@ def build_mock_model():
     reaction.participants.create(species=species_L, coefficient=-1)
     reaction.participants.create(species=species_R, coefficient=1)
 
-    model.parameters.create(id='mean_doubling_time', value=30. * 60, units='s'),
+    model.parameters.create(id='mean_doubling_time', value=30. * 60, units=unit_registry.parse_units('s')),
 
     return model
 

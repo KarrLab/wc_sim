@@ -13,12 +13,13 @@ from wc_lang import (Model, Submodel, Compartment,
                      SpeciesType, Species,
                      Observable, Function, FunctionExpression,
                      Reaction, RateLawDirection, RateLawExpression, Parameter,
-                     DistributionInitConcentration, ConcentrationUnit,
+                     DistributionInitConcentration,
                      Validator)
 from wc_lang.transform import PrepareForWcSimTransform
 from wc_utils.util.enumerate import CaseInsensitiveEnum
 from wc_utils.util.ontology import wcm_ontology
 from wc_utils.util.string import indent_forest
+from wc_utils.util.units import unit_registry
 import re
 
 
@@ -104,7 +105,7 @@ class MakeModel(object):
         # parameters
         avogadro_param = model.parameters.get_or_create(id='Avogadro')
         avogadro_param.value = Avogadro
-        avogadro_param.units = 'molecule mol^-1'
+        avogadro_param.units = unit_registry.parse_units('molecule mol^-1')
 
         objects[Parameter][avogadro_param.id] = avogadro_param
 
@@ -115,10 +116,11 @@ class MakeModel(object):
                                          std_init_volume=init_vol / 10.)
         objects[Compartment][comp.id] = comp
 
-        density = comp.init_density = model.parameters.create(id='density_compt_{}'.format(submodel_num), value=1100, units='g l^-1')
+        density = comp.init_density = model.parameters.create(id='density_compt_{}'.format(submodel_num), 
+            value=1100, units=unit_registry.parse_units('g l^-1'))
         objects[Parameter][density.id] = density
 
-        volume = model.functions.create(id='volume_compt_{}'.format(submodel_num), units='l')
+        volume = model.functions.create(id='volume_compt_{}'.format(submodel_num), units=unit_registry.parse_units('l'))
         volume.expression, error = FunctionExpression.deserialize('{} / {}'.format(comp.id, density.id), objects={
             Compartment: {comp.id: comp},
             Parameter: {density.id: density},
@@ -141,12 +143,12 @@ class MakeModel(object):
                     std = mean / 10.
                 conc = DistributionInitConcentration(
                     species=specie, mean=mean, std=std,
-                    units=ConcentrationUnit.M.value,
+                    units=unit_registry.parse_units('M'),
                     model=model)
             else:
                 conc = DistributionInitConcentration(
                     species=specie, mean=default_concentration, std=default_std,
-                    units=ConcentrationUnit.M.value,
+                    units=unit_registry.parse_units('M'),
                     model=model)
             conc.id = conc.gen_id()
             obs_id = 'obs_{}_{}'.format(submodel_num, i)
@@ -174,18 +176,18 @@ class MakeModel(object):
             reaction.participants.create(species=forward_reactant, coefficient=-1)
             if rate_law_type.name == 'constant':
                 param = model.parameters.create(id='k_cat_{}_1_for'.format(submodel_num),
-                                                value=1., units='s^-1')
+                                                value=1., units=unit_registry.parse_units('s^-1'))
                 expression_str = param.id
             elif rate_law_type.name == 'reactant_pop':
                 param = model.parameters.create(id='k_cat_{}_1_for'.format(submodel_num),
-                                                value=1., units='M^-1 s^-1')
+                                                value=1., units=unit_registry.parse_units('M^-1 s^-1'))
                 expression_str = '{} * {} / {} / {}'.format(
                     param.id, forward_reactant.id,
                     avogadro_param.id,
                     forward_reactant.compartment.init_density.function_expressions[0].function.id)
             elif rate_law_type.name == 'product_pop':
                 param = model.parameters.create(id='k_cat_{}_1_for'.format(submodel_num),
-                                                value=1., units='M^-1 s^-1')
+                                                value=1., units=unit_registry.parse_units('M^-1 s^-1'))
                 expression_str = '{} * {} / {} / {}'.format(
                     param.id, forward_product.id,
                     avogadro_param.id,
@@ -209,18 +211,18 @@ class MakeModel(object):
                 # RateLawEquations identical to the above must be recreated so back references work
                 if rate_law_type.name == 'constant':
                     param = model.parameters.create(id='k_cat_{}_1_bck'.format(submodel_num),
-                                                    value=1., units='s^-1')
+                                                    value=1., units=unit_registry.parse_units('s^-1'))
                     expression_str = param.id
                 elif rate_law_type.name == 'reactant_pop':
                     param = model.parameters.create(id='k_cat_{}_1_bck'.format(submodel_num),
-                                                    value=1., units='M^-1 s^-1')
+                                                    value=1., units=unit_registry.parse_units('M^-1 s^-1'))
                     expression_str = '{} * {} / {} / {}'.format(
                         param.id, backward_reactant.id,
                         avogadro_param.id,
                         backward_reactant.compartment.init_density.function_expressions[0].function.id)
                 elif rate_law_type.name == 'product_pop':
                     param = model.parameters.create(id='k_cat_{}_1_bck'.format(submodel_num),
-                                                    value=1., units='M^-1 s^-1')
+                                                    value=1., units=unit_registry.parse_units('M^-1 s^-1'))
                     expression_str = '{} * {} / {} / {}'.format(
                         param.id, backward_product.id,
                         avogadro_param.id,

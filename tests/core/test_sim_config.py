@@ -17,6 +17,7 @@ import warnings
 import wc_lang
 
 from wc_sim.core import sim_config
+from wc_utils.util.units import unit_registry
 
 
 class TestSimulationConfig(unittest.TestCase):
@@ -115,8 +116,8 @@ class TestSimulationConfig(unittest.TestCase):
         model = wc_lang.Model()
         comp_1 = model.compartments.create(id='comp_1')
 
-        comp_1.init_density = model.parameters.create(id='density_comp_1', value=1100, units='g l^-1')
-        volume = model.functions.create(id='volume_comp_1', units='l')
+        comp_1.init_density = model.parameters.create(id='density_comp_1', value=1100, units=unit_registry.parse_units('g l^-1'))
+        volume = model.functions.create(id='volume_comp_1', units=unit_registry.parse_units('l'))
         volume.expression, error = wc_lang.FunctionExpression.deserialize('{} / {}'.format(comp_1.id, comp_1.init_density.id), {
             wc_lang.Compartment: {comp_1.id: comp_1},
             wc_lang.Parameter: {comp_1.init_density.id: comp_1.init_density},
@@ -128,10 +129,10 @@ class TestSimulationConfig(unittest.TestCase):
         species_1_comp_1.id = species_1_comp_1.gen_id()
         submodel = model.submodels.create(id='submodel_1')
         rxn_1 = model.reactions.create(id='rxn_1', submodel=submodel)
-        rl_1 = model.rate_laws.create(reaction=rxn_1, direction=wc_lang.RateLawDirection.forward, units=wc_lang.ReactionRateUnit['s^-1'])
-        k_cat = model.parameters.create(id='k_cat', value=1., units='s^-1')
-        K_m = model.parameters.create(id='K_m', value=1., units='M')
-        Avogadro = model.parameters.create(id='Avogadro', value=scipy.constants.Avogadro, units='molecule mol^-1')
+        rl_1 = model.rate_laws.create(reaction=rxn_1, direction=wc_lang.RateLawDirection.forward, units=unit_registry.parse_units('s^-1'))
+        k_cat = model.parameters.create(id='k_cat', value=1., units=unit_registry.parse_units('s^-1'))
+        K_m = model.parameters.create(id='K_m', value=1., units=unit_registry.parse_units('M'))
+        Avogadro = model.parameters.create(id='Avogadro', value=scipy.constants.Avogadro, units=unit_registry.parse_units('molecule mol^-1'))
 
         objects = {
             wc_lang.Compartment: {
