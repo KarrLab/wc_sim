@@ -16,15 +16,15 @@ import wc_sim
 class CliTestCase(unittest.TestCase):
 
     def test_raw_cli(self):
-        with mock.patch('sys.argv', ['wc_sim', '--help']):
+        with mock.patch('sys.argv', ['wc-sim', '--help']):
             with self.assertRaises(SystemExit) as context:
                 __main__.main()
-                self.assertRegex(context.Exception, 'usage: wc_sim')
+                self.assertRegex(context.Exception, 'usage: wc-sim')
 
-        with mock.patch('sys.argv', ['wc_sim']):
+        with mock.patch('sys.argv', ['wc-sim']):
             with abduct.captured(abduct.out(), abduct.err()) as (stdout, stderr):
                 __main__.main()
-                self.assertRegex(stdout.getvalue().strip(), 'usage: wc_sim')
+                self.assertRegex(stdout.getvalue().strip(), 'usage: wc-sim')
                 self.assertEqual(stderr.getvalue(), '')
 
     def test_get_version(self):

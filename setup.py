@@ -40,7 +40,7 @@ setuptools.setup(
     },
     entry_points={
         'console_scripts': [
-            'wc_sim = wc_sim.__main__:main',
+            'wc-sim = wc_sim.__main__:main',
         ],
     },
     install_requires=md.install_requires,
