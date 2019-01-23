@@ -29,7 +29,7 @@ class BaseController(cement.Controller):
 class App(cement.App):
     """ Command line application """
     class Meta:
-        label = 'wc_sim'
+        label = 'wc-sim'
         base_controller = 'base'
         handlers = [BaseController,] + multialgorithm_handlers
 
