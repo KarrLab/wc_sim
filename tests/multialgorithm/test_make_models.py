@@ -70,8 +70,8 @@ class TestMakeModels(unittest.TestCase):
                 Writer().run(filename, model, set_repo_metadata_from_path=False)
                 round_trip_model = Reader().run(filename)[Model][0]
                 self.assertEqual(round_trip_model.validate(), None)
-                self.assertTrue(round_trip_model.is_equal(model))
-                self.assertEqual(model.difference(round_trip_model), '')
+                self.assertTrue(round_trip_model.is_equal(model, tol=1e-8))
+                self.assertEqual(model.difference(round_trip_model, tol=1e-8), '')
 
         # unittest one of the models made
         # TODO (ARTHUR): test with multiple submodels
