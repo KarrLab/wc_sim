@@ -6,6 +6,7 @@
 :License: MIT
 """
 
+from wc_lang import Species
 from wc_sim.multialgorithm.make_models import MakeModel
 from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.multialgorithm.submodels.ssa import SsaSubmodel
@@ -22,7 +23,7 @@ class TestSsaSubmodel(unittest.TestCase):
             model.id,
             multialgorithm_simulation.dynamic_model,
             list(wc_lang_ssa_submodel.reactions),
-            wc_lang_ssa_submodel.get_species(),
+            wc_lang_ssa_submodel.get_children(kind='submodel', __type=Species),
             multialgorithm_simulation.get_dynamic_compartments(wc_lang_ssa_submodel),
             multialgorithm_simulation.local_species_population,
             default_center_of_mass=default_center_of_mass)

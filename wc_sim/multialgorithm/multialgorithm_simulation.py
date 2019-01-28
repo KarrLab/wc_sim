@@ -6,7 +6,7 @@
 :License: MIT
 """
 
-from wc_lang import Model, Species
+from wc_lang import Model, Compartment, Species
 from wc_sim.multialgorithm.dynamic_components import DynamicModel, DynamicCompartment
 from wc_sim.core.simulation_engine import SimulationEngine
 from wc_sim.multialgorithm.model_utilities import ModelUtilities
@@ -266,7 +266,7 @@ class MultialgorithmSimulation(object):
                 `DynamicCompartment`(s) that a new `DynamicSubmodel` needs
         """
         dynamic_compartments = {}
-        for comp in submodel.get_compartments():
+        for comp in submodel.get_children(kind='submodel', __type=Compartment):
             dynamic_compartments[comp.id] = self.dynamic_compartments[comp.id]
         return dynamic_compartments
 
@@ -317,7 +317,7 @@ class MultialgorithmSimulation(object):
         initial_fluxes = {}
         for submodel in model.get_submodels():
             if getattr(submodel.framework, 'id', None) in ('WCM:ordinary_differential_equations', 'WCM:dynamic_flux_balance_analysis'):
-                for specie in submodel.get_species():
+                for specie in submodel.get_children(kind='submodel', __type=Species):
                     initial_fluxes[specie.id] = 0.0
 
         return LocalSpeciesPopulation(
@@ -365,7 +365,7 @@ class MultialgorithmSimulation(object):
                     lang_submodel.id,
                     self.dynamic_model,
                     list(lang_submodel.reactions),
-                    lang_submodel.get_species(),
+                    lang_submodel.get_children(kind='submodel', __type=Species),
                     self.get_dynamic_compartments(lang_submodel),
                     self.local_species_population
                 )
@@ -378,7 +378,7 @@ class MultialgorithmSimulation(object):
                     lang_submodel.id,
                     self.dynamic_model,
                     list(lang_submodel.reactions),
-                    lang_submodel.get_species(),
+                    lang_submodel.get_children(kind='submodel', __type=Species),
                     self.get_dynamic_compartments(lang_submodel),
                     self.local_species_population,
                     self.args['fba_time_step']

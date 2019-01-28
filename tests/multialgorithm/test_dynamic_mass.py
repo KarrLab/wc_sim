@@ -447,7 +447,7 @@ class MetabolismAndGeneExpressionTestCase(unittest.TestCase):
                + pops['protein_rnase[c]'].values[0]
                + pops['protein_protease[c]'].values[0])
         self.assertGreater(prot_fold_change, 1.5)
-        self.assertLess(prot_fold_change, 2.75)
+        self.assertLess(prot_fold_change, 4.)
 
         # plot
         dirname = os.path.join(os.path.dirname(__file__), 'results')

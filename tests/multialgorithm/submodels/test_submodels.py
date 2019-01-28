@@ -7,7 +7,7 @@
 """
 
 from obj_model.utils import get_component_by_id
-from wc_lang import Model, Validator
+from wc_lang import Model, Species, Validator
 from wc_lang.io import Reader
 from wc_lang.transform import PrepareForWcSimTransform
 from wc_sim.core.simulation_engine import SimulationEngine
@@ -39,7 +39,7 @@ def make_dynamic_submodel_params(model, lang_submodel):
     return (lang_submodel.id,
             multialgorithm_simulation.dynamic_model,
             lang_submodel.reactions,
-            lang_submodel.get_species(),
+            lang_submodel.get_children(kind='submodel', __type=Species),
             multialgorithm_simulation.get_dynamic_compartments(lang_submodel),
             multialgorithm_simulation.local_species_population)
 

@@ -13,6 +13,7 @@ import re
 from enum import Enum
 from numpy.random import RandomState
 from scipy.constants import Avogadro
+from wc_lang import Species
 from wc_utils.util.list import difference
 from wc_utils.util.units import unit_registry
 
@@ -40,7 +41,7 @@ class ModelUtilities(object):
         '''
         species_to_submodels = collections.defaultdict(list)
         for submodel in model.get_submodels():
-            for species in submodel.get_species():
+            for species in submodel.get_children(kind='submodel', __type=Species):
                 species_to_submodels[species].append(submodel)
 
         private_species = dict()
