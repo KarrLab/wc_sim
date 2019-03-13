@@ -3,7 +3,7 @@ cement >= 3.0.0
 cobra
 matplotlib
 numpy
-git+https://github.com/KarrLab/obj_model.git#egg=obj_model-0.0.5
+obj_model
 pandas
 pint >= 0.9
 python_libsedml
@@ -12,5 +12,5 @@ scikits.odes
 scipy
 setuptools
 tables
-git+https://github.com/KarrLab/wc_lang.git#egg=wc_lang-0.0.1
-git+https://github.com/KarrLab/wc_utils.git#egg=wc_utils-0.0.1a5
+wc_lang
+wc_utils
