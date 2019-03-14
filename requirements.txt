@@ -11,6 +11,6 @@ recordtype
 scikits.odes
 scipy
 setuptools
-tables
+tables >= 3.5.0
 wc_lang
 wc_utils
