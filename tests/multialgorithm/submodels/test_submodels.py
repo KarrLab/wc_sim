@@ -9,7 +9,7 @@
 from obj_model.utils import get_component_by_id
 from wc_lang import Model, Species, Validator
 from wc_lang.io import Reader
-from wc_lang.transform import PrepareForWcSimTransform
+from wc_lang.transform import PrepForWcSimTransform
 from wc_sim.core.simulation_engine import SimulationEngine
 from wc_sim.multialgorithm.make_models import MakeModel
 from wc_sim.multialgorithm.model_utilities import ModelUtilities
@@ -27,7 +27,7 @@ import warnings
 
 
 def prepare_model(model):
-    PrepareForWcSimTransform().run(model)
+    PrepForWcSimTransform().run(model)
     errors = Validator().run(model)
     if errors:
         raise ValueError(indent_forest(['The model is invalid:', [errors]]))

@@ -8,7 +8,7 @@
 
 from wc_lang import Model
 from wc_lang.io import Reader
-from wc_lang.transform import PrepareForWcSimTransform
+from wc_lang.transform import PrepForWcSimTransform
 from wc_sim.core.debug_logs import config
 from wc_sim.multialgorithm.config import core as config_core_multialgorithm
 from wc_sim.multialgorithm.make_models import MakeModel
@@ -73,7 +73,7 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         self.model = Reader().run(self.MODEL_FILENAME)[Model][0]
         for conc in self.model.distribution_init_concentrations:
             conc.std = 0.
-        PrepareForWcSimTransform().run(self.model)
+        PrepForWcSimTransform().run(self.model)
         self.args = dict(fba_time_step=1,
                          results_dir=None)
         self.multialgorithm_simulation = MultialgorithmSimulation(self.model, self.args)

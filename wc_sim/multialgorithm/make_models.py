@@ -15,7 +15,7 @@ from wc_lang import (Model, Submodel, Compartment,
                      Reaction, RateLawDirection, RateLawExpression, Parameter,
                      DistributionInitConcentration,
                      Validator)
-from wc_lang.transform import PrepareForWcSimTransform
+from wc_lang.transform import PrepForWcSimTransform
 from wc_utils.util.enumerate import CaseInsensitiveEnum
 from wc_utils.util.ontology import wcm_ontology
 from wc_utils.util.string import indent_forest
@@ -311,7 +311,7 @@ class MakeModel(object):
 
         if transform_prep_and_check:
             # prepare & check the model
-            PrepareForWcSimTransform().run(model)
+            PrepForWcSimTransform().run(model)
             errors = Validator().run(model)
             if errors:
                 raise ValueError(indent_forest(['The model is invalid:', [errors]]))

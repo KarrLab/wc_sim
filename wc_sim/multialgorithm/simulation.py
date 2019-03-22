@@ -13,7 +13,7 @@ import numpy
 from test.support import EnvironmentVarGuard
 from wc_lang import Model, Validator
 from wc_lang.io import Reader
-from wc_lang.transform import PrepareForWcSimTransform
+from wc_lang.transform import PrepForWcSimTransform
 from wc_sim.core import sim_config
 from wc_sim.core.sim_metadata import SimulationMetadata, ModelMetadata, AuthorMetadata, RunMetadata
 from wc_sim.core.simulation_engine import SimulationEngine
@@ -82,7 +82,7 @@ class Simulation(object):
         """ Prepare simulation model and metadata
         """
         # prepare & check the model
-        PrepareForWcSimTransform().run(self.model)
+        PrepForWcSimTransform().run(self.model)
         errors = Validator().run(self.model)
         if errors:
             raise ValueError(indent_forest(['The model is invalid:', [errors]]))
