@@ -19,7 +19,7 @@ from wc_sim.multialgorithm.submodels.fba import DfbaSubmodel
 from wc_sim.multialgorithm.submodels.ssa import SsaSubmodel
 from wc_utils.util.list import det_dedupe
 from wc_utils.util.misc import obj_to_str
-from wc_utils.util.ontology import wcm_ontology
+from wc_onto import onto
 from wc_utils.util.rand import RandomStateManager
 import numpy.random
 
@@ -217,7 +217,7 @@ class MultialgorithmSimulation(object):
         molecular_weights = self.molecular_weights_for_species(self.private_species[lang_submodel.id])
 
         # DFBA submodels need initial fluxes
-        if lang_submodel.framework == wcm_ontology['WCM:dynamic_flux_balance_analysis']:
+        if lang_submodel.framework == onto['WC:dynamic_flux_balance_analysis']:
             initial_fluxes = {species_id: 0 for species_id in self.private_species[lang_submodel.id]}
         else:
             initial_fluxes = None
@@ -316,7 +316,8 @@ class MultialgorithmSimulation(object):
         # TODO(Arthur): support non-zero initial fluxes
         initial_fluxes = {}
         for submodel in model.get_submodels():
-            if getattr(submodel.framework, 'id', None) in ('WCM:ordinary_differential_equations', 'WCM:dynamic_flux_balance_analysis'):
+            if not are_terms_equivalent(submodel.framework, onto['WC:ordinary_differential_equations']) and \
+                    not are_terms_equivalent(submodel.framework, onto['WC:dynamic_flux_balance_analysis']):
                 for specie in submodel.get_children(kind='submodel', __type=Species):
                     initial_fluxes[specie.id] = 0.0
 
@@ -360,7 +361,7 @@ class MultialgorithmSimulation(object):
         simulation_submodels = []
         for lang_submodel in self.model.get_submodels():
 
-            if lang_submodel.framework == wcm_ontology['WCM:stochastic_simulation_algorithm']:
+            if lang_submodel.framework == onto['WC:stochastic_simulation_algorithm']:
                 simulation_submodel = SsaSubmodel(
                     lang_submodel.id,
                     self.dynamic_model,
@@ -370,7 +371,7 @@ class MultialgorithmSimulation(object):
                     self.local_species_population
                 )
 
-            elif lang_submodel.framework == wcm_ontology['WCM:dynamic_flux_balance_analysis']:
+            elif lang_submodel.framework == onto['WC:dynamic_flux_balance_analysis']:
                 # TODO(Arthur): make DFBA submodels work
                 continue
 
@@ -384,7 +385,7 @@ class MultialgorithmSimulation(object):
                     self.args['fba_time_step']
                 )
 
-            elif lang_submodel.framework == wcm_ontology['WCM:ordinary_differential_equations']:
+            elif lang_submodel.framework == onto['WC:ordinary_differential_equations']:
                 # TODO(Arthur): incorporate an ODE lang_submodel; perhaps the one Eric & Catherine wrote
                 raise MultialgorithmError("Need ODE implementation")
             else:

@@ -10,7 +10,7 @@ from matplotlib import pyplot
 from test.support import EnvironmentVarGuard
 from wc_sim.multialgorithm.run_results import RunResults
 from wc_sim.multialgorithm.simulation import Simulation
-from wc_utils.util.ontology import wcm_ontology
+from wc_onto import onto
 from wc_utils.util.units import unit_registry
 import numpy
 import numpy.testing
@@ -71,8 +71,8 @@ class TwoSpeciesTestCase(unittest.TestCase):
         assert error is None, str(error)
 
         # submodels
-        submdl_syn = model.submodels.create(id='submodel_synthesis', framework=wcm_ontology['WCM:stochastic_simulation_algorithm'])
-        submdl_deg = model.submodels.create(id='submodel_degradation', framework=wcm_ontology['WCM:stochastic_simulation_algorithm'])
+        submdl_syn = model.submodels.create(id='submodel_synthesis', framework=onto['WC:stochastic_simulation_algorithm'])
+        submdl_deg = model.submodels.create(id='submodel_degradation', framework=onto['WC:stochastic_simulation_algorithm'])
 
         # reactions
         rxn_syn_constant = model.reactions.create(id='rxn_synthesis_constant', submodel=submdl_syn)

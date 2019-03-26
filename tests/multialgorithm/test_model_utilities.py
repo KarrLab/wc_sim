@@ -14,7 +14,7 @@ from obj_model import utils
 from scipy.constants import Avogadro
 from wc_lang.io import Reader
 from wc_sim.multialgorithm.model_utilities import ModelUtilities
-from wc_utils.util.ontology import wcm_ontology
+from wc_onto import onto
 from wc_utils.util.units import unit_registry
 
 
@@ -74,7 +74,7 @@ class TestModelUtilities(unittest.TestCase):
     def test_concentration_to_molecules(self):
         model = wc_lang.Model()
 
-        submodel = model.submodels.create(id='submodel', framework=wcm_ontology['WCM:stochastic_simulation_algorithm'])
+        submodel = model.submodels.create(id='submodel', framework=onto['WC:stochastic_simulation_algorithm'])
 
         compartment_c = model.compartments.create(id='c', mean_init_volume=1.)
 

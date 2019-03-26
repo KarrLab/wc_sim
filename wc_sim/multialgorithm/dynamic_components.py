@@ -21,7 +21,7 @@ from wc_sim.multialgorithm.dynamic_expressions import (DynamicComponent,
                                                        DynamicStopCondition, DynamicParameter)
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation
-from wc_utils.util.ontology import wcm_ontology
+from wc_onto import onto
 
 
 class DynamicCompartment(DynamicComponent):
@@ -64,7 +64,7 @@ class DynamicCompartment(DynamicComponent):
         self.species_population = species_population
         self.species_ids = species_ids
 
-        if wc_lang_model.distribution_init_volume == wcm_ontology['WCM:normal_distribution']:
+        if wc_lang_model.distribution_init_volume == onto['WC:normal_distribution']:
             mean = wc_lang_model.mean_init_volume
             std = wc_lang_model.std_init_volume
             if numpy.isnan(std):

@@ -16,7 +16,7 @@ import wc_lang
 from wc_sim.core import sim_config
 from wc_sim.core.sim_metadata import SimulationMetadata, ModelMetadata, AuthorMetadata, RunMetadata
 from wc_utils.util.misc import as_dict
-from wc_utils.util.ontology import wcm_ontology
+from wc_onto import onto
 
 
 class TestMetadata(unittest.TestCase):
@@ -34,7 +34,7 @@ class TestMetadata(unittest.TestCase):
                 ['reactions', {'id': 'rxn-1'}],
                 ['rate_laws', {'direction': wc_lang.RateLawDirection.forward}],
                 'expression',
-                ['parameters', {'type': wcm_ontology['WCM:K_m']}], # K_m
+                ['parameters', {'type': onto['WC:K_m']}], # K_m
                 'value',
             ], 1),
             sim_config.Change([
@@ -48,7 +48,7 @@ class TestMetadata(unittest.TestCase):
                 ['reactions', {'id': 'rxn-1'}],
                 ['rate_laws', {'direction': wc_lang.RateLawDirection.forward}],
                 'expression',
-                ['parameters', {'type': wcm_ontology['WCM:K_m']}], # K_m
+                ['parameters', {'type': onto['WC:K_m']}], # K_m
                 'value',
             ], 1,
             ), start_time=5),

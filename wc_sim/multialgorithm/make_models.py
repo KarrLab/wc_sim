@@ -17,7 +17,7 @@ from wc_lang import (Model, Submodel, Compartment,
                      Validator)
 from wc_lang.transform import PrepForWcSimTransform
 from wc_utils.util.enumerate import CaseInsensitiveEnum
-from wc_utils.util.ontology import wcm_ontology
+from wc_onto import onto
 from wc_utils.util.string import indent_forest
 from wc_utils.util.units import unit_registry
 import re
@@ -162,7 +162,7 @@ class MakeModel(object):
 
         # Submodel
         id = 'submodel_{}'.format(submodel_num)
-        submodel = model.submodels.create(id=id, name=id, framework=wcm_ontology['WCM:stochastic_simulation_algorithm'])
+        submodel = model.submodels.create(id=id, name=id, framework=onto['WC:stochastic_simulation_algorithm'])
 
         # Reactions and RateLaws
         if num_species:
@@ -294,7 +294,7 @@ class MakeModel(object):
         for i in range(num_species):
             spec_type = model.species_types.create(
                 id='spec_type_{}'.format(i),
-                type=wcm_ontology['WCM:protein'], # protein
+                type=onto['WC:protein'], # protein
                 molecular_weight=molecular_weight,
                 charge=charge)
             species_types.append(spec_type)
