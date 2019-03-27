@@ -22,6 +22,7 @@ from wc_sim.multialgorithm.dynamic_expressions import (DynamicComponent,
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation
 from wc_onto import onto
+from wc_utils.util.ontology import are_terms_equivalent
 
 
 class DynamicCompartment(DynamicComponent):
@@ -64,7 +65,7 @@ class DynamicCompartment(DynamicComponent):
         self.species_population = species_population
         self.species_ids = species_ids
 
-        if wc_lang_model.distribution_init_volume == onto['WC:normal_distribution']:
+        if are_terms_equivalent(wc_lang_model.distribution_init_volume, onto['WC:normal_distribution']):
             mean = wc_lang_model.mean_init_volume
             std = wc_lang_model.std_init_volume
             if numpy.isnan(std):

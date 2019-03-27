@@ -14,6 +14,7 @@ from enum import Enum
 from numpy.random import RandomState
 from scipy.constants import Avogadro
 from wc_lang import Species
+from wc_onto import onto
 from wc_utils.util.list import difference
 from wc_utils.util.ontology import are_terms_equivalent
 from wc_utils.util.units import unit_registry
@@ -108,7 +109,7 @@ class ModelUtilities(object):
         if dist_conc is None:
             return 0
         else:
-            if are_terms_equivalent(dist_conc.distribution, onto['WC:normal_distribution']): # normal
+            if not are_terms_equivalent(dist_conc.distribution, onto['WC:normal_distribution']): # normal
                 raise ValueError('Unsupported random distribution `{}`'.format(dist_conc.distribution.name))
             mean = dist_conc.mean
             std = dist_conc.std
