@@ -77,7 +77,7 @@ class TestDynamicSubmodel(unittest.TestCase):
 
     def expected_molar_conc(self, dynamic_submodel, species_id):
         species = list(filter(lambda s: s.id == species_id, dynamic_submodel.species))[0]
-        volume = species.compartment.mean_init_volume
+        volume = species.compartment.init_volume.mean
         copy_num = ModelUtilities.concentration_to_molecules(species, volume, RandomStateManager.instance())
         volume = dynamic_submodel.dynamic_compartments[species.compartment.id].volume()
         return copy_num / (volume * Avogadro)

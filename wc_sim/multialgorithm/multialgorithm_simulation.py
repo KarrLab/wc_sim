@@ -253,7 +253,7 @@ class MultialgorithmSimulation(object):
         init_populations = {}
         for species in model.get_species():
             init_populations[species.id] = ModelUtilities.concentration_to_molecules(
-                species, species.compartment.mean_init_volume, random_state)
+                species, species.compartment.init_volume.mean, random_state)
         return init_populations
 
     def get_dynamic_compartments(self, submodel):

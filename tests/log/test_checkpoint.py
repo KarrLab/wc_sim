@@ -163,8 +163,9 @@ def build_mock_model():
 
     submodel = model.submodels.create(id='submodel', framework=onto['WC:stochastic_simulation_algorithm'])
 
-    compartment_c = model.compartments.create(id='c', mean_init_volume=1.)
-    compartment_e = model.compartments.create(id='e', mean_init_volume=1.)
+    init_volume=wc_lang.InitVolume(mean=1.)
+    compartment_c = model.compartments.create(id='c', init_volume=init_volume)
+    compartment_e = model.compartments.create(id='e', init_volume=init_volume)
 
     species_type_L = model.species_types.create(id='L', molecular_weight=10)
     species_type_R = model.species_types.create(id='R', molecular_weight=10)

@@ -65,9 +65,10 @@ class DynamicCompartment(DynamicComponent):
         self.species_population = species_population
         self.species_ids = species_ids
 
-        if are_terms_equivalent(wc_lang_model.distribution_init_volume, onto['WC:normal_distribution']):
-            mean = wc_lang_model.mean_init_volume
-            std = wc_lang_model.std_init_volume
+        if wc_lang_model.init_volume and \
+            are_terms_equivalent(wc_lang_model.init_volume.distribution, onto['WC:normal_distribution']):
+            mean = wc_lang_model.init_volume.mean
+            std = wc_lang_model.init_volume.std
             if numpy.isnan(std):
                 std = mean / 10.
             self.init_volume = max(0., species_population.random_state.normal(mean, std))

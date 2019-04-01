@@ -11,7 +11,7 @@ from scipy.constants import Avogadro
 from wc_lang import (Model, Compartment, Species, Parameter,
                      DistributionInitConcentration,
                      Observable, ObservableExpression,
-                     Function, FunctionExpression)
+                     Function, FunctionExpression, InitVolume)
 from wc_lang.io import Reader
 from wc_sim.multialgorithm.dynamic_components import DynamicModel, DynamicCompartment
 from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
@@ -45,8 +45,8 @@ class TestDynamicCompartment(unittest.TestCase):
         # make a DynamicCompartment
         self.mean_init_volume = 1E-17
 
-        self.compartment = Compartment(id=comp_id, name='name', mean_init_volume=self.mean_init_volume,
-                                       std_init_volume=self.mean_init_volume / 10.)
+        self.compartment = Compartment(id=comp_id, name='name',
+                                       init_volume=InitVolume(mean=self.mean_init_volume, std=self.mean_init_volume / 10.))
         self.compartment.init_density = Parameter(id='density_{}'.format(comp_id), value=1100., units=unit_registry.parse_units('g l^-1'))
 
         self.dynamic_compartment = DynamicCompartment(None, self.local_species_pop, self.compartment, self.species_ids)
@@ -85,11 +85,11 @@ class TestDynamicCompartment(unittest.TestCase):
 
     def test_dynamic_compartment_exceptions(self):
 
-        compartment = Compartment(id='id', name='name', mean_init_volume=0)
+        compartment = Compartment(id='id', name='name', init_volume=InitVolume(mean=0))
         with self.assertRaises(MultialgorithmError):
             DynamicCompartment(None, self.local_species_pop, compartment, self.species_ids)
 
-        compartment = Compartment(id='id', name='name', mean_init_volume=float('nan'))
+        compartment = Compartment(id='id', name='name', init_volume=InitVolume(mean=float('nan')))
         with self.assertRaises(MultialgorithmError):
             DynamicCompartment(None, self.local_species_pop, compartment, self.species_ids)
 
@@ -289,7 +289,7 @@ class TestDynamicModel(unittest.TestCase):
                 nd_func_id = 'func_nd_{}'.format(j)
                 expr_parts.append("{}*{}".format(j, nd_func_id))
                 objects[Function][nd_func_id] = non_dependent_functions[j]
-            expr = ' + '.join(expr_parts)            
+            expr = ' + '.join(expr_parts)
             obj = FunctionExpression.make_obj(model, Function, 'func_d_{}'.format(i), expr, objects)
             self.assertTrue(obj.expression.validate() is None)
             dependent_functions.append(obj)

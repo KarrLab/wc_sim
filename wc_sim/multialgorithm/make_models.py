@@ -14,7 +14,7 @@ from wc_lang import (Model, Submodel, Compartment,
                      Observable, Function, FunctionExpression,
                      Reaction, RateLawDirection, RateLawExpression, Parameter,
                      DistributionInitConcentration,
-                     Validator)
+                     Validator, InitVolume)
 from wc_lang.transform import PrepForWcSimTransform
 from wc_utils.util.enumerate import CaseInsensitiveEnum
 from wc_onto import onto
@@ -110,10 +110,15 @@ class MakeModel(object):
         objects[Parameter][avogadro_param.id] = avogadro_param
 
         # Compartment
+        init_volume = InitVolume(mean=init_vol, std=init_vol / 10.)
+        for comp in model.compartments:
+            if comp.init_volume and comp.init_volume.mean == init_vol and comp.init_volume.std == init_vol / 10.:
+                init_volume = comp.init_volume
+                break
+
         comp = model.compartments.create(id='compt_{}'.format(submodel_num),
                                          name='compartment num {}'.format(submodel_num),
-                                         mean_init_volume=init_vol,
-                                         std_init_volume=init_vol / 10.)
+                                         init_volume=init_volume)
         objects[Compartment][comp.id] = comp
 
         density = comp.init_density = model.parameters.create(id='density_compt_{}'.format(submodel_num), 

@@ -176,8 +176,8 @@ class DfbaSubmodel(DynamicSubmodel):
             'upper': np.full(len(cobraModel.reactions), np.nan),
         }
         for exSpecies in self.exchangedSpecies:
-            self.exchangeRateBounds['lower'][exSpecies.fba_reaction_index] = self.reactions[exSpecies.fba_reaction_index].flux_min
-            self.exchangeRateBounds['upper'][exSpecies.fba_reaction_index] = self.reactions[exSpecies.fba_reaction_index].flux_max
+            self.exchangeRateBounds['lower'][exSpecies.fba_reaction_index] = self.reactions[exSpecies.fba_reaction_index].flux_bounds.min
+            self.exchangeRateBounds['upper'][exSpecies.fba_reaction_index] = self.reactions[exSpecies.fba_reaction_index].flux_bounds.max
 
         """Setup reactions"""
         self.metabolismProductionReaction = {
