@@ -78,15 +78,17 @@ class TestModelUtilities(unittest.TestCase):
 
         compartment_c = model.compartments.create(id='c', init_volume=wc_lang.InitVolume(mean=1.))
 
+        structure = wc_lang.ChemicalStructure(molecular_weight=10.)
+
         species_types = {}
         cus_species_types = {}
         for cu in wc_lang.DistributionInitConcentration.units.choices:
             id = str(cu).replace(' ', '_')
-            species_types[id] = model.species_types.create(id=id, molecular_weight=10)
+            species_types[id] = model.species_types.create(id=id, structure=structure)
             cus_species_types[id] = cu
 
         for other in ['no_units', 'no_concentration', 'no_such_concentration_unit']:
-            species_types[other] = model.species_types.create(id=other, molecular_weight=10)
+            species_types[other] = model.species_types.create(id=other, structure=structure)
 
         species = {}
         for key, species_type in species_types.items():

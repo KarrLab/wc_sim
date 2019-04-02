@@ -49,8 +49,8 @@ class TwoSpeciesTestCase(unittest.TestCase):
         model = model = wc_lang.Model(id='model', version='0.0.1', wc_lang_version='0.0.1')
 
         # compartments and species
-        st_constant = model.species_types.create(id='st_constant', charge=0., molecular_weight=1.)
-        st_dynamic = model.species_types.create(id='st_dynamic', charge=0., molecular_weight=0.)
+        st_constant = model.species_types.create(id='st_constant', structure=wc_lang.ChemicalStructure(charge=0., molecular_weight=1.))
+        st_dynamic = model.species_types.create(id='st_dynamic', structure=wc_lang.ChemicalStructure(charge=0., molecular_weight=0.))
         comp = model.compartments.create(id='comp', init_volume=wc_lang.InitVolume(std=0.))
         spec_constant = model.species.create(species_type=st_constant, compartment=comp)
         spec_dynamic = model.species.create(species_type=st_dynamic, compartment=comp)
@@ -178,12 +178,12 @@ class TwoSpeciesTestCase(unittest.TestCase):
 
         # set quantitative values
         comp.init_volume.mean = 100e-15
-        st_constant.molecular_weight = 1.
-        st_dynamic.molecular_weight = 0.
+        st_constant.structure.molecular_weight = 1.
+        st_dynamic.structure.molecular_weight = 0.
         spec_constant.distribution_init_concentration.mean = 1e6
         spec_dynamic.distribution_init_concentration.mean = 10.
-        init_mass = (spec_constant.distribution_init_concentration.mean * st_constant.molecular_weight +
-                     spec_dynamic.distribution_init_concentration.mean * st_dynamic.molecular_weight
+        init_mass = (spec_constant.distribution_init_concentration.mean * st_constant.structure.molecular_weight +
+                     spec_dynamic.distribution_init_concentration.mean * st_dynamic.structure.molecular_weight
                      ) / scipy.constants.Avogadro
         init_density = density.value = init_mass / comp.init_volume.mean
         model.parameters.get_one(id='k_syn_dynamic').value = 1.
@@ -195,7 +195,7 @@ class TwoSpeciesTestCase(unittest.TestCase):
         # verify results
         numpy.testing.assert_equal(pop_constant, numpy.full((201,), spec_constant.distribution_init_concentration.mean))
         numpy.testing.assert_equal(comp_mass, numpy.full((201,), spec_constant.distribution_init_concentration.mean
-                                                         * st_constant.molecular_weight
+                                                         * st_constant.structure.molecular_weight
                                                          / scipy.constants.Avogadro))
         self.assertEqual(density.value, init_density)
 
@@ -215,12 +215,12 @@ class TwoSpeciesTestCase(unittest.TestCase):
 
         # set quantitative values
         comp.init_volume.mean = 100e-15
-        st_constant.molecular_weight = 0.
-        st_dynamic.molecular_weight = 1.
+        st_constant.structure.molecular_weight = 0.
+        st_dynamic.structure.molecular_weight = 1.
         spec_constant.distribution_init_concentration.mean = 0.
         spec_dynamic.distribution_init_concentration.mean = 10.
-        init_mass = (spec_constant.distribution_init_concentration.mean * st_constant.molecular_weight +
-                     spec_dynamic.distribution_init_concentration.mean * st_dynamic.molecular_weight
+        init_mass = (spec_constant.distribution_init_concentration.mean * st_constant.structure.molecular_weight +
+                     spec_dynamic.distribution_init_concentration.mean * st_dynamic.structure.molecular_weight
                      ) / scipy.constants.Avogadro
         init_density = density.value = init_mass / comp.init_volume.mean
         model.parameters.get_one(id='k_syn_dynamic').value = 5.
@@ -239,8 +239,8 @@ class TwoSpeciesTestCase(unittest.TestCase):
         self.assertGreater(numpy.mean(pop_dynamic[101:]), spec_dynamic_ss - 3 * std_spec_dynamic_ss)
         self.assertLess(numpy.mean(pop_dynamic[101:]), spec_dynamic_ss + 3 * std_spec_dynamic_ss)
 
-        mass_ss = spec_dynamic_ss * st_dynamic.molecular_weight / scipy.constants.Avogadro
-        std_mass_ss = std_spec_dynamic_ss * st_dynamic.molecular_weight / scipy.constants.Avogadro
+        mass_ss = spec_dynamic_ss * st_dynamic.structure.molecular_weight / scipy.constants.Avogadro
+        std_mass_ss = std_spec_dynamic_ss * st_dynamic.structure.molecular_weight / scipy.constants.Avogadro
         self.assertGreater(numpy.mean(comp_mass[101:]), mass_ss - 3 * std_mass_ss)
         self.assertLess(numpy.mean(comp_mass[101:]), mass_ss + 3 * std_mass_ss)
 
@@ -255,12 +255,12 @@ class TwoSpeciesTestCase(unittest.TestCase):
 
         # set quantitative values
         comp.init_volume.mean = 100e-15
-        st_constant.molecular_weight = 0.
-        st_dynamic.molecular_weight = 1.
+        st_constant.structure.molecular_weight = 0.
+        st_dynamic.structure.molecular_weight = 1.
         spec_constant.distribution_init_concentration.mean = 0.
         spec_dynamic.distribution_init_concentration.mean = 100.
-        init_mass = (spec_constant.distribution_init_concentration.mean * st_constant.molecular_weight +
-                     spec_dynamic.distribution_init_concentration.mean * st_dynamic.molecular_weight
+        init_mass = (spec_constant.distribution_init_concentration.mean * st_constant.structure.molecular_weight +
+                     spec_dynamic.distribution_init_concentration.mean * st_dynamic.structure.molecular_weight
                      ) / scipy.constants.Avogadro
         init_density = density.value = init_mass / comp.init_volume.mean
         model.parameters.get_one(id='k_syn_dynamic').value = 1.
@@ -279,8 +279,8 @@ class TwoSpeciesTestCase(unittest.TestCase):
         self.assertGreater(numpy.mean(pop_dynamic[101:]), spec_dynamic_ss - 3 * std_spec_dynamic_ss)
         self.assertLess(numpy.mean(pop_dynamic[101:]), spec_dynamic_ss + 3 * std_spec_dynamic_ss)
 
-        mass_ss = spec_dynamic_ss * st_dynamic.molecular_weight / scipy.constants.Avogadro
-        std_mass_ss = std_spec_dynamic_ss * st_dynamic.molecular_weight / scipy.constants.Avogadro
+        mass_ss = spec_dynamic_ss * st_dynamic.structure.molecular_weight / scipy.constants.Avogadro
+        std_mass_ss = std_spec_dynamic_ss * st_dynamic.structure.molecular_weight / scipy.constants.Avogadro
         self.assertGreater(numpy.mean(comp_mass[101:]), mass_ss - 3 * std_mass_ss)
         self.assertLess(numpy.mean(comp_mass[101:]), mass_ss + 3 * std_mass_ss)
 
@@ -314,12 +314,12 @@ class TwoSpeciesTestCase(unittest.TestCase):
 
         # set quantitative values
         comp.init_volume.mean = 100e-15
-        st_constant.molecular_weight = 1.
-        st_dynamic.molecular_weight = 0.
+        st_constant.structure.molecular_weight = 1.
+        st_dynamic.structure.molecular_weight = 0.
         spec_constant.distribution_init_concentration.mean = 10.
         spec_dynamic.distribution_init_concentration.mean = 100.
-        init_mass = (spec_constant.distribution_init_concentration.mean * st_constant.molecular_weight +
-                     spec_dynamic.distribution_init_concentration.mean * st_dynamic.molecular_weight
+        init_mass = (spec_constant.distribution_init_concentration.mean * st_constant.structure.molecular_weight +
+                     spec_dynamic.distribution_init_concentration.mean * st_dynamic.structure.molecular_weight
                      ) / scipy.constants.Avogadro
         init_density = density.value = init_mass / comp.init_volume.mean
         model.parameters.get_one(id='k_syn_constant').value = 1.
@@ -327,8 +327,8 @@ class TwoSpeciesTestCase(unittest.TestCase):
 
         spec_constant_ss = model.parameters.get_one(id='k_syn_constant').value / model.parameters.get_one(id='k_deg_constant').value
         std_spec_constant_ss = numpy.sqrt(spec_constant_ss)
-        mass_ss = spec_constant_ss * st_constant.molecular_weight / scipy.constants.Avogadro
-        std_mass_ss = spec_constant_ss * st_constant.molecular_weight / scipy.constants.Avogadro
+        mass_ss = spec_constant_ss * st_constant.structure.molecular_weight / scipy.constants.Avogadro
+        std_mass_ss = spec_constant_ss * st_constant.structure.molecular_weight / scipy.constants.Avogadro
         vol_ss = mass_ss / density.value
         std_vol_ss = std_mass_ss / density.value
 

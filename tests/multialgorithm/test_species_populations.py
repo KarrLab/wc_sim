@@ -778,7 +778,7 @@ class TestSpeciesPopSimObject(unittest.TestCase):
         self.simulator = SimulationEngine()
         self.species_ids = 's1 s2 s3'.split()
         self.initial_population = dict(zip(self.species_ids, range(3)))
-        self.molecular_weight = dict(zip(self.species_ids, [10]*3))
+        self.molecular_weight = dict(zip(self.species_ids, [10.]*3))
         self.test_species_pop_sim_obj = SpeciesPopSimObject('test_name', self.initial_population,
                                                             self.molecular_weight, 
                                                             random_state=RandomStateManager.instance())

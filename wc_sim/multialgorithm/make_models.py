@@ -14,7 +14,7 @@ from wc_lang import (Model, Submodel, Compartment,
                      Observable, Function, FunctionExpression,
                      Reaction, RateLawDirection, RateLawExpression, Parameter,
                      DistributionInitConcentration,
-                     Validator, InitVolume)
+                     Validator, InitVolume, ChemicalStructure)
 from wc_lang.transform import PrepForWcSimTransform
 from wc_utils.util.enumerate import CaseInsensitiveEnum
 from wc_onto import onto
@@ -67,7 +67,7 @@ class MakeModel(object):
 
     @classmethod
     def add_test_submodel(cls, model, model_type, submodel_num, init_vol, species_types,
-                          default_species_copy_number, default_species_std, 
+                          default_species_copy_number, default_species_std,
                           species_copy_numbers, species_stds, expressions):
         """ Create a test submodel
 
@@ -121,8 +121,8 @@ class MakeModel(object):
                                          init_volume=init_volume)
         objects[Compartment][comp.id] = comp
 
-        density = comp.init_density = model.parameters.create(id='density_compt_{}'.format(submodel_num), 
-            value=1100, units=unit_registry.parse_units('g l^-1'))
+        density = comp.init_density = model.parameters.create(id='density_compt_{}'.format(submodel_num),
+                                                              value=1100, units=unit_registry.parse_units('g l^-1'))
         objects[Parameter][density.id] = density
 
         volume = model.functions.create(id='volume_compt_{}'.format(submodel_num), units=unit_registry.parse_units('l'))
@@ -245,7 +245,7 @@ class MakeModel(object):
     @classmethod
     def make_test_model(cls, model_type,
                         init_vols=None,
-                        molecular_weight=10,
+                        molecular_weight=10.,
                         charge=0,
                         num_submodels=1,
                         default_species_copy_number=1000000,
@@ -294,14 +294,15 @@ class MakeModel(object):
         model = Model(id='test_model', name='{} with {} submodels'.format(model_type, num_submodels),
                       version='0.0.0', wc_lang_version='0.0.1')
 
+        structure = ChemicalStructure(molecular_weight=molecular_weight, charge=charge)
+
         # SpeciesTypes
         species_types = []
         for i in range(num_species):
             spec_type = model.species_types.create(
                 id='spec_type_{}'.format(i),
-                type=onto['WC:protein'], # protein
-                molecular_weight=molecular_weight,
-                charge=charge)
+                type=onto['WC:protein'],  # protein
+                structure=structure)
             species_types.append(spec_type)
 
         # make submodels
@@ -311,7 +312,7 @@ class MakeModel(object):
             cls.add_test_submodel(model, model_type, submodel_num, init_vols[i],
                                   species_types, default_species_copy_number=default_species_copy_number,
                                   default_species_std=default_species_std,
-                                  species_copy_numbers=species_copy_numbers, species_stds=species_stds, 
+                                  species_copy_numbers=species_copy_numbers, species_stds=species_stds,
                                   expressions=expressions)
 
         if transform_prep_and_check:

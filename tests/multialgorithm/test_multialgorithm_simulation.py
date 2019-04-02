@@ -373,7 +373,8 @@ class TestSSaExceptions(unittest.TestCase):
 
     @unittest.skip('Disable temporarily, while A finishes "incomplete-updates" branch')
     def test_nan_propensities(self):
-        self.model.species_types.get_one(id='spec_type_0').molecular_weight = float('NaN')
+        st_0 = self.model.species_types.get_one(id='spec_type_0')
+        st_0.structure.molecular_weight = float('NaN')
         multialgorithm_simulation = MultialgorithmSimulation(self.model, {})
         simulation_engine, _ = multialgorithm_simulation.build_simulation()
         with self.assertRaisesRegex(AssertionError, "total propensities is 'NaN'"):

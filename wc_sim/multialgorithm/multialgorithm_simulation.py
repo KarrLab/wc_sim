@@ -185,8 +185,12 @@ class MultialgorithmSimulation(object):
         """
         species_weights = {}
         for species_id in species:
-            (species_type_id, _) = ModelUtilities.parse_species_id(species_id)
-            species_weights[species_id] = self.model.species_types.get_one(id=species_type_id).molecular_weight
+            species_type_id, _ = ModelUtilities.parse_species_id(species_id)
+            species_type = self.model.species_types.get_one(id=species_type_id)
+            if species_type.structure:
+                species_weights[species_id] = species_type.structure.molecular_weight
+            else:
+                species_weights[species_id] = float('nan')
         return species_weights
 
     def create_shared_species_pop_objs(self):
@@ -310,7 +314,11 @@ class MultialgorithmSimulation(object):
         for specie in model.get_species():
             (species_type_id, _) = ModelUtilities.parse_species_id(specie.id)
             # TODO(Arthur): make get_one more robust, or do linear search
-            molecular_weights[specie.id] = model.species_types.get_one(id=species_type_id).molecular_weight
+            species_type = model.species_types.get_one(id=species_type_id)
+            if species_type.structure:
+                molecular_weights[specie.id] = species_type.structure.molecular_weight
+            else:
+                molecular_weights[specie.id] = float('nan')
 
         # Species used by continuous time submodels (like DFBA and ODE) need initial fluxes
         # which indicate that the species is modeled by a continuous time submodel.
