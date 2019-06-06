@@ -185,7 +185,7 @@ class MultialgorithmSimulation(object):
         """
         species_weights = {}
         for species_id in species:
-            species_type_id, _ = ModelUtilities.parse_species_id(species_id)
+            species_type_id, _ = Species.parse_id(species_id)
             species_type = self.model.species_types.get_one(id=species_type_id)
             if species_type.structure:
                 species_weights[species_id] = species_type.structure.molecular_weight
@@ -312,7 +312,7 @@ class MultialgorithmSimulation(object):
 
         molecular_weights = {}
         for specie in model.get_species():
-            (species_type_id, _) = ModelUtilities.parse_species_id(specie.id)
+            (species_type_id, _) = Species.parse_id(specie.id)
             # TODO(Arthur): make get_one more robust, or do linear search
             species_type = model.species_types.get_one(id=species_type_id)
             if species_type.structure:

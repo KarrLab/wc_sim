@@ -137,26 +137,6 @@ class ModelUtilities(object):
             raise ValueError("Unsupported unit '{}'".format(dist_conc.units))
 
     @staticmethod
-    def parse_species_id(species_id):
-        '''Get the specie type and compartment from a specie id
-
-        Args:
-            species_id (:obj:`string`): a specie id, in the form "species_type_id[compartment]",
-            where species_type_id and compartment must be legal python identifiers
-
-        Returns:
-            `tuple`: (species_type_id, compartment)
-
-        Raises:
-            ValueError: if species_id is not in the right form
-        '''
-        match = re.match(r'^([a-z][a-z0-9_]*)\[([a-z][a-z0-9_]*)\]$', species_id, flags=re.I)
-        if match:
-            return (match.group(1), match.group(2))
-        raise ValueError("Cannot parse species_id, '{}' not in the form "
-                         "'python_identifier[python_identifier]'".format(species_id))
-
-    @staticmethod
     def get_species_types(species_ids):
         '''Get the specie types from an iterator that provides specie ids
 
@@ -172,7 +152,7 @@ class ModelUtilities(object):
         species_types = set()
         species_types_list = []
         for species_id in species_ids:
-            species_type_id, _ = ModelUtilities.parse_species_id(species_id)
+            species_type_id, _ = Species.parse_id(species_id)
             if not species_type_id in species_types:
                 species_types.add(species_type_id)
                 species_types_list.append(species_type_id)
