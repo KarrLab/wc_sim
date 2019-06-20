@@ -18,13 +18,13 @@ class TestRandomStateVariableSimulation(unittest.TestCase):
 
     def setUp(self):
         # turn off console logging
-        self.console_level = config['debug_logs']['loggers']['wc.debug.console']['level']
-        config['debug_logs']['loggers']['wc.debug.console']['level'] = 'ERROR'
+        self.console_level = config['debug_logs']['handlers']['debug.console']['level']
+        config['debug_logs']['handlers']['debug.console']['level'] = 'error'
         warnings.simplefilter("ignore")
 
     def tearDown(self):
         # restore console logging
-        config['debug_logs']['loggers']['wc.debug.console']['level'] = self.console_level
+        config['debug_logs']['handlers']['debug.console']['level'] = self.console_level
 
     def test_random_state_variable_simulation(self):
         with CaptureOutput(relay=False):

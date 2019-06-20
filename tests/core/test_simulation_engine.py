@@ -311,18 +311,18 @@ class TestSimulationEngine(unittest.TestCase):
 
     def suspend_logging(self):
         self.saved_config = copy.deepcopy(config)
-        DictUtil.set_value(config, 'level', 'ERROR')
+        DictUtil.set_value(config, 'level', 'error')
 
     def restore_logging(self):
         global config
         config = self.saved_config
 
     def test_log_conf(self):
-        console_level = config['debug_logs']['loggers']['wc.debug.console']['level']
+        console_level = config['debug_logs']['handlers']['debug.console']['level']
         self.suspend_logging()
-        self.assertEqual(config['debug_logs']['loggers']['wc.debug.console']['level'], 'ERROR')
+        self.assertEqual(config['debug_logs']['handlers']['debug.console']['level'], 'error')
         self.restore_logging()
-        self.assertEqual(config['debug_logs']['loggers']['wc.debug.console']['level'], console_level)
+        self.assertEqual(config['debug_logs']['handlers']['debug.console']['level'], console_level)
 
     @unittest.skip("performance scaling test; runs slowly")
     def test_performance(self):
