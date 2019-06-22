@@ -3,6 +3,7 @@
 # description of the attributes:
 # 'files_to_migrate' contains paths to files in the data repo to migrate
 # 'schema_repo_url' contains the URL of the schema repo
+# 'branch' contains the schema's branch
 # 'schema_file' contains the relative path to the schema file in the schema repo
 # 'migrator' contains the keyword for the type of migrator to use, a key in `MigrationSpec.MIGRATOR_CREATOR_MAP`
 files_to_migrate:
@@ -10,3 +11,4 @@ files_to_migrate:
 migrator: wc_lang
 schema_file: ../wc_lang/core.py
 schema_repo_url: https://github.com/KarrLab/wc_lang
+branch: 'test_migration'
