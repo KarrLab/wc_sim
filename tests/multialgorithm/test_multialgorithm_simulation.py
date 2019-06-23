@@ -310,7 +310,7 @@ class TestRunSSASimulation(unittest.TestCase):
 
     def suspend_logging(self):
         self.saved_config = copy.deepcopy(config)
-        DictUtil.set_value(config, 'level', 'ERROR')
+        DictUtil.set_value(config, 'level', 'error')
 
     def restore_logging(self):
         global config
