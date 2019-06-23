@@ -13,7 +13,7 @@ from capturer import CaptureOutput
 class TestSimulationRun(unittest.TestCase):
 
     def test_simulation_run(self):
-        with CaptureOutput(relay=False) as capturer:
+        with CaptureOutput(relay=True) as capturer:
             import examples.simulation_run
 
             events = re.search(r'^Simulated (\d+) events', capturer.get_text())
