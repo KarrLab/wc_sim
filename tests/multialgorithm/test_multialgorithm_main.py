@@ -52,7 +52,7 @@ class SimControllerTestCase(unittest.TestCase):
             '--fba-time-step', '5',
         ]
         with __main__.App(argv=argv) as app:
-            with CaptureOutput(relay=False) as capturer:
+            with CaptureOutput(relay=True) as capturer:
                 app.run()
                 events = re.search(r'^Simulated (\d+) events', capturer.get_text())
                 results = re.search("Saved checkpoints and run results in '(.*?)'$", capturer.get_text())
