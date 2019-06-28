@@ -24,6 +24,7 @@ class SimController(cement.Controller):
     class Meta:
         label = 'sim'
         description = 'Simulate a wc-lang model'
+        help = 'Simulate a wc-lang model'
         stacked_on = 'base'
         stacked_type = 'nested'
         arguments = [
