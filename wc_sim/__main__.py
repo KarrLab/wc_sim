@@ -20,6 +20,7 @@ class BaseController(cement.Controller):
     class Meta:
         label = 'base'
         description = "Whole-cell model simulator"
+        help = "Whole-cell model simulator"
         arguments = [
             (['-v', '--version'], dict(action='version', version=wc_sim.__version__)),
         ]
