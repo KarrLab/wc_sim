@@ -16,10 +16,8 @@ class TestSimulationRun(unittest.TestCase):
         with CaptureOutput(relay=False) as capturer:
             import examples.simulation_run
 
-            saved_text = capturer.get_text()
             events = re.search(r'Simulated (\d+) events', capturer.get_text())
             num_events = int(events.group(1))
             self.assertTrue(0 < num_events)
             results = re.search("Saved checkpoints and run results in '(.*?)'", capturer.get_text())
             self.assertTrue(results is not None)
-        print('capturer.get_text()', saved_text)
