@@ -14,7 +14,6 @@ import os
 from wc_utils.util.misc import obj_to_str
 from wc_sim.log.checkpoint import Checkpoint
 from wc_sim.core.simulation_checkpoint_object import CheckpointSimulationObject, AccessStateObjectInterface
-from wc_sim.core.sim_metadata import SimulationMetadata
 from wc_sim.multialgorithm.submodels.ssa import SsaSubmodel
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm.species_populations import LocalSpeciesPopulation

@@ -22,7 +22,7 @@ class SimulationMetadata(object):
     """ Represents the metadata of a simulation run
 
     Attributes:
-        model (:obj:`ModelMetadata`): Information about the simulated model (e.g. revision)
+        model (:obj:`wc_utils.util.git.RepositoryMetadata`): Metadata about the model's git repository
         simulation (:obj:`SimulationConfig`): Information about the simulation's
             configuration (e.g. perturbations, random seed)
         run (:obj:`RunMetadata`): Information about the simulation's run (e.g. start time, duration)
@@ -111,83 +111,6 @@ class SimulationMetadata(object):
 
         Returns:
             :obj:`str`: a readable representation of this `SimulationMetadata`
-        """
-        return obj_to_str(self, self.ATTRIBUTES)
-
-
-class ModelMetadata(object):
-    """ Represents the simulated model (repository, branch, revision)
-
-    Attributes:
-        url (:obj:`str`): URL of the repository of the simulated model
-        branch (:obj:`str`): repository branch
-        revision (:obj:`str`): repository revision
-    """
-    ATTRIBUTES = ['url', 'branch', 'revision']
-
-    def __init__(self, url, branch, revision):
-        """ Construct a representation of a simulation model
-
-        Args:
-            url (:obj:`str`): URL of the repository of the simulated model
-            branch (:obj:`str`): repository branch
-            revision (:obj:`str`): repository revision
-        """
-
-        self.url = url
-        self.branch = branch
-        self.revision = revision
-
-    @staticmethod
-    def create_from_repository(repo_path='.'):
-        """ Collect a model's metadata from its repository and construct a Model
-        representation of this metadata
-
-        Args:
-            repo_path (:obj:`str`): path to Git repository
-        """
-
-        try:
-            md = wc_utils.util.git.get_repo_metadata(repo_path)
-            return ModelMetadata(md.url, md.branch, md.revision)
-        except ValueError:
-            warnings.warn("repo_path ({}) not in a git repo".format(repo_path))
-            return ModelMetadata('unknown', 'unknown', 'unknown')
-
-    def __eq__(self, other):
-        """ Compare two model metadata objects
-
-        Args:
-            other (:obj:`ModelMetadata`): other model metadata object
-
-        Returns:
-            :obj:`bool`: true if model metadata objects are semantically equal
-        """
-        if other.__class__ is not self.__class__:
-            return False
-
-        for attr in self.ATTRIBUTES:
-            if getattr(other, attr) != getattr(self, attr):
-                return False
-
-        return True
-
-    def __ne__(self, other):
-        """ Compare two model metadata objects
-
-        Args:
-            other (:obj:`ModelMetadata`): other model metadata object
-
-        Returns:
-            :obj:`bool`: true if model metadata objects are semantically unequal
-        """
-        return not self.__eq__(other)
-
-    def __str__(self):
-        """ Provide a readable representation of this `ModelMetadata`
-
-        Returns:
-            :obj:`str`: a readable representation of this `ModelMetadata`
         """
         return obj_to_str(self, self.ATTRIBUTES)
 

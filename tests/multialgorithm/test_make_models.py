@@ -67,7 +67,7 @@ class TestMakeModels(unittest.TestCase):
                 file = model_type.replace(' ', '_').replace(',', '')
                 file = "{}_{}_submodels.xlsx".format(file, num_submodels)
                 filename = os.path.join(self.test_dir, file)
-                Writer().run(filename, model, set_repo_metadata_from_path=False)
+                Writer().run(filename, model, data_repo_metadata=False)
                 round_trip_model = Reader().run(filename)[Model][0]
                 self.assertEqual(round_trip_model.validate(), None)
                 self.assertTrue(round_trip_model.is_equal(model, tol=1e-8))

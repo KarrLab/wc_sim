@@ -10,18 +10,19 @@ import os
 import datetime
 import numpy
 
-from test.support import EnvironmentVarGuard
 from wc_lang import Model, Validator
 from wc_lang.io import Reader
 from wc_lang.transform import PrepForWcSimTransform
 from wc_sim.core import sim_config
-from wc_sim.core.sim_metadata import SimulationMetadata, ModelMetadata, AuthorMetadata, RunMetadata
+from wc_sim.core.sim_metadata import SimulationMetadata, AuthorMetadata, RunMetadata
 from wc_sim.core.simulation_engine import SimulationEngine
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.multialgorithm.run_results import RunResults
+from wc_utils.util.git import get_repo_metadata, RepoMetadataCollectionType
 from wc_utils.util.rand import RandomStateManager
 from wc_utils.util.string import indent_forest
+
 
 '''
 usage:
@@ -99,14 +100,13 @@ class Simulation(object):
                 `SimulationMetadata.run_time` does need initialization
         """
         # model metadata
-        model = ModelMetadata.create_from_repository()
+        model, _ = get_repo_metadata(repo_type=RepoMetadataCollectionType.SCHEMA_REPO)
 
         # author metadata
         try:
             username = getpass.getuser()
         except:     # pragma: no cover
             username = 'Unknown username'
-        # TODO: collect more comprehensive and specific author information
         author = AuthorMetadata(name='Unknown name', email='Unknown email', username=username,
                                 organization='Unknown organization')
 

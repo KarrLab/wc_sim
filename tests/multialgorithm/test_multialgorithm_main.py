@@ -21,7 +21,6 @@ from wc_lang import SpeciesType
 from wc_sim import __main__
 from wc_sim.multialgorithm.__main__ import SimController
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
-from wc_sim.core.sim_metadata import SimulationMetadata
 
 
 class SimControllerTestCase(unittest.TestCase):
@@ -52,11 +51,13 @@ class SimControllerTestCase(unittest.TestCase):
             '--fba-time-step', '5',
         ]
         with __main__.App(argv=argv) as app:
-            with CaptureOutput(relay=True) as capturer:
+            with CaptureOutput(relay=False) as capturer:
                 app.run()
+                saved_text = capturer.get_text()
                 events = re.search(r'^Simulated (\d+) events', capturer.get_text())
                 results = re.search("Saved checkpoints and run results in '(.*?)'$", capturer.get_text())
         num_events = int(events.group(1))
-        results_dir = results.group(1)
         self.assertTrue(0 < num_events)
+        results_dir = results.group(1)
         self.assertTrue(results_dir.startswith(self.checkpoints_dir))
+        print('capturer.get_text()', saved_text)

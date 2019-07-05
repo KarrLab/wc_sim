@@ -15,7 +15,6 @@ import tempfile
 import unittest
 import copy
 
-from wc_sim.core.sim_metadata import SimulationMetadata
 from wc_sim.log.checkpoint import Checkpoint, CheckpointLogger
 from wc_onto import onto
 from wc_utils.util.units import unit_registry

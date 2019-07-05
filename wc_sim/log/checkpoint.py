@@ -14,7 +14,6 @@ import os
 import pickle
 import re
 
-from wc_sim.core.sim_metadata import SimulationMetadata
 from wc_utils.util.misc import obj_to_str
 
 

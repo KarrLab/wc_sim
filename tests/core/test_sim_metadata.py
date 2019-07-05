@@ -7,27 +7,26 @@
 :License: MIT
 """
 
-import unittest
 import copy
 import shutil
 import tempfile
+import unittest
+
+from wc_onto import onto
+from wc_sim.core import sim_config
+from wc_sim.core.sim_metadata import SimulationMetadata, AuthorMetadata, RunMetadata
+from wc_utils.util.git import get_repo_metadata, RepoMetadataCollectionType
+from wc_utils.util.misc import as_dict
 import wc_lang
 
-from wc_sim.core import sim_config
-from wc_sim.core.sim_metadata import SimulationMetadata, ModelMetadata, AuthorMetadata, RunMetadata
-from wc_utils.util.misc import as_dict
-from wc_onto import onto
 
-
-class TestMetadata(unittest.TestCase):
+class TestSimulationMetadata(unittest.TestCase):
 
     def setUp(self):
         self.pickle_file_dir = tempfile.mkdtemp()
 
-        self.model = model = ModelMetadata.create_from_repository()
-        self.model_equal = ModelMetadata.create_from_repository()
-        self.model_different = copy.copy(self.model_equal)
-        self.model_different.branch = self.model_equal.branch + 'x'
+        model, _ = get_repo_metadata(repo_type=RepoMetadataCollectionType.SCHEMA_REPO)
+        self.model = model
 
         changes = [
             sim_config.Change([
@@ -96,10 +95,6 @@ class TestMetadata(unittest.TestCase):
 
     def test_equality(self):
         obj = object()
-        self.assertEqual(self.model, self.model_equal)
-        self.assertNotEqual(self.model, obj)
-        self.assertNotEqual(self.model, self.model_different)
-        self.assertFalse(self.model != self.model_equal)
 
         self.assertEqual(self.run, self.run_equal)
         self.assertNotEqual(self.run, obj)
