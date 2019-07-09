@@ -1,4 +1,4 @@
-# automated migration configuration file
+# data-schema migration configuration file
 
 # description of the attributes:
 # 'files_to_migrate' contains paths to files in the data repo to migrate

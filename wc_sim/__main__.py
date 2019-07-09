@@ -8,7 +8,6 @@
 """
 
 from obj_model.migrate import data_repo_migration_controllers
-from obj_model.migrate import CementControllers
 from .multialgorithm.__main__ import handlers as multialgorithm_handlers
 import cement
 import wc_sim
