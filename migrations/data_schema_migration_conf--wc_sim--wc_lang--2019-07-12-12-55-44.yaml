@@ -5,7 +5,7 @@
 # 'schema_repo_url' contains the URL of the schema repo
 # 'branch' contains the schema's branch
 # 'schema_file' contains the relative path to the schema file in the schema repo
-branch: migration_test
+branch: master
 files_to_migrate:
 - ../examples/transcription_translation_hybrid_model/model_for_migration.xlsx
 schema_file: ../wc_lang/core.py

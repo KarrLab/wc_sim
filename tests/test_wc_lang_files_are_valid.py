@@ -1,5 +1,4 @@
-""" Ensure that wc-lang-encoded models are validate so that
-these examples don't diverge from wc-lang.
+""" Ensure that wc-lang-encoded models are validate so that these examples don't diverge from wc-lang.
 
 :Author: Jonathan Karr <karr@mssm.edu>
 :Date: 2018-11-15
@@ -34,8 +33,8 @@ class ValidateWcLangFilesTestCase(unittest.TestCase):
         for file in self.FILES:
             try:
                 # reader already does validation
-                wc_lang.io.Reader().run(file)
+                wc_lang.io.Reader().run(file, validate=True)
             except ValueError as err:
-                errs.append(str(err))
+                errs.append("File: {}\n{}".format(file, str(err)))
         if errs:
-            raise Exception('The following examples are invalid:\n  {}'.format('\n  '.join(errs)))
+            raise Exception('The following example model(s) are invalid:\n{}'.format('\n'.join(errs)))
