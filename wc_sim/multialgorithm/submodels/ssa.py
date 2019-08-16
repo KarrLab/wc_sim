@@ -14,7 +14,6 @@ from scipy.constants import Avogadro
 from wc_utils.util.rand import RandomStateManager
 from wc_utils.util.stats import ExponentialMovingAverage
 
-from de_sim.config import core as de_sim_config_core
 from de_sim.simulation_object import SimulationObject
 from de_sim.event import Event
 from wc_sim.multialgorithm import message_types
@@ -22,7 +21,6 @@ from wc_sim.multialgorithm.config import core as config_core_multialgorithm
 from wc_sim.multialgorithm.submodels.dynamic_submodel import DynamicSubmodel
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 
-de_sim_config = de_sim_config_core.get_config()['de_sim']
 config_multialgorithm = \
     config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 
@@ -65,8 +63,8 @@ class SsaSubmodel(DynamicSubmodel):
     Attributes:
         TODO: make true or remove
         random: a numpy RandomState() instance object; private PRNG; may be reproducible, as
-            determined by the value of de_sim_config['reproducible_seed'] and how the main program,
-            MultiAlgorithm, calls ReproducibleRandom.init()
+            determined by the value of de_sim.config.core.get_config()['de_sim']['reproducible_seed']
+            and how the main program, MultiAlgorithm, calls ReproducibleRandom.init()
         num_SsaWaits: integer; count of SsaWaits
         ema_of_inter_event_time: an ExponentialMovingAverage; an EMA of the time between
             ExecuteSsaReaction events; when total propensities == 0, ema_of_inter_event_time
