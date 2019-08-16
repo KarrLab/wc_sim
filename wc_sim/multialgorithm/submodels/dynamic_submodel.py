@@ -9,7 +9,7 @@
 
 from scipy.constants import Avogadro
 from wc_lang import Compartment, Species, Reaction, Parameter
-from wc_sim.core.simulation_object import ApplicationSimulationObject
+from de_sim.simulation_object import ApplicationSimulationObject
 from wc_sim.multialgorithm import message_types, distributed_properties
 from wc_sim.multialgorithm.debug_logs import logs as debug_logs
 from wc_sim.multialgorithm.dynamic_components import DynamicCompartment, DynamicModel
@@ -202,7 +202,7 @@ class DynamicSubmodel(ApplicationSimulationObject):
         """ Handle a GetCurrentProperty simulation event.
 
         Args:
-            event (:obj:`wc_sim.core.Event`): an `Event` to process
+            event (:obj:`de_sim.event.Event`): an `Event` to process
 
         Raises:
             MultialgorithmError: if an `GetCurrentProperty` message requests an unknown property

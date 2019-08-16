@@ -7,9 +7,9 @@
 """
 import argparse
 import sys
-from wc_sim.core.simulation_engine import SimulationEngine
-from wc_sim.core.simulation_message import SimulationMessage
-from wc_sim.core.simulation_object import ApplicationSimulationObject
+from de_sim.simulation_engine import SimulationEngine
+from de_sim.simulation_message import SimulationMessage
+from de_sim.simulation_object import ApplicationSimulationObject
 
 
 class MessageSentToSelf(SimulationMessage):

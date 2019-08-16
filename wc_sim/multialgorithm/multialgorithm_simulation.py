@@ -8,7 +8,7 @@
 
 from wc_lang import Model, Compartment, Species
 from wc_sim.multialgorithm.dynamic_components import DynamicModel, DynamicCompartment
-from wc_sim.core.simulation_engine import SimulationEngine
+from de_sim.simulation_engine import SimulationEngine
 from wc_sim.multialgorithm.model_utilities import ModelUtilities
 from wc_sim.multialgorithm.multialgorithm_checkpointing import MultialgorithmicCheckpointingSimObj
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError

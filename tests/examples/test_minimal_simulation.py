@@ -10,7 +10,7 @@ import warnings
 
 from argparse import Namespace
 from examples.minimal_simulation import RunMinimalSimulation
-from wc_sim.core.debug_logs import config
+from de_sim.config.debug_logs import config
 
 
 class TestMinimalSimulation(unittest.TestCase):

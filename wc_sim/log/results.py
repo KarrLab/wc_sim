@@ -41,7 +41,7 @@ class Writer(object):
         """ Construct a log writer.
 
         Args:
-            state (:obj:`wc.sim.state.Model`): model state
+            state (:obj:`wc_sim.state.Model`): model state
             num_time_steps (:obj:`int`): Number of time steps to log
             log_path (:obj:`str`): Path to log file
         """

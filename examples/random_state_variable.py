@@ -8,9 +8,9 @@
 import sys
 import argparse
 import random
-from wc_sim.core.simulation_message import SimulationMessage
-from wc_sim.core.simulation_object import ApplicationSimulationObject
-from wc_sim.core.simulation_engine import SimulationEngine
+from de_sim.simulation_message import SimulationMessage
+from de_sim.simulation_object import ApplicationSimulationObject
+from de_sim.simulation_engine import SimulationEngine
 
 
 class MessageSentToSelf(SimulationMessage):

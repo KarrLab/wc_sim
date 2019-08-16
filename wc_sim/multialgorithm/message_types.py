@@ -37,7 +37,7 @@ For this sequential simulator, simulation messages are stored as a copy of or re
 
 from collections import namedtuple
 
-from wc_sim.core.simulation_message import SimulationMessage
+from de_sim.simulation_message import SimulationMessage
 
 
 class AdjustPopulationByDiscreteSubmodel(SimulationMessage):

@@ -17,7 +17,7 @@ from collections import defaultdict
 from scipy.constants import Avogadro
 
 import wc_lang
-from wc_sim.core.simulation_object import (SimulationObject, ApplicationSimulationObject,
+from de_sim.simulation_object import (SimulationObject, ApplicationSimulationObject,
                                            AppSimObjAndABCMeta, ApplicationSimulationObjMeta)
 from wc_sim.multialgorithm import message_types
 from wc_sim.multialgorithm.config import core as config_core_multialgorithm
@@ -1039,7 +1039,7 @@ class SpeciesPopSimObject(LocalSpeciesPopulation, ApplicationSimulationObject,
         """ Handle a simulation event
 
         Args:
-            event (:obj:`wc_sim.core.Event`): an `Event` to process
+            event (:obj:`de_sim.event.Event`): an `Event` to process
         """
         population_change = event.message.population_change
         self.adjust_discretely(self.time, population_change)
@@ -1048,7 +1048,7 @@ class SpeciesPopSimObject(LocalSpeciesPopulation, ApplicationSimulationObject,
         """ Handle a simulation event
 
         Args:
-            event (:obj:`wc_sim.core.Event`): an `Event` to process
+            event (:obj:`de_sim.event.Event`): an `Event` to process
 
         Raises:
             :obj:`SpeciesPopulationError`: if an `AdjustPopulationByContinuousSubmodel` event acts on a
@@ -1061,7 +1061,7 @@ class SpeciesPopSimObject(LocalSpeciesPopulation, ApplicationSimulationObject,
         """ Handle a simulation event
 
         Args:
-            event (:obj:`wc_sim.core.Event`): an `Event` to process
+            event (:obj:`de_sim.event.Event`): an `Event` to process
 
         Raises:
             :obj:`SpeciesPopulationError`: if a `GetPopulation` message requests the population of an
@@ -1075,7 +1075,7 @@ class SpeciesPopSimObject(LocalSpeciesPopulation, ApplicationSimulationObject,
         """ Handle a simulation event
 
         Args:
-            event (:obj:`wc_sim.core.Event`): an `Event` to process
+            event (:obj:`de_sim.event.Event`): an `Event` to process
 
         Raises:
             :obj:`SpeciesPopulationError`: if an `GetCurrentProperty` message requests an unknown

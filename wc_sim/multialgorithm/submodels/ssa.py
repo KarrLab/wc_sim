@@ -14,15 +14,15 @@ from scipy.constants import Avogadro
 from wc_utils.util.rand import RandomStateManager
 from wc_utils.util.stats import ExponentialMovingAverage
 
-from wc_sim.core.config import core as config_core_core
-from wc_sim.core.simulation_object import SimulationObject
-from wc_sim.core.event import Event
+from de_sim.config import core as de_sim_config_core
+from de_sim.simulation_object import SimulationObject
+from de_sim.event import Event
 from wc_sim.multialgorithm import message_types
 from wc_sim.multialgorithm.config import core as config_core_multialgorithm
 from wc_sim.multialgorithm.submodels.dynamic_submodel import DynamicSubmodel
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 
-config_core = config_core_core.get_config()['wc_sim']['core']
+de_sim_config = de_sim_config_core.get_config()['de_sim']
 config_multialgorithm = \
     config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 
@@ -63,8 +63,9 @@ class SsaSubmodel(DynamicSubmodel):
         *  2nd order recovery because other submodels can modify shared species counts
 
     Attributes:
+        TODO: make true or remove
         random: a numpy RandomState() instance object; private PRNG; may be reproducible, as
-            determined by the value of config_core['reproducible_seed'] and how the main program,
+            determined by the value of de_sim_config['reproducible_seed'] and how the main program,
             MultiAlgorithm, calls ReproducibleRandom.init()
         num_SsaWaits: integer; count of SsaWaits
         ema_of_inter_event_time: an ExponentialMovingAverage; an EMA of the time between
@@ -122,7 +123,7 @@ class SsaSubmodel(DynamicSubmodel):
         # The 'initial_ssa_wait_ema' must be positive, as otherwise an infinite sequence of SsaWait
         # messages will be executed at the start of a simulation if no reactions are enabled
         if default_center_of_mass is None:
-            default_center_of_mass = config_core['default_center_of_mass']
+            default_center_of_mass = config_multialgorithm['default_center_of_mass']
         if config_multialgorithm['initial_ssa_wait_ema'] <= 0:
             raise MultialgorithmError("'initial_ssa_wait_ema' must be positive to avoid infinite sequence of "
             "SsaWait messages, but it is {}".format(config_multialgorithm['initial_ssa_wait_ema']))

@@ -9,7 +9,7 @@
 from wc_lang import Model
 from wc_lang.io import Reader
 from wc_lang.transform import PrepForWcSimTransform
-from wc_sim.core.debug_logs import config
+from de_sim.config.debug_logs import config
 from wc_sim.multialgorithm.config import core as config_core_multialgorithm
 from wc_sim.multialgorithm.make_models import MakeModel
 from wc_sim.multialgorithm.multialgorithm_checkpointing import (MultialgorithmicCheckpointingSimObj,

@@ -12,7 +12,7 @@ import builtins
 import math
 import sys
 
-from wc_sim.core.simulation_object import Event, SimulationObject, ApplicationSimulationObject
+from de_sim.simulation_object import Event, SimulationObject, ApplicationSimulationObject
 from wc_sim.multialgorithm.debug_logs import logs as debug_logs
 from wc_sim.multialgorithm import message_types
 from wc_sim.multialgorithm.config import core as config_core_multialgorithm

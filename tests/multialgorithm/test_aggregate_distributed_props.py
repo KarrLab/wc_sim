@@ -13,9 +13,9 @@ from io import StringIO
 
 from wc_sim.multialgorithm.aggregate_distributed_props import (AggregateDistributedProps,
                                                                DistributedProperty, DistributedPropertyFactory)
-from wc_sim.core.simulation_object import SimulationObject, ApplicationSimulationObject
-from wc_sim.core.simulation_engine import SimulationEngine
-from wc_sim.core.simulation_message import SimulationMessage
+from de_sim.simulation_object import SimulationObject, ApplicationSimulationObject
+from de_sim.simulation_engine import SimulationEngine
+from de_sim.simulation_message import SimulationMessage
 from wc_sim.multialgorithm import message_types
 from wc_sim.multialgorithm.config import core as config_core_multialgorithm
 

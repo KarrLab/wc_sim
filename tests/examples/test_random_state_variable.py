@@ -11,7 +11,7 @@ from capturer import CaptureOutput
 from argparse import Namespace
 
 from examples.random_state_variable import RunRandomStateVariableSimulation
-from wc_sim.core.debug_logs import config
+from de_sim.config.debug_logs import config
 
 
 class TestRandomStateVariableSimulation(unittest.TestCase):

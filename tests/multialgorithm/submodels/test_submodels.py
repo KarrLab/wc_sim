@@ -10,7 +10,7 @@ from obj_model.utils import get_component_by_id
 from wc_lang import Model, Species, Validator
 from wc_lang.io import Reader
 from wc_lang.transform import PrepForWcSimTransform
-from wc_sim.core.simulation_engine import SimulationEngine
+from de_sim.simulation_engine import SimulationEngine
 from wc_sim.multialgorithm.make_models import MakeModel
 from wc_sim.multialgorithm.model_utilities import ModelUtilities
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError

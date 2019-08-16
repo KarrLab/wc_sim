@@ -6,8 +6,8 @@
 :License: MIT
 """
 
-from wc_sim.core.event import Event
-from wc_sim.core.simulation_object import SimulationObject
+from de_sim.event import Event
+from de_sim.simulation_object import SimulationObject
 from wc_sim.multialgorithm import message_types
 from wc_sim.multialgorithm.message_types import ALL_MESSAGE_TYPES
 from wc_sim.multialgorithm.submodels.dynamic_submodel import DynamicSubmodel
@@ -76,7 +76,7 @@ class SkeletonSubmodel(DynamicSubmodel):
         """ Handle a simulation event that contains a GivePopulation message
 
         Args:
-            event (:obj:`wc_sim.core.Event`): an Event to process
+            event (:obj:`de_sim.event.Event`): an Event to process
         """
         # populations is a GivePopulation_body instance
         populations = event.message
