@@ -786,10 +786,12 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             _, comp = get_species_and_compartment_from_name(species_id)
             if comp == compartment_id:
                 try:
-                    mass += self._molecular_weights[species_id] * self.read_one(time, species_id)
+                    mw = self._molecular_weights[species_id]              
                 except KeyError as e:
                     raise SpeciesPopulationError("molecular weight not available for '{}'".format(
                         species_id))
+                if not numpy.isnan(mw):
+                    mass += mw * self.read_one(time, species_id)
         return mass / Avogadro
 
     def log_event(self, message, specie):
