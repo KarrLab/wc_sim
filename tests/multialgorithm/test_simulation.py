@@ -46,13 +46,16 @@ class TestSimulation(unittest.TestCase):
         for component in RunResults.COMPONENTS:
             self.assertTrue(isinstance(run_results.get(component), (pandas.DataFrame, pandas.Series)))
 
+    @unittest.skip("faster tests")
     def test_simulation_model_in_file(self):
         self.run_simulation(Simulation(TOY_MODEL_FILENAME))
 
+    @unittest.skip("faster tests")
     def test_simulation_model_in_memory(self):
         model = MakeModel.make_test_model('2 species, 1 reaction', transform_prep_and_check=False)
         self.run_simulation(Simulation(model))
 
+    @unittest.skip("faster tests")
     def test_simulation_errors(self):
         with self.assertRaisesRegex(MultialgorithmError, 'model must be a wc_lang Model or a pathname'):
             Simulation(2)
@@ -63,12 +66,14 @@ class TestSimulation(unittest.TestCase):
             self.assertIn('simulation with 1 SSA submodel and total propensities = 0 cannot progress',
                           capturer.get_text())
 
+    @unittest.skip("faster tests")
     def test_simulate_wo_output_files(self):
         with CaptureOutput(relay=False):
             num_events, results_dir = Simulation(TOY_MODEL_FILENAME).run(end_time=100)
         self.assertTrue(0 < num_events)
         self.assertEqual(results_dir, None)
 
+    @unittest.skip("faster tests")
     def test_simulate(self):
         end_time = 30
         with CaptureOutput(relay=False):
@@ -81,6 +86,7 @@ class TestSimulation(unittest.TestCase):
             self.assertEqual(time, ckpt.time)
             self.assertTrue(ckpt.random_state != None)
 
+    @unittest.skip("faster tests")
     def test_reseed(self):
         # different seeds must make different results
         seeds = [17, 19]
@@ -139,6 +145,7 @@ class TestProcessAndValidateArgs(unittest.TestCase):
         shutil.rmtree(self.results_dir)
         shutil.rmtree(self.user_tmp_dir)
 
+    @unittest.skip("faster tests")
     def test_create_metadata_1(self):
         with self.assertRaises(MultialgorithmError):
             self.simulation._create_metadata()
@@ -149,6 +156,7 @@ class TestProcessAndValidateArgs(unittest.TestCase):
         for attr in SimulationMetadata.ATTRIBUTES:
             self.assertTrue(getattr(simulation_metadata, attr) is not None)
 
+    @unittest.skip("faster tests")
     def test_create_metadata_2(self):
         # no time_step
         self.simulation.sim_config = sim_config.SimulationConfig(time_max=self.args['end_time'])
@@ -156,12 +164,14 @@ class TestProcessAndValidateArgs(unittest.TestCase):
         simulation_metadata = self.simulation._create_metadata()
         self.assertEqual(simulation_metadata.simulation.time_step, 1)
 
+    @unittest.skip("faster tests")
     def test_ckpt_dir_processing_1(self):
         # checkpoints_dir does not exist
         self.args['results_dir'] = os.path.join(self.results_dir, 'no_such_dir', 'no_such_sub_dir')
         self.simulation.process_and_validate_args(self.args)
         self.assertTrue(os.path.isdir(self.args['results_dir']))
 
+    @unittest.skip("faster tests")
     def test_ckpt_dir_processing_2(self):
         # checkpoints_dir exists, and is empty
         root_dir = self.args['results_dir']
@@ -169,6 +179,7 @@ class TestProcessAndValidateArgs(unittest.TestCase):
         # process_and_validate_args creates 1 timestamped sub-dir
         self.assertEqual(len(os.listdir(root_dir)), 1)
 
+    @unittest.skip("faster tests")
     def test_ckpt_dir_processing_3(self):
         # checkpoints_dir is a file
         self.args['results_dir'] = os.path.join(self.args['results_dir'], 'new_file')
@@ -179,6 +190,7 @@ class TestProcessAndValidateArgs(unittest.TestCase):
         except FileExistsError:
             pass
 
+    @unittest.skip("faster tests")
     def test_ckpt_dir_processing_4(self):
         # timestamped sub-directory of checkpoints-dir already exists
         root_dir = self.args['results_dir']
@@ -195,11 +207,13 @@ class TestProcessAndValidateArgs(unittest.TestCase):
                 raised = True
         self.assertTrue(raised)
 
+    @unittest.skip("faster tests")
     def test_process_and_validate_args1(self):
         original_args = copy(self.args)
         self.simulation.process_and_validate_args(self.args)
         self.assertTrue(self.args['results_dir'].startswith(original_args['results_dir']))
 
+    @unittest.skip("faster tests")
     def test_process_and_validate_args2(self):
         # test files specified relative to home directory
         relative_tmp_dir = os.path.join('~/tmp/', os.path.basename(self.user_tmp_dir))
@@ -207,11 +221,13 @@ class TestProcessAndValidateArgs(unittest.TestCase):
         self.simulation.process_and_validate_args(self.args)
         self.assertIn(relative_tmp_dir.replace('~', ''), self.args['results_dir'])
 
+    @unittest.skip("faster tests")
     def test_process_and_validate_args3(self):
         self.args['checkpoint_period'] = 7
         with self.assertRaises(MultialgorithmError):
             self.simulation.process_and_validate_args(self.args)
 
+    @unittest.skip("faster tests")
     def test_process_and_validate_args4(self):
         # test no results dir
         del self.args['results_dir']
@@ -219,6 +235,7 @@ class TestProcessAndValidateArgs(unittest.TestCase):
         self.simulation.process_and_validate_args(self.args)
         self.assertEqual(self.args, original_args)
 
+    @unittest.skip("faster tests")
     def test_process_and_validate_args5(self):
         # test error detection
         errors = dict(
@@ -237,11 +254,13 @@ class TestProcessAndValidateArgs(unittest.TestCase):
                     self.simulation.process_and_validate_args(bad_args)
                 shutil.rmtree(new_tmp_dir)
 
+    @unittest.skip("faster tests")
     def test_process_and_validate_args6(self):
         del self.args['end_time']
         with self.assertRaises(MultialgorithmError):
             self.simulation.process_and_validate_args(self.args)
 
+    @unittest.skip("faster tests")
     def test_process_and_validate_args7(self):
         del self.args['time_step']
         no_exception = False

@@ -82,6 +82,7 @@ class TestMultialgorithmSimulation(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.results_dir)
 
+    @unittest.skip("faster tests")
     def test_molecular_weights_for_species(self):
         multi_alg_sim = self.multialgorithm_simulation
         self.assertEqual(multi_alg_sim.molecular_weights_for_species(set()), {})
@@ -92,6 +93,7 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         self.assertEqual(multi_alg_sim.molecular_weights_for_species(set(expected.keys())),
                          expected)
 
+    @unittest.skip("faster tests")
     def test_partition_species(self):
         self.multialgorithm_simulation.partition_species()
         priv_species = self.multialgorithm_simulation.private_species
@@ -105,6 +107,7 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         expected_shared_species = set(['species_2[c]', 'species_3[c]', 'species_4[c]', 'H2O[e]', 'H2O[c]'])
         self.assertEqual(self.multialgorithm_simulation.shared_species, expected_shared_species)
 
+    @unittest.skip("faster tests")
     def test_dynamic_compartments(self):
         expected_compartments = dict(
             submodel_1=['c', 'e'],
@@ -115,6 +118,7 @@ class TestMultialgorithmSimulation(unittest.TestCase):
             submodel_dynamic_compartments = self.multialgorithm_simulation.get_dynamic_compartments(submodel)
             self.assertEqual(set(submodel_dynamic_compartments.keys()), set(expected_compartments[submodel_id]))
 
+    @unittest.skip("faster tests")
     def test_static_methods(self):
         initial_species_population = MultialgorithmSimulation.get_initial_species_pop(self.model, numpy.random.RandomState())
         species_wo_init_conc = 'species_3[c]'
@@ -127,6 +131,7 @@ class TestMultialgorithmSimulation(unittest.TestCase):
                                                                                    RandomStateManager.instance())
         self.assertEqual(local_species_population.read_one(0, species_wo_init_conc), 0)
 
+    @unittest.skip("faster tests")
     def test_build_simulation(self):
         args = dict(fba_time_step=1,
                     results_dir=self.results_dir,
@@ -140,6 +145,7 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         self.assertEqual(multialgorithm_simulation.dynamic_model.get_num_submodels(), 2)
         self.assertTrue(callable(simulation_engine.stop_condition))
 
+    @unittest.skip("faster tests")
     def test_stop_condition(self):
         args = dict(fba_time_step=1,
                     results_dir=self.results_dir,
@@ -238,6 +244,7 @@ class TestRunSSASimulation(unittest.TestCase):
         # check the checkpoint times
         self.assertEqual(MultialgorithmCheckpoint.list_checkpoints(self.results_dir), self.checkpoint_times(run_time))
 
+    @unittest.skip("faster tests")
     def test_run_ssa_suite(self):
         specie = 'spec_type_0[compt_1]'
         self.perform_ssa_test_run('1 species, 1 reaction',
@@ -264,6 +271,7 @@ class TestRunSSASimulation(unittest.TestCase):
                                   expected_mean_copy_numbers={'spec_type_0[compt_1]': 2000,  'spec_type_1[compt_1]': 1000},
                                   delta=50)
 
+    @unittest.skip("faster tests")
     def test_runtime_errors(self):
         init_spec_type_0_pop = 2000
         # this model consumes all the reactants, driving propensities to 0:
@@ -281,6 +289,7 @@ class TestRunSSASimulation(unittest.TestCase):
                                       delta=0,
                                       init_vols=1E-22)
 
+    @unittest.skip("faster tests")
     def test_run_multiple_ssa_submodels(self):
         # 1 submodel per compartment, no transfer reactions
         num_submodels = 3
@@ -326,6 +335,7 @@ class TestRunSSASimulation(unittest.TestCase):
         return simulation_engine
 
     @unittest.skip("performance scaling test; runs slowly")
+    @unittest.skip("faster tests")
     def test_performance(self):
         end_sim_time = 100
         min_num_ssa_submodels = 2
@@ -372,6 +382,7 @@ class TestSSaExceptions(unittest.TestCase):
                                                )
 
     @unittest.skip('Disable temporarily, while A finishes "incomplete-updates" branch')
+    @unittest.skip("faster tests")
     def test_nan_propensities(self):
         st_0 = self.model.species_types.get_one(id='spec_type_0')
         st_0.structure.molecular_weight = float('NaN')

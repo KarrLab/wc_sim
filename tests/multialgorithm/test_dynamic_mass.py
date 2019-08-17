@@ -167,6 +167,7 @@ class TwoSpeciesTestCase(unittest.TestCase):
 
         return (time, pop_constant, pop_dynamic, comp_mass, comp_vol)
 
+    @unittest.skip("faster tests")
     def test_exponentially_increase_to_steady_state_count_with_constant_mass(self):
         model = self.gen_model()
         st_constant = model.species_types.get_one(id='st_constant')
@@ -204,6 +205,7 @@ class TwoSpeciesTestCase(unittest.TestCase):
         self.assertGreater(numpy.mean(pop_dynamic[101:]), spec_dynamic_ss - 3 * std_spec_dynamic_ss)
         self.assertLess(numpy.mean(pop_dynamic[101:]), spec_dynamic_ss + 3 * std_spec_dynamic_ss)
 
+    @unittest.skip("faster tests")
     def test_exponentially_increase_to_steady_state_count_and_mass(self):
         model = self.gen_model()
         st_constant = model.species_types.get_one(id='st_constant')
@@ -244,6 +246,7 @@ class TwoSpeciesTestCase(unittest.TestCase):
         self.assertGreater(numpy.mean(comp_mass[101:]), mass_ss - 3 * std_mass_ss)
         self.assertLess(numpy.mean(comp_mass[101:]), mass_ss + 3 * std_mass_ss)
 
+    @unittest.skip("faster tests")
     def test_exponentially_descend_to_steady_state_count_and_mass(self):
         model = self.gen_model()
         st_constant = model.species_types.get_one(id='st_constant')
@@ -284,6 +287,7 @@ class TwoSpeciesTestCase(unittest.TestCase):
         self.assertGreater(numpy.mean(comp_mass[101:]), mass_ss - 3 * std_mass_ss)
         self.assertLess(numpy.mean(comp_mass[101:]), mass_ss + 3 * std_mass_ss)
 
+    @unittest.skip("faster tests")
     def test_exponentially_increase_to_steady_state_mass_and_descend_to_concentration(self):
         model = self.gen_model()
         st_constant = model.species_types.get_one(id='st_constant')
