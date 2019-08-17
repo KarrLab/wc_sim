@@ -52,7 +52,7 @@ jobs:
           command: |
             set +e
 
-            karr_lab_build_utils3 run-tests --with-xunit --with-coverage --verbose --test-path tests/examples/test_minimal_simulation.py
+            karr_lab_build_utils3 run-tests --with-xunit --with-coverage --verbose
             TEST_EXIT_CODE_PY3=$?
 
             # Calculate exit code and save to file for reading by the next step
