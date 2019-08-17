@@ -9,7 +9,6 @@
 from wc_lang import Model
 from wc_lang.io import Reader
 from wc_lang.transform import PrepForWcSimTransform
-from de_sim.config.debug_logs import config
 from wc_sim.multialgorithm.config import core as config_core_multialgorithm
 from wc_sim.multialgorithm.make_models import MakeModel
 from wc_sim.multialgorithm.multialgorithm_checkpointing import (MultialgorithmicCheckpointingSimObj,
@@ -317,14 +316,6 @@ class TestRunSSASimulation(unittest.TestCase):
                                   delta=0,
                                   init_vols=1E-22)
 
-    def suspend_logging(self):
-        self.saved_config = copy.deepcopy(config)
-        DictUtil.set_value(config, 'level', 'error')
-
-    def restore_logging(self):
-        global config
-        config = self.saved_config
-
     def prep_simulation(self, num_ssa_submodels):
         model, multialgorithm_simulation, simulation_engine = self.make_model_and_simulation(
             '2 species, a pair of symmetrical reactions, and rates given by reactant population',
@@ -344,7 +335,8 @@ class TestRunSSASimulation(unittest.TestCase):
         print("Performance test of SSA submodel simulation: 2 reactions per submodel; end simulation time: {}".format(end_sim_time))
         unprofiled_perf = ["\n#SSA submodels\t# events\trun time (s)\treactions/s".format()]
 
-        self.suspend_logging()
+        # todo: make suspend logging
+        # self.suspend_logging()
         num_ssa_submodels = min_num_ssa_submodels
         while num_ssa_submodels <= max_num_ssa_submodels:
 

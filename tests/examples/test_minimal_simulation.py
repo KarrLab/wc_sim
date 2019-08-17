@@ -7,31 +7,27 @@
 
 import unittest
 import warnings
-
-from argparse import Namespace
-from examples.minimal_simulation import RunMinimalSimulation
-# from de_sim.config.debug_logs import config
-
 from pprint import pprint
-import sys
+from argparse import Namespace
+
+from examples.minimal_simulation import RunMinimalSimulation
+from de_sim.config import core
+
 
 class TestMinimalSimulation(unittest.TestCase):
 
     def setUp(self):
-        from de_sim.config.debug_logs import config
+        self.config = core.get_debug_logs_config()
         print('=== config ===')
-        pprint(config)
-        print('=== config ===', file=sys.stderr)
-        pprint(config, stream=sys.stderr)
+        pprint(self.config)
         # turn off console logging
-        self.console_level = config['debug_logs']['handlers']['debug.console']['level']
-        config['debug_logs']['handlers']['debug.console']['level'] = 'error'
+        self.console_level = self.config['debug_logs']['handlers']['debug.console']['level']
+        self.config['debug_logs']['handlers']['debug.console']['level'] = 'error'
         warnings.simplefilter("ignore")
 
     def tearDown(self):
-        return
         # restore console logging
-        config['debug_logs']['handlers']['debug.console']['level'] = self.console_level
+        self.config['debug_logs']['handlers']['debug.console']['level'] = self.console_level
 
     def run_minimal_simulation(self, delay, end_time):
         args = Namespace(delay=delay, end_time=end_time)
