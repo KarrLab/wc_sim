@@ -10,7 +10,7 @@ import warnings
 
 from argparse import Namespace
 from examples.minimal_simulation import RunMinimalSimulation
-from de_sim.config.debug_logs import config
+# from de_sim.config.debug_logs import config
 
 from pprint import pprint
 import sys
@@ -18,6 +18,7 @@ import sys
 class TestMinimalSimulation(unittest.TestCase):
 
     def setUp(self):
+        from de_sim.config.debug_logs import config
         print('=== config ===')
         pprint(config)
         print('=== config ===', file=sys.stderr)
@@ -28,6 +29,7 @@ class TestMinimalSimulation(unittest.TestCase):
         warnings.simplefilter("ignore")
 
     def tearDown(self):
+        return
         # restore console logging
         config['debug_logs']['handlers']['debug.console']['level'] = self.console_level
 
