@@ -12,6 +12,10 @@ from argparse import Namespace
 from examples.minimal_simulation import RunMinimalSimulation
 from de_sim.config.debug_logs import config
 
+from pprint import pprint
+import sys
+pprint(config)
+pprint(config, stream=sys.stderr)
 
 class TestMinimalSimulation(unittest.TestCase):
 
