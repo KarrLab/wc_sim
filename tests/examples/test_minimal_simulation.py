@@ -14,7 +14,9 @@ from de_sim.config.debug_logs import config
 
 from pprint import pprint
 import sys
+print('config')
 pprint(config)
+print('config', file=sys.stderr)
 pprint(config, stream=sys.stderr)
 
 class TestMinimalSimulation(unittest.TestCase):
