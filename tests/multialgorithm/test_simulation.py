@@ -16,7 +16,7 @@ from capturer import CaptureOutput
 from copy import copy
 from wc_sim.core import sim_config
 from wc_sim.core.sim_metadata import SimulationMetadata
-from wc_sim.log.checkpoint import Checkpoint
+from de_sim.checkpoint import Checkpoint
 from wc_sim.multialgorithm.simulation import Simulation
 from wc_sim.multialgorithm.run_results import RunResults
 from wc_sim.multialgorithm.make_models import MakeModel
