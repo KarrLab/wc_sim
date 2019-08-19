@@ -18,8 +18,6 @@ class TestMinimalSimulation(unittest.TestCase):
 
     def setUp(self):
         self.config = core.get_debug_logs_config()
-        print('=== config ===')
-        pprint(self.config)
         # turn off console logging
         self.console_level = self.config['debug_logs']['handlers']['debug.console']['level']
         self.config['debug_logs']['handlers']['debug.console']['level'] = 'error'
