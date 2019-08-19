@@ -12,9 +12,59 @@ import os
 import socket
 import warnings
 import pickle
+from abc import ABC, abstractmethod
 
 import wc_utils.util.git
 from wc_utils.util.misc import obj_to_str
+
+
+class Comparable(ABC):
+    """ Interface to an object that can be compared, for simulation metadata elements
+    """
+    @abstractmethod
+    def __eq__(self, other):
+        """ Compare two simulation metadata elements
+
+        Args:
+            other (:obj:`Comparable`): other simulation metadata element
+
+        Returns:
+            :obj:`bool`: true if simulation metadata elements are semantically equal
+        """
+        pass    # pragma: no cover
+
+    @abstractmethod
+    def __ne__(self, other):
+        """ Compare two simulation metadata elements
+
+        Args:
+            other (:obj:`Comparable`): other simulation metadata element
+
+        Returns:
+            :obj:`bool`: true if simulation metadata objects are semantically unequal
+        """
+        pass    # pragma: no cover
+
+
+class ExampleComparable(Comparable):
+
+    ATTRIBUTES = ['attr', 'value']
+    def __init__(self, attr, value):
+        self.attr = attr
+        self.value = value
+
+    def __eq__(self, other):
+        if other.__class__ is not self.__class__:
+            return False
+
+        for attr in self.ATTRIBUTES:
+            if getattr(other, attr) != getattr(self, attr):
+                return False
+
+        return True
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
 
 class SimulationMetadata(object):
@@ -22,7 +72,7 @@ class SimulationMetadata(object):
 
     Attributes:
         model (:obj:`wc_utils.util.git.RepositoryMetadata`): Metadata about the model's git repository
-        simulation (:obj:`wc_sim.core.sim_config.SimulationConfig`): Information about the simulation's
+        simulation (:obj:`object`): Information about the simulation's
             configuration (e.g. perturbations, random seed)
         run (:obj:`RunMetadata`): Information about the simulation's run (e.g. start time, duration)
         author (:obj:`AuthorMetadata`): Information about the person who ran the simulation

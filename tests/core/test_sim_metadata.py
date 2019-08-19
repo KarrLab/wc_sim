@@ -11,13 +11,48 @@ import copy
 import shutil
 import tempfile
 import unittest
+from collections import namedtuple
 
-from wc_onto import onto
-from wc_sim.core import sim_config
-from wc_sim.core.sim_metadata import SimulationMetadata, AuthorMetadata, RunMetadata
+from wc_sim.core.sim_metadata import SimulationMetadata, AuthorMetadata, RunMetadata, Comparable
 from wc_utils.util.git import get_repo_metadata, RepoMetadataCollectionType
 from wc_utils.util.misc import as_dict
 import wc_lang
+
+
+SimulationConfig = namedtuple('SimulationConfig', 'time_max time_step changes perturbations random_seed')
+
+
+class ExampleComparable(Comparable):
+
+    ATTRIBUTES = ['attr', 'value']
+    def __init__(self, attr, value):
+        self.attr = attr
+        self.value = value
+
+    def __eq__(self, other):
+        if other.__class__ is not self.__class__:
+            return False
+
+        for attr in self.ATTRIBUTES:
+            if getattr(other, attr) != getattr(self, attr):
+                return False
+
+        return True
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+
+class TestExampleComparable(unittest.TestCase):
+
+    def test(self):
+        ec1 = ExampleComparable('name', 1)
+        ec2 = ExampleComparable('name_new', 2)
+        obj = object()
+
+        self.assertEqual(ec1, ec1)
+        self.assertNotEqual(ec1, obj)
+        self.assertNotEqual(ec1, ec2)
 
 
 class TestSimulationMetadata(unittest.TestCase):
@@ -29,37 +64,16 @@ class TestSimulationMetadata(unittest.TestCase):
         self.model = model
 
         changes = [
-            sim_config.Change([
-                ['reactions', {'id': 'rxn-1'}],
-                ['rate_laws', {'direction': wc_lang.RateLawDirection.forward}],
-                'expression',
-                ['parameters', {'type': onto['WC:K_m']}], # K_m
-                'value',
-            ], 1),
-            sim_config.Change([
-                ['species', {'id': 'species-1[compartment-1]'}],
-                'distribution_init_concentration',
-                'mean',
-            ], 1),
+            ExampleComparable('name', 1),
+            ExampleComparable('name_new', 2),
         ]
+
         perturbations = [
-            sim_config.Perturbation(sim_config.Change([
-                ['reactions', {'id': 'rxn-1'}],
-                ['rate_laws', {'direction': wc_lang.RateLawDirection.forward}],
-                'expression',
-                ['parameters', {'type': onto['WC:K_m']}], # K_m
-                'value',
-            ], 1,
-            ), start_time=5),
-            sim_config.Perturbation(sim_config.Change([
-                ['species', {'id': 'species-1[compartment-1]'}],
-                'distribution_init_concentration',
-                'mean',
-            ], 1,
-            ), start_time=0, end_time=10),
+            ExampleComparable('perturbation_1', 3),
+            ExampleComparable('perturbation_2', 4),
         ]
-        simulation = sim_config.SimulationConfig(time_max=100, time_step=1, changes=changes,
-                                                 perturbations=perturbations, random_seed=1)
+
+        simulation = SimulationConfig(100, 1, changes, perturbations, 1)
 
         self.author = author = AuthorMetadata(name='Test user', email='test@test.com',
                                               username='Test username', organization='Test organization')
@@ -109,12 +123,14 @@ class TestSimulationMetadata(unittest.TestCase):
         self.assertNotEqual(self.metadata, obj)
         self.assertNotEqual(self.metadata, self.metadata_different)
 
+        self.assertEqual(self.metadata, self.metadata_equal)
+
     def test_as_dict(self):
         d = as_dict(self.metadata)
         self.assertEqual(d['author']['name'], self.metadata.author.name)
         self.assertEqual(d['model']['branch'], self.metadata.model.branch)
         self.assertEqual(d['run']['start_time'], self.metadata.run.start_time)
-        self.assertEqual(d['simulation']['changes'], self.metadata.simulation.changes)
+        self.assertEqual(d['simulation'].changes, self.metadata.simulation.changes)
 
     def test_str(self):
         self.assertIn(self.metadata.author.name, str(self.metadata))
