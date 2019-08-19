@@ -51,7 +51,6 @@ class TestDynamicCompartment(unittest.TestCase):
 
         self.dynamic_compartment = DynamicCompartment(None, self.local_species_pop, self.compartment, self.species_ids)
 
-    @unittest.skip("faster tests")
     def test_simple_dynamic_compartment(self):
 
         # test DynamicCompartment
@@ -84,7 +83,6 @@ class TestDynamicCompartment(unittest.TestCase):
         local_species_pop.adjust_discretely(0, {self.species_ids[0]: 5})
         self.assertEqual(dynamic_compartment.mass(), 5 * self.all_m_weights / Avogadro)
 
-    @unittest.skip("faster tests")
     def test_dynamic_compartment_exceptions(self):
 
         compartment = Compartment(id='id', name='name', init_volume=InitVolume(mean=0))
@@ -127,7 +125,6 @@ class TestDynamicModel(unittest.TestCase):
             self.almost_equal_test(expected, computed, frac_diff=frac_diff)
 
     # TODO(Arthur): test with multiple compartments
-    @unittest.skip("faster tests")
     def test_dynamic_model(self):
         cell_masses = []
         computed_aggregate_states = []
@@ -152,7 +149,6 @@ class TestDynamicModel(unittest.TestCase):
         }
         self.compare_aggregate_states(expected_aggregate_state, computed_aggregate_state, frac_diff=2.5e-1)
 
-    @unittest.skip("faster tests")
     def test_dry_dynamic_model(self):
         cell_masses = []
         computed_aggregate_states = []
@@ -178,7 +174,6 @@ class TestDynamicModel(unittest.TestCase):
         }
         self.compare_aggregate_states(expected_aggregate_state, computed_aggregate_state, frac_diff=2.5e-1)
 
-    @unittest.skip("faster tests")
     def test_eval_dynamic_observables(self):
         # make a Model
         model = Model()
@@ -248,7 +243,6 @@ class TestDynamicModel(unittest.TestCase):
                     expected_val += d_index * sum([i*i for i in range(d_index+1)])
                 self.assertEqual(expected_val, obs_val)
 
-    @unittest.skip("faster tests")
     def test_eval_dynamic_functions(self):
         # make a Model
         model = Model()

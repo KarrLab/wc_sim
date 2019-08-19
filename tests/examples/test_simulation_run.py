@@ -12,7 +12,6 @@ from capturer import CaptureOutput
 
 class TestSimulationRun(unittest.TestCase):
 
-    @unittest.skip("faster tests")
     def test_simulation_run(self):
         with CaptureOutput(relay=False) as capturer:
             import examples.simulation_run
