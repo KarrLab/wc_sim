@@ -15,7 +15,6 @@ import pickle
 
 import wc_utils.util.git
 from wc_utils.util.misc import obj_to_str
-from wc_sim.core.sim_config import SimulationConfig
 
 
 class SimulationMetadata(object):
@@ -23,7 +22,7 @@ class SimulationMetadata(object):
 
     Attributes:
         model (:obj:`wc_utils.util.git.RepositoryMetadata`): Metadata about the model's git repository
-        simulation (:obj:`SimulationConfig`): Information about the simulation's
+        simulation (:obj:`wc_sim.core.sim_config.SimulationConfig`): Information about the simulation's
             configuration (e.g. perturbations, random seed)
         run (:obj:`RunMetadata`): Information about the simulation's run (e.g. start time, duration)
         author (:obj:`AuthorMetadata`): Information about the person who ran the simulation
@@ -113,10 +112,6 @@ class SimulationMetadata(object):
             :obj:`str`: a readable representation of this `SimulationMetadata`
         """
         return obj_to_str(self, self.ATTRIBUTES)
-
-
-Simulation = SimulationConfig
-""" Alias for :obj:`SimulationConfig` """
 
 
 class RunMetadata(object):

@@ -36,21 +36,26 @@ class SimulationConfig(object):
         time_init (:obj:`float`): initial simulation time (s)
         time_max (:obj:`float`): simulation length (s)
         time_step (:obj:`float`): simulation timestep (s)
-        changes (:obj:`list`): list of desired model changes (e.g. modified parameter values, additional species/reactions, removed species/reactions)
-        perturbations (:obj:`list`): list of desired simulated perturbations (e.g. set state to a value at a specified time or time range)
+        changes (:obj:`list`): list of desired model changes (e.g. modified parameter values, 
+            additional species/reactions, removed species/reactions)
+        perturbations (:obj:`list`): list of desired simulated perturbations (e.g. set state to a
+            value at a specified time or time range)
         random_seed (:obj:`int`): random number generator seed
     """
     ATTRIBUTES = ['time_init', 'time_max', 'time_step', 'changes', 'perturbations', 'random_seed']
 
-    def __init__(self, time_init=0, time_max=3600, time_step=1, changes=None, perturbations=None, random_seed=None):
+    def __init__(self, time_init=0, time_max=3600, time_step=1, changes=None, perturbations=None,
+        random_seed=None):
         """ Construct simulation configuration
 
         Args:
             time_init (:obj:`float`, optional): initial simulation time (s)
             time_max (:obj:`float`, optional): simulation length (s)
             time_step (:obj:`float`, optional): simulation timestep (s)
-            changes (:obj:`list`, optional): list of desired model changes (e.g. modified parameter values, additional species/reactions, removed species/reactions)
-            perturbations (:obj:`list`, optional): list of desired simulated perturbations (e.g. set state to a value at a specified time or time range)
+            changes (:obj:`list`, optional): list of desired model changes (e.g. modified parameter
+                values, additional species/reactions, removed species/reactions)
+            perturbations (:obj:`list`, optional): list of desired simulated perturbations (e.g. set
+                state to a value at a specified time or time range)
             random_seed (:obj:`int`, optional): random number generator seed
         """
 
@@ -268,7 +273,8 @@ class SedMl(object):
 
         mdl = cfg_ml.getModel(0)
         if mdl.getId() or mdl.getName() or mdl.getLanguage() or mdl.getSource():
-            warnings.warn('SED-ML import ignoring all model metadata (id, name, language, source)', SedMlWarning)
+            warnings.warn('SED-ML import ignoring all model metadata (id, name, language, source)',
+                SedMlWarning)
 
         for change_ml in mdl.getListOfChanges():
             if not isinstance(change_ml, libsedml.SedChangeAttribute):
@@ -446,7 +452,8 @@ class SedMl(object):
 
         # simulation algorithm
         alg = sim.createAlgorithm()
-        alg.setKisaoID("KISAO_0000352")  # hybrid method, .. todo:: add KISAO term for multi-algorithm method
+        # .. todo:: add KISAO term for multi-algorithm method
+        alg.setKisaoID("KISAO_0000352")  # hybrid method
 
         # random number generator seed, state
         if cfg.random_seed is not None:
