@@ -13,7 +13,7 @@ import pickle
 
 from wc_utils.util.misc import as_dict
 from de_sim.checkpoint import Checkpoint
-from wc_sim.core.sim_metadata import SimulationMetadata
+from de_sim.sim_metadata import SimulationMetadata
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 
 

@@ -10,12 +10,12 @@ import os
 import datetime
 import numpy
 
+from de_sim.sim_metadata import SimulationMetadata, AuthorMetadata, RunMetadata
+from de_sim.simulation_engine import SimulationEngine
 from wc_lang import Model, Validator
 from wc_lang.io import Reader
 from wc_lang.transform import PrepForWcSimTransform
 from wc_sim.core import sim_config
-from wc_sim.core.sim_metadata import SimulationMetadata, AuthorMetadata, RunMetadata
-from de_sim.simulation_engine import SimulationEngine
 from wc_sim.multialgorithm.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.multialgorithm.run_results import RunResults
