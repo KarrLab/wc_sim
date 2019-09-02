@@ -1,6 +1,6 @@
 import unittest
 import re
-from wc_sim.multialgorithm.utils import get_species_and_compartment_from_name
+from wc_sim.utils import get_species_and_compartment_from_name
 
 
 class TestUtilities(unittest.TestCase):

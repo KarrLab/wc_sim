@@ -9,8 +9,8 @@ with 1 RNA and 1 protein species
 """
 
 from matplotlib import pyplot
-from wc_sim.multialgorithm.simulation import Simulation
-from wc_sim.multialgorithm.run_results import RunResults
+from wc_sim.simulation import Simulation
+from wc_sim.run_results import RunResults
 import numpy
 import wc_lang
 import wc_lang.io

@@ -15,7 +15,6 @@ class ApiTestCase(unittest.TestCase):
     def test(self):
         self.assertIsInstance(wc_sim, types.ModuleType)
         self.assertIsInstance(wc_sim.log, types.ModuleType)
-        self.assertIsInstance(wc_sim.multialgorithm, types.ModuleType)
-        self.assertIsInstance(wc_sim.multialgorithm.distributed_properties, types.ModuleType)
-        self.assertIsInstance(wc_sim.multialgorithm.config, types.ModuleType)
-        self.assertIsInstance(wc_sim.multialgorithm.config.get_config, types.FunctionType)
+        self.assertIsInstance(wc_sim.config, types.ModuleType)
+        self.assertIsInstance(wc_sim.distributed_properties, types.ModuleType)
+        self.assertIsInstance(wc_sim.config.get_config, types.FunctionType)

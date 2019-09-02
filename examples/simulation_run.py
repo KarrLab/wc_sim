@@ -10,12 +10,12 @@ import os
 import matplotlib.pyplot as plt
 
 # import simulation and run results
-from wc_sim.multialgorithm.simulation import Simulation
-from wc_sim.multialgorithm.run_results import RunResults
+from wc_sim.simulation import Simulation
+from wc_sim.run_results import RunResults
 
 # setup inputs
 # use a toy model
-model_filename = os.path.join(os.path.dirname(__file__), '../tests/multialgorithm/fixtures',
+model_filename = os.path.join(os.path.dirname(__file__), '../tests/fixtures',
                                    '2_species_1_reaction.xlsx')
 results_dir = os.path.expanduser('~/tmp/checkpoints_dir')
 
