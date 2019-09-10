@@ -226,7 +226,7 @@ class DynamicModel(object):
     def cell_mass(self):
         """ Compute the cell's mass
 
-        Sum the mass of all `DynamicCompartment`s that are not extracellular.
+        Sum the mass of all :obj:`DynamicCompartment`\ s that are not extracellular.
         Assumes compartment volumes are in L and concentrations in mol/L.
 
         Returns:
