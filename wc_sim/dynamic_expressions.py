@@ -79,8 +79,7 @@ class DynamicComponent(object):
         Args:
             dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
             local_species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
-            wc_lang_model (:obj:`obj_model.Model`): a corresponding `wc_lang` `Model`, from which this
-                `DynamicComponent` is derived
+            wc_lang_model (:obj:`obj_model.Model`): a corresponding `wc_lang` `Model`, from which this `DynamicComponent` is derived
         """
         self.dynamic_model = dynamic_model
         self.local_species_population = local_species_population
@@ -138,7 +137,7 @@ class DynamicExpression(DynamicComponent):
     def prepare(self):
         """ Prepare this dynamic expression for simulation
 
-        Because they refer to each other, all `DynamicExpression`s must be created before any of them
+        Because they refer to each other, all `DynamicExpression`\ s must be created before any of them
         are prepared.
 
         Raises:
@@ -227,6 +226,7 @@ class DynamicExpression(DynamicComponent):
             raise MultialgorithmError("eval of '{}' raises {}: {}'".format(
                 self.expression, type(e).__name__, str(e)))
 
+    # map of all dynamic components, indexed by type and then identifier
     dynamic_components = {}
 
     @staticmethod
@@ -261,13 +261,13 @@ class DynamicExpression(DynamicComponent):
             if model_type_type is not None:
                 if model_type_type in dynamic_components.WC_LANG_MODEL_TO_DYNAMIC_MODEL:
                     return dynamic_components.WC_LANG_MODEL_TO_DYNAMIC_MODEL[model_type_type]
-                raise MultialgorithmError("model of type '{}' not found".format(model_type_type))
+                raise MultialgorithmError("model of type '{}' not found".format(model_type_type.__name__))
             raise MultialgorithmError("model type '{}' not defined".format(model_type))
 
         raise MultialgorithmError("model type '{}' has wrong type".format(model_type))
 
     @staticmethod
-    def get_dynamic_component(model_type, id):
+    def get_dynamic_component(model_type, id): # pragma: no cover # not used
         """ Get a simulation's dynamic component
 
         Args:
@@ -287,7 +287,6 @@ class DynamicExpression(DynamicComponent):
         if id not in DynamicExpression.dynamic_components[model_type]:
             raise MultialgorithmError("model type '{}' with id='{}' not in DynamicExpression.dynamic_components".format(
                 model_type.__name__, id))
-        # print('model_type, id', model_type, id, '->', DynamicExpression.dynamic_components[model_type][id])
         return DynamicExpression.dynamic_components[model_type][id]
 
     def __str__(self):

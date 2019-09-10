@@ -7,16 +7,14 @@
 
 from math import log
 from obj_model.expression import Expression
-from wc_lang import (Model,
-                     Species,
-                     DistributionInitConcentration,
+from wc_lang import (Model, Species, DistributionInitConcentration,
                      Observable, ObservableExpression,
                      Function, FunctionExpression,
                      StopCondition,
                      Parameter)
 from wc_sim.dynamic_components import DynamicModel
-from wc_sim.dynamic_expressions import (SimTokCodes, WcSimToken,
-                                                       DynamicFunction, DynamicExpression, DynamicParameter)
+from wc_sim.dynamic_expressions import (SimTokCodes, WcSimToken, DynamicSpecies,
+                                        DynamicFunction, DynamicExpression, DynamicParameter)
 from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_sim.species_populations import MakeTestLSP
 from wc_utils.util.units import unit_registry
@@ -131,9 +129,11 @@ class TestDynamicExpression(unittest.TestCase):
             DynamicExpression.get_dynamic_model_type(3)
         with self.assertRaisesRegex(MultialgorithmError, "model type 'None' has wrong type"):
             DynamicExpression.get_dynamic_model_type(None)
+        with self.assertRaisesRegex(MultialgorithmError, "model of type 'RateLawDirection' not found"):
+            DynamicExpression.get_dynamic_model_type('RateLawDirection')
 
 
-class TestAllDynamicExpressionTypes(unittest.TestCase):
+class TestDynamics(unittest.TestCase):
 
     def setUp(self):
         self.objects = objects = {
@@ -174,7 +174,8 @@ class TestAllDynamicExpressionTypes(unittest.TestCase):
         self.expected_values = expected_values = {}
         objects[Parameter]['param'] = param = model.parameters.create(id='param', value=4,
                                                                       units=unit_registry.parse_units('dimensionless'))
-        objects[Parameter]['molecule_units'] = molecule_units = model.parameters.create(id='molecule_units', value=1., 
+        objects[Parameter]['molecule_units'] = molecule_units = \
+            model.parameters.create(id='molecule_units', value=1.,
             units=unit_registry.parse_units('molecule'))
         expected_values[param] = param.value
         expected_values[molecule_units] = molecule_units.value
@@ -188,7 +189,8 @@ class TestAllDynamicExpressionTypes(unittest.TestCase):
             (Observable, 'a[c1]', 10, unit_registry.parse_units('molecule')),
             (Observable, '2 * a[c1] - b[c2]', 0, unit_registry.parse_units('molecule')),
             (Function, 'observable_1 + min(observable_2, 10 * molecule_units)', 10, unit_registry.parse_units('molecule')),
-            (StopCondition, 'observable_1 < param * molecule_units + function_1', True, unit_registry.parse_units('dimensionless')),
+            (StopCondition, 'observable_1 < param * molecule_units + function_1', True,
+                unit_registry.parse_units('dimensionless')),
             # reference same model type:
             (Observable, '3 * observable_1 + b[c2]', 50, unit_registry.parse_units('molecule')),
             (Function, '2 * function_2', 20, unit_registry.parse_units('molecule')),
@@ -213,7 +215,7 @@ class TestAllDynamicExpressionTypes(unittest.TestCase):
         self.local_species_population = MakeTestLSP(initial_population=self.init_pop).local_species_pop
         self.dynamic_model = DynamicModel(self.model, self.local_species_population, {})
 
-    def test_all_dynamic_expressions(self):
+    def test_dynamic_expressions(self):
 
         # check computed value and measure performance of all test Dynamic objects
         number = 10000
@@ -229,3 +231,14 @@ class TestAllDynamicExpressionTypes(unittest.TestCase):
                 print("{:.2f} usec/eval of {} {} '{}'".format(eval_time * 1e6 / number,
                                                               dynamic_expression.__class__.__name__,
                                                               dynamic_expression.id, dynamic_expression.expression))
+
+    def test_dynamic_compartments(self):
+        for dynamic_components in [self.dynamic_model.dynamic_species,
+                                  self.dynamic_model.dynamic_parameters]:
+            for dynamic_component in dynamic_components.values():
+                self.assertIn("id: {}".format(dynamic_component.id), str(dynamic_component))
+                self.assertIn("type: {}".format(dynamic_component.__class__.__name__),
+                              str(dynamic_component))
+
+        self.assertEqual(DynamicExpression.get_dynamic_model_type(Parameter), DynamicParameter)
+        self.assertEqual(DynamicExpression.get_dynamic_model_type(Species), DynamicSpecies)

@@ -14,11 +14,9 @@ import wc_lang
 
 from obj_model import utils
 from wc_lang import Species, Compartment
-from wc_sim.dynamic_expressions import (DynamicComponent,
-                                                       DynamicSpecies, DynamicObservable,
-                                                       DynamicFunction,
-                                                       DynamicRateLaw, DynamicDfbaObjective,
-                                                       DynamicStopCondition, DynamicParameter)
+from wc_sim.dynamic_expressions import (DynamicComponent, DynamicSpecies, DynamicObservable,
+                                        DynamicFunction, DynamicRateLaw, DynamicDfbaObjective,
+                                        DynamicStopCondition, DynamicParameter)
 from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_sim.species_populations import LocalSpeciesPopulation
 from wc_onto import onto
@@ -81,18 +79,18 @@ class DynamicCompartment(DynamicComponent):
         if self.init_volume <= 0:
             raise MultialgorithmError("DynamicCompartment {}: init_volume ({}) must be a positive number.".format(
                 self.name, self.init_volume))
-        
+
         self.init_mass = self.mass()
         if 0 == self.init_mass:
-            warnings.warn("DynamicCompartment '{}': initial mass is 0".format(self.name))        
-        
+            warnings.warn("DynamicCompartment '{}': initial mass is 0".format(self.name))
+
         wc_lang_model.init_density.value = self.init_mass / self.init_volume
 
     def mass(self, time=None):
         """ Provide the total current mass of all species in this `DynamicCompartment`
 
         Args:
-            time (number, optional): the current simulation time; 
+            time (number, optional): the current simulation time;
 
         Returns:
             :obj:`float`: this compartment's total current mass (g)
@@ -103,7 +101,7 @@ class DynamicCompartment(DynamicComponent):
         """ Provide the population of this species
 
         Args:
-            time (number, optional): the current simulation time; 
+            time (number, optional): the current simulation time;
         """
         return self.mass(time=time)
 
@@ -178,7 +176,7 @@ class DynamicModel(object):
             if dynamic_compartment.id == EXTRACELLULAR_COMPARTMENT_ID:
                 continue
             self.cellular_dyn_compartments.append(dynamic_compartment)
-            
+
         # === create dynamic objects that are not expressions ===
         # create dynamic parameters
         self.dynamic_parameters = {}
@@ -217,7 +215,7 @@ class DynamicModel(object):
                 stop_condition, stop_condition.expression._parsed_expression)
 
         # prepare dynamic expressions
-        for dynamic_expression_group in [self.dynamic_observables, 
+        for dynamic_expression_group in [self.dynamic_observables,
                                          self.dynamic_functions,
                                          self.dynamic_stop_conditions]:
             for dynamic_expression in dynamic_expression_group.values():
