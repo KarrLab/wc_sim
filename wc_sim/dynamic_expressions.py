@@ -2,7 +2,7 @@
 
 :Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2018-06-03
-:Copyright: 2018, Karr Lab
+:Copyright: 2018-2019, Karr Lab
 :License: MIT
 """
 
@@ -45,6 +45,7 @@ Expression eval design:
             eliminate lookups, extra objects and memory allocation/deallocation
         for maximum speed, don't use eval() -- convert expressions into trees, & use an evaluator that
             can process operators, literals, and Python functions
+            estimate how much this would improve performance
 '''
 
 

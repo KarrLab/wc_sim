@@ -30,7 +30,7 @@ from wc_utils.util.dict import DictUtil
 from wc_utils.util.rand import RandomStateManager
 
 
-class AccessSpeciesPopulationInterface(metaclass=abc.ABCMeta):   # pragma: no cover; methods in abstract base classes aren't run
+class AccessSpeciesPopulationInterface(metaclass=abc.ABCMeta):   # pragma: no cover; methods in ABCs aren't run
     """ An abstract base class defining the interface between a submodel and its species population store(s)
 
     A submodel in a WC simulation can interact with multiple components that store the population
@@ -1102,7 +1102,7 @@ class SpeciesPopSimObject(LocalSpeciesPopulation, ApplicationSimulationObject,
     messages_sent = [message_types.GivePopulation, message_types.GiveProperty]
 
 
-# TODO(Arthur): rename to DynamicSpecies
+# TODO(Arthur): rename to DynamicSpecies and move to dynamic_components
 class Specie(object):
     """ Specie tracks the population of a single specie in a multi-algorithmic model
 

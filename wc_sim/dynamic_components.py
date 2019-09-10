@@ -320,7 +320,7 @@ class DynamicModel(object):
                 return False
             simulation.set_stop_condition(stop_condition)
 
-    def get_species_count_array(self, now):     # pragma no cover   not used
+    def get_species_count_array(self, now):     # pragma no cover, not used
         """ Map current species counts into an numpy array
 
         Args:
