@@ -13,8 +13,8 @@ from wc_lang import (Model, Species, DistributionInitConcentration,
                      StopCondition,
                      Parameter)
 from wc_sim.dynamic_components import DynamicModel
-from wc_sim.dynamic_expressions import (SimTokCodes, WcSimToken, DynamicSpecies,
-                                        DynamicFunction, DynamicExpression, DynamicParameter)
+from wc_sim.dynamic_expressions import (SimTokCodes, WcSimToken, DynamicComponent, DynamicExpression,
+                                        DynamicSpecies, DynamicFunction, DynamicExpression, DynamicParameter)
 from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_sim.species_populations import MakeTestLSP
 from wc_utils.util.units import unit_registry
@@ -64,7 +64,7 @@ class TestDynamicExpression(unittest.TestCase):
     def test_simple_dynamic_expressions(self):
         for dyn_obj in self.dynamic_objects.values():
             cls = dyn_obj.__class__
-            self.assertEqual(DynamicExpression.dynamic_components[cls][dyn_obj.id], dyn_obj)
+            self.assertEqual(DynamicComponent.dynamic_components_objs[cls][dyn_obj.id], dyn_obj)
 
         expected_fun1_wc_sim_tokens = [
             WcSimToken(SimTokCodes.dynamic_expression, 'param', self.dynamic_objects[self.parameter]),
@@ -113,24 +113,24 @@ class TestDynamicExpression(unittest.TestCase):
 
     def test_get_dynamic_model_type(self):
 
-        self.assertEqual(DynamicExpression.get_dynamic_model_type(Function), DynamicFunction)
+        self.assertEqual(DynamicComponent.get_dynamic_model_type(Function), DynamicFunction)
         with self.assertRaisesRegex(MultialgorithmError, "model class of type 'FunctionExpression' not found"):
-            DynamicExpression.get_dynamic_model_type(FunctionExpression)
+            DynamicComponent.get_dynamic_model_type(FunctionExpression)
 
-        self.assertEqual(DynamicExpression.get_dynamic_model_type(self.fun1), DynamicFunction)
+        self.assertEqual(DynamicComponent.get_dynamic_model_type(self.fun1), DynamicFunction)
         expr_model_obj, _ = Expression.make_expression_obj(Function, '11.11', {})
         with self.assertRaisesRegex(MultialgorithmError, "model of type 'FunctionExpression' not found"):
-            DynamicExpression.get_dynamic_model_type(expr_model_obj)
+            DynamicComponent.get_dynamic_model_type(expr_model_obj)
 
-        self.assertEqual(DynamicExpression.get_dynamic_model_type('Function'), DynamicFunction)
+        self.assertEqual(DynamicComponent.get_dynamic_model_type('Function'), DynamicFunction)
         with self.assertRaisesRegex(MultialgorithmError, "model type 'NoSuchModel' not defined"):
-            DynamicExpression.get_dynamic_model_type('NoSuchModel')
+            DynamicComponent.get_dynamic_model_type('NoSuchModel')
         with self.assertRaisesRegex(MultialgorithmError, "model type '3' has wrong type"):
-            DynamicExpression.get_dynamic_model_type(3)
+            DynamicComponent.get_dynamic_model_type(3)
         with self.assertRaisesRegex(MultialgorithmError, "model type 'None' has wrong type"):
-            DynamicExpression.get_dynamic_model_type(None)
+            DynamicComponent.get_dynamic_model_type(None)
         with self.assertRaisesRegex(MultialgorithmError, "model of type 'RateLawDirection' not found"):
-            DynamicExpression.get_dynamic_model_type('RateLawDirection')
+            DynamicComponent.get_dynamic_model_type('RateLawDirection')
 
 
 class TestDynamics(unittest.TestCase):
@@ -240,5 +240,5 @@ class TestDynamics(unittest.TestCase):
                 self.assertIn("type: {}".format(dynamic_component.__class__.__name__),
                               str(dynamic_component))
 
-        self.assertEqual(DynamicExpression.get_dynamic_model_type(Parameter), DynamicParameter)
-        self.assertEqual(DynamicExpression.get_dynamic_model_type(Species), DynamicSpecies)
+        self.assertEqual(DynamicComponent.get_dynamic_model_type(Parameter), DynamicParameter)
+        self.assertEqual(DynamicComponent.get_dynamic_model_type(Species), DynamicSpecies)

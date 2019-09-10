@@ -74,6 +74,9 @@ class DynamicComponent(object):
         id (:obj:`str`): unique id
     """
 
+    # map of all dynamic components, indexed by type and then identifier
+    dynamic_components_objs = {}
+
     def __init__(self, dynamic_model, local_species_population, wc_lang_model):
         """
         Args:
@@ -84,10 +87,71 @@ class DynamicComponent(object):
         self.dynamic_model = dynamic_model
         self.local_species_population = local_species_population
         self.id = wc_lang_model.id
-        model_type = DynamicExpression.get_dynamic_model_type(wc_lang_model)
-        if model_type not in DynamicExpression.dynamic_components:
-            DynamicExpression.dynamic_components[model_type] = {}
-        DynamicExpression.dynamic_components[model_type][self.id] = self
+        model_type = DynamicComponent.get_dynamic_model_type(wc_lang_model)
+        if model_type not in DynamicComponent.dynamic_components_objs:
+            DynamicComponent.dynamic_components_objs[model_type] = {}
+        DynamicComponent.dynamic_components_objs[model_type][self.id] = self
+
+    @staticmethod
+    def get_dynamic_model_type(model_type):
+        """ Get a simulation's dynamic component type
+
+        Convert to a dynamic component type from a corresponding `wc_lang` Model type, instance or
+        string name
+
+        Args:
+            model_type (:obj:`Object`): a `wc_lang` Model type represented by a subclass of `obj_model.Model`,
+                an instance of `obj_model.Model`, or a string name for a `obj_model.Model`
+
+        Returns:
+            :obj:`type`: the dynamic component
+
+        Raises:
+            :obj:`MultialgorithmError`: if the corresponding dynamic component type cannot be determined
+        """
+        if isinstance(model_type, type) and issubclass(model_type, obj_model.Model):
+            if model_type in dynamic_components.WC_LANG_MODEL_TO_DYNAMIC_MODEL:
+                return dynamic_components.WC_LANG_MODEL_TO_DYNAMIC_MODEL[model_type]
+            raise MultialgorithmError("model class of type '{}' not found".format(model_type.__name__))
+
+        if isinstance(model_type, obj_model.Model):
+            if model_type.__class__ in dynamic_components.WC_LANG_MODEL_TO_DYNAMIC_MODEL:
+                return dynamic_components.WC_LANG_MODEL_TO_DYNAMIC_MODEL[model_type.__class__]
+            raise MultialgorithmError("model of type '{}' not found".format(model_type.__class__.__name__))
+
+        if isinstance(model_type, str):
+            model_type_type = getattr(wc_lang, model_type, None)
+            if model_type_type is not None:
+                if model_type_type in dynamic_components.WC_LANG_MODEL_TO_DYNAMIC_MODEL:
+                    return dynamic_components.WC_LANG_MODEL_TO_DYNAMIC_MODEL[model_type_type]
+                raise MultialgorithmError("model of type '{}' not found".format(model_type_type.__name__))
+            raise MultialgorithmError("model type '{}' not defined".format(model_type))
+
+        raise MultialgorithmError("model type '{}' has wrong type".format(model_type))
+
+    # todo: either use or discard this method
+    @staticmethod
+    def get_dynamic_component(model_type, id): # pragma: no cover # not used
+        """ Get a simulation's dynamic component
+
+        Args:
+            model_type (:obj:`type`): the subclass of `DynamicComponent` (or `obj_model.Model`) being retrieved
+            id (:obj:`str`): the dynamic component's id
+
+        Returns:
+            :obj:`DynamicComponent`: the dynamic component
+
+        Raises:
+            :obj:`MultialgorithmError`: if the dynamic component cannot be found
+        """
+        model_type = DynamicComponent.get_dynamic_model_type(model_type)
+        if model_type not in DynamicComponent.dynamic_components_objs:
+            raise MultialgorithmError("model type '{}' not in DynamicComponent.dynamic_components_objs".format(
+                model_type.__name__))
+        if id not in DynamicComponent.dynamic_components_objs[model_type]:
+            raise MultialgorithmError("model type '{}' with id='{}' not in DynamicComponent.dynamic_components_objs".format(
+                model_type.__name__, id))
+        return DynamicComponent.dynamic_components_objs[model_type][id]
 
     def __str__(self):
         """ Provide a readable representation of this `DynamicComponent`
@@ -166,7 +230,8 @@ class DynamicExpression(DynamicComponent):
                     self.wc_sim_tokens.append(WcSimToken(SimTokCodes.other, next_static_tokens))
                     next_static_tokens = ''
                 try:
-                    dynamic_expression = self.get_dynamic_component(obj_model_token.model, obj_model_token.model_id)
+                    dynamic_expression = DynamicComponent.get_dynamic_component(obj_model_token.model,
+                                                                                obj_model_token.model_id)
                 except:
                     raise MultialgorithmError("'{}.{} must be prepared to create '{}''".format(
                         obj_model_token.model.__class__.__name__, obj_model_token.model_id, self.id))
@@ -225,69 +290,6 @@ class DynamicExpression(DynamicComponent):
         except BaseException as e:
             raise MultialgorithmError("eval of '{}' raises {}: {}'".format(
                 self.expression, type(e).__name__, str(e)))
-
-    # map of all dynamic components, indexed by type and then identifier
-    dynamic_components = {}
-
-    @staticmethod
-    def get_dynamic_model_type(model_type):
-        """ Get a simulation's dynamic component type
-
-        Convert to a dynamic component type from a corresponding `wc_lang` Model type, instance or
-        string name
-
-        Args:
-            model_type (:obj:`Object`): a `wc_lang` Model type represented by a subclass of `obj_model.Model`,
-                an instance of `obj_model.Model`, or a string name for a `obj_model.Model`
-
-        Returns:
-            :obj:`type`: the dynamic component
-
-        Raises:
-            :obj:`MultialgorithmError`: if the corresponding dynamic component type cannot be determined
-        """
-        if isinstance(model_type, type) and issubclass(model_type, obj_model.Model):
-            if model_type in dynamic_components.WC_LANG_MODEL_TO_DYNAMIC_MODEL:
-                return dynamic_components.WC_LANG_MODEL_TO_DYNAMIC_MODEL[model_type]
-            raise MultialgorithmError("model class of type '{}' not found".format(model_type.__name__))
-
-        if isinstance(model_type, obj_model.Model):
-            if model_type.__class__ in dynamic_components.WC_LANG_MODEL_TO_DYNAMIC_MODEL:
-                return dynamic_components.WC_LANG_MODEL_TO_DYNAMIC_MODEL[model_type.__class__]
-            raise MultialgorithmError("model of type '{}' not found".format(model_type.__class__.__name__))
-
-        if isinstance(model_type, str):
-            model_type_type = getattr(wc_lang, model_type, None)
-            if model_type_type is not None:
-                if model_type_type in dynamic_components.WC_LANG_MODEL_TO_DYNAMIC_MODEL:
-                    return dynamic_components.WC_LANG_MODEL_TO_DYNAMIC_MODEL[model_type_type]
-                raise MultialgorithmError("model of type '{}' not found".format(model_type_type.__name__))
-            raise MultialgorithmError("model type '{}' not defined".format(model_type))
-
-        raise MultialgorithmError("model type '{}' has wrong type".format(model_type))
-
-    @staticmethod
-    def get_dynamic_component(model_type, id): # pragma: no cover # not used
-        """ Get a simulation's dynamic component
-
-        Args:
-            model_type (:obj:`type`): the subclass of `DynamicComponent` (or `obj_model.Model`) being retrieved
-            id (:obj:`str`): the dynamic component's id
-
-        Returns:
-            :obj:`DynamicComponent`: the dynamic component
-
-        Raises:
-            :obj:`MultialgorithmError`: if the dynamic component cannot be found
-        """
-        model_type = DynamicExpression.get_dynamic_model_type(model_type)
-        if model_type not in DynamicExpression.dynamic_components:
-            raise MultialgorithmError("model type '{}' not in DynamicExpression.dynamic_components".format(
-                model_type.__name__))
-        if id not in DynamicExpression.dynamic_components[model_type]:
-            raise MultialgorithmError("model type '{}' with id='{}' not in DynamicExpression.dynamic_components".format(
-                model_type.__name__, id))
-        return DynamicExpression.dynamic_components[model_type][id]
 
     def __str__(self):
         """ Provide a readable representation of this `DynamicExpression`
