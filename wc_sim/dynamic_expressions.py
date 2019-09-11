@@ -201,7 +201,7 @@ class DynamicExpression(DynamicComponent):
     def prepare(self):
         """ Prepare this dynamic expression for simulation
 
-        Because they refer to each other, all `DynamicExpression`\ s must be created before any of them
+        Because they refer to each other, all :obj:`DynamicExpression`\ s must be created before any of them
         are prepared.
 
         Raises:

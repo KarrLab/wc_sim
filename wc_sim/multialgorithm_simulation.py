@@ -261,7 +261,7 @@ class MultialgorithmSimulation(object):
         return init_populations
 
     def get_dynamic_compartments(self, submodel):
-        """ Get the `DynamicCompartment`s for Submodel `submodel`
+        """ Get the :obj:`DynamicCompartment`\ s for Submodel `submodel`
 
         Args:
             submodel (:obj:`Submodel`): the `wc_lang` submodel being compiled into a `DynamicSubmodel`
@@ -277,7 +277,7 @@ class MultialgorithmSimulation(object):
 
     @staticmethod
     def create_dynamic_compartments(model, local_species_pop):
-        """ Create the `DynamicCompartment`s for this simulation
+        """ Create the :obj:`DynamicCompartment`\ s for this simulation
 
         Args:
             model (:obj:`Model`): a `wc_lang` model
