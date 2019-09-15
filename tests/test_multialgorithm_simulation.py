@@ -139,14 +139,6 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         self.assertEqual(multialgorithm_simulation.dynamic_model.get_num_submodels(), 2)
         self.assertTrue(callable(simulation_engine.stop_condition))
 
-    def test_stop_condition(self):
-        args = dict(fba_time_step=1,
-                    results_dir=self.results_dir,
-                    checkpoint_period=10)
-        multialgorithm_simulation = MultialgorithmSimulation(self.model, args)
-        simulation_engine, _ = multialgorithm_simulation.build_simulation()
-        self.assertTrue(callable(simulation_engine.stop_condition))
-
 
 class TestRunSSASimulation(unittest.TestCase):
 
