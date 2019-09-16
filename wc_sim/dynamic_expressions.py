@@ -82,7 +82,8 @@ class DynamicComponent(object):
         Args:
             dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
             local_species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
-            wc_lang_model (:obj:`obj_model.Model`): a corresponding `wc_lang` `Model`, from which this `DynamicComponent` is derived
+            wc_lang_model (:obj:`obj_model.Model`): a corresponding `wc_lang` `Model`, from which this
+                `DynamicComponent` is derived
         """
         self.dynamic_model = dynamic_model
         self.local_species_population = local_species_population
@@ -175,6 +176,11 @@ class DynamicExpression(DynamicComponent):
         local_ns (:obj:`dict`): pre-computed local namespace of functions used in `expression`
     """
 
+    NON_LANG_OBJ_ID_TOKENS = set([ObjModelTokenCodes.math_func_id,
+                                  ObjModelTokenCodes.number,
+                                  ObjModelTokenCodes.op,
+                                  ObjModelTokenCodes.other])
+
     def __init__(self, dynamic_model, local_species_population, wc_lang_model, wc_lang_expression):
         """
         Args:
@@ -201,8 +207,8 @@ class DynamicExpression(DynamicComponent):
     def prepare(self):
         """ Prepare this dynamic expression for simulation
 
-        Because they refer to each other, all :obj:`DynamicExpression`\ s must be created before any of them
-        are prepared.
+        Because they refer to each other, all :obj:`DynamicExpression`\ s must be created before any
+        of them are prepared.
 
         Raises:
             :obj:`MultialgorithmError`: if a Python function used in `wc_lang_expression` does not exist
@@ -213,17 +219,13 @@ class DynamicExpression(DynamicComponent):
         # optimization: combine together adjacent obj_model_token.tok_codes other than obj_id
         next_static_tokens = ''
         function_names = set()
-        non_lang_obj_id_tokens = set([ObjModelTokenCodes.math_func_id,
-                                      ObjModelTokenCodes.number,
-                                      ObjModelTokenCodes.op,
-                                      ObjModelTokenCodes.other])
 
         i = 0
         while i < len(self.wc_lang_expression._obj_model_tokens):
             obj_model_token = self.wc_lang_expression._obj_model_tokens[i]
             if obj_model_token.code == ObjModelTokenCodes.math_func_id:
                 function_names.add(obj_model_token.token_string)
-            if obj_model_token.code in non_lang_obj_id_tokens:
+            if obj_model_token.code in self.NON_LANG_OBJ_ID_TOKENS:
                 next_static_tokens = next_static_tokens + obj_model_token.token_string
             elif obj_model_token.code == ObjModelTokenCodes.obj_id:
                 if next_static_tokens != '':
@@ -280,8 +282,7 @@ class DynamicExpression(DynamicComponent):
         Raises:
             :obj:`MultialgorithmError`: if Python `eval` raises an exception
         """
-        assert hasattr(self, 'wc_sim_tokens'), "'{}' must use prepare() before eval()".format(
-            self.id)
+        assert hasattr(self, 'wc_sim_tokens'), "'{}' must use prepare() before eval()".format(self.id)
         for idx, sim_token in enumerate(self.wc_sim_tokens):
             if sim_token.code == SimTokCodes.dynamic_expression:
                 self.expr_substrings[idx] = str(sim_token.dynamic_expression.eval(time))

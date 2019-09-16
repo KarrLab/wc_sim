@@ -14,7 +14,7 @@ from wc_lang import (Model, Species, DistributionInitConcentration,
                      Parameter)
 from wc_sim.dynamic_components import DynamicModel
 from wc_sim.dynamic_expressions import (SimTokCodes, WcSimToken, DynamicComponent, DynamicExpression,
-                                        DynamicSpecies, DynamicFunction, DynamicExpression, DynamicParameter)
+                                        DynamicSpecies, DynamicFunction, DynamicParameter)
 from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_sim.species_populations import MakeTestLSP
 from wc_utils.util.units import unit_registry
@@ -51,7 +51,7 @@ class TestDynamicExpression(unittest.TestCase):
 
         self.dynamic_model = DynamicModel(self.model, self.local_species_population, {})
 
-        # create a DynamicParameter and a DynamicFunction
+        # create a DynamicParameter and some DynamicFunctions
         dynamic_objects = {}
         dynamic_objects[self.parameter] = DynamicParameter(self.dynamic_model, self.local_species_population,
                                                            self.parameter, self.parameter.value)
@@ -60,6 +60,7 @@ class TestDynamicExpression(unittest.TestCase):
             dynamic_objects[fun] = DynamicFunction(self.dynamic_model, self.local_species_population,
                                                    fun, fun.expression._parsed_expression)
         self.dynamic_objects = dynamic_objects
+        # todo: test other DynamicComponents
 
     def test_simple_dynamic_expressions(self):
         for dyn_obj in self.dynamic_objects.values():
@@ -218,19 +219,33 @@ class TestDynamics(unittest.TestCase):
     def test_dynamic_expressions(self):
 
         # check computed value and measure performance of all test Dynamic objects
-        number = 10000
-        print()
-        print("Measure {} evals of each Dynamic expression:".format(number))
+        executions = 10000
+        static_times = []
+        for model_cls in (Observable, Function, StopCondition):
+            for id, model_obj in self.objects[model_cls].items():
+                eval_time = timeit.timeit(stmt='model_obj.expression._parsed_expression.test_eval()',
+                    number=executions, globals=locals())
+                static_times.append((eval_time * 1e6 / executions, id, model_obj.expression.expression))
+
+        dynamic_times = []
         for dynamic_obj_dict in [self.dynamic_model.dynamic_observables,
                                  self.dynamic_model.dynamic_functions, 
                                  self.dynamic_model.dynamic_stop_conditions]:
             for id, dynamic_expression in dynamic_obj_dict.items():
                 self.assertEqual(self.expected_values[id], dynamic_expression.eval(0))
-                eval_time = timeit.timeit(stmt='dynamic_expression.eval(0)', number=number,
+                eval_time = timeit.timeit(stmt='dynamic_expression.eval(0)', number=executions,
                                           globals=locals())
-                print("{:.2f} usec/eval of {} {} '{}'".format(eval_time * 1e6 / number,
-                                                              dynamic_expression.__class__.__name__,
-                                                              dynamic_expression.id, dynamic_expression.expression))
+                dynamic_times.append((eval_time * 1e6 / executions, dynamic_expression.id,
+                    dynamic_expression.expression))
+
+        print("\nExpression performance (usec/eval) for {} evals:".format(executions))
+        tab_width_1 = 8
+        tab_width_2 = 18
+        print("{}\t{}\t".format('Static', 'Dynamic').expandtabs(tab_width_1),
+            "{}\t{}".format('id', 'Expression').expandtabs(tab_width_2))
+        for (static_time, id, expression), (dynamic_time, _, _) in zip(static_times, dynamic_times):
+            print("{:5.1f}\t{:5.1f}\t".format(static_time, dynamic_time).expandtabs(tab_width_1),
+                "{}\t{}".format(id, expression).expandtabs(tab_width_2))
 
     def test_dynamic_compartments(self):
         for dynamic_components in [self.dynamic_model.dynamic_species,
