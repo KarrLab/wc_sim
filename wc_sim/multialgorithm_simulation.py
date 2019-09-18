@@ -146,7 +146,7 @@ class MultialgorithmSimulation(object):
         self.dynamic_compartments = self.create_dynamic_compartments(self.model, self.local_species_population)
         self.dynamic_model = None
 
-    def initialize_elements(self):
+    def initialize_components(self):
         """ Initialize the biochemical components of a simulation
 
         Returns:
@@ -163,6 +163,8 @@ class MultialgorithmSimulation(object):
         init_accounted_density =  init_accounted_mass /  init_volume  
         init_accounted_ratio = init_accounted_mass /  init_mass 
                                          = init_accounted_density /  init_density
+
+        Pre-existing 
         '''
         pass
 

@@ -1,4 +1,4 @@
-""" Dynamic elements of a multialgorithm simulation
+""" Dynamic components of a multialgorithm simulation
 
 :Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Author: Jonathan Karr <karr@mssm.edu>
