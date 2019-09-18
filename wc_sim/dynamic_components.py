@@ -12,7 +12,7 @@ import numpy
 import warnings
 import wc_lang
 
-from obj_model import utils
+from obj_tables import utils
 from wc_lang import Species, Compartment
 from wc_sim.dynamic_expressions import (DynamicComponent, DynamicSpecies, DynamicObservable,
                                         DynamicFunction, DynamicRateLaw, DynamicDfbaObjective,

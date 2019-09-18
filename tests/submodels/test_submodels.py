@@ -6,7 +6,7 @@
 :License: MIT
 """
 
-from obj_model.utils import get_component_by_id
+from obj_tables.utils import get_component_by_id
 from wc_lang import Model, Species, Validator
 from wc_lang.io import Reader
 from wc_lang.transform import PrepForWcSimTransform

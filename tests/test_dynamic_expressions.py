@@ -6,8 +6,10 @@
 """
 
 from math import log
-from obj_model.expression import Expression
-from wc_lang import (Model, Species, DistributionInitConcentration,
+from obj_tables.expression import Expression
+from wc_lang import (Model,
+                     Species,
+                     DistributionInitConcentration,
                      Observable, ObservableExpression,
                      Function, FunctionExpression,
                      StopCondition,
@@ -99,8 +101,8 @@ class TestDynamicExpression(unittest.TestCase):
 
     def test_dynamic_expression_errors(self):
         # remove the Function's tokenized result
-        self.fun1.expression._parsed_expression._obj_model_tokens = []
-        with self.assertRaisesRegex(MultialgorithmError, "_obj_model_tokens cannot be empty - ensure that '.*' is valid"):
+        self.fun1.expression._parsed_expression._obj_tables_tokens = []
+        with self.assertRaisesRegex(MultialgorithmError, "_obj_tables_tokens cannot be empty - ensure that '.*' is valid"):
             DynamicFunction(self.dynamic_model, self.local_species_population,
                             self.fun1, self.fun1.expression._parsed_expression)
 

@@ -8,12 +8,12 @@
 
 from . import dynamic_components
 from collections import namedtuple
-from obj_model.expression import ObjModelTokenCodes
+from obj_tables.expression import ObjTablesTokenCodes
 from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_sim.species_populations import LocalSpeciesPopulation
 from wc_utils.util.enumerate import CaseInsensitiveEnum
 import math
-import obj_model
+import obj_tables
 import wc_lang
 
 '''
@@ -55,7 +55,7 @@ class SimTokCodes(int, CaseInsensitiveEnum):
     other = 2
 
 
-# a token in DynamicExpression._obj_model_tokens
+# a token in DynamicExpression._obj_tables_tokens
 WcSimToken = namedtuple('WcSimToken', 'code, token_string, dynamic_expression')
 # make dynamic_expression optional: see https://stackoverflow.com/a/18348004
 WcSimToken.__new__.__defaults__ = (None, )
@@ -82,7 +82,7 @@ class DynamicComponent(object):
         Args:
             dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
             local_species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
-            wc_lang_model (:obj:`obj_model.Model`): a corresponding `wc_lang` `Model`, from which this
+            wc_lang_model (:obj:`obj_tables.Model`): a corresponding `wc_lang` `Model`, from which this
                 `DynamicComponent` is derived
         """
         self.dynamic_model = dynamic_model
@@ -101,8 +101,8 @@ class DynamicComponent(object):
         string name
 
         Args:
-            model_type (:obj:`Object`): a `wc_lang` Model type represented by a subclass of `obj_model.Model`,
-                an instance of `obj_model.Model`, or a string name for a `obj_model.Model`
+            model_type (:obj:`Object`): a `wc_lang` Model type represented by a subclass of `obj_tables.Model`,
+                an instance of `obj_tables.Model`, or a string name for a `obj_tables.Model`
 
         Returns:
             :obj:`type`: the dynamic component
@@ -110,12 +110,12 @@ class DynamicComponent(object):
         Raises:
             :obj:`MultialgorithmError`: if the corresponding dynamic component type cannot be determined
         """
-        if isinstance(model_type, type) and issubclass(model_type, obj_model.Model):
+        if isinstance(model_type, type) and issubclass(model_type, obj_tables.Model):
             if model_type in dynamic_components.WC_LANG_MODEL_TO_DYNAMIC_MODEL:
                 return dynamic_components.WC_LANG_MODEL_TO_DYNAMIC_MODEL[model_type]
             raise MultialgorithmError("model class of type '{}' not found".format(model_type.__name__))
 
-        if isinstance(model_type, obj_model.Model):
+        if isinstance(model_type, obj_tables.Model):
             if model_type.__class__ in dynamic_components.WC_LANG_MODEL_TO_DYNAMIC_MODEL:
                 return dynamic_components.WC_LANG_MODEL_TO_DYNAMIC_MODEL[model_type.__class__]
             raise MultialgorithmError("model of type '{}' not found".format(model_type.__class__.__name__))
@@ -136,7 +136,7 @@ class DynamicComponent(object):
         """ Get a simulation's dynamic component
 
         Args:
-            model_type (:obj:`type`): the subclass of `DynamicComponent` (or `obj_model.Model`) being retrieved
+            model_type (:obj:`type`): the subclass of `DynamicComponent` (or `obj_tables.Model`) being retrieved
             id (:obj:`str`): the dynamic component's id
 
         Returns:
@@ -176,17 +176,17 @@ class DynamicExpression(DynamicComponent):
         local_ns (:obj:`dict`): pre-computed local namespace of functions used in `expression`
     """
 
-    NON_LANG_OBJ_ID_TOKENS = set([ObjModelTokenCodes.math_func_id,
-                                  ObjModelTokenCodes.number,
-                                  ObjModelTokenCodes.op,
-                                  ObjModelTokenCodes.other])
+    NON_LANG_OBJ_ID_TOKENS = set([ObjTablesTokenCodes.math_func_id,
+                                  ObjTablesTokenCodes.number,
+                                  ObjTablesTokenCodes.op,
+                                  ObjTablesTokenCodes.other])
 
     def __init__(self, dynamic_model, local_species_population, wc_lang_model, wc_lang_expression):
         """
         Args:
             dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
             local_species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
-            wc_lang_model (:obj:`obj_model.Model`): the corresponding `wc_lang` `Model`
+            wc_lang_model (:obj:`obj_tables.Model`): the corresponding `wc_lang` `Model`
             wc_lang_expression (:obj:`ParsedExpression`): an analyzed and validated expression
 
         Raises:
@@ -197,8 +197,8 @@ class DynamicExpression(DynamicComponent):
         super().__init__(dynamic_model, local_species_population, wc_lang_model)
 
         # wc_lang_expression must have been successfully `tokenize`d.
-        if not wc_lang_expression._obj_model_tokens:
-            raise MultialgorithmError("_obj_model_tokens cannot be empty - ensure that '{}' is valid".format(
+        if not wc_lang_expression._obj_tables_tokens:
+            raise MultialgorithmError("_obj_tables_tokens cannot be empty - ensure that '{}' is valid".format(
                 wc_lang_model))
         # optimization: self.wc_lang_expression will be deleted by prepare()
         self.wc_lang_expression = wc_lang_expression
@@ -216,32 +216,32 @@ class DynamicExpression(DynamicComponent):
 
         # create self.wc_sim_tokens, which contains WcSimTokens that refer to other DynamicExpressions
         self.wc_sim_tokens = []
-        # optimization: combine together adjacent obj_model_token.tok_codes other than obj_id
+        # optimization: combine together adjacent obj_tables_token.tok_codes other than obj_id
         next_static_tokens = ''
         function_names = set()
 
         i = 0
-        while i < len(self.wc_lang_expression._obj_model_tokens):
-            obj_model_token = self.wc_lang_expression._obj_model_tokens[i]
-            if obj_model_token.code == ObjModelTokenCodes.math_func_id:
-                function_names.add(obj_model_token.token_string)
-            if obj_model_token.code in self.NON_LANG_OBJ_ID_TOKENS:
-                next_static_tokens = next_static_tokens + obj_model_token.token_string
-            elif obj_model_token.code == ObjModelTokenCodes.obj_id:
+        while i < len(self.wc_lang_expression._obj_tables_tokens):
+            obj_tables_token = self.wc_lang_expression._obj_tables_tokens[i]
+            if obj_tables_token.code == ObjTablesTokenCodes.math_func_id:
+                function_names.add(obj_tables_token.token_string)
+            if obj_tables_token.code in self.NON_LANG_OBJ_ID_TOKENS:
+                next_static_tokens = next_static_tokens + obj_tables_token.token_string
+            elif obj_tables_token.code == ObjTablesTokenCodes.obj_id:
                 if next_static_tokens != '':
                     self.wc_sim_tokens.append(WcSimToken(SimTokCodes.other, next_static_tokens))
                     next_static_tokens = ''
                 try:
-                    dynamic_expression = DynamicComponent.get_dynamic_component(obj_model_token.model,
-                                                                                obj_model_token.model_id)
+                    dynamic_expression = DynamicComponent.get_dynamic_component(obj_tables_token.model,
+                                                                                obj_tables_token.model_id)
                 except:
                     raise MultialgorithmError("'{}.{} must be prepared to create '{}''".format(
-                        obj_model_token.model.__class__.__name__, obj_model_token.model_id, self.id))
+                        obj_tables_token.model.__class__.__name__, obj_tables_token.model_id, self.id))
                 self.wc_sim_tokens.append(WcSimToken(SimTokCodes.dynamic_expression,
-                                                     obj_model_token.token_string,
+                                                     obj_tables_token.token_string,
                                                      dynamic_expression))
             else:   # pragma: no cover
-                assert False, "unknown code {} in {}".format(obj_model_token.code, obj_model_token)
+                assert False, "unknown code {} in {}".format(obj_tables_token.code, obj_tables_token)
             # advance to the next token
             i += 1
         if next_static_tokens != '':
@@ -338,7 +338,7 @@ class DynamicParameter(DynamicComponent):
         Args:
             dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
             local_species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
-            wc_lang_model (:obj:`obj_model.Model`): the corresponding :obj:`wc_lang.Parameter`
+            wc_lang_model (:obj:`obj_tables.Model`): the corresponding :obj:`wc_lang.Parameter`
             value (:obj:`float`): the parameter's value
         """
         super().__init__(dynamic_model, local_species_population, wc_lang_model)
@@ -363,7 +363,7 @@ class DynamicSpecies(DynamicComponent):
         Args:
             dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
             local_species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
-            wc_lang_model (:obj:`obj_model.Model`): the corresponding :obj:`wc_lang.Species`
+            wc_lang_model (:obj:`obj_tables.Model`): the corresponding :obj:`wc_lang.Species`
         """
         super().__init__(dynamic_model, local_species_population, wc_lang_model)
         # Grab a reference to the right wc_lang.Species object used by local_species_population
