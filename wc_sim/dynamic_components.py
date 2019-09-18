@@ -26,28 +26,29 @@ from wc_utils.util.ontology import are_terms_equivalent
 class DynamicCompartment(DynamicComponent):
     """ A dynamic compartment
 
-    A `DynamicCompartment` tracks the dynamic aggregate state of a compartment, primarily its
-    mass. A `DynamicCompartment` is created for each `wc_lang` `Compartment` in a whole-cell
+    A :obj:`DynamicCompartment` tracks the dynamic aggregate state of a compartment, primarily its
+    mass. A :obj:`DynamicCompartment` is created for each `wc_lang` `Compartment` in a whole-cell
     model.
 
     Attributes:
-        id (:obj:`str`): id of this `DynamicCompartment`, copied from `compartment`
-        name (:obj:`str`): name of this `DynamicCompartment`, copied from `compartment`
-        init_volume (:obj:`float`): initial volume specified in the `wc_lang` model
+        id (:obj:`str`): id of this :obj:`DynamicCompartment`, copied from `compartment`
+        name (:obj:`str`): name of this :obj:`DynamicCompartment`, copied from `compartment`
+        init_volume (:obj:`float`): initial volume, sampled from the distribution specified in the
+            `wc_lang` model
         init_mass (:obj:`float`): initial mass
         species_population (:obj:`LocalSpeciesPopulation`): an object that represents
-            the populations of species in this `DynamicCompartment`
+            the populations of species in this :obj:`DynamicCompartment`
         species_ids (:obj:`list` of :obj:`str`): the IDs of the species stored
             in this dynamic compartment; if `None`, use the IDs of all species in `species_population`
     """
 
     def __init__(self, dynamic_model, species_population, wc_lang_model, species_ids=None):
-        """ Initialize this `DynamicCompartment`
+        """ Initialize this :obj:`DynamicCompartment`
 
         Args:
             dynamic_model
             species_population (:obj:`LocalSpeciesPopulation`): an object that represents
-                the populations of species in this `DynamicCompartment`
+                the populations of species in this :obj:`DynamicCompartment`
             wc_lang_model (:obj:`Compartment`): the corresponding static `wc_lang` `Compartment`
             species_ids (:obj:`list` of :obj:`str`, optional): the IDs of the species stored
                 in this compartment; defaults to the IDs of all species in `species_population`
@@ -87,7 +88,7 @@ class DynamicCompartment(DynamicComponent):
         wc_lang_model.init_density.value = self.init_mass / self.init_volume
 
     def mass(self, time=None):
-        """ Provide the total current mass of all species in this `DynamicCompartment`
+        """ Provide the total current mass of all species in this :obj:`DynamicCompartment`
 
         Args:
             time (number, optional): the current simulation time;
@@ -98,7 +99,7 @@ class DynamicCompartment(DynamicComponent):
         return self.species_population.compartmental_mass(self.id, time=time)
 
     def eval(self, time=None):
-        """ Provide the population of this species
+        """ Provide the mass of this :obj:`DynamicCompartment`
 
         Args:
             time (number, optional): the current simulation time;
@@ -106,7 +107,7 @@ class DynamicCompartment(DynamicComponent):
         return self.mass(time=time)
 
     def __str__(self):
-        """ Provide a string representation of this `DynamicCompartment`
+        """ Provide a string representation of this :obj:`DynamicCompartment`
 
         Returns:
             :obj:`str`: a string representation of this compartment
@@ -135,11 +136,11 @@ class DynamicModel(object):
     dynamic compartments.
 
     Attributes:
-        dynamic_compartments (:obj:`dict`): map from compartment ID to `DynamicCompartment`; the simulation's
-            `DynamicCompartment`s, one for each compartment in `model`
+        dynamic_compartments (:obj:`dict`): map from compartment ID to :obj:`DynamicCompartment`\ ; the simulation's
+            :obj:`DynamicCompartment`\ s, one for each compartment in `model`
         cellular_dyn_compartments (:obj:`list`): list of the cellular compartments
         species_population (:obj:`LocalSpeciesPopulation`): an object that represents
-            the populations of species in this `DynamicCompartment`
+            the populations of species in this :obj:`DynamicCompartment`
         dynamic_species (:obj:`dict` of `DynamicSpecies`): the simulation's dynamic species,
             indexed by their ids
         dynamic_observables (:obj:`dict` of `DynamicObservable`): the simulation's dynamic observables,
@@ -158,8 +159,8 @@ class DynamicModel(object):
         Args:
             model (:obj:`Model`): the description of the whole-cell model in `wc_lang`
             species_population (:obj:`LocalSpeciesPopulation`): an object that represents
-                the populations of species in this `DynamicCompartment`
-            dynamic_compartments (:obj:`dict`): the simulation's `DynamicCompartment`s, one for each
+                the populations of species in this :obj:`DynamicCompartment`
+            dynamic_compartments (:obj:`dict`): the simulation's :obj:`DynamicCompartment`\ s, one for each
                 compartment in `model`
         """
         self.dynamic_compartments = dynamic_compartments
