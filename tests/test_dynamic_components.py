@@ -23,7 +23,7 @@ from wc_lang import (Model, Compartment, Species, Parameter,
                      Observable, ObservableExpression, StopCondition,
                      Function, FunctionExpression, InitVolume)
 from wc_lang.io import Reader
-from wc_sim.dynamic_elements import (SimTokCodes, WcSimToken, DynamicComponent, DynamicExpression,
+from wc_sim.dynamic_components import (SimTokCodes, WcSimToken, DynamicComponent, DynamicExpression,
                                      DynamicModel, DynamicSpecies, DynamicFunction, DynamicParameter,
                                      DynamicCompartment)
 from wc_sim.multialgorithm_errors import MultialgorithmError
@@ -257,12 +257,12 @@ class TestDynamics(unittest.TestCase):
                 "{}\t{}".format(id, expression).expandtabs(tab_width_2))
 
     def test_dynamic_compartments(self):
-        for dynamic_elements in [self.dynamic_model.dynamic_species,
+        for dynamic_components in [self.dynamic_model.dynamic_species,
                                   self.dynamic_model.dynamic_parameters]:
-            for dynamic_element in dynamic_elements.values():
-                self.assertIn("id: {}".format(dynamic_element.id), str(dynamic_element))
-                self.assertIn("type: {}".format(dynamic_element.__class__.__name__),
-                              str(dynamic_element))
+            for dynamic_component in dynamic_components.values():
+                self.assertIn("id: {}".format(dynamic_component.id), str(dynamic_component))
+                self.assertIn("type: {}".format(dynamic_component.__class__.__name__),
+                              str(dynamic_component))
 
         self.assertEqual(DynamicComponent.get_dynamic_model_type(Parameter), DynamicParameter)
         self.assertEqual(DynamicComponent.get_dynamic_model_type(Species), DynamicSpecies)

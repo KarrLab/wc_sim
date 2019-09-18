@@ -7,7 +7,7 @@
 """
 
 from wc_lang import Model, Compartment, Species
-from wc_sim.dynamic_elements import DynamicModel, DynamicCompartment
+from wc_sim.dynamic_components import DynamicModel, DynamicCompartment
 from de_sim.simulation_engine import SimulationEngine
 from wc_sim.model_utilities import ModelUtilities
 from wc_sim.multialgorithm_checkpointing import MultialgorithmicCheckpointingSimObj
