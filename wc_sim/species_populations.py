@@ -1102,7 +1102,7 @@ class SpeciesPopSimObject(LocalSpeciesPopulation, ApplicationSimulationObject,
     messages_sent = [message_types.GivePopulation, message_types.GiveProperty]
 
 
-# TODO(Arthur): rename to DynamicSpecies and move to dynamic_components
+# TODO(Arthur): rename to DynamicSpecies and move to dynamic_elements
 class Specie(object):
     """ Specie tracks the population of a single specie in a multi-algorithmic model
 

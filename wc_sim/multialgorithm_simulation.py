@@ -7,7 +7,7 @@
 """
 
 from wc_lang import Model, Compartment, Species
-from wc_sim.dynamic_components import DynamicModel, DynamicCompartment
+from wc_sim.dynamic_elements import DynamicModel, DynamicCompartment
 from de_sim.simulation_engine import SimulationEngine
 from wc_sim.model_utilities import ModelUtilities
 from wc_sim.multialgorithm_checkpointing import MultialgorithmicCheckpointingSimObj
@@ -71,12 +71,11 @@ Density remains constant
 
 SimSubmodels only share memory with each other through read-only objects and a species population object.
 What does a DynamicSubmodel need?:
-    Part of a static WCmodel, with rate laws (but only part of it; could copy it and remove unnecessary parts):
-        Write a filter, that removes specified parts of a Model.
+    Part of a static WCmodel, with rate laws:
         The subsets of these data that are involved in reactions modeled by the DynamicSubmodel:
-            Species_types: id, molecular weight, empirical_formula
+            Species_types: id, molecular weight
             Species: id, population, etc.
-            Compartments: id,
+            Compartments: id, initial volume, 
             Reactions: participants, reversible
             RateLaw: reaction, direction, equation, etc.
             RateLawEquation: transcoded, modifiers
@@ -106,7 +105,7 @@ class MultialgorithmSimulation(object):
 
     Attributes:
         model (:obj:`Model`): a model description
-        args (:obj:`dict`): parameters for the simulation; if results_dir is provided, then also
+        args (:obj:`dict`): parameters for the simulation; if `results_dir` is provided, then also
             must include checkpoint_period
         init_populations (:obj:`dict` from species id to population): the initial populations of
             species, as specified by `model`
@@ -146,6 +145,26 @@ class MultialgorithmSimulation(object):
         self.local_species_population = self.make_local_species_pop(self.model, self.random_state)
         self.dynamic_compartments = self.create_dynamic_compartments(self.model, self.local_species_population)
         self.dynamic_model = None
+
+    def initialize_elements(self):
+        """ Initialize the biochemical components of a simulation
+
+        Returns:
+            :obj:`tuple` of (`SimulationEngine`, `DynamicModel`): 
+        """
+        '''
+        init_volume(compartment) = normal(mu, sigma) # the distribution & its parameters are specified
+        init_concentration(species) = normal(mu, sigma) # Lang specifies concentrations
+        init_copy_nums(species) = init_volume * init_concentrations * NA
+        init_accounted_mass(species) =  sum(init_copy_nums * mol_wts)
+        init_mass(compartment) =  init_volume * init_density
+
+        Link between initial and dynamical states (this part is still a bit awkward):
+        init_accounted_density =  init_accounted_mass /  init_volume  
+        init_accounted_ratio = init_accounted_mass /  init_mass 
+                                         = init_accounted_density /  init_density
+        '''
+        pass
 
     def build_simulation(self):
         """ Build a simulation
@@ -199,10 +218,11 @@ class MultialgorithmSimulation(object):
         Returns:
             dict: `dict` mapping id to `SpeciesPopSimObject` objects for the simulation
         """
-        species_pop_sim_obj = SpeciesPopSimObject(self.shared_species_store_name,
-                                                  {species_id: self.init_populations[species_id] for species_id in self.shared_species},
-                                                  molecular_weights=self.molecular_weights_for_species(self.shared_species),
-                                                  random_state=self.random_state)
+        species_pop_sim_obj = SpeciesPopSimObject(
+            self.shared_species_store_name,
+            {species_id: self.init_populations[species_id] for species_id in self.shared_species},
+            molecular_weights=self.molecular_weights_for_species(self.shared_species),
+            random_state=self.random_state)
         self.simulation.add_object(species_pop_sim_obj)
         return {self.shared_species_store_name: species_pop_sim_obj}
 
@@ -415,5 +435,6 @@ class MultialgorithmSimulation(object):
         """
 
         return obj_to_str(self, ['args', 'checkpointing_sim_obj', 'dynamic_compartments', 'dynamic_model',
-                                 'init_populations', 'local_species_population', 'model', 'private_species', 'shared_species_store_name',
-                                 'shared_species', 'simulation', 'simulation_submodels', 'species_pop_objs'])
+                                 'init_populations', 'local_species_population', 'model', 'private_species',
+                                 'shared_species_store_name', 'shared_species', 'simulation',
+                                 'simulation_submodels', 'species_pop_objs'])

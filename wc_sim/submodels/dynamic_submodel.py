@@ -12,7 +12,7 @@ from wc_lang import Compartment, Species, Reaction, Parameter
 from de_sim.simulation_object import ApplicationSimulationObject
 from wc_sim import message_types, distributed_properties
 from wc_sim.debug_logs import logs as debug_logs
-from wc_sim.dynamic_components import DynamicCompartment, DynamicModel
+from wc_sim.dynamic_elements import DynamicCompartment, DynamicModel
 from wc_sim.multialgorithm_errors import MultialgorithmError, SpeciesPopulationError
 from wc_sim.utils import get_species_and_compartment_from_name
 import numpy as np

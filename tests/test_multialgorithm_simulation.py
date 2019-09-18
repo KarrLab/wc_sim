@@ -368,8 +368,6 @@ class TestSSaExceptions(unittest.TestCase):
     # TODO(Arthur): compare SSA submodel with published model
     # TODO(Arthur): test have identify_enabled_reactions() return a disabled reaction & ssa submodel with reactions that cannot run
     # TODO(Arthur): have if self.enabled_reaction(self.reactions[reaction_index]) do else branch
-    # TODO(Arthur): review the cement programs
-    # TODO(Arthur): update Docker image; use pip 10, pip install wc_sim
     # TODO(Arthur): handle concentration units: 2D conc, 3D conc, molecules
     # TODO(Arthur): restore and restart a simulation from a checkpoint
     # TODO(Arthur): use invariants to test saving aggregate values from DynamicModel in checkpoints
