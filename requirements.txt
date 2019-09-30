@@ -5,7 +5,6 @@ cobra
 de_sim
 matplotlib
 numpy
-obj_model
 pandas
 pint >= 0.9
 python_libsedml
@@ -14,6 +13,3 @@ scikits.odes
 scipy
 setuptools
 tables >= 3.5.0
-wc_lang
-wc_onto
-wc_utils
