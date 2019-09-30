@@ -412,6 +412,7 @@ class DynamicCompartment(DynamicComponent):
     Attributes:
         id (:obj:`str`): id of this :obj:`DynamicCompartment`, copied from `Compartment`
         name (:obj:`str`): name of this :obj:`DynamicCompartment`, copied from `Compartment`
+        random_state (:obj:`numpy.random.RandomState`): a random state
         init_volume (:obj:`float`): initial volume, sampled from the distribution specified in the
             `wc_lang` model
         init_accounted_mass (:obj:`float`): the initial mass accounted for by the initial species
@@ -421,33 +422,30 @@ class DynamicCompartment(DynamicComponent):
         init_accounted_density (:obj:`float`): the initial density accounted for by the initial species
         init_accounted_ratio (:obj:`float`): the fraction of the initial mass or density accounted
             for by initial species
-        species_population (:obj:`LocalSpeciesPopulation`): an object that represents
-            the populations of species in this :obj:`DynamicCompartment`
+        species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
         species_ids (:obj:`list` of :obj:`str`): the IDs of the species stored in this
         :obj:`DynamicCompartment`; if `None`, use the IDs of all species in `species_population`
     """
 
-    def __init__(self, dynamic_model, species_population, wc_lang_compartment, species_ids=None):
+    def __init__(self, dynamic_model, random_state, wc_lang_compartment, species_ids=None):
         """ Initialize this :obj:`DynamicCompartment`
 
         Args:
             dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
-            species_population (:obj:`LocalSpeciesPopulation`): an object that represents
-                the populations of species in this :obj:`DynamicCompartment`
+            random_state (:obj:`numpy.random.RandomState`): a random state
             wc_lang_compartment (:obj:`Compartment`): the corresponding static `wc_lang` `Compartment`
             species_ids (:obj:`list` of :obj:`str`, optional): the IDs of the species stored
-                in this compartment; defaults to the IDs of all species in `species_population`
+                in this compartment
 
         Raises:
             :obj:`MultialgorithmError`: if `self.init_volume` or `self.init_density` are not
                 positive numbers
         """
-        super(DynamicCompartment, self).__init__(dynamic_model, species_population, wc_lang_compartment)
+        super(DynamicCompartment, self).__init__(dynamic_model, None, wc_lang_compartment)
 
         self.id = wc_lang_compartment.id
         self.name = wc_lang_compartment.name
 
-        self.species_population = species_population
         self.species_ids = species_ids
 
         # obtain initial compartment volume by sampling its specified distribution
@@ -457,8 +455,7 @@ class DynamicCompartment(DynamicComponent):
             std = wc_lang_compartment.init_volume.std
             if numpy.isnan(std):
                 std = mean / 10.
-                # todo: don't use species_population.random_state
-            self.init_volume = max(0., species_population.random_state.normal(mean, std))
+            self.init_volume = max(0., random_state.normal(mean, std))
         else:
             raise MultialgorithmError('Initial volume must be normally distributed')
 
@@ -479,9 +476,13 @@ class DynamicCompartment(DynamicComponent):
         self.init_density = init_density
 
     MAX_ALLOWED_INIT_ACCOUNTED_RATIO = 1.5
-    def initialize_mass_and_density(self):
-        """ Obtain all initial values for mass and density.
+    def initialize_mass_and_density(self, species_population):
+        """ Initialize the species populations and obtain initial values for mass and density.
+
+        Args:
+            species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
         """
+        self.species_population = species_population
         self.init_accounted_mass = self.accounted_mass(time=0)
         self.init_mass = self.init_density * self.init_volume
         self.init_accounted_density = self.init_accounted_mass / self.init_volume
@@ -490,7 +491,6 @@ class DynamicCompartment(DynamicComponent):
         # also, init_accounted_ratio = self.init_accounted_mass / self.init_mass
 
         # usually 1 - epsilon < init_accounted_ratio <= 1, with epsilon ~= 0.1
-        # print('self.init_accounted_ratio', self.init_accounted_ratio)
         if 0 == self.init_accounted_ratio:
             warnings.warn("DynamicCompartment '{}': initial accounted ratio is 0".format(self.name))
         elif 1.0 < self.init_accounted_ratio <= self.MAX_ALLOWED_INIT_ACCOUNTED_RATIO:
@@ -612,20 +612,20 @@ class DynamicCompartment(DynamicComponent):
             values.append("Initial mass in species (g): {:.3E}".format(self.init_accounted_mass))
             values.append("Initial total mass (g): {:.3E}".format(self.init_mass))
 
-        values.append("Current mass in species (g): {:.3E}".format(self.accounted_mass()))
         if self._initialized():
+            values.append("Current mass in species (g): {:.3E}".format(self.accounted_mass()))
             values.append("Current total mass (g): {:.3E}".format(self.mass()))
             values.append("Fold change total mass: {:.3E}".format(self.fold_change_total_mass()))
 
-        values.append("Current volume in species (l): {:.3E}".format(self.accounted_volume()))
         if self._initialized():
+            values.append("Current volume in species (l): {:.3E}".format(self.accounted_volume()))
             values.append("Current total volume (l): {:.3E}".format(self.volume()))
             values.append("Fold change total volume: {:.3E}".format(self.fold_change_total_volume()))
 
         return "DynamicCompartment:\n{}".format('\n'.join(values))
 
 
-# TODO(Arthur): define these in config data, which may come from wc_lang
+# TODO(Arthur): discard, and check whether compartment.biological_type == onto['WC:extracellular_compartment']
 EXTRACELLULAR_COMPARTMENT_ID = 'e'
 
 
@@ -641,8 +641,7 @@ class DynamicModel(object):
         dynamic_compartments (:obj:`dict`): map from compartment ID to :obj:`DynamicCompartment`\ ;
             the simulation's :obj:`DynamicCompartment`\ s, one for each compartment in `model`
         cellular_dyn_compartments (:obj:`list`): list of the cellular compartments
-        species_population (:obj:`LocalSpeciesPopulation`): an object that represents
-            the populations of species in this :obj:`DynamicCompartment`
+        species_population (:obj:`LocalSpeciesPopulation`): populations of all the species in the model
         dynamic_species (:obj:`dict` of `DynamicSpecies`): the simulation's dynamic species,
             indexed by their ids
         dynamic_observables (:obj:`dict` of `DynamicObservable`): the simulation's dynamic observables,
@@ -655,13 +654,13 @@ class DynamicModel(object):
             indexed by their ids
     """
 
+    # todo: probably break into two, with part 2 done after dynamic_compartments are fully initialized
     def __init__(self, model, species_population, dynamic_compartments):
         """ Prepare a `DynamicModel` for a discrete-event simulation
 
         Args:
             model (:obj:`Model`): the description of the whole-cell model in `wc_lang`
-            species_population (:obj:`LocalSpeciesPopulation`): an object that represents
-                the populations of species in this :obj:`DynamicCompartment`
+            species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
             dynamic_compartments (:obj:`dict`): the simulation's :obj:`DynamicCompartment`\ s, one
                 for each compartment in `model`
         """
@@ -676,6 +675,7 @@ class DynamicModel(object):
 
         self.cellular_dyn_compartments = []
         for dynamic_compartment in dynamic_compartments.values():
+            # TODO(Arthur): instead check whether compartment.biological_type == onto['WC:cellular_compartment']
             if dynamic_compartment.id == EXTRACELLULAR_COMPARTMENT_ID:
                 continue
             self.cellular_dyn_compartments.append(dynamic_compartment)
