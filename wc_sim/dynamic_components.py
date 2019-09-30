@@ -12,15 +12,15 @@ import numpy
 import warnings
 from collections import namedtuple
 
-from obj_model import utils
-from obj_model.expression import ObjModelTokenCodes
+from obj_tables import utils
+from obj_tables.expression import ObjTablesTokenCodes
 from wc_lang import Species, Compartment
 from wc_onto import onto
 from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_sim.species_populations import LocalSpeciesPopulation
 from wc_utils.util.enumerate import CaseInsensitiveEnum
 from wc_utils.util.ontology import are_terms_equivalent
-import obj_model
+import obj_tables
 import wc_lang
 
 
@@ -64,7 +64,7 @@ class SimTokCodes(int, CaseInsensitiveEnum):
     other = 2
 
 
-# a token in DynamicExpression._obj_model_tokens
+# a token in DynamicExpression._obj_tables_tokens
 WcSimToken = namedtuple('WcSimToken', 'code, token_string, dynamic_expression')
 # make dynamic_expression optional: see https://stackoverflow.com/a/18348004
 WcSimToken.__new__.__defaults__ = (None, )
@@ -91,7 +91,7 @@ class DynamicComponent(object):
         Args:
             dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
             local_species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
-            wc_lang_model (:obj:`obj_model.Model`): a corresponding `wc_lang` `Model`, from which this
+            wc_lang_model (:obj:`obj_tables.Model`): a corresponding `wc_lang` `Model`, from which this
                 `DynamicComponent` is derived
         """
         self.dynamic_model = dynamic_model
@@ -110,8 +110,8 @@ class DynamicComponent(object):
         string name.
 
         Args:
-            model_type (:obj:`Object`): a `wc_lang` Model type represented by a subclass of `obj_model.Model`,
-                an instance of `obj_model.Model`, or a string name for a `obj_model.Model`
+            model_type (:obj:`Object`): a `wc_lang` Model type represented by a subclass of `obj_tables.Model`,
+                an instance of `obj_tables.Model`, or a string name for a `obj_tables.Model`
 
         Returns:
             :obj:`type`: the dynamic component
@@ -119,12 +119,12 @@ class DynamicComponent(object):
         Raises:
             :obj:`MultialgorithmError`: if the corresponding dynamic component type cannot be determined
         """
-        if isinstance(model_type, type) and issubclass(model_type, obj_model.Model):
+        if isinstance(model_type, type) and issubclass(model_type, obj_tables.Model):
             if model_type in WC_LANG_MODEL_TO_DYNAMIC_MODEL:
                 return WC_LANG_MODEL_TO_DYNAMIC_MODEL[model_type]
             raise MultialgorithmError("model class of type '{}' not found".format(model_type.__name__))
 
-        if isinstance(model_type, obj_model.Model):
+        if isinstance(model_type, obj_tables.Model):
             if model_type.__class__ in WC_LANG_MODEL_TO_DYNAMIC_MODEL:
                 return WC_LANG_MODEL_TO_DYNAMIC_MODEL[model_type.__class__]
             raise MultialgorithmError("model of type '{}' not found".format(model_type.__class__.__name__))
@@ -145,7 +145,7 @@ class DynamicComponent(object):
         """ Get a simulation's dynamic component
 
         Args:
-            model_type (:obj:`type`): the subclass of `DynamicComponent` (or `obj_model.Model`) being retrieved
+            model_type (:obj:`type`): the subclass of `DynamicComponent` (or `obj_tables.Model`) being retrieved
             id (:obj:`str`): the dynamic component's id
 
         Returns:
@@ -185,17 +185,17 @@ class DynamicExpression(DynamicComponent):
         local_ns (:obj:`dict`): pre-computed local namespace of functions used in `expression`
     """
 
-    NON_LANG_OBJ_ID_TOKENS = set([ObjModelTokenCodes.math_func_id,
-                                  ObjModelTokenCodes.number,
-                                  ObjModelTokenCodes.op,
-                                  ObjModelTokenCodes.other])
+    NON_LANG_OBJ_ID_TOKENS = set([ObjTablesTokenCodes.math_func_id,
+                                  ObjTablesTokenCodes.number,
+                                  ObjTablesTokenCodes.op,
+                                  ObjTablesTokenCodes.other])
 
     def __init__(self, dynamic_model, local_species_population, wc_lang_model, wc_lang_expression):
         """
         Args:
             dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
             local_species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
-            wc_lang_model (:obj:`obj_model.Model`): the corresponding `wc_lang` `Model`
+            wc_lang_model (:obj:`obj_tables.Model`): the corresponding `wc_lang` `Model`
             wc_lang_expression (:obj:`ParsedExpression`): an analyzed and validated expression
 
         Raises:
@@ -206,8 +206,8 @@ class DynamicExpression(DynamicComponent):
         super().__init__(dynamic_model, local_species_population, wc_lang_model)
 
         # wc_lang_expression must have been successfully `tokenize`d.
-        if not wc_lang_expression._obj_model_tokens:
-            raise MultialgorithmError("_obj_model_tokens cannot be empty - ensure that '{}' is valid".format(
+        if not wc_lang_expression._obj_tables_tokens:
+            raise MultialgorithmError("_obj_tables_tokens cannot be empty - ensure that '{}' is valid".format(
                 wc_lang_model))
         # optimization: self.wc_lang_expression will be deleted by prepare()
         self.wc_lang_expression = wc_lang_expression
@@ -225,32 +225,32 @@ class DynamicExpression(DynamicComponent):
 
         # create self.wc_sim_tokens, which contains WcSimTokens that refer to other DynamicExpressions
         self.wc_sim_tokens = []
-        # optimization: combine together adjacent obj_model_token.tok_codes other than obj_id
+        # optimization: combine together adjacent obj_tables_token.tok_codes other than obj_id
         next_static_tokens = ''
         function_names = set()
 
         i = 0
-        while i < len(self.wc_lang_expression._obj_model_tokens):
-            obj_model_token = self.wc_lang_expression._obj_model_tokens[i]
-            if obj_model_token.code == ObjModelTokenCodes.math_func_id:
-                function_names.add(obj_model_token.token_string)
-            if obj_model_token.code in self.NON_LANG_OBJ_ID_TOKENS:
-                next_static_tokens = next_static_tokens + obj_model_token.token_string
-            elif obj_model_token.code == ObjModelTokenCodes.obj_id:
+        while i < len(self.wc_lang_expression._obj_tables_tokens):
+            obj_tables_token = self.wc_lang_expression._obj_tables_tokens[i]
+            if obj_tables_token.code == ObjTablesTokenCodes.math_func_id:
+                function_names.add(obj_tables_token.token_string)
+            if obj_tables_token.code in self.NON_LANG_OBJ_ID_TOKENS:
+                next_static_tokens = next_static_tokens + obj_tables_token.token_string
+            elif obj_tables_token.code == ObjTablesTokenCodes.obj_id:
                 if next_static_tokens != '':
                     self.wc_sim_tokens.append(WcSimToken(SimTokCodes.other, next_static_tokens))
                     next_static_tokens = ''
                 try:
-                    dynamic_expression = DynamicComponent.get_dynamic_component(obj_model_token.model,
-                                                                                obj_model_token.model_id)
+                    dynamic_expression = DynamicComponent.get_dynamic_component(obj_tables_token.model,
+                                                                                obj_tables_token.model_id)
                 except:
                     raise MultialgorithmError("'{}.{} must be prepared to create '{}''".format(
-                        obj_model_token.model.__class__.__name__, obj_model_token.model_id, self.id))
+                        obj_tables_token.model.__class__.__name__, obj_tables_token.model_id, self.id))
                 self.wc_sim_tokens.append(WcSimToken(SimTokCodes.dynamic_expression,
-                                                     obj_model_token.token_string,
+                                                     obj_tables_token.token_string,
                                                      dynamic_expression))
             else:   # pragma: no cover
-                assert False, "unknown code {} in {}".format(obj_model_token.code, obj_model_token)
+                assert False, "unknown code {} in {}".format(obj_tables_token.code, obj_tables_token)
             # advance to the next token
             i += 1
         if next_static_tokens != '':
@@ -347,7 +347,7 @@ class DynamicParameter(DynamicComponent):
         Args:
             dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
             local_species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
-            wc_lang_model (:obj:`obj_model.Model`): the corresponding :obj:`wc_lang.Parameter`
+            wc_lang_model (:obj:`obj_tables.Model`): the corresponding :obj:`wc_lang.Parameter`
             value (:obj:`float`): the parameter's value
         """
         super().__init__(dynamic_model, local_species_population, wc_lang_model)
@@ -372,7 +372,7 @@ class DynamicSpecies(DynamicComponent):
         Args:
             dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
             local_species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
-            wc_lang_model (:obj:`obj_model.Model`): the corresponding :obj:`wc_lang.Species`
+            wc_lang_model (:obj:`obj_tables.Model`): the corresponding :obj:`wc_lang.Species`
         """
         super().__init__(dynamic_model, local_species_population, wc_lang_model)
         # Grab a reference to the right wc_lang.Species object used by local_species_population
@@ -406,88 +406,186 @@ class DynamicRateLaw(DynamicExpression):
 class DynamicCompartment(DynamicComponent):
     """ A dynamic compartment
 
-    A :obj:`DynamicCompartment` tracks the dynamic aggregate state of a compartment, primarily its
-    mass. A :obj:`DynamicCompartment` is created for each `wc_lang` `Compartment` in a whole-cell
-    model.
+    A :obj:`DynamicCompartment` tracks the dynamic aggregate state of a compartment. A
+    :obj:`DynamicCompartment` is created for each `wc_lang` `Compartment` in a whole-cell model.
 
     Attributes:
-        id (:obj:`str`): id of this :obj:`DynamicCompartment`, copied from `compartment`
-        name (:obj:`str`): name of this :obj:`DynamicCompartment`, copied from `compartment`
+        id (:obj:`str`): id of this :obj:`DynamicCompartment`, copied from `Compartment`
+        name (:obj:`str`): name of this :obj:`DynamicCompartment`, copied from `Compartment`
         init_volume (:obj:`float`): initial volume, sampled from the distribution specified in the
             `wc_lang` model
-        init_mass (:obj:`float`): initial mass
+        init_accounted_mass (:obj:`float`): the initial mass accounted for by the initial species
+        init_mass (:obj:`float`): initial mass, including the mass not accounted for by explicit species
+        init_density (:obj:`float`): the initial density of this :obj:`DynamicCompartment`, as
+            specified by the model; this is the *constant* density of the compartment
+        init_accounted_density (:obj:`float`): the initial density accounted for by the initial species
+        init_accounted_ratio (:obj:`float`): the fraction of the initial mass or density accounted
+            for by initial species
         species_population (:obj:`LocalSpeciesPopulation`): an object that represents
             the populations of species in this :obj:`DynamicCompartment`
-        species_ids (:obj:`list` of :obj:`str`): the IDs of the species stored
-            in this dynamic compartment; if `None`, use the IDs of all species in `species_population`
+        species_ids (:obj:`list` of :obj:`str`): the IDs of the species stored in this
+        :obj:`DynamicCompartment`; if `None`, use the IDs of all species in `species_population`
     """
 
-    def __init__(self, dynamic_model, species_population, wc_lang_model, species_ids=None):
+    def __init__(self, dynamic_model, species_population, wc_lang_compartment, species_ids=None):
         """ Initialize this :obj:`DynamicCompartment`
 
         Args:
             dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
             species_population (:obj:`LocalSpeciesPopulation`): an object that represents
                 the populations of species in this :obj:`DynamicCompartment`
-            wc_lang_model (:obj:`Compartment`): the corresponding static `wc_lang` `Compartment`
+            wc_lang_compartment (:obj:`Compartment`): the corresponding static `wc_lang` `Compartment`
             species_ids (:obj:`list` of :obj:`str`, optional): the IDs of the species stored
                 in this compartment; defaults to the IDs of all species in `species_population`
 
         Raises:
-            :obj:`MultialgorithmError`: if `init_volume` is not a positive number
+            :obj:`MultialgorithmError`: if `self.init_volume` or `self.init_density` are not
+                positive numbers
         """
-        super(DynamicCompartment, self).__init__(dynamic_model, species_population, wc_lang_model)
+        super(DynamicCompartment, self).__init__(dynamic_model, species_population, wc_lang_compartment)
 
-        self.id = wc_lang_model.id
-        self.name = wc_lang_model.name
+        self.id = wc_lang_compartment.id
+        self.name = wc_lang_compartment.name
 
         self.species_population = species_population
         self.species_ids = species_ids
 
-        if wc_lang_model.init_volume and \
-            are_terms_equivalent(wc_lang_model.init_volume.distribution, onto['WC:normal_distribution']):
-            mean = wc_lang_model.init_volume.mean
-            std = wc_lang_model.init_volume.std
+        # obtain initial compartment volume by sampling its specified distribution
+        if wc_lang_compartment.init_volume and \
+            are_terms_equivalent(wc_lang_compartment.init_volume.distribution, onto['WC:normal_distribution']):
+            mean = wc_lang_compartment.init_volume.mean
+            std = wc_lang_compartment.init_volume.std
             if numpy.isnan(std):
                 std = mean / 10.
+                # todo: don't use species_population.random_state
             self.init_volume = max(0., species_population.random_state.normal(mean, std))
         else:
             raise MultialgorithmError('Initial volume must be normally distributed')
 
-        if math.isnan(self.init_volume):
+        if math.isnan(self.init_volume):    # pragma no cover: cannot be True
             raise MultialgorithmError("DynamicCompartment {}: init_volume is NaN, but must be a positive "
                                       "number.".format(self.name))
         if self.init_volume <= 0:
-            raise MultialgorithmError("DynamicCompartment {}: init_volume ({}) must be a positive number.".format(
-                self.name, self.init_volume))
+            raise MultialgorithmError("DynamicCompartment {}: init_volume ({}) must be a positive "
+                                      "number.".format(self.name, self.init_volume))
 
-        self.init_mass = self.mass()
-        if 0 == self.init_mass:
-            warnings.warn("DynamicCompartment '{}': initial mass is 0".format(self.name))
+        init_density = wc_lang_compartment.init_density.value
+        if math.isnan(init_density):
+            raise MultialgorithmError("DynamicCompartment {}: init_density is NaN, but must be a positive "
+                                      "number.".format(self.name))
+        if init_density <= 0:
+            raise MultialgorithmError("DynamicCompartment {}: init_density ({}) must be a positive "
+                                      "number.".format(self.name, init_density))
+        self.init_density = init_density
 
-        wc_lang_model.init_density.value = self.init_mass / self.init_volume
+    MAX_ALLOWED_INIT_ACCOUNTED_RATIO = 1.5
+    def initialize_mass_and_density(self):
+        """ Obtain all initial values for mass and density.
+        """
+        self.init_accounted_mass = self.accounted_mass(time=0)
+        self.init_mass = self.init_density * self.init_volume
+        self.init_accounted_density = self.init_accounted_mass / self.init_volume
+        # calculate fraction of initial mass or density represented by species
+        self.init_accounted_ratio = self.init_accounted_density / self.init_density
+        # also, init_accounted_ratio = self.init_accounted_mass / self.init_mass
 
-    def mass(self, time=None):
+        # usually 1 - epsilon < init_accounted_ratio <= 1, with epsilon ~= 0.1
+        # print('self.init_accounted_ratio', self.init_accounted_ratio)
+        if 0 == self.init_accounted_ratio:
+            warnings.warn("DynamicCompartment '{}': initial accounted ratio is 0".format(self.name))
+        elif 1.0 < self.init_accounted_ratio <= self.MAX_ALLOWED_INIT_ACCOUNTED_RATIO:
+            warnings.warn("DynamicCompartment '{}': initial accounted ratio ({:.3E}) greater than 1.0".format(
+                self.name, self.init_accounted_ratio))
+        if self.MAX_ALLOWED_INIT_ACCOUNTED_RATIO < self.init_accounted_ratio:
+            raise MultialgorithmError("DynamicCompartment {}: initial accounted ratio ({:.3E}) greater "
+                                      "than MAX_ALLOWED_INIT_ACCOUNTED_RATIO ({}).".format(self.name,
+                                      self.init_accounted_ratio, self.MAX_ALLOWED_INIT_ACCOUNTED_RATIO))
+
+    def accounted_mass(self, time=None):
         """ Provide the total current mass of all species in this :obj:`DynamicCompartment`
 
         Args:
-            time (number, optional): the current simulation time;
+            time (:obj:`Rational`, optional): the current simulation time
+
+        Returns:
+            :obj:`float`: the total current mass of all species (g)
+        """
+        return self.species_population.compartmental_mass(self.id, time=time)
+
+    def accounted_volume(self, time=None):
+        """ Provide the current volume occupied by all species in this :obj:`DynamicCompartment`
+
+        Args:
+            time (:obj:`Rational`, optional): the current simulation time
+
+        Returns:
+            :obj:`float`: the current volume of all species (l)
+        """
+        return self.accounted_mass(time=time) / self.init_density
+
+    def mass(self, time=None):
+        """ Provide the total current mass of this :obj:`DynamicCompartment`
+
+        This mass includes the mass not accounted for by explicit species, as determined by
+        the initial density.
+
+        Args:
+            time (:obj:`Rational`, optional): the current simulation time
 
         Returns:
             :obj:`float`: this compartment's total current mass (g)
         """
-        return self.species_population.compartmental_mass(self.id, time=time)
+        return self.accounted_mass(time=time) / self.init_accounted_ratio
 
-    def eval(self, time=None):
-        """ Provide the mass of this :obj:`DynamicCompartment`
+    def volume(self, time=None):
+        """ Provide the current volume of this :obj:`DynamicCompartment`
+
+        This volume includes the volume not accounted for by explicit species, as determined by
+        the ratio of the specified initial density to the initial density accounted for by species.
 
         Args:
-            time (number, optional): the current simulation time;
+            time (:obj:`Rational`, optional): the current simulation time
+
+        Returns:
+            :obj:`float`: this compartment's current volume (l)
         """
-        return self.mass(time=time)
+        return self.accounted_volume(time=time) / self.init_accounted_ratio
+
+    def eval(self, time=None):
+        """ Provide the volume of this :obj:`DynamicCompartment`
+
+        Args:
+            time (:obj:`Rational`, optional): the current simulation time
+
+        Returns:
+            :obj:`float`: this compartment's current volume (l)
+        """
+        return self.volume(time=time)
+
+    def fold_change_total_mass(self, time=None):
+        """ Provide the fold change of the total mass of this :obj:`DynamicCompartment`
+
+        Args:
+            time (:obj:`Rational`, optional): the current simulation time
+
+        Returns:
+            :obj:`float`: the fold change of the total mass of this compartment
+        """
+        return self.mass(time=time) / self.init_mass
+
+    def fold_change_total_volume(self, time=None):
+        """ Provide the fold change of the total volume of this :obj:`DynamicCompartment`
+
+        Args:
+            time (:obj:`Rational`, optional): the current simulation time
+
+        Returns:
+            :obj:`float`: the fold change of the total volume of this compartment
+        """
+        return self.volume(time=time) / self.init_volume
 
     def __str__(self):
-        """ Provide a string representation of this :obj:`DynamicCompartment`
+        """ Provide a string representation of this :obj:`DynamicCompartment` at the current simulation time
 
         Returns:
             :obj:`str`: a string representation of this compartment
@@ -495,11 +593,20 @@ class DynamicCompartment(DynamicComponent):
         values = []
         values.append("ID: " + self.id)
         values.append("Name: " + self.name)
-        values.append("Initial volume (l^-1): {}".format(self.init_volume))
-        values.append("Initial density (g l^-1): {}".format(self.init_mass / self.init_volume))
-        values.append("Initial mass (g): {}".format(self.init_mass))
-        values.append("Current mass (g): {}".format(self.mass()))
-        values.append("Fold change mass: {}".format(self.mass() / self.init_mass))
+
+        values.append("Initial volume (l): {:.3E}".format(self.init_volume))
+        values.append("Specified density (g l^-1): {}".format(self.init_density))
+        values.append("Initial mass in species (g): {:.3E}".format(self.init_accounted_mass))
+        values.append("Initial total mass (g): {:.3E}".format(self.init_mass))
+
+        values.append("Current mass in species (g): {:.3E}".format(self.accounted_mass()))
+        values.append("Current total mass (g): {:.3E}".format(self.mass()))
+        values.append("Fold change total mass: {:.3E}".format(self.fold_change_total_mass()))
+
+        values.append("Current volume in species (l): {:.3E}".format(self.accounted_volume()))
+        values.append("Current total volume (l): {:.3E}".format(self.volume()))
+        values.append("Fold change total volume: {:.3E}".format(self.fold_change_total_volume()))
+
         return "DynamicCompartment:\n{}".format('\n'.join(values))
 
 
@@ -516,8 +623,8 @@ class DynamicModel(object):
     dynamic compartments.
 
     Attributes:
-        dynamic_compartments (:obj:`dict`): map from compartment ID to :obj:`DynamicCompartment`\ ; the simulation's
-            :obj:`DynamicCompartment`\ s, one for each compartment in `model`
+        dynamic_compartments (:obj:`dict`): map from compartment ID to :obj:`DynamicCompartment`\ ;
+            the simulation's :obj:`DynamicCompartment`\ s, one for each compartment in `model`
         cellular_dyn_compartments (:obj:`list`): list of the cellular compartments
         species_population (:obj:`LocalSpeciesPopulation`): an object that represents
             the populations of species in this :obj:`DynamicCompartment`
@@ -540,8 +647,8 @@ class DynamicModel(object):
             model (:obj:`Model`): the description of the whole-cell model in `wc_lang`
             species_population (:obj:`LocalSpeciesPopulation`): an object that represents
                 the populations of species in this :obj:`DynamicCompartment`
-            dynamic_compartments (:obj:`dict`): the simulation's :obj:`DynamicCompartment`\ s, one for each
-                compartment in `model`
+            dynamic_compartments (:obj:`dict`): the simulation's :obj:`DynamicCompartment`\ s, one
+                for each compartment in `model`
         """
         self.dynamic_compartments = dynamic_compartments
         self.species_population = species_population
@@ -638,8 +745,8 @@ class DynamicModel(object):
 
         Args:
             time (:obj:`float`): the simulation time
-            observables_to_eval (:obj:`list` of :obj:`str`, optional): if provided, ids of the observables to
-                evaluate; otherwise, evaluate all observables
+            observables_to_eval (:obj:`list` of :obj:`str`, optional): if provided, ids of the
+                observables to evaluate; otherwise, evaluate all observables
 
         Returns:
             :obj:`dict`: map from the IDs of dynamic observables in `observables_to_eval` to their
@@ -657,8 +764,8 @@ class DynamicModel(object):
 
         Args:
             time (:obj:`float`): the simulation time
-            functions_to_eval (:obj:`list` of :obj:`str`, optional): if provided, ids of the functions to
-                evaluate; otherwise, evaluate all functions
+            functions_to_eval (:obj:`list` of :obj:`str`, optional): if provided, ids of the
+                functions to evaluate; otherwise, evaluate all functions
 
         Returns:
             :obj:`dict`: map from the IDs of dynamic functions in `functions_to_eval` to their

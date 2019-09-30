@@ -17,7 +17,7 @@ import timeit
 import unittest
 import warnings
 
-from obj_model.expression import Expression
+from obj_tables.expression import Expression
 from wc_lang import (Model, Compartment, Species, Parameter,
                      DistributionInitConcentration,
                      Observable, ObservableExpression, StopCondition,
@@ -108,8 +108,8 @@ class TestDynamicExpression(unittest.TestCase):
 
     def test_dynamic_expression_errors(self):
         # remove the Function's tokenized result
-        self.fun1.expression._parsed_expression._obj_model_tokens = []
-        with self.assertRaisesRegex(MultialgorithmError, "_obj_model_tokens cannot be empty - ensure that '.*' is valid"):
+        self.fun1.expression._parsed_expression._obj_tables_tokens = []
+        with self.assertRaisesRegex(MultialgorithmError, "_obj_tables_tokens cannot be empty - ensure that '.*' is valid"):
             DynamicFunction(self.dynamic_model, self.local_species_population,
                             self.fun1, self.fun1.expression._parsed_expression)
 
@@ -286,26 +286,95 @@ class TestDynamicCompartment(unittest.TestCase):
 
         # make a DynamicCompartment
         self.mean_init_volume = 1E-17
-
         self.compartment = Compartment(id=comp_id, name='name',
-                                       init_volume=InitVolume(mean=self.mean_init_volume, std=self.mean_init_volume / 10.))
-        self.compartment.init_density = Parameter(id='density_{}'.format(comp_id), value=1100., units=unit_registry.parse_units('g l^-1'))
+                                       init_volume=InitVolume(mean=self.mean_init_volume,
+                                       std=self.mean_init_volume / 40.))
+        self.compartment.init_density = Parameter(id='density_{}'.format(comp_id), value=1100.,
+            units=unit_registry.parse_units('g l^-1'))
 
-        self.dynamic_compartment = DynamicCompartment(None, self.local_species_pop, self.compartment, self.species_ids)
+        self.dynamic_compartment = DynamicCompartment(None, self.local_species_pop, self.compartment,
+            self.species_ids)
 
-    def test_simple_dynamic_compartment(self):
+    def test_dynamic_compartment(self):
+        volumes = []
+        # test mean initial volume
+        for i_trial in range(10):
+            dynamic_compartment = DynamicCompartment(None, self.local_species_pop, self.compartment)
+            volumes.append(dynamic_compartment.init_volume)
+        self.assertLess(numpy.abs((numpy.mean(volumes) - self.mean_init_volume) / self.mean_init_volume), 0.1)
+
+    def specify_init_accounted_ratio(self, desired_init_accounted_ratio):
+        # make a DynamicCompartment with init_accounted_ratio ~= desired_init_accounted_ratio
+        # without changing init_accounted_mass or init_volume
+        init_density = self.dynamic_compartment.init_accounted_mass / \
+            (desired_init_accounted_ratio * self.dynamic_compartment.init_volume)
+        self.compartment.init_density = Parameter(id='density_x', value=init_density,
+            units=unit_registry.parse_units('g l^-1'))
+        return DynamicCompartment(None, self.local_species_pop, self.compartment)
+
+    def test_initialize_mass_and_density(self):
+        self.dynamic_compartment.initialize_mass_and_density()
+        estimated_accounted_mass = self.num_species * self.all_pops * self.all_m_weights / Avogadro
+        # IEEE 64-bit floating point has 53 bits in the mantissa, providing 15 to 17 decimal digits
+        self.assertAlmostEqual(self.dynamic_compartment.init_accounted_mass, estimated_accounted_mass,
+            places=14)
+        self.assertTrue(0 < self.dynamic_compartment.init_mass)
+        self.assertAlmostEqual(self.dynamic_compartment.init_accounted_ratio,
+            self.dynamic_compartment.init_accounted_mass / self.dynamic_compartment.init_mass, places=14)
+
+        empty_local_species_pop = LocalSpeciesPopulation('test', {}, {},
+            random_state=RandomStateManager.instance())
+        dynamic_compartment = DynamicCompartment(None, empty_local_species_pop, self.compartment)
+        with warnings.catch_warnings(record=True) as w:
+            dynamic_compartment.initialize_mass_and_density()
+            self.assertIn("initial accounted ratio is 0", str(w[-1].message))
+
+        dynamic_compartment = self.specify_init_accounted_ratio(
+            (DynamicCompartment.MAX_ALLOWED_INIT_ACCOUNTED_RATIO + 1)/2)
+        with warnings.catch_warnings(record=True) as w:
+            dynamic_compartment.initialize_mass_and_density()
+            self.assertIn("initial accounted ratio (", str(w[-1].message))
+            self.assertIn(") greater than 1.0", str(w[-1].message))
+
+        dynamic_compartment = self.specify_init_accounted_ratio(2)
+        with self.assertRaises(MultialgorithmError):
+            dynamic_compartment.initialize_mass_and_density()
+
+    def test_fold_changes(self):
+        # ensure that initial fold changes == 1
+        self.dynamic_compartment.initialize_mass_and_density()
+        self.assertAlmostEqual(self.dynamic_compartment.fold_change_total_mass(0), 1.0)
+        self.assertAlmostEqual(self.dynamic_compartment.fold_change_total_volume(0), 1.0)
+
+    def test_init_volume_and_eval(self):
+        self.dynamic_compartment.initialize_mass_and_density()
+        self.assertAlmostEqual(self.dynamic_compartment.volume(), self.dynamic_compartment.init_volume,
+            places=14)
+        self.assertAlmostEqual(self.dynamic_compartment.eval(), self.dynamic_compartment.init_volume,
+            places=14)
+
+    def test_str(self):
+        dynamic_compartment = DynamicCompartment(None, self.local_species_pop, self.compartment)
+        dynamic_compartment.initialize_mass_and_density()
+        self.assertIn(self.dynamic_compartment.id, str(dynamic_compartment))
+        self.assertIn(str(self.dynamic_compartment.init_density), str(dynamic_compartment))
+
+    @unittest.skip("refactor into new tests")
+    def test_simple_dynamic_compartment_old(self):
 
         # test DynamicCompartment
         masses = []
         for i_trial in range(10):
-            self.dynamic_compartment = DynamicCompartment(None, self.local_species_pop, self.compartment, self.species_ids)
+            self.dynamic_compartment = DynamicCompartment(None, self.local_species_pop, self.compartment,
+                self.species_ids)
             masses.append(self.dynamic_compartment.mass())
         self.assertIn(self.dynamic_compartment.id, str(self.dynamic_compartment))
         estimated_mass = self.num_species * self.all_pops * self.all_m_weights / Avogadro
-        self.assertLess(numpy.abs((numpy.mean(masses) - estimated_mass) / estimated_mass), 0.25)
+        self.assertLess(numpy.abs((numpy.mean(masses) - estimated_mass) / estimated_mass), 0.1)
 
         # self.compartment containing just the first element of self.species_ids
-        self.dynamic_compartment = DynamicCompartment(None, self.local_species_pop, self.compartment, self.species_ids[:1])
+        self.dynamic_compartment = DynamicCompartment(None, self.local_species_pop, self.compartment,
+            self.species_ids[:1])
         estimated_mass = self.all_pops*self.all_m_weights / Avogadro
         self.assertAlmostEqual(self.dynamic_compartment.mass(), estimated_mass)
 
@@ -315,7 +384,8 @@ class TestDynamicCompartment(unittest.TestCase):
                                                    random_state=RandomStateManager.instance())
         for i_trial in range(10):
             with warnings.catch_warnings(record=True) as w:
-                dynamic_compartment = DynamicCompartment(None, local_species_pop, self.compartment, self.species_ids)
+                dynamic_compartment = DynamicCompartment(None, local_species_pop, self.compartment,
+                    self.species_ids)
                 self.assertIn("initial mass is 0", str(w[-1].message))
             self.assertEqual(dynamic_compartment.init_mass, 0.)
             self.assertEqual(dynamic_compartment.mass(), 0.)
@@ -331,11 +401,23 @@ class TestDynamicCompartment(unittest.TestCase):
         with self.assertRaises(MultialgorithmError):
             DynamicCompartment(None, self.local_species_pop, compartment, self.species_ids)
 
-        compartment = Compartment(id='id', name='name', init_volume=InitVolume(mean=float('nan')))
+        self.compartment.init_density = Parameter(id='density_{}'.format(self.compartment.id),
+                                                value=float('nan'),
+                                                units=unit_registry.parse_units('g l^-1'))
         with self.assertRaises(MultialgorithmError):
-            DynamicCompartment(None, self.local_species_pop, compartment, self.species_ids)
+            DynamicCompartment(None, self.local_species_pop, self.compartment)
+
+        self.compartment.init_density = Parameter(id='density_{}'.format(self.compartment.id),
+                                                value=0., units=unit_registry.parse_units('g l^-1'))
+        with self.assertRaises(MultialgorithmError):
+            DynamicCompartment(None, self.local_species_pop, self.compartment)
+
+        self.compartment.init_volume = None
+        with self.assertRaises(MultialgorithmError):
+            DynamicCompartment(None, self.local_species_pop, self.compartment)
 
 
+@unittest.skip("refactor")
 class TestDynamicModel(unittest.TestCase):
 
     MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_model.xlsx')
@@ -346,7 +428,8 @@ class TestDynamicModel(unittest.TestCase):
         self.model = Reader().run(model_filename)[Model][0]
         multialgorithm_simulation = MultialgorithmSimulation(self.model, None)
         dynamic_compartments = multialgorithm_simulation.dynamic_compartments
-        self.dynamic_model = DynamicModel(self.model, multialgorithm_simulation.local_species_population, dynamic_compartments)
+        self.dynamic_model = DynamicModel(self.model, multialgorithm_simulation.local_species_population,
+            dynamic_compartments)
 
     # TODO(Arthur): move this proportional test to a utility & use it instead of assertAlmostEqual everywhere
     def almost_equal_test(self, a, b, frac_diff=1/100):
