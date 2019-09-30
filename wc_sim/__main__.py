@@ -10,7 +10,7 @@
 import cement
 import warnings
 
-from obj_model.migrate import data_repo_migration_controllers
+from obj_tables.migrate import data_repo_migration_controllers
 import wc_sim
 from wc_sim.simulation import Simulation
 
