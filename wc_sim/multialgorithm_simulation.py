@@ -184,7 +184,7 @@ class MultialgorithmSimulation(object):
         vol = accounted_vol / init_accounted_ratio
         '''
 
-        # 1. *** create DynamicCompartments, initializing the init_volume & init_density in each (create_dynamic_compartments(), with random_state)
+        # 1. ✔ create DynamicCompartments, initializing the init_volume & init_density in each (create_dynamic_compartments())
         # 2. *** obtain the initial species populations by sampling their specified distributions (get_initial_species_pop())
         # 3. create a shared LocalSpeciesPopulation with all species (make_local_species_pop())
         # 4. todo: initialize with non-zero fluxes
@@ -341,7 +341,7 @@ class MultialgorithmSimulation(object):
         """ Initialize the :obj:`DynamicCompartment`\ s for this simulation
         """
         # initialize all DynamicCompartments
-        for dynamic_compartment in self.dynamic_compartments:
+        for dynamic_compartment in self.dynamic_compartments.values():
             dynamic_compartment.initialize_mass_and_density(self.local_species_population)
 
     @staticmethod

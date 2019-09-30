@@ -88,8 +88,7 @@ class TestMultialgorithmSimulation(unittest.TestCase):
             'species_6[c]': 6,
             'H2O[c]': 18.0152
         }
-        self.assertEqual(multi_alg_sim.molecular_weights_for_species(set(expected.keys())),
-                         expected)
+        self.assertEqual(multi_alg_sim.molecular_weights_for_species(set(expected.keys())), expected)
 
     def test_partition_species(self):
         self.multialgorithm_simulation.partition_species()
@@ -103,6 +102,19 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         self.assertEqual(priv_species, expected_priv_species)
         expected_shared_species = set(['species_2[c]', 'species_3[c]', 'species_4[c]', 'H2O[e]', 'H2O[c]'])
         self.assertEqual(self.multialgorithm_simulation.shared_species, expected_shared_species)
+
+    def test_create_and_initialize_dynamic_compartments(self):
+        self.multialgorithm_simulation.create_dynamic_compartments()
+        self.assertEqual(set(['c', 'e']), set(self.multialgorithm_simulation.dynamic_compartments))
+        for id, dynamic_compartment in self.multialgorithm_simulation.dynamic_compartments.items():
+            self.assertEqual(id, dynamic_compartment.id)
+            self.assertTrue(0 < dynamic_compartment.init_density)
+
+        self.multialgorithm_simulation.initialize_dynamic_compartments()
+        for dynamic_compartment in self.multialgorithm_simulation.dynamic_compartments.values():
+            self.assertTrue(dynamic_compartment._initialized())
+            self.assertTrue(0 < dynamic_compartment.accounted_mass())
+            self.assertTrue(0 < dynamic_compartment.mass())
 
     def test_dynamic_compartments(self):
         expected_compartments = dict(
