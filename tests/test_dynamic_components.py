@@ -359,7 +359,7 @@ class TestDynamicCompartment(unittest.TestCase):
         self.assertIn(self.dynamic_compartment.id, str(dynamic_compartment))
         self.assertIn(str(self.dynamic_compartment.init_density), str(dynamic_compartment))
 
-    @unittest.skip("refactor into new tests")
+    @unittest.skip("todo: refactor into new tests")
     def test_simple_dynamic_compartment_old(self):
 
         # test DynamicCompartment
@@ -417,7 +417,7 @@ class TestDynamicCompartment(unittest.TestCase):
             DynamicCompartment(None, self.local_species_pop, self.compartment)
 
 
-@unittest.skip("refactor")
+@unittest.skip("todo: refactor into new tests")
 class TestDynamicModel(unittest.TestCase):
 
     MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_model.xlsx')
