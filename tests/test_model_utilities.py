@@ -10,7 +10,7 @@ import os
 import unittest
 import wc_lang
 from argparse import Namespace
-from obj_model import utils
+from obj_tables import utils
 from scipy.constants import Avogadro
 from wc_lang.io import Reader
 from wc_sim.model_utilities import ModelUtilities

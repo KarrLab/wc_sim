@@ -1282,7 +1282,7 @@ class Specie(object):
         adjustment operations may **NOT** return a sequence of equal population values.*
 
         Args:
-            time (number, optional): the current simulation time; `time` is required if one of the
+            time (:obj:`Rational`, optional): the current simulation time; `time` is required if one of the
                 submodels modeling the specie is a continuous-time submodel.
 
         Returns:
