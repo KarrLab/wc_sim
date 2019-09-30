@@ -90,7 +90,7 @@ class ModelUtilities(object):
     def concentration_to_molecules(species, volume, random_state):
         '''Provide the initial copy number of `species` from its concentration
 
-        Copy number is be rounded to the closest integer to avoid truncating small populations.
+        Copy number is rounded to the closest integer to avoid truncating small populations.
 
         Args:
             species (:obj:`Species`): a `Species` instance; the `species.concentration.units` must

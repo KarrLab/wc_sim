@@ -107,21 +107,22 @@ class MultialgorithmSimulation(object):
         model (:obj:`Model`): a model description
         args (:obj:`dict`): parameters for the simulation; if `results_dir` is provided, then also
             must include checkpoint_period
-        init_populations (:obj:`dict` from species id to population): the initial populations of
-            species, as specified by `model`
+        shared_species_store_name (:obj:`str`): the name for the shared specie store
         simulation (:obj:`SimulationEngine`): the initialized simulation
-        simulation_submodels (:obj:`list` of :obj:`DynamicSubmodel`): the simulation's submodels
         checkpointing_sim_obj (:obj:`MultialgorithmicCheckpointingSimObj`): the checkpointing object;
             `None` if absent
+        random_state (:obj:`numpy.random.RandomState`): a random state
         species_pop_objs (:obj:`dict` of `SpeciesPopSimObject`): shared species
-            populations stored in `SimulationObject`'s
-        shared_species_store_name (:obj:`str`): the name for the shared specie store
-        dynamic_model (:obj:`DynamicModel`): the dynamic state of a model
-        private_species (:obj:`dict` of `set`): map from `DynamicSubmodel` to a set of the species
-                modeled by only the submodel
-        shared_species (:obj:`set`): the shared species
+            populations used by `SimulationObject`\ 's; not currently used
+        init_populations (:obj:`dict` from species id to population): the initial populations of
+            species, derived from the specification in `model`
         local_species_population (:obj:`LocalSpeciesPopulation`): a shared species population for the
             multialgorithm simulation
+        simulation_submodels (:obj:`list` of :obj:`DynamicSubmodel`): the simulation's submodels
+        dynamic_model (:obj:`DynamicModel`): the dynamic state of a model
+        private_species (:obj:`dict` of `set`): map from `DynamicSubmodel` to a set of the species
+                modeled by only the submodel; not currently used
+        shared_species (:obj:`set`): the shared species
         dynamic_compartments (:obj:`dict`): the simulation's `DynamicCompartment`s, one for each
             compartment in `model`
     """
@@ -133,21 +134,29 @@ class MultialgorithmSimulation(object):
             args (:obj:`dict`): parameters for the simulation
             shared_species_store_name (:obj:`str`, optional): the name of the shared species store
         """
+        # initialize simulation infrastructure
+        self.simulation = SimulationEngine()
+        self.checkpointing_sim_obj = None
+        # todo: check that this is being used correctly
+        self.random_state = RandomStateManager.instance()
+        self.shared_species_store_name = shared_species_store_name
+
+        # create simulation attributes
         self.model = model
         self.args = args
-        self.init_populations = {}
-        self.simulation = SimulationEngine()
-        self.simulation_submodels = {}
-        self.checkpointing_sim_obj = None
         self.species_pop_objs = {}
-        self.shared_species_store_name = shared_species_store_name
-        self.random_state = RandomStateManager.instance()
+        self.init_populations = {}
         self.local_species_population = self.make_local_species_pop(self.model, self.random_state)
-        self.dynamic_compartments = self.create_dynamic_compartments(self.model, self.local_species_population)
+        self.simulation_submodels = {}
         self.dynamic_model = None
 
-    def initialize_components(self):
+        # self.dynamic_compartments = self.create_dynamic_compartments(self.model, self.local_species_population)
+
+    def initialize_components(self, wc_lang_model):
         """ Initialize the biochemical components of a simulation
+
+        Args:
+            wc_lang_model (:obj:`Model`): the model being simulated
 
         Returns:
             :obj:`tuple` of (`SimulationEngine`, `DynamicModel`): 
@@ -156,18 +165,36 @@ class MultialgorithmSimulation(object):
         init_volume(compartment) = normal(mu, sigma) # the distribution & its parameters are specified
         init_concentration(species) = normal(mu, sigma) # Lang specifies concentrations
         init_copy_nums(species) = init_volume * init_concentrations * NA
-        init_accounted_mass(species) =  sum(init_copy_nums * mol_wts)
+        init_accounted_mass(compartment) =  sum(init_copy_nums * mol_wts)
         init_mass(compartment) =  init_volume * init_density
 
         Link between initial and dynamical states (this part is still a bit awkward):
-        init_accounted_density =  init_accounted_mass /  init_volume  
-        init_accounted_ratio = init_accounted_mass /  init_mass 
-                                         = init_accounted_density /  init_density
+        init_accounted_density = init_accounted_mass / init_volume
+        constant_density = init_density
+        init_accounted_ratio = init_accounted_mass / init_mass
+                             = init_accounted_density / init_density
 
-        Pre-existing 
+        init_total_ration = init_mass / init_accounted_mass
+
+        Dynamical trajectory:
+        accounted_mass = sum(molecule_copy_number * molecule_mol_wt)
+        accounted_vol = accounted_mass / init_density
+
+        mass = accounted_mass / init_accounted_ratio
+        vol = accounted_vol / init_accounted_ratio
         '''
-        pass
 
+        # 1. *** create DynamicCompartments, initializing the init_volume & init_density in each (create_dynamic_compartments(), with random_state)
+        # 2. *** obtain the initial species populations by sampling their specified distributions (get_initial_species_pop())
+        # 3. create a shared LocalSpeciesPopulation with all species (make_local_species_pop())
+        # 4. todo: initialize with non-zero fluxes
+        # 5. finish initializing DynamicCompartments (initialize_mass_and_density(), but with species_population)
+        # 6. finish initializing DynamicModel
+        # 7. create submodels
+        # 8. start simulation
+
+    # todo: split into initialize_components() & initialize_infrastructure; run initialize_infrastructure
+    # at end of __init__
     def build_simulation(self):
         """ Build a simulation
 
@@ -175,7 +202,6 @@ class MultialgorithmSimulation(object):
             :obj:`tuple` of (`SimulationEngine`, `DynamicModel`): an initialized simulation and its
                 dynamic model
         """
-        self.partition_species()
         self.dynamic_model = DynamicModel(self.model, self.local_species_population, self.dynamic_compartments)
         for comp in self.dynamic_compartments.values():
             comp.dynamic_model = self.dynamic_model
@@ -187,12 +213,15 @@ class MultialgorithmSimulation(object):
         self.simulation_submodels = self.create_dynamic_submodels()
         return (self.simulation, self.dynamic_model)
 
+    # not currently used
     def partition_species(self):
         """ Partition species populations for this model's submodels
         """
         self.init_populations = self.get_initial_species_pop(self.model, self.random_state)
+        # self.private_species not currently used
         self.private_species = ModelUtilities.find_private_species(self.model, return_ids=True)
         self.shared_species = ModelUtilities.find_shared_species(self.model, return_ids=True)
+        # self.species_pop_objs not currently used
         self.species_pop_objs = self.create_shared_species_pop_objs()
 
     def molecular_weights_for_species(self, species):
@@ -214,6 +243,7 @@ class MultialgorithmSimulation(object):
                 species_weights[species_id] = float('nan')
         return species_weights
 
+    # not currently used
     def create_shared_species_pop_objs(self):
         """ Create the shared species object.
 
@@ -228,7 +258,7 @@ class MultialgorithmSimulation(object):
         self.simulation.add_object(species_pop_sim_obj)
         return {self.shared_species_store_name: species_pop_sim_obj}
 
-    # TODO(Arthur): test after MVP wc_sim done
+    # TODO(Arthur): not currently used; test after MVP wc_sim done
     def create_access_species_pop(self, lang_submodel):   # pragma: no cover
         """ Create a `LocalSpeciesPopulations` for a submodel and wrap it in an `AccessSpeciesPopulations`
 
@@ -279,6 +309,7 @@ class MultialgorithmSimulation(object):
         init_populations = {}
         for species in model.get_species():
             init_populations[species.id] = ModelUtilities.concentration_to_molecules(
+                # todo: use actual dynamic compartment volume, not mean expected volume
                 species, species.compartment.init_volume.mean, random_state)
         return init_populations
 
@@ -297,24 +328,21 @@ class MultialgorithmSimulation(object):
             dynamic_compartments[comp.id] = self.dynamic_compartments[comp.id]
         return dynamic_compartments
 
-    @staticmethod
-    def create_dynamic_compartments(model, local_species_pop):
+    def create_dynamic_compartments(self):
         """ Create the :obj:`DynamicCompartment`\ s for this simulation
-
-        Args:
-            model (:obj:`Model`): a `wc_lang` model
-            local_species_pop (:obj:`LocalSpeciesPopulation`): the store that maintains the
-                species population for the `DynamicCompartment`(s)
-
-        Returns:
-            :obj:`dict`: mapping: compartment id -> `DynamicCompartment` for the
-                `DynamicCompartment`(s) used by this multialgorithmic simulation
         """
-        # make DynamicCompartments
-        dynamic_compartments = {}
-        for compartment in model.get_compartments():
-            dynamic_compartments[compartment.id] = DynamicCompartment(None, local_species_pop, compartment)
-        return dynamic_compartments
+        # create DynamicCompartments
+        self.dynamic_compartments = {}
+        for compartment in self.model.get_compartments():
+            self.dynamic_compartments[compartment.id] = DynamicCompartment(None, self.random_state,
+                                                                           compartment)
+
+    def initialize_dynamic_compartments(self):
+        """ Initialize the :obj:`DynamicCompartment`\ s for this simulation
+        """
+        # initialize all DynamicCompartments
+        for dynamic_compartment in self.dynamic_compartments:
+            dynamic_compartment.initialize_mass_and_density(self.local_species_population)
 
     @staticmethod
     def make_local_species_pop(model, random_state, retain_history=True):
@@ -344,7 +372,7 @@ class MultialgorithmSimulation(object):
 
         # Species used by continuous time submodels (like DFBA and ODE) need initial fluxes
         # which indicate that the species is modeled by a continuous time submodel.
-        # TODO(Arthur): support non-zero initial fluxes
+        # TODO(Arthur): support non-zero initial fluxes; calculate them with initial runs of dFBA and ODE submodels
         initial_fluxes = {}
         for submodel in model.get_submodels():
             if not are_terms_equivalent(submodel.framework, onto['WC:ordinary_differential_equations']) and \
@@ -417,7 +445,7 @@ class MultialgorithmSimulation(object):
                 )
 
             elif are_terms_equivalent(lang_submodel.framework, onto['WC:ordinary_differential_equations']):
-                # TODO(Arthur): incorporate an ODE lang_submodel; perhaps the one Eric & Catherine wrote
+                # TODO(Arthur): add ODE submodels from wc_sim fall 2019
                 raise MultialgorithmError("Need ODE implementation")
             else:
                 raise MultialgorithmError("Unsupported lang_submodel framework '{}'".format(lang_submodel.framework))
