@@ -584,6 +584,14 @@ class DynamicCompartment(DynamicComponent):
         """
         return self.volume(time=time) / self.init_volume
 
+    def _initialized(self):
+        """ Report whether this :obj:`DynamicCompartment` has been initialized
+
+        Returns:
+            :obj:`bool`: whether this compartment has been initialized by `initialize_mass_and_density()`
+        """
+        return hasattr(self, 'init_accounted_mass')
+
     def __str__(self):
         """ Provide a string representation of this :obj:`DynamicCompartment` at the current simulation time
 
@@ -593,19 +601,26 @@ class DynamicCompartment(DynamicComponent):
         values = []
         values.append("ID: " + self.id)
         values.append("Name: " + self.name)
+        if self._initialized():
+            values.append("Initialization state: '{}' has been initialized.".format(self.name))
+        else:
+            values.append("Initialization state: '{}' has not been initialized.".format(self.name))
 
         values.append("Initial volume (l): {:.3E}".format(self.init_volume))
         values.append("Specified density (g l^-1): {}".format(self.init_density))
-        values.append("Initial mass in species (g): {:.3E}".format(self.init_accounted_mass))
-        values.append("Initial total mass (g): {:.3E}".format(self.init_mass))
+        if self._initialized():
+            values.append("Initial mass in species (g): {:.3E}".format(self.init_accounted_mass))
+            values.append("Initial total mass (g): {:.3E}".format(self.init_mass))
 
         values.append("Current mass in species (g): {:.3E}".format(self.accounted_mass()))
-        values.append("Current total mass (g): {:.3E}".format(self.mass()))
-        values.append("Fold change total mass: {:.3E}".format(self.fold_change_total_mass()))
+        if self._initialized():
+            values.append("Current total mass (g): {:.3E}".format(self.mass()))
+            values.append("Fold change total mass: {:.3E}".format(self.fold_change_total_mass()))
 
         values.append("Current volume in species (l): {:.3E}".format(self.accounted_volume()))
-        values.append("Current total volume (l): {:.3E}".format(self.volume()))
-        values.append("Fold change total volume: {:.3E}".format(self.fold_change_total_volume()))
+        if self._initialized():
+            values.append("Current total volume (l): {:.3E}".format(self.volume()))
+            values.append("Fold change total volume: {:.3E}".format(self.fold_change_total_volume()))
 
         return "DynamicCompartment:\n{}".format('\n'.join(values))
 

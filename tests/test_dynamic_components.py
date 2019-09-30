@@ -355,9 +355,12 @@ class TestDynamicCompartment(unittest.TestCase):
 
     def test_str(self):
         dynamic_compartment = DynamicCompartment(None, self.local_species_pop, self.compartment)
-        dynamic_compartment.initialize_mass_and_density()
         self.assertIn(self.dynamic_compartment.id, str(dynamic_compartment))
-        self.assertIn(str(self.dynamic_compartment.init_density), str(dynamic_compartment))
+        self.assertIn("has not been initialized", str(dynamic_compartment))
+
+        dynamic_compartment.initialize_mass_and_density()
+        self.assertIn("has been initialized", str(dynamic_compartment))
+        self.assertIn('Fold change total mass: 1.0', str(dynamic_compartment))
 
     @unittest.skip("todo: refactor into new tests")
     def test_simple_dynamic_compartment_old(self):
