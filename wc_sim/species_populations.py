@@ -737,8 +737,8 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
 
         Raises:
             :obj:`SpeciesPopulationError`: if any adjustment attempts to change the population of an
-                unknown species.
-            :obj:`SpeciesPopulationError`: if any population estimate would become negative
+                unknown species,
+                or if any population estimate would become negative
         """
         self._check_species(time, set(adjustments.keys()))
         self.time = time
@@ -1246,7 +1246,7 @@ class Specie(object):
             :obj:`SpeciesPopulationError`: if an initial flux was not provided
             :obj:`SpeciesPopulationError`: if `time` is not greater than the time of the most recent
                 `continuous_adjustment` call on this `specie`
-            NegativePopulationError: if applying `population_change` makes the population go negative
+            :obj:`NegativePopulationError`: if applying `population_change` makes the population go negative
         """
         if not self.continuous_submodel:
             raise SpeciesPopulationError("continuous_adjustment(): initial flux was not provided")

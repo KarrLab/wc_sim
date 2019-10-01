@@ -449,6 +449,7 @@ class DynamicCompartment(DynamicComponent):
         self.species_ids = species_ids
 
         # obtain initial compartment volume by sampling its specified distribution
+        # todo: support distributions other than normal
         if wc_lang_compartment.init_volume and \
             are_terms_equivalent(wc_lang_compartment.init_volume.distribution, onto['WC:normal_distribution']):
             mean = wc_lang_compartment.init_volume.mean

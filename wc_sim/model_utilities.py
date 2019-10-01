@@ -109,6 +109,7 @@ class ModelUtilities(object):
         if dist_conc is None:
             return 0
         else:
+            # todo: support distributions other than normal
             if not are_terms_equivalent(dist_conc.distribution, onto['WC:normal_distribution']): # normal
                 raise ValueError('Unsupported random distribution `{}`'.format(dist_conc.distribution.name))
             mean = dist_conc.mean
