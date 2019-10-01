@@ -146,11 +146,8 @@ class MultialgorithmSimulation(object):
         self.args = args
         self.species_pop_objs = {}
         self.init_populations = {}
-        self.local_species_population = self.make_local_species_pop(self.model, self.random_state)
         self.simulation_submodels = {}
         self.dynamic_model = None
-
-        # self.dynamic_compartments = self.create_dynamic_compartments(self.model, self.local_species_population)
 
     def initialize_components(self, wc_lang_model):
         """ Initialize the biochemical components of a simulation
@@ -185,13 +182,20 @@ class MultialgorithmSimulation(object):
         '''
 
         # 1. ✔ create DynamicCompartments, initializing the init_volume & init_density in each (create_dynamic_compartments())
-        # 2. *** obtain the initial species populations by sampling their specified distributions (get_initial_species_pop())
-        # 3. create a shared LocalSpeciesPopulation with all species (make_local_species_pop())
+        # 2. ✔ obtain the initial species populations by sampling their specified distributions (get_initial_species_pop())
+        # 3. ✔ create a shared LocalSpeciesPopulation with all species (make_local_species_population())
         # 4. todo: initialize with non-zero fluxes
-        # 5. finish initializing DynamicCompartments (initialize_mass_and_density(), but with species_population)
+        # 5. ✔ finish initializing DynamicCompartments (initialize_mass_and_density(), but with species_population)
         # 6. finish initializing DynamicModel
         # 7. create submodels
         # 8. start simulation
+        # todo: clean up unused code & data
+
+        # create DynamicCompartments
+        self.create_dynamic_compartments()
+        self.initialize_species_populations()
+        self.local_species_population = self.make_local_species_population()
+        self.initialize_dynamic_compartments()
 
     # todo: split into initialize_components() & initialize_infrastructure; run initialize_infrastructure
     # at end of __init__
@@ -224,16 +228,20 @@ class MultialgorithmSimulation(object):
         # self.species_pop_objs not currently used
         self.species_pop_objs = self.create_shared_species_pop_objs()
 
-    def molecular_weights_for_species(self, species):
-        """ Obtain the molecular weights for specified species ids
+    def molecular_weights_for_species(self, species=None):
+        """ Obtain the molecular weights for species with specified ids
+
+        A weight of `NaN` is returned for species whose species_types do not have a structure.
 
         Args:
-            species (:obj:`set`): a `set` of species ids
+            species (:obj:`iterator`, optional): an iterator over species ids; if not initialized,
+                obtain weights for all species in the model
 
         Returns:
-            `dict`: species_type_id -> molecular weight
+            :obj:`dict`: species_type_id -> molecular weight
         """
         species_weights = {}
+        species = species or [specie.id for specie in self.model.get_species()]
         for species_id in species:
             species_type_id, _ = Species.parse_id(species_id)
             species_type = self.model.species_types.get_one(id=species_type_id)
@@ -295,23 +303,15 @@ class MultialgorithmSimulation(object):
                                                         self.shared_species)
         return access_species_population
 
-    @staticmethod
-    def get_initial_species_pop(model, random_state):
-        """ Obtain the initial species population
-
-        Args:
-            model (:obj:`Model`): a `wc_lang` model
-            random_state (:obj:`numpy.random.RandomState`): random state
-
-        Returns:
-            :obj:`dict`: a map species_id -> population, for all species in `model`
+    def initialize_species_populations(self):
+        """ Initialize the species populations
         """
-        init_populations = {}
-        for species in model.get_species():
-            init_populations[species.id] = ModelUtilities.concentration_to_molecules(
-                # todo: use actual dynamic compartment volume, not mean expected volume
-                species, species.compartment.init_volume.mean, random_state)
-        return init_populations
+        self.init_populations = {}
+        for species in self.model.get_species():
+            dynamic_compartment = self.dynamic_compartments[species.compartment.id]
+            self.init_populations[species.id] = ModelUtilities.concentration_to_molecules(
+                # use dynamic compartment volume sampled from specified distribution
+                species, dynamic_compartment.init_volume, self.random_state)
 
     def get_dynamic_compartments(self, submodel):
         """ Get the :obj:`DynamicCompartment`\ s for Submodel `submodel`
@@ -344,48 +344,37 @@ class MultialgorithmSimulation(object):
         for dynamic_compartment in self.dynamic_compartments.values():
             dynamic_compartment.initialize_mass_and_density(self.local_species_population)
 
-    @staticmethod
-    def make_local_species_pop(model, random_state, retain_history=True):
-        """ Create a `LocalSpeciesPopulation` that contains all the species in a model
+    def make_local_species_population(self, retain_history=True):
+        """ Create a :obj:`LocalSpeciesPopulation` that contains all the species in a model
 
-        Instantiate a `LocalSpeciesPopulation` as a single, centralized store of a model's population.
+        Instantiate a :obj:`LocalSpeciesPopulation` as the centralized store of a model's species population.
 
         Args:
-            model (:obj:`Model`): a `wc_lang` model
-            retain_history (:obj:`bool`, optional): whether the `LocalSpeciesPopulation` should
+            retain_history (:obj:`bool`, optional): whether the :obj:`LocalSpeciesPopulation` should
                 retain species population history
 
         Returns:
-            :obj:`LocalSpeciesPopulation`: a `LocalSpeciesPopulation` for the model
+            :obj:`LocalSpeciesPopulation`: a :obj:`LocalSpeciesPopulation` for the model
         """
-        initial_population = MultialgorithmSimulation.get_initial_species_pop(model, random_state)
-
-        molecular_weights = {}
-        for specie in model.get_species():
-            (species_type_id, _) = Species.parse_id(specie.id)
-            # TODO(Arthur): make get_one more robust, or do linear search
-            species_type = model.species_types.get_one(id=species_type_id)
-            if species_type.structure:
-                molecular_weights[specie.id] = species_type.structure.molecular_weight
-            else:
-                molecular_weights[specie.id] = float('nan')
+        molecular_weights = self.molecular_weights_for_species()
 
         # Species used by continuous time submodels (like DFBA and ODE) need initial fluxes
         # which indicate that the species is modeled by a continuous time submodel.
         # TODO(Arthur): support non-zero initial fluxes; calculate them with initial runs of dFBA and ODE submodels
         initial_fluxes = {}
-        for submodel in model.get_submodels():
-            if not are_terms_equivalent(submodel.framework, onto['WC:ordinary_differential_equations']) and \
-                    not are_terms_equivalent(submodel.framework, onto['WC:dynamic_flux_balance_analysis']):
+        for submodel in self.model.get_submodels():
+            if are_terms_equivalent(submodel.framework, onto['WC:ordinary_differential_equations']) or \
+                    are_terms_equivalent(submodel.framework, onto['WC:dynamic_flux_balance_analysis']):
+                # todo: understand why get_children() of submodel needs kind=submodel
                 for specie in submodel.get_children(kind='submodel', __type=Species):
                     initial_fluxes[specie.id] = 0.0
 
         return LocalSpeciesPopulation(
-            'LSP_' + model.id,
-            initial_population,
+            'LSP_' + self.model.id,
+            self.init_populations,
             molecular_weights,
             initial_fluxes=initial_fluxes,
-            random_state=random_state,
+            random_state=self.random_state,
             retain_history=retain_history)
 
     def create_multialgorithm_checkpointing(self, checkpoints_dir, checkpoint_period):

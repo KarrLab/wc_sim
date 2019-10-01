@@ -9,11 +9,12 @@
 from wc_lang import Model
 from wc_lang.io import Reader
 from wc_lang.transform import PrepForWcSimTransform
+from wc_onto import onto
 from wc_sim.config import core as config_core_multialgorithm
 from wc_sim.make_models import MakeModel
 from wc_sim.multialgorithm_checkpointing import (MultialgorithmicCheckpointingSimObj,
                                                                 MultialgorithmCheckpoint)
-from wc_sim.multialgorithm_errors import MultialgorithmError
+from wc_sim.multialgorithm_errors import MultialgorithmError, SpeciesPopulationError
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.run_results import RunResults
 from wc_utils.util.dict import DictUtil
@@ -83,13 +84,34 @@ class TestMultialgorithmSimulation(unittest.TestCase):
 
     def test_molecular_weights_for_species(self):
         multi_alg_sim = self.multialgorithm_simulation
-        self.assertEqual(multi_alg_sim.molecular_weights_for_species(set()), {})
         expected = {
-            'species_6[c]': 6,
+            'species_6[c]': float('nan'),
             'H2O[c]': 18.0152
         }
-        self.assertEqual(multi_alg_sim.molecular_weights_for_species(set(expected.keys())), expected)
+        actual = multi_alg_sim.molecular_weights_for_species(set(expected.keys()))
+        self.assertEqual(actual['H2O[c]'], expected['H2O[c]'])
+        self.assertTrue(numpy.isnan(actual['species_6[c]']))
 
+        # add a species_type without a structure
+        species_type_wo_structure = self.model.species_types.create(
+            id='st_wo_structure',
+            name='st_wo_structure')
+        cellular_compartment = self.model.compartments.get(**{'id': 'c'})[0]
+        species_wo_structure = self.model.species.create(
+            species_type=species_type_wo_structure,
+            compartment=cellular_compartment)
+        species_wo_structure.id = species_wo_structure.gen_id()
+
+        actual = multi_alg_sim.molecular_weights_for_species([species_wo_structure.id])
+        self.assertTrue(numpy.isnan(actual[species_wo_structure.id]))
+
+        # test obtain weights for all species
+        actual = multi_alg_sim.molecular_weights_for_species()
+        self.assertEqual(actual['H2O[c]'], expected['H2O[c]'])
+        self.assertTrue(numpy.isnan(actual['species_6[c]']))
+        self.assertEqual(len(actual), len(self.model.get_species()))
+
+    @unittest.skip("developing tests")
     def test_partition_species(self):
         self.multialgorithm_simulation.partition_species()
         priv_species = self.multialgorithm_simulation.private_species
@@ -103,19 +125,61 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         expected_shared_species = set(['species_2[c]', 'species_3[c]', 'species_4[c]', 'H2O[e]', 'H2O[c]'])
         self.assertEqual(self.multialgorithm_simulation.shared_species, expected_shared_species)
 
-    def test_create_and_initialize_dynamic_compartments(self):
+    def test_create_dynamic_compartments(self):
         self.multialgorithm_simulation.create_dynamic_compartments()
         self.assertEqual(set(['c', 'e']), set(self.multialgorithm_simulation.dynamic_compartments))
         for id, dynamic_compartment in self.multialgorithm_simulation.dynamic_compartments.items():
             self.assertEqual(id, dynamic_compartment.id)
             self.assertTrue(0 < dynamic_compartment.init_density)
 
+    def test_initialize_dynamic_compartments(self):
+        self.multialgorithm_simulation.create_dynamic_compartments()
+        self.multialgorithm_simulation.initialize_species_populations()
+        self.multialgorithm_simulation.local_species_population = \
+            self.multialgorithm_simulation.make_local_species_population(retain_history=False)
         self.multialgorithm_simulation.initialize_dynamic_compartments()
         for dynamic_compartment in self.multialgorithm_simulation.dynamic_compartments.values():
             self.assertTrue(dynamic_compartment._initialized())
             self.assertTrue(0 < dynamic_compartment.accounted_mass())
             self.assertTrue(0 < dynamic_compartment.mass())
 
+    def test_initialize_species_populations(self):
+        self.multialgorithm_simulation.create_dynamic_compartments()
+        self.multialgorithm_simulation.initialize_species_populations()
+        species_wo_init_conc = ['species_1[c]', 'species_3[c]']
+        for species_id in species_wo_init_conc:
+            self.assertEqual(self.multialgorithm_simulation.init_populations[species_id], 0)
+        for concentration in self.model.get_distribution_init_concentrations():
+            self.assertTrue(0 <= self.multialgorithm_simulation.init_populations[concentration.species.id])
+
+        # todo: statistically evaluate sampled population
+        # ensure that over multiple runs of initialize_species_populations():
+        # mean(species population) ~= mean(volume) * mean(concentration)
+
+    def test_make_local_species_population(self):
+        self.multialgorithm_simulation.create_dynamic_compartments()
+        self.multialgorithm_simulation.initialize_species_populations()
+        local_species_population = \
+            self.multialgorithm_simulation.make_local_species_population(retain_history=False)
+        self.assertEqual(local_species_population._molecular_weights,
+            self.multialgorithm_simulation.molecular_weights_for_species())
+
+        # test the initial fluxes
+        # continuous adjustments are only allowed on species used by continuous submodels
+        used_by_continuous_submodels = \
+            ['species_1[e]', 'species_2[e]', 'species_1[c]', 'species_2[c]', 'species_3[c]']
+        for species_id in used_by_continuous_submodels:
+            self.assertEqual(local_species_population.adjust_continuously(1, {species_id: (0, 0)}), None)
+        not_in_a_reaction = ['H2O[e]', 'H2O[c]']
+        used_by_discrete_submodels = ['species_4[c]', 'species_5[c]', 'species_6[c]']
+        for species_id in used_by_discrete_submodels + not_in_a_reaction:
+            with self.assertRaises(SpeciesPopulationError):
+                local_species_population.adjust_continuously(2, {species_id: (0, 0)})
+
+        # todo: deal with problem caused when make_local_species_population(retain_history=True):
+        # SpeciesPopulationError: time of previous _record_history() (1) not less than current time (1)
+
+    @unittest.skip("developing tests")
     def test_dynamic_compartments(self):
         expected_compartments = dict(
             submodel_1=['c', 'e'],
@@ -126,18 +190,19 @@ class TestMultialgorithmSimulation(unittest.TestCase):
             submodel_dynamic_compartments = self.multialgorithm_simulation.get_dynamic_compartments(submodel)
             self.assertEqual(set(submodel_dynamic_compartments.keys()), set(expected_compartments[submodel_id]))
 
+    @unittest.skip("developing tests")
     def test_static_methods(self):
         initial_species_population = MultialgorithmSimulation.get_initial_species_pop(self.model, numpy.random.RandomState())
-        species_wo_init_conc = 'species_3[c]'
         self.assertEqual(initial_species_population[species_wo_init_conc], 0)
         self.assertEqual(initial_species_population['species_2[c]'], initial_species_population['species_4[c]'])
         for concentration in self.model.get_distribution_init_concentrations():
             self.assertGreaterEqual(initial_species_population[concentration.species.id], 0)
 
-        local_species_population = MultialgorithmSimulation.make_local_species_pop(self.model,
+        local_species_population = MultialgorithmSimulation.make_local_species_population(self.model,
                                                                                    RandomStateManager.instance())
         self.assertEqual(local_species_population.read_one(0, species_wo_init_conc), 0)
 
+    @unittest.skip("developing tests")
     def test_build_simulation(self):
         args = dict(fba_time_step=1,
                     results_dir=self.results_dir,
