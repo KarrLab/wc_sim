@@ -111,20 +111,6 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         self.assertTrue(numpy.isnan(actual['species_6[c]']))
         self.assertEqual(len(actual), len(self.model.get_species()))
 
-    @unittest.skip("developing tests")
-    def test_partition_species(self):
-        self.multialgorithm_simulation.partition_species()
-        priv_species = self.multialgorithm_simulation.private_species
-        for key, val in priv_species.items():
-            priv_species[key] = set(val)
-        expected_priv_species = dict(
-            submodel_1=set(['species_1[e]', 'species_2[e]', 'species_1[c]']),
-            submodel_2=set(['species_5[c]', 'species_6[c]'])
-        )
-        self.assertEqual(priv_species, expected_priv_species)
-        expected_shared_species = set(['species_2[c]', 'species_3[c]', 'species_4[c]', 'H2O[e]', 'H2O[c]'])
-        self.assertEqual(self.multialgorithm_simulation.shared_species, expected_shared_species)
-
     def test_create_dynamic_compartments(self):
         self.multialgorithm_simulation.create_dynamic_compartments()
         self.assertEqual(set(['c', 'e']), set(self.multialgorithm_simulation.dynamic_compartments))
@@ -132,12 +118,12 @@ class TestMultialgorithmSimulation(unittest.TestCase):
             self.assertEqual(id, dynamic_compartment.id)
             self.assertTrue(0 < dynamic_compartment.init_density)
 
-    def test_initialize_dynamic_compartments(self):
+    def test_prepare_dynamic_compartments(self):
         self.multialgorithm_simulation.create_dynamic_compartments()
         self.multialgorithm_simulation.initialize_species_populations()
         self.multialgorithm_simulation.local_species_population = \
             self.multialgorithm_simulation.make_local_species_population(retain_history=False)
-        self.multialgorithm_simulation.initialize_dynamic_compartments()
+        self.multialgorithm_simulation.prepare_dynamic_compartments()
         for dynamic_compartment in self.multialgorithm_simulation.dynamic_compartments.values():
             self.assertTrue(dynamic_compartment._initialized())
             self.assertTrue(0 < dynamic_compartment.accounted_mass())
@@ -216,6 +202,13 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         self.assertEqual(multialgorithm_simulation.dynamic_model.get_num_submodels(), 2)
         self.assertTrue(callable(simulation_engine.stop_condition))
 
+    def test_str(self):
+        self.multialgorithm_simulation.create_dynamic_compartments()
+        self.multialgorithm_simulation.initialize_species_populations()
+        self.multialgorithm_simulation.local_species_population = \
+            self.multialgorithm_simulation.make_local_species_population(retain_history=False)
+        self.assertIn('species_1[e]', str(self.multialgorithm_simulation))
+        self.assertIn('model:', str(self.multialgorithm_simulation))
 
 class TestRunSSASimulation(unittest.TestCase):
 
