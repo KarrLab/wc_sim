@@ -145,8 +145,7 @@ class TestMultialgorithmSimulation(unittest.TestCase):
     def test_make_local_species_population(self):
         self.multialgorithm_simulation.create_dynamic_compartments()
         self.multialgorithm_simulation.initialize_species_populations()
-        local_species_population = \
-            self.multialgorithm_simulation.make_local_species_population(retain_history=False)
+        local_species_population = self.multialgorithm_simulation.make_local_species_population()
         self.assertEqual(local_species_population._molecular_weights,
             self.multialgorithm_simulation.molecular_weights_for_species())
 
@@ -154,16 +153,13 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         # continuous adjustments are only allowed on species used by continuous submodels
         used_by_continuous_submodels = \
             ['species_1[e]', 'species_2[e]', 'species_1[c]', 'species_2[c]', 'species_3[c]']
-        for species_id in used_by_continuous_submodels:
-            self.assertEqual(local_species_population.adjust_continuously(1, {species_id: (0, 0)}), None)
+        adjustments = {species_id: (0, 0) for species_id in used_by_continuous_submodels}
+        self.assertEqual(local_species_population.adjust_continuously(1, adjustments), None)
         not_in_a_reaction = ['H2O[e]', 'H2O[c]']
         used_by_discrete_submodels = ['species_4[c]', 'species_5[c]', 'species_6[c]']
-        for species_id in used_by_discrete_submodels + not_in_a_reaction:
-            with self.assertRaises(SpeciesPopulationError):
-                local_species_population.adjust_continuously(2, {species_id: (0, 0)})
-
-        # todo: deal with problem caused when make_local_species_population(retain_history=True):
-        # SpeciesPopulationError: time of previous _record_history() (1) not less than current time (1)
+        adjustments = {species_id: (0, 0) for species_id in used_by_discrete_submodels + not_in_a_reaction}
+        with self.assertRaises(SpeciesPopulationError):
+            local_species_population.adjust_continuously(2, adjustments)
 
     @unittest.skip("developing tests")
     def test_dynamic_compartments(self):
