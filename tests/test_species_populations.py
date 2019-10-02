@@ -26,7 +26,8 @@ from de_sim.simulation_object import SimulationObject
 from de_sim.simulation_message import SimulationMessage
 from wc_sim import message_types
 from wc_sim.species_populations import (LOCAL_POP_STORE, Specie, SpeciesPopSimObject,
-                                                       SpeciesPopulationCache, LocalSpeciesPopulation, MakeTestLSP, AccessSpeciesPopulations)
+                                        SpeciesPopulationCache, LocalSpeciesPopulation, MakeTestLSP,
+                                        AccessSpeciesPopulations)
 from wc_sim.multialgorithm_errors import NegativePopulationError, SpeciesPopulationError
 from wc_sim import distributed_properties
 from wc_utils.util.rand import RandomStateManager
@@ -131,7 +132,7 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
         self.assertIn("read_one: specie 'species_none' not in the location map.", str(cm.exception))
 
         self.assertEqual(sorted(theASP.adjust_discretely(0,
-                                                         {'species_1[c]': adjustment, 'species_2[c]': adjustment})),
+                         {'species_1[c]': adjustment, 'species_2[c]': adjustment})),
                          sorted(['shared_store_1', 'LOCAL_POP_STORE']))
         self.assertEqual(theASP.read_one(0, 'species_1[c]'), init_val + 2*adjustment)
 
@@ -350,7 +351,9 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
     def test_history(self):
 
         an_LSP_wo_recording_history = LocalSpeciesPopulation('test',
-                                                             self.init_populations, self.init_populations, random_state=RandomStateManager.instance(),
+                                                             self.init_populations,
+                                                             self.init_populations,
+                                                             random_state=RandomStateManager.instance(),
                                                              retain_history=False)
 
         with self.assertRaises(SpeciesPopulationError) as context:
@@ -362,7 +365,8 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         self.assertIn("history not recorded", str(context.exception))
 
         an_LSP_recording_history = LocalSpeciesPopulation('test',
-                                                          self.init_populations, self.init_populations, random_state=RandomStateManager.instance(),
+                                                          self.init_populations, self.init_populations,
+                                                          random_state=RandomStateManager.instance(),
                                                           retain_history=True)
         self.assertTrue(an_LSP_recording_history._recording_history())
         next_time = 1
@@ -388,8 +392,10 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         self.assertIn("species_type_ids and compartment_ids must be provided", str(context.exception))
         species_type_ids = self.species_type_ids
         compartment_ids = self.compartment_ids
-        time_hist, species_counts_hist = an_LSP_recording_history.report_history(numpy_format=True,
-                                                                                 species_type_ids=species_type_ids, compartment_ids=compartment_ids)
+        time_hist, species_counts_hist = \
+            an_LSP_recording_history.report_history(numpy_format=True,
+                                                    species_type_ids=species_type_ids,
+                                                    compartment_ids=compartment_ids)
         self.assertTrue((time_hist == np.array([0, next_time])).all())
         for time_idx in [0, 1]:
             self.assertEqual(species_counts_hist[0, 0, time_idx], first_species_history[time_idx])
@@ -740,12 +746,11 @@ class TestSpeciesPopSimObjectWithAnotherSimObject(unittest.TestCase):
         for s_init_pop in range(3, 7, 2):
             for s_init_flux in range(-1, 2):
                 for update_time in range(1, 4):
-
                     self.try_update_species_pop_sim_obj(s_id, s_init_pop, 0, s_init_flux,
-                                                        message_types.AdjustPopulationByDiscreteSubmodel,
-                                                        message_types.AdjustPopulationByDiscreteSubmodel({s_id: update_adjustment}),
-                                                        update_time, get_pop_time,
-                                                        s_init_pop + update_adjustment + get_pop_time*s_init_flux)
+                        message_types.AdjustPopulationByDiscreteSubmodel,
+                        message_types.AdjustPopulationByDiscreteSubmodel({s_id: update_adjustment}),
+                        update_time, get_pop_time,
+                        s_init_pop + update_adjustment + get_pop_time*s_init_flux)
 
         """
         Test AdjustPopulationByContinuousSubmodel.
@@ -760,12 +765,12 @@ class TestSpeciesPopSimObjectWithAnotherSimObject(unittest.TestCase):
                 for update_time in range(1, 4):
                     for updated_flux in range(-1, 2):
                         self.try_update_species_pop_sim_obj(s_id, s_init_pop, 0, s_init_flux,
-                                                            message_types.AdjustPopulationByContinuousSubmodel,
-                                                            message_types.AdjustPopulationByContinuousSubmodel({s_id:
-                                                                                                                message_types.ContinuousChange(update_adjustment, updated_flux)}),
-                                                            update_time, get_pop_time,
-                                                            s_init_pop + update_adjustment +
-                                                            (get_pop_time-update_time)*updated_flux)
+                            message_types.AdjustPopulationByContinuousSubmodel,
+                            message_types.AdjustPopulationByContinuousSubmodel(
+                                {s_id:message_types.ContinuousChange(update_adjustment, updated_flux)}),
+                            update_time, get_pop_time,
+                            s_init_pop + update_adjustment +
+                            (get_pop_time-update_time)*updated_flux)
 
 
 class InitMsg1(SimulationMessage):
