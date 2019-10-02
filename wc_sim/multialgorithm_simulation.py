@@ -93,7 +93,7 @@ species copy number changes through shared population.
 
 # TODO (Arthur): put in config file
 DEFAULT_VALUES = dict(
-    shared_species_store='SHARED_SPECIE_STORE',
+    shared_species_store='SHARED_SPECIE_STORE',     # not currently used
     checkpointing_sim_obj='CHECKPOINTING_SIM_OBJ'
 )
 
@@ -107,7 +107,6 @@ class MultialgorithmSimulation(object):
         model (:obj:`Model`): a model description
         args (:obj:`dict`): parameters for the simulation; if `results_dir` is provided, then also
             must include checkpoint_period
-        shared_species_store_name (:obj:`str`): the name for the shared specie store
         simulation (:obj:`SimulationEngine`): the initialized simulation
         checkpointing_sim_obj (:obj:`MultialgorithmicCheckpointingSimObj`): the checkpointing object;
             `None` if absent
@@ -122,7 +121,7 @@ class MultialgorithmSimulation(object):
         dynamic_model (:obj:`DynamicModel`): the dynamic state of a model
         private_species (:obj:`dict` of `set`): map from `DynamicSubmodel` to a set of the species
                 modeled by only the submodel; not currently used
-        shared_species (:obj:`set`): the shared species
+        shared_species (:obj:`set`): the shared species; not currently used
         dynamic_compartments (:obj:`dict`): the simulation's `DynamicCompartment`s, one for each
             compartment in `model`
     """
@@ -132,19 +131,19 @@ class MultialgorithmSimulation(object):
         Args:
             model (:obj:`Model`): the model being simulated
             args (:obj:`dict`): parameters for the simulation
-            shared_species_store_name (:obj:`str`, optional): the name of the shared species store
+            shared_species_store_name (:obj:`str`, optional): the name of the shared species store; not currently used
         """
         # initialize simulation infrastructure
         self.simulation = SimulationEngine()
         self.checkpointing_sim_obj = None
         # todo: check that this is being used correctly
         self.random_state = RandomStateManager.instance()
-        self.shared_species_store_name = shared_species_store_name
+        self.shared_species_store_name = shared_species_store_name  # not currently used
 
         # create simulation attributes
         self.model = model
         self.args = args
-        self.species_pop_objs = {}
+        self.species_pop_objs = {}  # not currently used
         self.init_populations = {}
         self.simulation_submodels = {}
         self.dynamic_model = None
@@ -186,16 +185,15 @@ class MultialgorithmSimulation(object):
         # 3. ✔ create a shared LocalSpeciesPopulation with all species (make_local_species_population())
         # 4. todo: initialize with non-zero fluxes
         # 5. ✔ finish initializing DynamicCompartments (initialize_mass_and_density(), but with species_population)
-        # 6. finish initializing DynamicModel
-        # 7. create submodels
-        # 8. start simulation
-        # todo: clean up unused code & data
+        # 6. NEXT finish initializing DynamicModel
+        # 7. NEXT create submodels
+        # 8. NEXT start simulation
+        # todo: NEXT clean up unused code & data
 
-        # create DynamicCompartments
         self.create_dynamic_compartments()
         self.initialize_species_populations()
         self.local_species_population = self.make_local_species_population()
-        self.initialize_dynamic_compartments()
+        self.prepare_dynamic_compartments()
 
     # todo: split into initialize_components() & initialize_infrastructure; run initialize_infrastructure
     # at end of __init__
@@ -337,8 +335,8 @@ class MultialgorithmSimulation(object):
             self.dynamic_compartments[compartment.id] = DynamicCompartment(None, self.random_state,
                                                                            compartment)
 
-    def initialize_dynamic_compartments(self):
-        """ Initialize the :obj:`DynamicCompartment`\ s for this simulation
+    def prepare_dynamic_compartments(self):
+        """ Prepare the :obj:`DynamicCompartment`\ s for this simulation
         """
         # initialize all DynamicCompartments
         for dynamic_compartment in self.dynamic_compartments.values():
