@@ -775,7 +775,8 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             :obj:`float`: the current total mass of the specified species in compartment `compartment_id`, in grams
 
         Raises:
-            :obj:`SpeciesPopulationError`: if a specie's molecular weight is unavailable
+            :obj:`SpeciesPopulationError`: if a specie's molecular weight was not provided to
+                `__init__()` in `molecular_weights`
         """
         if species_ids is None:
             species_ids = self._all_species()

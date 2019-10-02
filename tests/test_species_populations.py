@@ -247,8 +247,22 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         self.local_species_pop = LocalSpeciesPopulation('test', self.init_populations,
                                                         self.molecular_weights, initial_fluxes=init_fluxes,
                                                         random_state=RandomStateManager.instance())
+        self.local_species_pop_no_history = \
+            LocalSpeciesPopulation('test_no_history', self.init_populations, self.molecular_weights,
+                                   initial_fluxes=init_fluxes,
+                                   random_state=RandomStateManager.instance(), retain_history=False)
+
         self.local_species_pop_no_init_flux = LocalSpeciesPopulation(
             'test', self.init_populations, self.molecular_weights, random_state=RandomStateManager.instance())
+
+        molecular_weights_w_nans = copy.deepcopy(self.molecular_weights)
+        species_w_nan_mw = 'species_w_nan_mw[c1]'
+        molecular_weights_w_nans[species_w_nan_mw] = float('nan')
+        init_populations = copy.deepcopy(self.init_populations)
+        init_populations[species_w_nan_mw] = 0.
+        self.local_species_pop_w_nan_mws = \
+            LocalSpeciesPopulation('test', init_populations, molecular_weights_w_nans,
+                                   initial_fluxes=init_fluxes, random_state=RandomStateManager.instance())
 
     def test_init(self):
         self.assertEqual(self.local_species_pop_no_init_flux._all_species(), set(self.species_ids))
@@ -317,7 +331,8 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
     def test_discrete_and_hybrid(self):
 
         for (local_species_pop, flux) in [(self.local_species_pop, self.flux),
-                                          (self.local_species_pop_no_init_flux, None)]:
+                                          (self.local_species_pop_no_init_flux, None),
+                                          (self.local_species_pop_no_history, self.flux)]:
             self.reusable_assertions(local_species_pop, flux)
 
     def test_adjustment_exceptions(self):
@@ -397,7 +412,12 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
             if '[c1]' in species_id:
                 total_mass_c1 += self.init_populations[species_id] * self.molecular_weights[species_id]
         total_mass_c1 = total_mass_c1 / Avogadro
-        self.assertAlmostEqual(self.local_species_pop.compartmental_mass('c1'), total_mass_c1, places=30)
+        self.assertAlmostEqual(self.local_species_pop.compartmental_mass('c1'),
+                               total_mass_c1, places=30)
+        self.assertAlmostEqual(self.local_species_pop.compartmental_mass('c1', time=0),
+                               total_mass_c1, places=30)
+        self.assertAlmostEqual(self.local_species_pop_w_nan_mws.compartmental_mass('c1', time=0),
+                               total_mass_c1, places=30)
 
         mass_of_species_1_in_c1 = \
             self.init_populations['species_1[c1]'] * self.molecular_weights['species_1[c1]'] / Avogadro
