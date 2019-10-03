@@ -850,6 +850,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             :obj:`SpeciesPopulationError`: if the current time is not greater than the previous time at which the
             history was recorded.
         """
+        # todo: more comprehensible error message here
         if not self._history['time'][-1] < self.time:
             raise SpeciesPopulationError("time of previous _record_history() ({}) not less than current time ({})".format(
                 self._history['time'][-1], self.time))

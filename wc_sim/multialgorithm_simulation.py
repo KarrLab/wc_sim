@@ -174,11 +174,13 @@ class MultialgorithmSimulation(object):
         # 1. ✔ create DynamicCompartments, initializing the init_volume & init_density in each (create_dynamic_compartments())
         # 2. ✔ obtain the initial species populations by sampling their specified distributions (get_initial_species_pop())
         # 3. ✔ create a shared LocalSpeciesPopulation with all species (make_local_species_population())
-        # 4. todo: initialize with non-zero fluxes
-        # 5. ✔ finish initializing DynamicCompartments (initialize_mass_and_density(), but with species_population)
+        # 4. ✔ finish initializing DynamicCompartments (initialize_mass_and_density(), but with species_population)
+        # 5. NEXT finish initialize_components, build_simulation, test get_dynamic_compartments,
+        #   create_multialgorithm_checkpointing
         # 6. NEXT finish initializing DynamicModel
         # 7. NEXT create submodels
         # 8. NEXT start simulation
+        # 4. TODO: initialize with non-zero fluxes
 
         self.create_dynamic_compartments()
         self.initialize_species_populations()
