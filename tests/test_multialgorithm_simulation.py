@@ -214,6 +214,7 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         self.assertIn('species_1[e]', str(self.multialgorithm_simulation))
         self.assertIn('model:', str(self.multialgorithm_simulation))
 
+@unittest.skip('Disable temporarily, while A finishes "incomplete-updates" branch')
 class TestRunSSASimulation(unittest.TestCase):
 
     def setUp(self):
@@ -227,7 +228,8 @@ class TestRunSSASimulation(unittest.TestCase):
         shutil.rmtree(self.results_dir)
         shutil.rmtree(self.out_dir)
 
-    def make_model_and_simulation(self, model_type, num_submodels, species_copy_numbers=None, species_stds=None, init_vols=None):
+    def make_model_and_simulation(self, model_type, num_submodels, species_copy_numbers=None,
+                                  species_stds=None, init_vols=None):
         # make simple model
         if init_vols is not None:
             if not isinstance(init_vols, list):
@@ -305,8 +307,9 @@ class TestRunSSASimulation(unittest.TestCase):
 
     def test_run_ssa_suite(self):
         specie = 'spec_type_0[compt_1]'
+        # tests checkpoint history in which the last checkpoint time < run time
         self.perform_ssa_test_run('1 species, 1 reaction',
-                                  run_time=999,       # tests checkpoint history in which the last checkpoint time < run time
+                                  run_time=999,
                                   initial_species_copy_numbers={specie: 3000},
                                   initial_species_stds={specie: 0},
                                   expected_mean_copy_numbers={specie: 2000},
@@ -421,6 +424,7 @@ class TestRunSSASimulation(unittest.TestCase):
         self.restore_logging()
 
 
+@unittest.skip('Disable temporarily, while A finishes "incomplete-updates" branch')
 class TestSSaExceptions(unittest.TestCase):
 
     def setUp(self):
@@ -429,7 +433,6 @@ class TestSSaExceptions(unittest.TestCase):
                                                species_stds={'spec_type_0[compt_1]': 0, 'spec_type_1[compt_1]': 0},
                                                )
 
-    @unittest.skip('Disable temporarily, while A finishes "incomplete-updates" branch')
     def test_nan_propensities(self):
         st_0 = self.model.species_types.get_one(id='spec_type_0')
         st_0.structure.molecular_weight = float('NaN')

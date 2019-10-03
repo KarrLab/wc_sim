@@ -410,8 +410,10 @@ class DynamicCompartment(DynamicComponent):
     :obj:`DynamicCompartment` is created for each `wc_lang` `Compartment` in a whole-cell model.
 
     Attributes:
-        id (:obj:`str`): id of this :obj:`DynamicCompartment`, copied from `Compartment`
-        name (:obj:`str`): name of this :obj:`DynamicCompartment`, copied from `Compartment`
+        id (:obj:`str`): id of this :obj:`DynamicCompartment`, copied from the `wc_lang` `Compartment`
+        name (:obj:`str`): name of this :obj:`DynamicCompartment`, copied from the `Compartment`
+        biological_type (:obj:`pronto.term.Term`): biological type of this :obj:`DynamicCompartment`,
+            copied from the `Compartment`
         random_state (:obj:`numpy.random.RandomState`): a random state
         init_volume (:obj:`float`): initial volume, sampled from the distribution specified in the
             `wc_lang` model
@@ -424,7 +426,7 @@ class DynamicCompartment(DynamicComponent):
             for by initial species; assumed to be constant throughout a dynamical model
         species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
         species_ids (:obj:`list` of :obj:`str`): the IDs of the species stored in this
-        :obj:`DynamicCompartment`; if `None`, use the IDs of all species in `species_population`
+            :obj:`DynamicCompartment`\ ; if `None`, use the IDs of all species in `species_population`
     """
 
     def __init__(self, dynamic_model, random_state, wc_lang_compartment, species_ids=None):
@@ -445,6 +447,7 @@ class DynamicCompartment(DynamicComponent):
 
         self.id = wc_lang_compartment.id
         self.name = wc_lang_compartment.name
+        self.biological_type = wc_lang_compartment.biological_type
 
         self.species_ids = species_ids
 
@@ -530,7 +533,7 @@ class DynamicCompartment(DynamicComponent):
         """ Provide the total current mass of this :obj:`DynamicCompartment`
 
         This mass includes the mass not accounted for by explicit species, as determined by
-        the initial density.
+        the initial specified density, specified volume, and mass accounted for by species.
 
         Args:
             time (:obj:`Rational`, optional): the current simulation time
@@ -628,10 +631,6 @@ class DynamicCompartment(DynamicComponent):
         return "DynamicCompartment:\n{}".format('\n'.join(values))
 
 
-# TODO(Arthur): discard, and check whether compartment.biological_type == onto['WC:extracellular_compartment']
-EXTRACELLULAR_COMPARTMENT_ID = 'e'
-
-
 class DynamicModel(object):
     """ Represent and access the dynamics of a whole-cell model simulation
 
@@ -671,55 +670,47 @@ class DynamicModel(object):
         self.species_population = species_population
         self.num_submodels = len(model.get_submodels())
 
-        # Classify compartments into extracellular and cellular; those which are not extracellular are cellular
-        # Assumes at most one extracellular compartment
-        # todo: use ontology
-        extracellular_compartment = utils.get_component_by_id(model.get_compartments(),
-                                                              EXTRACELLULAR_COMPARTMENT_ID)
-
+        # determine cellular compartments
         self.cellular_dyn_compartments = []
         for dynamic_compartment in dynamic_compartments.values():
-            # TODO(Arthur): instead check whether compartment.biological_type == onto['WC:cellular_compartment']
-            if dynamic_compartment.id == EXTRACELLULAR_COMPARTMENT_ID:
-                continue
-            self.cellular_dyn_compartments.append(dynamic_compartment)
+            if dynamic_compartment.biological_type == onto['WC:cellular_compartment']:
+                self.cellular_dyn_compartments.append(dynamic_compartment)
 
         # === create dynamic objects that are not expressions ===
         # create dynamic parameters
         self.dynamic_parameters = {}
         for parameter in model.parameters:
-            self.dynamic_parameters[parameter.id] = DynamicParameter(
-                self, self.species_population,
-                parameter, parameter.value)
+            self.dynamic_parameters[parameter.id] = \
+                DynamicParameter(self, self.species_population, parameter, parameter.value)
 
         # create dynamic species
+        # todo: how do these relate to the species used by local species population?
         self.dynamic_species = {}
         for species in model.get_species():
-            self.dynamic_species[species.id] = DynamicSpecies(
-                self, self.species_population,
-                species)
+            self.dynamic_species[species.id] = \
+                DynamicSpecies(self, self.species_population, species)
 
         # === create dynamic expressions ===
         # create dynamic observables
         self.dynamic_observables = {}
         for observable in model.observables:
-            self.dynamic_observables[observable.id] = DynamicObservable(
-                self, self.species_population, observable,
-                observable.expression._parsed_expression)
+            self.dynamic_observables[observable.id] = \
+                DynamicObservable(self, self.species_population, observable,
+                                  observable.expression._parsed_expression)
 
         # create dynamic functions
         self.dynamic_functions = {}
         for function in model.functions:
-            self.dynamic_functions[function.id] = DynamicFunction(
-                self, self.species_population, function,
-                function.expression._parsed_expression)
+            self.dynamic_functions[function.id] = \
+                DynamicFunction(self, self.species_population, function,
+                                function.expression._parsed_expression)
 
         # create dynamic stop conditions
         self.dynamic_stop_conditions = {}
         for stop_condition in model.stop_conditions:
-            self.dynamic_stop_conditions[stop_condition.id] = DynamicStopCondition(
-                self, self.species_population,
-                stop_condition, stop_condition.expression._parsed_expression)
+            self.dynamic_stop_conditions[stop_condition.id] = \
+                DynamicStopCondition(self, self.species_population, stop_condition,
+                                     stop_condition.expression._parsed_expression)
 
         # prepare dynamic expressions
         for dynamic_expression_group in [self.dynamic_observables,
@@ -737,7 +728,6 @@ class DynamicModel(object):
         Returns:
             :obj:`float`: the cell's mass (g)
         """
-        # TODO(Arthur): how should water be treated in mass calculations?
         return sum([dynamic_compartment.mass() for dynamic_compartment in self.cellular_dyn_compartments])
 
     def get_aggregate_state(self):

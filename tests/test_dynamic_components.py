@@ -33,6 +33,7 @@ from wc_utils.util.rand import RandomStateManager
 from wc_utils.util.units import unit_registry
 
 
+# todo: double-check that this test is good
 class TestDynamicExpression(unittest.TestCase):
 
     def make_objects(self):
@@ -44,8 +45,9 @@ class TestDynamicExpression(unittest.TestCase):
             StopCondition: {}
         }
         self.param_value = 4
-        objects[Parameter]['param'] = param = model.parameters.create(id='param', value=self.param_value,
-                                                                      units=unit_registry.parse_units('dimensionless'))
+        objects[Parameter]['param'] = param = \
+            model.parameters.create(id='param', value=self.param_value,
+                                    units=unit_registry.parse_units('dimensionless'))
 
         self.fun_expr = expr = 'param - 2 + max(param, 10)'
         fun1 = Expression.make_obj(model, Function, 'fun1', expr, objects)
@@ -109,7 +111,8 @@ class TestDynamicExpression(unittest.TestCase):
     def test_dynamic_expression_errors(self):
         # remove the Function's tokenized result
         self.fun1.expression._parsed_expression._obj_tables_tokens = []
-        with self.assertRaisesRegex(MultialgorithmError, "_obj_tables_tokens cannot be empty - ensure that '.*' is valid"):
+        with self.assertRaisesRegex(MultialgorithmError,
+                                    "_obj_tables_tokens cannot be empty - ensure that '.*' is valid"):
             DynamicFunction(self.dynamic_model, self.local_species_population,
                             self.fun1, self.fun1.expression._parsed_expression)
 
@@ -124,7 +127,8 @@ class TestDynamicExpression(unittest.TestCase):
     def test_get_dynamic_model_type(self):
 
         self.assertEqual(DynamicComponent.get_dynamic_model_type(Function), DynamicFunction)
-        with self.assertRaisesRegex(MultialgorithmError, "model class of type 'FunctionExpression' not found"):
+        with self.assertRaisesRegex(MultialgorithmError,
+                                    "model class of type 'FunctionExpression' not found"):
             DynamicComponent.get_dynamic_model_type(FunctionExpression)
 
         self.assertEqual(DynamicComponent.get_dynamic_model_type(self.fun1), DynamicFunction)
@@ -142,7 +146,7 @@ class TestDynamicExpression(unittest.TestCase):
         with self.assertRaisesRegex(MultialgorithmError, "model of type 'RateLawDirection' not found"):
             DynamicComponent.get_dynamic_model_type('RateLawDirection')
 
-
+# todo: double-check that this test is good
 class TestDynamics(unittest.TestCase):
 
     def setUp(self):
@@ -182,8 +186,9 @@ class TestDynamics(unittest.TestCase):
 
         # map wc_lang object -> expected value
         self.expected_values = expected_values = {}
-        objects[Parameter]['param'] = param = model.parameters.create(id='param', value=4,
-                                                                      units=unit_registry.parse_units('dimensionless'))
+        objects[Parameter]['param'] = param = \
+            model.parameters.create(id='param', value=4,
+                                    units=unit_registry.parse_units('dimensionless'))
         objects[Parameter]['molecule_units'] = molecule_units = \
             model.parameters.create(id='molecule_units', value=1.,
             units=unit_registry.parse_units('molecule'))
@@ -198,13 +203,15 @@ class TestDynamics(unittest.TestCase):
             # reference other model types:
             (Observable, 'a[c1]', 10, unit_registry.parse_units('molecule')),
             (Observable, '2 * a[c1] - b[c2]', 0, unit_registry.parse_units('molecule')),
-            (Function, 'observable_1 + min(observable_2, 10 * molecule_units)', 10, unit_registry.parse_units('molecule')),
+            (Function, 'observable_1 + min(observable_2, 10 * molecule_units)', 10,
+                unit_registry.parse_units('molecule')),
             (StopCondition, 'observable_1 < param * molecule_units + function_1', True,
                 unit_registry.parse_units('dimensionless')),
             # reference same model type:
             (Observable, '3 * observable_1 + b[c2]', 50, unit_registry.parse_units('molecule')),
             (Function, '2 * function_2', 20, unit_registry.parse_units('molecule')),
-            (Function, '3 * observable_1 + function_1 * molecule_units', 42, unit_registry.parse_units('molecule'))
+            (Function, '3 * observable_1 + function_1 * molecule_units', 42,
+                unit_registry.parse_units('molecule'))
         ]
 
         self.expression_models = expression_models = [Function, StopCondition, Observable]
@@ -442,19 +449,32 @@ class TestInitializedDynamicCompartment(unittest.TestCase):
         self.assertEqual(dynamic_compartment.mass(), 5 * self.all_m_weights / Avogadro)
 
 
-@unittest.skip("todo: refactor into new tests")
 class TestDynamicModel(unittest.TestCase):
 
     MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_model.xlsx')
     DRY_MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_dry_model.xlsx')
 
-    def read_model(self, model_filename):
+    @classmethod
+    def setUpClass(cls):
+        cls.models = {}
+        for model_file in [cls.MODEL_FILENAME, cls.DRY_MODEL_FILENAME]:
+            cls.models[model_file] = Reader().run(model_file)[Model][0]
+
+    def make_dynamic_model(self, model_filename):
         # read and initialize a model
-        self.model = Reader().run(model_filename)[Model][0]
+        self.model = TestDynamicModel.models[model_filename]
         multialgorithm_simulation = MultialgorithmSimulation(self.model, None)
-        dynamic_compartments = multialgorithm_simulation.dynamic_compartments
+        multialgorithm_simulation.initialize_components()
         self.dynamic_model = DynamicModel(self.model, multialgorithm_simulation.local_species_population,
-            dynamic_compartments)
+            multialgorithm_simulation.dynamic_compartments)
+
+    def compute_expected_actual_masses(self, model_filename):
+        # provide the expected actual masses for the compartments in model_filename, keyed by compartment id
+        model = TestDynamicModel.models[model_filename]
+        expected_actual_masses = {}
+        for compartment in model.get_compartments():
+            expected_actual_masses[compartment.id] = compartment.init_volume.mean * compartment.init_density.value
+        return expected_actual_masses
 
     # TODO(Arthur): move this proportional test to a utility & use it instead of assertAlmostEqual everywhere
     def almost_equal_test(self, a, b, frac_diff=1/100):
@@ -476,19 +496,25 @@ class TestDynamicModel(unittest.TestCase):
 
     # TODO(Arthur): test with multiple compartments
     def test_dynamic_model(self):
+        self.make_dynamic_model(self.MODEL_FILENAME)
+        self.assertEqual(len(self.dynamic_model.cellular_dyn_compartments), 1)
+        self.assertEqual(self.dynamic_model.cellular_dyn_compartments[0].name, 'Cell')
+
         cell_masses = []
         computed_aggregate_states = []
         for i_trial in range(10):
-            self.read_model(self.MODEL_FILENAME)
+            self.make_dynamic_model(self.MODEL_FILENAME)
             cell_masses.append(self.dynamic_model.cell_mass())
             computed_aggregate_states.append(self.dynamic_model.get_aggregate_state())
 
-        # expected values computed in tests/fixtures/test_model_with_mass_computation.xlsx
-        self.almost_equal_test(numpy.mean(cell_masses), 8.260E-16, frac_diff=1e-1)
+        # todo: revise the model so that mean_accounted_ratio ~= 1
+        actual_cellular_mass = self.compute_expected_actual_masses(self.MODEL_FILENAME)['c']
+        self.almost_equal_test(numpy.mean(cell_masses), actual_cellular_mass, frac_diff=1e-1)
+
         expected_aggregate_state = {
-            'cell mass': 8.260E-16,
+            'cell mass': actual_cellular_mass,
             'compartments': {'c':
-                             {'mass': 8.260E-16,
+                             {'mass': actual_cellular_mass,
                               'name': 'Cell'}}
         }
         computed_aggregate_state = {
@@ -499,11 +525,12 @@ class TestDynamicModel(unittest.TestCase):
         }
         self.compare_aggregate_states(expected_aggregate_state, computed_aggregate_state, frac_diff=2.5e-1)
 
+    @unittest.skip("skip dry")
     def test_dry_dynamic_model(self):
         cell_masses = []
         computed_aggregate_states = []
         for i_trial in range(10):
-            self.read_model(self.DRY_MODEL_FILENAME)
+            self.make_dynamic_model(self.DRY_MODEL_FILENAME)
             cell_masses.append(self.dynamic_model.cell_mass())
             computed_aggregate_states.append(self.dynamic_model.get_aggregate_state())
 
@@ -524,6 +551,7 @@ class TestDynamicModel(unittest.TestCase):
         }
         self.compare_aggregate_states(expected_aggregate_state, computed_aggregate_state, frac_diff=2.5e-1)
 
+    # todo: double-check that this test is good
     def test_eval_dynamic_observables(self):
         # make a Model
         model = Model()
@@ -593,6 +621,7 @@ class TestDynamicModel(unittest.TestCase):
                     expected_val += d_index * sum([i*i for i in range(d_index+1)])
                 self.assertEqual(expected_val, obs_val)
 
+    # todo: double-check that this test is good
     def test_eval_dynamic_functions(self):
         # make a Model
         model = Model()
