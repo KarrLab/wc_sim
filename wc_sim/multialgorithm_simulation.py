@@ -96,6 +96,16 @@ DEFAULT_VALUES = dict(
     checkpointing_sim_obj='CHECKPOINTING_SIM_OBJ'
 )
 
+# 1. ✔ create DynamicCompartments, initializing the init_volume & init_density in each (create_dynamic_compartments())
+# 2. ✔ obtain the initial species populations by sampling their specified distributions (get_initial_species_pop())
+# 3. ✔ create a shared LocalSpeciesPopulation with all species (make_local_species_population())
+# 4. ✔ finish initializing DynamicCompartments (initialize_mass_and_density(), but with species_population)
+# 5. NEXT create_multialgorithm_checkpointing, build_simulation, test get_dynamic_compartments
+# 6. NEXT finish initializing DynamicModel
+# 7. NEXT create submodels
+# 8. NEXT start simulation
+# 4. TODO: initialize with non-zero fluxes
+
 
 class MultialgorithmSimulation(object):
     """ Initialize a multialgorithm simulation from a language model and run-time parameters
@@ -135,31 +145,10 @@ class MultialgorithmSimulation(object):
         # create simulation attributes
         self.model = model
         self.args = args
-        self.init_populations = {}
-        self.simulation_submodels = {}
-        self.dynamic_model = None
 
-    def initialize_components(self, wc_lang_model):
-        """ Initialize the biochemical components of a simulation
-
-        Args:
-            wc_lang_model (:obj:`Model`): the model being simulated
-
-        Returns:
-            :obj:`tuple` of (`SimulationEngine`, `DynamicModel`): 
+    def initialize_components(self):
+        """ Initialize the biological components of a simulation
         """
-
-        # 1. ✔ create DynamicCompartments, initializing the init_volume & init_density in each (create_dynamic_compartments())
-        # 2. ✔ obtain the initial species populations by sampling their specified distributions (get_initial_species_pop())
-        # 3. ✔ create a shared LocalSpeciesPopulation with all species (make_local_species_population())
-        # 4. ✔ finish initializing DynamicCompartments (initialize_mass_and_density(), but with species_population)
-        # 5. NEXT finish initialize_components, build_simulation, test get_dynamic_compartments,
-        #   create_multialgorithm_checkpointing
-        # 6. NEXT finish initializing DynamicModel
-        # 7. NEXT create submodels
-        # 8. NEXT start simulation
-        # 4. TODO: initialize with non-zero fluxes
-
         self.create_dynamic_compartments()
         self.initialize_species_populations()
         self.local_species_population = self.make_local_species_population()
@@ -167,8 +156,8 @@ class MultialgorithmSimulation(object):
 
     # todo: split into initialize_components() & initialize_infrastructure; run initialize_infrastructure
     # at end of __init__
-    def build_simulation(self):
-        """ Build a simulation
+    def initialize_infrastructure(self):
+        """ Initialize the infrastructure of a simulation
 
         Returns:
             :obj:`tuple` of (`SimulationEngine`, `DynamicModel`): an initialized simulation and its
@@ -245,7 +234,6 @@ class MultialgorithmSimulation(object):
     def prepare_dynamic_compartments(self):
         """ Prepare the :obj:`DynamicCompartment`\ s for this simulation
         """
-        # initialize all DynamicCompartments
         for dynamic_compartment in self.dynamic_compartments.values():
             dynamic_compartment.initialize_mass_and_density(self.local_species_population)
 

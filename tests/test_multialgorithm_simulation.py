@@ -17,6 +17,7 @@ from wc_sim.multialgorithm_checkpointing import (MultialgorithmicCheckpointingSi
 from wc_sim.multialgorithm_errors import MultialgorithmError, SpeciesPopulationError
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.run_results import RunResults
+from wc_sim.species_populations import LocalSpeciesPopulation
 from wc_utils.util.dict import DictUtil
 from wc_utils.util.rand import RandomStateManager
 import copy
@@ -160,6 +161,13 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         adjustments = {species_id: (0, 0) for species_id in used_by_discrete_submodels + not_in_a_reaction}
         with self.assertRaises(SpeciesPopulationError):
             local_species_population.adjust_continuously(2, adjustments)
+
+    def test_initialize_components(self):
+        self.multialgorithm_simulation.initialize_components()
+        self.assertTrue(isinstance(self.multialgorithm_simulation.local_species_population,
+                        LocalSpeciesPopulation))
+        for dynamic_compartment in self.multialgorithm_simulation.dynamic_compartments.values():
+            self.assertTrue(isinstance(dynamic_compartment.species_population, LocalSpeciesPopulation))
 
     @unittest.skip("developing tests")
     def test_dynamic_compartments(self):

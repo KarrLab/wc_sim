@@ -673,6 +673,7 @@ class DynamicModel(object):
 
         # Classify compartments into extracellular and cellular; those which are not extracellular are cellular
         # Assumes at most one extracellular compartment
+        # todo: use ontology
         extracellular_compartment = utils.get_component_by_id(model.get_compartments(),
                                                               EXTRACELLULAR_COMPARTMENT_ID)
 
