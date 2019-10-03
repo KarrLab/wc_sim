@@ -148,28 +148,6 @@ class MultialgorithmSimulation(object):
         Returns:
             :obj:`tuple` of (`SimulationEngine`, `DynamicModel`): 
         """
-        '''
-        init_volume(compartment) = normal(mu, sigma) # the distribution & its parameters are specified
-        init_concentration(species) = normal(mu, sigma) # Lang specifies concentrations
-        init_copy_nums(species) = init_volume * init_concentrations * NA
-        init_accounted_mass(compartment) =  sum(init_copy_nums * mol_wts)
-        init_mass(compartment) =  init_volume * init_density
-
-        Link between initial and dynamical states (this part is still a bit awkward):
-        init_accounted_density = init_accounted_mass / init_volume
-        constant_density = init_density
-        init_accounted_ratio = init_accounted_mass / init_mass
-                             = init_accounted_density / init_density
-
-        init_total_ration = init_mass / init_accounted_mass
-
-        Dynamical trajectory:
-        accounted_mass = sum(molecule_copy_number * molecule_mol_wt)
-        accounted_vol = accounted_mass / init_density
-
-        mass = accounted_mass / init_accounted_ratio
-        vol = accounted_vol / init_accounted_ratio
-        '''
 
         # 1. ✔ create DynamicCompartments, initializing the init_volume & init_density in each (create_dynamic_compartments())
         # 2. ✔ obtain the initial species populations by sampling their specified distributions (get_initial_species_pop())

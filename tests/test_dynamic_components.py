@@ -347,7 +347,7 @@ class TestInitializedDynamicCompartment(unittest.TestCase):
             self.species_ids)
 
     def specify_init_accounted_ratio(self, desired_init_accounted_ratio):
-        # make a DynamicCompartment with init_accounted_ratio ~= desired_init_accounted_ratio
+        # make a DynamicCompartment with accounted_ratio ~= desired_init_accounted_ratio
         # without changing init_accounted_mass or init_volume
         init_density = self.dynamic_compartment.init_accounted_mass / \
             (desired_init_accounted_ratio * self.dynamic_compartment.init_volume)
@@ -362,7 +362,7 @@ class TestInitializedDynamicCompartment(unittest.TestCase):
         self.assertAlmostEqual(self.dynamic_compartment.init_accounted_mass, estimated_accounted_mass,
             places=14)
         self.assertTrue(0 < self.dynamic_compartment.init_mass)
-        self.assertAlmostEqual(self.dynamic_compartment.init_accounted_ratio,
+        self.assertAlmostEqual(self.dynamic_compartment.accounted_ratio,
             self.dynamic_compartment.init_accounted_mass / self.dynamic_compartment.init_mass, places=14)
 
         empty_local_species_pop = LocalSpeciesPopulation('test', {}, {},

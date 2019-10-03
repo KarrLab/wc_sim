@@ -420,15 +420,15 @@ class DynamicCompartment(DynamicComponent):
         init_density (:obj:`float`): the initial density of this :obj:`DynamicCompartment`, as
             specified by the model; this is the *constant* density of the compartment
         init_accounted_density (:obj:`float`): the initial density accounted for by the initial species
-        init_accounted_ratio (:obj:`float`): the fraction of the initial mass or density accounted
-            for by initial species
+        accounted_ratio (:obj:`float`): the fraction of the initial mass or density accounted
+            for by initial species; assumed to be constant throughout a dynamical model
         species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
         species_ids (:obj:`list` of :obj:`str`): the IDs of the species stored in this
         :obj:`DynamicCompartment`; if `None`, use the IDs of all species in `species_population`
     """
 
     def __init__(self, dynamic_model, random_state, wc_lang_compartment, species_ids=None):
-        """ Initialize this :obj:`DynamicCompartment`
+        """ Initialize the volume and density of this :obj:`DynamicCompartment`\ .
 
         Args:
             dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
@@ -478,7 +478,9 @@ class DynamicCompartment(DynamicComponent):
 
     MAX_ALLOWED_INIT_ACCOUNTED_RATIO = 1.5
     def initialize_mass_and_density(self, species_population):
-        """ Initialize the species populations and obtain initial values for mass and density.
+        """ Initialize the species populations and the mass accounted for by species.
+
+        Also initialize the fraction of density accounted for by species, `self.accounted_ratio`.
 
         Args:
             species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
@@ -488,19 +490,19 @@ class DynamicCompartment(DynamicComponent):
         self.init_mass = self.init_density * self.init_volume
         self.init_accounted_density = self.init_accounted_mass / self.init_volume
         # calculate fraction of initial mass or density represented by species
-        self.init_accounted_ratio = self.init_accounted_density / self.init_density
-        # also, init_accounted_ratio = self.init_accounted_mass / self.init_mass
+        self.accounted_ratio = self.init_accounted_density / self.init_density
+        # also, accounted_ratio = self.init_accounted_mass / self.init_mass
 
-        # usually 1 - epsilon < init_accounted_ratio <= 1, with epsilon ~= 0.1
-        if 0 == self.init_accounted_ratio:
+        # usually 1 - epsilon < accounted_ratio <= 1, with epsilon ~= 0.1
+        if 0 == self.accounted_ratio:
             warnings.warn("DynamicCompartment '{}': initial accounted ratio is 0".format(self.name))
-        elif 1.0 < self.init_accounted_ratio <= self.MAX_ALLOWED_INIT_ACCOUNTED_RATIO:
+        elif 1.0 < self.accounted_ratio <= self.MAX_ALLOWED_INIT_ACCOUNTED_RATIO:
             warnings.warn("DynamicCompartment '{}': initial accounted ratio ({:.3E}) greater than 1.0".format(
-                self.name, self.init_accounted_ratio))
-        if self.MAX_ALLOWED_INIT_ACCOUNTED_RATIO < self.init_accounted_ratio:
+                self.name, self.accounted_ratio))
+        if self.MAX_ALLOWED_INIT_ACCOUNTED_RATIO < self.accounted_ratio:
             raise MultialgorithmError("DynamicCompartment {}: initial accounted ratio ({:.3E}) greater "
                                       "than MAX_ALLOWED_INIT_ACCOUNTED_RATIO ({}).".format(self.name,
-                                      self.init_accounted_ratio, self.MAX_ALLOWED_INIT_ACCOUNTED_RATIO))
+                                      self.accounted_ratio, self.MAX_ALLOWED_INIT_ACCOUNTED_RATIO))
 
     def accounted_mass(self, time=None):
         """ Provide the total current mass of all species in this :obj:`DynamicCompartment`
@@ -536,7 +538,7 @@ class DynamicCompartment(DynamicComponent):
         Returns:
             :obj:`float`: this compartment's total current mass (g)
         """
-        return self.accounted_mass(time=time) / self.init_accounted_ratio
+        return self.accounted_mass(time=time) / self.accounted_ratio
 
     def volume(self, time=None):
         """ Provide the current volume of this :obj:`DynamicCompartment`
@@ -550,7 +552,7 @@ class DynamicCompartment(DynamicComponent):
         Returns:
             :obj:`float`: this compartment's current volume (l)
         """
-        return self.accounted_volume(time=time) / self.init_accounted_ratio
+        return self.accounted_volume(time=time) / self.accounted_ratio
 
     def eval(self, time=None):
         """ Provide the volume of this :obj:`DynamicCompartment`
