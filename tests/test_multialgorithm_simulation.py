@@ -2,7 +2,7 @@
 :Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Author: Jonathan Karr <karr@mssm.edu>
 :Date: 2017-02-08
-:Copyright: 2017-2018, Karr Lab
+:Copyright: 2017-2019, Karr Lab
 :License: MIT
 """
 
@@ -33,9 +33,8 @@ import unittest
 
 config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 
+
 # TODO(Arthur): transcode & eval invariants
-
-
 class Invariant(object):
     """ Support invariant expressions on species concentrations for model testing
 
@@ -81,7 +80,6 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         self.multialgorithm_simulation = MultialgorithmSimulation(self.model, self.args)
         self.test_dir = tempfile.mkdtemp()
         self.results_dir = tempfile.mkdtemp(dir=self.test_dir)
-        self.checkpoints_dir = tempfile.mkdtemp(dir=self.test_dir)
 
     def tearDown(self):
         shutil.rmtree(self.test_dir)
@@ -182,24 +180,12 @@ class TestMultialgorithmSimulation(unittest.TestCase):
                     checkpoint_period=10)
         multialg_sim = MultialgorithmSimulation(self.model, args)
         multialg_sim.initialize_components()
-        simulation, dynamic_model = multialg_sim.initialize_infrastructure()
+        multialg_sim.initialize_infrastructure()
         self.assertEqual(multialg_sim.checkpointing_sim_obj.checkpoint_dir, self.results_dir)
         self.assertTrue(multialg_sim.checkpointing_sim_obj.access_state_object is not None)
         self.assertTrue(isinstance(multialg_sim.checkpointing_sim_obj, MultialgorithmicCheckpointingSimObj))
-        self.assertTrue(isinstance(dynamic_model, DynamicModel))
+        self.assertTrue(isinstance(multialg_sim.dynamic_model, DynamicModel))
 
-    @unittest.skip("developing tests")
-    def test_dynamic_compartments(self):
-        expected_compartments = dict(
-            submodel_1=['c', 'e'],
-            submodel_2=['c']
-        )
-        for submodel_id in ['submodel_1', 'submodel_2']:
-            submodel = self.model.submodels.get_one(id=submodel_id)
-            submodel_dynamic_compartments = self.multialgorithm_simulation.get_dynamic_compartments(submodel)
-            self.assertEqual(set(submodel_dynamic_compartments.keys()), set(expected_compartments[submodel_id]))
-
-    @unittest.skip("developing tests")
     def test_build_simulation(self):
         args = dict(fba_time_step=1,
                     results_dir=self.results_dir,
@@ -207,11 +193,23 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         multialgorithm_simulation = MultialgorithmSimulation(self.model, args)
         simulation_engine, _ = multialgorithm_simulation.build_simulation()
         # 3 objects: 2 submodels, and the checkpointing obj:
-        self.assertEqual(len(simulation_engine.simulation_objects.keys()), 3)
+        expected_sim_objs = set(['CHECKPOINTING_SIM_OBJ', 'submodel_1', 'submodel_2'])
+        self.assertEqual(expected_sim_objs, set(list(simulation_engine.simulation_objects)))
         self.assertEqual(type(multialgorithm_simulation.checkpointing_sim_obj),
                          MultialgorithmicCheckpointingSimObj)
         self.assertEqual(multialgorithm_simulation.dynamic_model.get_num_submodels(), 2)
         self.assertTrue(callable(simulation_engine.stop_condition))
+
+    def test_get_dynamic_compartments(self):
+        expected_compartments = dict(
+            submodel_1=['c', 'e'],
+            submodel_2=['c']
+        )
+        self.multialgorithm_simulation.build_simulation()
+        for submodel_id in ['submodel_1', 'submodel_2']:
+            submodel = self.model.submodels.get_one(id=submodel_id)
+            submodel_dynamic_compartments = self.multialgorithm_simulation.get_dynamic_compartments(submodel)
+            self.assertEqual(set(submodel_dynamic_compartments.keys()), set(expected_compartments[submodel_id]))
 
     def test_str(self):
         self.multialgorithm_simulation.create_dynamic_compartments()
@@ -221,7 +219,7 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         self.assertIn('species_1[e]', str(self.multialgorithm_simulation))
         self.assertIn('model:', str(self.multialgorithm_simulation))
 
-@unittest.skip('Disable temporarily, while A finishes "incomplete-updates" branch')
+@unittest.skip('Disable temporarily, while Arthur finishes "incomplete-updates" branch')
 class TestRunSSASimulation(unittest.TestCase):
 
     def setUp(self):
@@ -431,14 +429,14 @@ class TestRunSSASimulation(unittest.TestCase):
         self.restore_logging()
 
 
-@unittest.skip('Disable temporarily, while A finishes "incomplete-updates" branch')
+@unittest.skip('Disable temporarily')
 class TestSSaExceptions(unittest.TestCase):
 
     def setUp(self):
-        self.model = MakeModel.make_test_model('2 species, 1 reaction, with rates given by reactant population',
-                                               species_copy_numbers={'spec_type_0[compt_1]': 10, 'spec_type_1[compt_1]': 10},
-                                               species_stds={'spec_type_0[compt_1]': 0, 'spec_type_1[compt_1]': 0},
-                                               )
+        self.model = \
+            MakeModel.make_test_model('2 species, 1 reaction, with rates given by reactant population',
+                                      species_copy_numbers={'spec_type_0[compt_1]': 10, 'spec_type_1[compt_1]': 10},
+                                      species_stds={'spec_type_0[compt_1]': 0, 'spec_type_1[compt_1]': 0})
 
     def test_nan_propensities(self):
         st_0 = self.model.species_types.get_one(id='spec_type_0')
@@ -449,14 +447,12 @@ class TestSSaExceptions(unittest.TestCase):
             simulation_engine.initialize()
 
     # TODO(Arthur): test multiple ssa submodels, in shared or different compartments
-    # TODO(Arthur): compare SSA submodel with published model
     # TODO(Arthur): test have identify_enabled_reactions() return a disabled reaction & ssa submodel with reactions that cannot run
     # TODO(Arthur): have if self.enabled_reaction(self.reactions[reaction_index]) do else branch
     # TODO(Arthur): handle concentration units: 2D conc, 3D conc, molecules
     # TODO(Arthur): restore and restart a simulation from a checkpoint
     # TODO(Arthur): use invariants to test saving aggregate values from DynamicModel in checkpoints
     # TODO(Arthur): delete unused parts of CheckpointLogger
-    # TODO(Arthur): control pytest warnings
 
     # TODO(Arthur): catch MultialgorithmErrors from get_species_counts, and elsewhere
     # TODO(Arthur): fit exponential to reaction, with rates given by reactant population

@@ -97,7 +97,8 @@ class DfbaSubmodel(DynamicSubmodel):
         self.defaultFbaBound = 1e15
         self.reactionFluxes = np.zeros(0)
 
-        self.set_up_fba_submodel()
+        # todo: use
+        # self.set_up_fba_submodel()
 
     def set_up_fba_submodel(self):
         """Set up this FBA submodel for simulation.

@@ -86,9 +86,7 @@ species copy number changes through shared population.
 
 
 # TODO (Arthur): put in config file
-DEFAULT_VALUES = dict(
-    checkpointing_sim_obj='CHECKPOINTING_SIM_OBJ'
-)
+CHECKPOINTING_SIM_OBJ = 'CHECKPOINTING_SIM_OBJ'
 
 # 1. ✔ create DynamicCompartments, initializing the init_volume & init_density in each (create_dynamic_compartments())
 # 2. ✔ obtain the initial species populations by sampling their specified distributions (get_initial_species_pop())
@@ -96,8 +94,8 @@ DEFAULT_VALUES = dict(
 # 4. ✔ finish initializing DynamicCompartments (initialize_mass_and_density(), but with species_population)
 # 5. ✔ finish initializing DynamicModel
 # 6. ✔ create_multialgorithm_checkpointing, initialize_infrastructure
-# 7. NEXT create_dynamic_submodels, get_dynamic_compartments
-# 8. NEXT dynamic simulation
+# 7. ✔ create_dynamic_submodels, get_dynamic_compartments, single external call interface
+# 8. ✔ dynamic simulation
 # 9. TODO: initialize with non-zero fluxes
 # 10. TODO: handle other todos
 
@@ -119,8 +117,8 @@ class MultialgorithmSimulation(object):
             species, derived from the specification in `model`
         local_species_population (:obj:`LocalSpeciesPopulation`): a shared species population for the
             multialgorithm simulation
-        simulation_submodels (:obj:`list` of :obj:`DynamicSubmodel`): the simulation's submodels
-        dynamic_model (:obj:`DynamicModel`): the dynamic state of a model
+        simulation_submodels (:obj:`list` of :obj:`DynamicSubmodel`): the simulation's dynamic submodels
+        dynamic_model (:obj:`DynamicModel`): the dynamic state of a model being simulated
         dynamic_compartments (:obj:`dict`): the simulation's `DynamicCompartment`s, one for each
             compartment in `model`
     """
@@ -139,6 +137,17 @@ class MultialgorithmSimulation(object):
         self.model = model
         self.args = args
 
+    def build_simulation(self):
+        """ Prepare a multialgorithm simulation
+
+        Returns:
+            :obj:`tuple` of (`SimulationEngine`, `DynamicModel`): an initialized simulation and its
+                dynamic model
+        """
+        self.initialize_components()
+        self.initialize_infrastructure()
+        return (self.simulation, self.dynamic_model)
+
     def initialize_components(self):
         """ Initialize the biological components of a simulation
         """
@@ -149,10 +158,6 @@ class MultialgorithmSimulation(object):
 
     def initialize_infrastructure(self):
         """ Initialize the infrastructure of a simulation
-
-        Returns:
-            :obj:`tuple` of (`SimulationEngine`, `DynamicModel`): an initialized simulation and its
-                dynamic model
         """
         self.dynamic_model = DynamicModel(self.model, self.local_species_population,
                                           self.dynamic_compartments)
@@ -164,7 +169,6 @@ class MultialgorithmSimulation(object):
                 self.args['results_dir'],
                 self.args['checkpoint_period'])
         self.simulation_submodels = self.create_dynamic_submodels()
-        return (self.simulation, self.dynamic_model)
 
     def molecular_weights_for_species(self, species=None):
         """ Obtain the molecular weights for species with specified ids
@@ -273,7 +277,7 @@ class MultialgorithmSimulation(object):
             :obj:`MultialgorithmicCheckpointingSimObj`: the checkpointing object
         """
         multialgorithm_checkpointing_sim_obj = MultialgorithmicCheckpointingSimObj(
-            DEFAULT_VALUES['checkpointing_sim_obj'], checkpoint_period, checkpoints_dir,
+            CHECKPOINTING_SIM_OBJ, checkpoint_period, checkpoints_dir,
             self.local_species_population, self.dynamic_model, self)
 
         # add the multialgorithm checkpointing object to the simulation
@@ -284,7 +288,7 @@ class MultialgorithmSimulation(object):
         """ Create dynamic submodels that access shared species
 
         Returns:
-            :obj:`dict`: mapping `submodel.id` to `DynamicSubmodel`: the simulation's dynamic submodels
+            :obj:`list`: list of the simulation's `DynamicSubmodel`\ s
 
         Raises:
             :obj:`MultialgorithmError`: if a submodel cannot be created
@@ -306,7 +310,6 @@ class MultialgorithmSimulation(object):
 
             elif are_terms_equivalent(lang_submodel.framework, onto['WC:dynamic_flux_balance_analysis']):
                 # TODO(Arthur): make DFBA submodels work
-                continue
 
                 simulation_submodel = DfbaSubmodel(
                     lang_submodel.id,
@@ -338,6 +341,6 @@ class MultialgorithmSimulation(object):
             :obj:`str`: a readable representation of this `MultialgorithmSimulation`
         """
 
-        return obj_to_str(self, ['args', 'checkpointing_sim_obj', 'dynamic_compartments', 'dynamic_model',
+        return obj_to_str(self, ['args', 'simulation', 'dynamic_compartments', 'dynamic_model',
                                  'init_populations', 'local_species_population', 'model',
-                                 'simulation', 'simulation_submodels'])
+                                  'checkpointing_sim_obj', 'simulation_submodels'])
