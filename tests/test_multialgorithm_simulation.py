@@ -14,6 +14,7 @@ from wc_sim.config import core as config_core_multialgorithm
 from wc_sim.make_models import MakeModel
 from wc_sim.multialgorithm_checkpointing import (MultialgorithmicCheckpointingSimObj,
                                                                 MultialgorithmCheckpoint)
+from wc_sim.dynamic_components import DynamicModel
 from wc_sim.multialgorithm_errors import MultialgorithmError, SpeciesPopulationError
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.run_results import RunResults
@@ -78,10 +79,12 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         self.args = dict(fba_time_step=1,
                          results_dir=None)
         self.multialgorithm_simulation = MultialgorithmSimulation(self.model, self.args)
-        self.results_dir = tempfile.mkdtemp()
+        self.test_dir = tempfile.mkdtemp()
+        self.results_dir = tempfile.mkdtemp(dir=self.test_dir)
+        self.checkpoints_dir = tempfile.mkdtemp(dir=self.test_dir)
 
     def tearDown(self):
-        shutil.rmtree(self.results_dir)
+        shutil.rmtree(self.test_dir)
 
     def test_molecular_weights_for_species(self):
         multi_alg_sim = self.multialgorithm_simulation
@@ -169,6 +172,31 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         for dynamic_compartment in self.multialgorithm_simulation.dynamic_compartments.values():
             self.assertTrue(isinstance(dynamic_compartment.species_population, LocalSpeciesPopulation))
 
+    def test_create_multialgorithm_checkpointing(self):
+        multialg_sim = self.multialgorithm_simulation
+        multialg_sim.initialize_components()
+        multialg_sim.create_dynamic_model()
+        ckpts_dir = self.checkpoints_dir
+        checkpointing_sim_obj = multialg_sim.create_multialgorithm_checkpointing(ckpts_dir, 30)
+        self.assertEqual(checkpointing_sim_obj.checkpoint_dir, ckpts_dir)
+        self.assertTrue(checkpointing_sim_obj.access_state_object is not None)
+
+    def test_initialize_infrastructure(self):
+        self.multialgorithm_simulation.initialize_components()
+        self.multialgorithm_simulation.create_dynamic_model()
+        self.multialgorithm_simulation.initialize_infrastructure()
+        self.assertTrue(isinstance(self.multialgorithm_simulation.dynamic_model, DynamicModel))
+
+        args = dict(fba_time_step=1,
+                    results_dir=self.results_dir,
+                    checkpoint_period=10)
+        multialg_sim = MultialgorithmSimulation(self.model, args)
+        multialg_sim.initialize_components()
+        multialg_sim.create_dynamic_model()
+        simulation, dynamic_model = multialg_sim.initialize_infrastructure()
+        self.assertTrue(isinstance(multialg_sim.checkpointing_sim_obj, MultialgorithmicCheckpointingSimObj))
+        self.assertTrue(isinstance(dynamic_model, DynamicModel))
+
     @unittest.skip("developing tests")
     def test_dynamic_compartments(self):
         expected_compartments = dict(
@@ -179,18 +207,6 @@ class TestMultialgorithmSimulation(unittest.TestCase):
             submodel = self.model.submodels.get_one(id=submodel_id)
             submodel_dynamic_compartments = self.multialgorithm_simulation.get_dynamic_compartments(submodel)
             self.assertEqual(set(submodel_dynamic_compartments.keys()), set(expected_compartments[submodel_id]))
-
-    @unittest.skip("developing tests")
-    def test_static_methods(self):
-        initial_species_population = MultialgorithmSimulation.get_initial_species_pop(self.model, numpy.random.RandomState())
-        self.assertEqual(initial_species_population[species_wo_init_conc], 0)
-        self.assertEqual(initial_species_population['species_2[c]'], initial_species_population['species_4[c]'])
-        for concentration in self.model.get_distribution_init_concentrations():
-            self.assertGreaterEqual(initial_species_population[concentration.species.id], 0)
-
-        local_species_population = MultialgorithmSimulation.make_local_species_population(self.model,
-                                                                                   RandomStateManager.instance())
-        self.assertEqual(local_species_population.read_one(0, species_wo_init_conc), 0)
 
     @unittest.skip("developing tests")
     def test_build_simulation(self):

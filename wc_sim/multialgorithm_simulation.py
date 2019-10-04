@@ -100,11 +100,12 @@ DEFAULT_VALUES = dict(
 # 2. ✔ obtain the initial species populations by sampling their specified distributions (get_initial_species_pop())
 # 3. ✔ create a shared LocalSpeciesPopulation with all species (make_local_species_population())
 # 4. ✔ finish initializing DynamicCompartments (initialize_mass_and_density(), but with species_population)
-# 5. NEXT create_multialgorithm_checkpointing, build_simulation, test get_dynamic_compartments
-# 6. NEXT finish initializing DynamicModel
-# 7. NEXT create submodels
-# 8. NEXT start simulation
-# 4. TODO: initialize with non-zero fluxes
+# 5. ✔ finish initializing DynamicModel
+# 6. ✔ create_multialgorithm_checkpointing, initialize_infrastructure
+# 7. NEXT create_dynamic_submodels, get_dynamic_compartments
+# 8. NEXT dynamic simulation
+# 9. TODO: initialize with non-zero fluxes
+# 10. TODO: handle other todos
 
 
 class MultialgorithmSimulation(object):
@@ -138,7 +139,6 @@ class MultialgorithmSimulation(object):
         """
         # initialize simulation infrastructure
         self.simulation = SimulationEngine()
-        self.checkpointing_sim_obj = None
         # todo: check that this is being used correctly
         self.random_state = RandomStateManager.instance()
 
@@ -154,8 +154,12 @@ class MultialgorithmSimulation(object):
         self.local_species_population = self.make_local_species_population()
         self.prepare_dynamic_compartments()
 
-    # todo: split into initialize_components() & initialize_infrastructure; run initialize_infrastructure
-    # at end of __init__
+    def create_dynamic_model(self):
+        """ Create the simulation's dynamic model
+        """
+        self.dynamic_model = DynamicModel(self.model, self.local_species_population,
+                                          self.dynamic_compartments)
+
     def initialize_infrastructure(self):
         """ Initialize the infrastructure of a simulation
 
@@ -163,7 +167,6 @@ class MultialgorithmSimulation(object):
             :obj:`tuple` of (`SimulationEngine`, `DynamicModel`): an initialized simulation and its
                 dynamic model
         """
-        self.dynamic_model = DynamicModel(self.model, self.local_species_population, self.dynamic_compartments)
         for comp in self.dynamic_compartments.values():
             comp.dynamic_model = self.dynamic_model
         self.dynamic_model.set_stop_condition(self.simulation)
@@ -274,7 +277,7 @@ class MultialgorithmSimulation(object):
         """ Create a multialgorithm checkpointing object for this simulation
 
         Args:
-            checkpoints_dir (:obj:`str`): the directory in which to save checkpoints
+            checkpoints_dir (:obj:`str`): the directory that will contain checkpoints
             checkpoint_period (:obj:`float`): interval between checkpoints, in simulated seconds
 
         Returns:
