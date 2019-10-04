@@ -2,7 +2,7 @@
 
 :Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2017-02-07
-:Copyright: 2016-2018, Karr Lab
+:Copyright: 2016-2019, Karr Lab
 :License: MIT
 """
 
@@ -26,12 +26,6 @@ import numpy.random
 
 # TODO(Arthur): use lists instead of sets to ensure deterministic behavior
 # TODO(Arthur): add logging
-# TODO(Arthur): make get_instance_attrs(base_models, attr) which returns the attr value (where attr
-# can be a method) for a collection of base_models would be handy; here we would call
-# get_instance_attrs(get_instance_attrs(species, 'species_type'), 'molecular_weight')
-# class ModelList(Model, list) could implement this so they could chain:
-# species_list.get_instance_attrs('species_type').get_instance_attrs('molecular_weight')
-
 
 """
 Design notes:
@@ -139,7 +133,6 @@ class MultialgorithmSimulation(object):
         """
         # initialize simulation infrastructure
         self.simulation = SimulationEngine()
-        # todo: check that this is being used correctly
         self.random_state = RandomStateManager.instance()
 
         # create simulation attributes
@@ -154,12 +147,6 @@ class MultialgorithmSimulation(object):
         self.local_species_population = self.make_local_species_population()
         self.prepare_dynamic_compartments()
 
-    def create_dynamic_model(self):
-        """ Create the simulation's dynamic model
-        """
-        self.dynamic_model = DynamicModel(self.model, self.local_species_population,
-                                          self.dynamic_compartments)
-
     def initialize_infrastructure(self):
         """ Initialize the infrastructure of a simulation
 
@@ -167,6 +154,8 @@ class MultialgorithmSimulation(object):
             :obj:`tuple` of (`SimulationEngine`, `DynamicModel`): an initialized simulation and its
                 dynamic model
         """
+        self.dynamic_model = DynamicModel(self.model, self.local_species_population,
+                                          self.dynamic_compartments)
         for comp in self.dynamic_compartments.values():
             comp.dynamic_model = self.dynamic_model
         self.dynamic_model.set_stop_condition(self.simulation)

@@ -172,18 +172,8 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         for dynamic_compartment in self.multialgorithm_simulation.dynamic_compartments.values():
             self.assertTrue(isinstance(dynamic_compartment.species_population, LocalSpeciesPopulation))
 
-    def test_create_multialgorithm_checkpointing(self):
-        multialg_sim = self.multialgorithm_simulation
-        multialg_sim.initialize_components()
-        multialg_sim.create_dynamic_model()
-        ckpts_dir = self.checkpoints_dir
-        checkpointing_sim_obj = multialg_sim.create_multialgorithm_checkpointing(ckpts_dir, 30)
-        self.assertEqual(checkpointing_sim_obj.checkpoint_dir, ckpts_dir)
-        self.assertTrue(checkpointing_sim_obj.access_state_object is not None)
-
     def test_initialize_infrastructure(self):
         self.multialgorithm_simulation.initialize_components()
-        self.multialgorithm_simulation.create_dynamic_model()
         self.multialgorithm_simulation.initialize_infrastructure()
         self.assertTrue(isinstance(self.multialgorithm_simulation.dynamic_model, DynamicModel))
 
@@ -192,8 +182,9 @@ class TestMultialgorithmSimulation(unittest.TestCase):
                     checkpoint_period=10)
         multialg_sim = MultialgorithmSimulation(self.model, args)
         multialg_sim.initialize_components()
-        multialg_sim.create_dynamic_model()
         simulation, dynamic_model = multialg_sim.initialize_infrastructure()
+        self.assertEqual(multialg_sim.checkpointing_sim_obj.checkpoint_dir, self.results_dir)
+        self.assertTrue(multialg_sim.checkpointing_sim_obj.access_state_object is not None)
         self.assertTrue(isinstance(multialg_sim.checkpointing_sim_obj, MultialgorithmicCheckpointingSimObj))
         self.assertTrue(isinstance(dynamic_model, DynamicModel))
 
