@@ -656,7 +656,6 @@ class DynamicModel(object):
             indexed by their ids
     """
 
-    # todo: probably break into two, with part 2 done after dynamic_compartments are fully initialized
     def __init__(self, model, species_population, dynamic_compartments):
         """ Prepare a `DynamicModel` for a discrete-event simulation
 

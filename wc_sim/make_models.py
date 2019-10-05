@@ -118,6 +118,7 @@ class MakeModel(object):
 
         comp = model.compartments.create(id='compt_{}'.format(submodel_num),
                                          name='compartment num {}'.format(submodel_num),
+                                         biological_type=onto['WC:cellular_compartment'],
                                          init_volume=init_volume)
         objects[Compartment][comp.id] = comp
 
@@ -125,7 +126,8 @@ class MakeModel(object):
                                                               value=1100, units=unit_registry.parse_units('g l^-1'))
         objects[Parameter][density.id] = density
 
-        volume = model.functions.create(id='volume_compt_{}'.format(submodel_num), units=unit_registry.parse_units('l'))
+        volume = model.functions.create(id='volume_compt_{}'.format(submodel_num),
+                                        units=unit_registry.parse_units('l'))
         volume.expression, error = FunctionExpression.deserialize('{} / {}'.format(comp.id, density.id), objects={
             Compartment: {comp.id: comp},
             Parameter: {density.id: density},

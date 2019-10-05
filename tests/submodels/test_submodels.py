@@ -11,6 +11,7 @@ from wc_lang import Model, Species, Validator
 from wc_lang.io import Reader
 from wc_lang.transform import PrepForWcSimTransform
 from de_sim.simulation_engine import SimulationEngine
+from wc_sim.dynamic_components import DynamicModel
 from wc_sim.make_models import MakeModel
 from wc_sim.model_utilities import ModelUtilities
 from wc_sim.multialgorithm_errors import MultialgorithmError
@@ -35,6 +36,11 @@ def prepare_model(model):
 
 def make_dynamic_submodel_params(model, lang_submodel):
     multialgorithm_simulation = MultialgorithmSimulation(model, None)
+    multialgorithm_simulation.initialize_components()
+    multialgorithm_simulation.dynamic_model = \
+        DynamicModel(multialgorithm_simulation.model,
+                     multialgorithm_simulation.local_species_population,
+                     multialgorithm_simulation.dynamic_compartments)
 
     return (lang_submodel.id,
             multialgorithm_simulation.dynamic_model,

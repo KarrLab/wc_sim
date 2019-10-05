@@ -29,7 +29,7 @@ class TestRunResults(unittest.TestCase):
         simulation = Simulation(model)
         self.checkpoint_period = 10
         self.max_time = 100
-        with CaptureOutput(relay=False) as capturer:
+        with CaptureOutput(relay=False):
             _, self.results_dir = simulation.run(end_time=self.max_time, results_dir=self.temp_dir,
                                                  checkpoint_period=self.checkpoint_period)
 

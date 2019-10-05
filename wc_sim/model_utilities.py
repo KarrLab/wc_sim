@@ -1,10 +1,10 @@
-'''A set of static methods that help prepare Models for simulation.
+""" A set of static methods that help prepare Models for simulation.
 
 :Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2017-04-10
 :Copyright: 2016-2018, Karr Lab
 :License: MIT
-'''
+"""
 
 import collections
 import numpy
@@ -21,11 +21,11 @@ from wc_utils.util.units import unit_registry
 
 
 class ModelUtilities(object):
-    '''A set of static methods that help prepare Models for simulation.'''
+    """ A set of static methods that help prepare Models for simulation."""
 
     @staticmethod
     def find_private_species(model, return_ids=False):
-        '''Identify a model's species that are private to a submodel.
+        """ Identify a model's species that are private to a submodel.
 
         Find the species in a model that are modeled privately by a single submodel. This analysis
         relies on the observation that a submodel can only access species that participate in
@@ -40,7 +40,7 @@ class ModelUtilities(object):
         Returns:
             dict: a dict that maps each submodel to a set containing the species
                 modeled by only the submodel.
-        '''
+        """
         species_to_submodels = collections.defaultdict(list)
         for submodel in model.get_submodels():
             for species in submodel.get_children(kind='submodel', __type=Species):
@@ -64,7 +64,7 @@ class ModelUtilities(object):
 
     @staticmethod
     def find_shared_species(model, return_ids=False):
-        '''Identify the model's species that are shared by multiple submodels.
+        """ Identify the model's species that are shared by multiple submodels.
 
         Find the species in a model that are modeled by multiple submodels.
 
@@ -74,7 +74,7 @@ class ModelUtilities(object):
 
         Returns:
             set: a set containing the shared species.
-        '''
+        """
         all_species = model.get_species()
 
         private_species_dict = ModelUtilities.find_private_species(model)
@@ -88,7 +88,7 @@ class ModelUtilities(object):
 
     @staticmethod
     def concentration_to_molecules(species, volume, random_state):
-        '''Provide the initial copy number of `species` from its concentration
+        """ Provide the initial copy number of `species` from its concentration
 
         Copy number is rounded to the closest integer to avoid truncating small populations.
 
@@ -104,7 +104,7 @@ class ModelUtilities(object):
 
         Raises:
             :obj:`ValueError`: if the concentration uses illegal or unsupported units
-        '''
+        """
         dist_conc = species.distribution_init_concentration
         if dist_conc is None:
             return 0
@@ -139,7 +139,7 @@ class ModelUtilities(object):
 
     @staticmethod
     def get_species_types(species_ids):
-        '''Get the specie types from an iterator that provides specie ids
+        """ Get the specie types from an iterator that provides specie ids
 
         Deterministic -- that is, given a sequence of specie ids provided by `species_ids`
         will always return the same list of specie type ids
@@ -149,7 +149,7 @@ class ModelUtilities(object):
 
         Returns:
             `list`: an iterator over the specie type ids in `species_ids`
-        '''
+        """
         species_types = set()
         species_types_list = []
         for species_id in species_ids:

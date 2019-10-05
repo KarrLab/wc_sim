@@ -17,6 +17,7 @@ class TestSsaSubmodel(unittest.TestCase):
 
     def make_ssa_submodel(self, model, default_center_of_mass=None):
         multialgorithm_simulation = MultialgorithmSimulation(model, None)
+        multialgorithm_simulation.build_simulation()
         wc_lang_ssa_submodel = model.submodels[0]
 
         ssa_submodel = SsaSubmodel(

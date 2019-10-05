@@ -35,27 +35,27 @@ class TestModelUtilities(unittest.TestCase):
         # code under different circumstances and ensuring identical output
         private_species = ModelUtilities.find_private_species(self.model)
 
-        mod1_expected_species_ids = ['species_1[c]', 'species_1[e]', 'species_2[e]']
-        mod1_expected_species = wc_lang.Species.get(mod1_expected_species_ids, self.model.get_species())
+        submodel_1_exp_species_ids = ['species_1[c]', 'species_1[e]', 'species_2[e]']
+        mod1_expected_species = wc_lang.Species.get(submodel_1_exp_species_ids, self.model.get_species())
         self.assertEqual(set(private_species[self.get_submodel(self.model, 'submodel_1')]),
                          set(mod1_expected_species))
 
-        mod2_expected_species_ids = ['species_5[c]', 'species_6[c]']
-        mod2_expected_species = wc_lang.Species.get(mod2_expected_species_ids, self.model.get_species())
+        submodel_2_exp_species_ids = ['species_5[c]', 'species_4[c]', 'species_6[c]']
+        mod2_expected_species = wc_lang.Species.get(submodel_2_exp_species_ids, self.model.get_species())
         self.assertEqual(set(private_species[self.get_submodel(self.model, 'submodel_2')]),
                          set(mod2_expected_species))
 
         private_species = ModelUtilities.find_private_species(self.model, return_ids=True)
-        self.assertEqual(set(private_species['submodel_1']), set(mod1_expected_species_ids))
-        self.assertEqual(set(private_species['submodel_2']), set(mod2_expected_species_ids))
+        self.assertEqual(set(private_species['submodel_1']), set(submodel_1_exp_species_ids))
+        self.assertEqual(set(private_species['submodel_2']), set(submodel_2_exp_species_ids))
 
     def test_find_shared_species(self):
         self.assertEqual(set(ModelUtilities.find_shared_species(self.model)),
-                         set(wc_lang.Species.get(['species_2[c]', 'species_3[c]', 'species_4[c]', 'H2O[e]', 'H2O[c]'],
+                         set(wc_lang.Species.get(['species_2[c]', 'species_3[c]', 'H2O[e]', 'H2O[c]'],
                                                  self.model.get_species())))
 
         self.assertEqual(set(ModelUtilities.find_shared_species(self.model, return_ids=True)),
-                         set(['species_2[c]', 'species_3[c]', 'species_4[c]', 'H2O[e]', 'H2O[c]']))
+                         set(['species_2[c]', 'species_3[c]', 'H2O[e]', 'H2O[c]']))
 
     def test_parse_species_id(self):
         self.assertEqual(wc_lang.Species.parse_id('good_id[good_compt]'), ('good_id', 'good_compt'))

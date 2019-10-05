@@ -135,7 +135,7 @@ class MultialgorithmSimulation(object):
 
         # create simulation attributes
         self.model = model
-        self.args = args
+        self.args = args or []
 
     def build_simulation(self):
         """ Prepare a multialgorithm simulation
