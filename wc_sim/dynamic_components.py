@@ -448,7 +448,6 @@ class DynamicCompartment(DynamicComponent):
         self.id = wc_lang_compartment.id
         self.name = wc_lang_compartment.name
         self.biological_type = wc_lang_compartment.biological_type
-
         self.species_ids = species_ids
 
         # obtain initial compartment volume by sampling its specified distribution
@@ -487,6 +486,10 @@ class DynamicCompartment(DynamicComponent):
 
         Args:
             species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
+
+        Raises:
+            :obj:`MultialgorithmError`: if `accounted_ratio == 0` or
+                if `MAX_ALLOWED_INIT_ACCOUNTED_RATIO < accounted_ratio`
         """
         self.species_population = species_population
         self.init_accounted_mass = self.accounted_mass(time=0)
@@ -498,7 +501,8 @@ class DynamicCompartment(DynamicComponent):
 
         # usually 1 - epsilon < accounted_ratio <= 1, with epsilon ~= 0.1
         if 0 == self.accounted_ratio:
-            warnings.warn("DynamicCompartment '{}': initial accounted ratio is 0".format(self.name))
+            raise MultialgorithmError("DynamicCompartment '{}': initial accounted ratio is 0".format(
+                                      self.name))
         elif 1.0 < self.accounted_ratio <= self.MAX_ALLOWED_INIT_ACCOUNTED_RATIO:
             warnings.warn("DynamicCompartment '{}': initial accounted ratio ({:.3E}) greater than 1.0".format(
                 self.name, self.accounted_ratio))

@@ -26,6 +26,8 @@ import numpy.random
 
 # TODO(Arthur): use lists instead of sets to ensure deterministic behavior
 # TODO(Arthur): add logging
+# TODO (Arthur): put CHECKPOINTING_SIM_OBJ in config file
+# TODO (Arthur): initialize with non-zero fluxes
 
 """
 Design notes:
@@ -84,20 +86,7 @@ Direct exchange of species count changes for shared species through a shared mem
 species copy number changes through shared population.
 """
 
-
-# TODO (Arthur): put in config file
 CHECKPOINTING_SIM_OBJ = 'CHECKPOINTING_SIM_OBJ'
-
-# 1. ✔ create DynamicCompartments, initializing the init_volume & init_density in each (create_dynamic_compartments())
-# 2. ✔ obtain the initial species populations by sampling their specified distributions (get_initial_species_pop())
-# 3. ✔ create a shared LocalSpeciesPopulation with all species (make_local_species_population())
-# 4. ✔ finish initializing DynamicCompartments (initialize_mass_and_density(), but with species_population)
-# 5. ✔ finish initializing DynamicModel
-# 6. ✔ create_multialgorithm_checkpointing, initialize_infrastructure
-# 7. ✔ create_dynamic_submodels, get_dynamic_compartments, single external call interface
-# 8. ✔ dynamic simulation
-# 9. TODO: initialize with non-zero fluxes
-# 10. TODO: handle other todos
 
 
 class MultialgorithmSimulation(object):

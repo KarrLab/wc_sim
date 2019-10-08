@@ -265,9 +265,11 @@ class MakeModel(object):
             charge (:obj:`int`, optional): charge of each species type; default=0
             num_submodels (:obj:`int`, optional): number of submodels
             default_species_copy_number (:obj:`int`, optional): default population of all species in their compartments
-            default_species_std (:obj:`int`, optional):
+            default_species_std (:obj:`int`, optional): default standard deviation of population of
+                all species in their compartments
             species_copy_numbers (:obj:`dict`, optional): populations for particular species, which overrides `default_species_copy_number`
-            species_stds (:obj:`dict`, optional):
+            species_stds (:obj:`dict`, optional): standard deviation for particular species, which overrides
+                `default_species_std`
             transfer_reactions (:obj:`bool`, optional): whether the model contains transfer reactions between
                 compartments; to be implemented
             transform_prep_and_check (:obj:`bool`, optional): whether to transform, prepare and check the model

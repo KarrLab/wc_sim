@@ -19,7 +19,7 @@ import numpy as np
 
 # TODO(Arthur): reactions -> dynamic reactions
 # TODO(Arthur): species -> dynamic species, or morph into species populations species
-# TODO(Arthur): add logging/debugging to dynamic reactions, dynamic species, etc.
+# TODO(Arthur): add logging/debugging, using fast logger
 # TODO(Arthur): use lists instead of sets for reproducibility
 
 
@@ -35,9 +35,9 @@ class DynamicSubmodel(ApplicationSimulationObject):
         rates (:obj:`np.array`): array to hold reaction rates
         species (:obj:`list` of :obj:`Species`): the species that participate in the reactions modeled
             by this dynamic submodel, with their initial concentrations
-        dynamic_compartments (:obj:`dict` of :obj:`str`, :obj:`DynamicCompartment`): the dynamic compartments containing
-            species that participate in reactions that this dynamic submodel models, including adjacent
-            compartments used by its transfer reactions
+        dynamic_compartments (:obj:`dict` of :obj:`str`, :obj:`DynamicCompartment`): the dynamic compartments
+            containing species that participate in reactions that this dynamic submodel models, including
+            adjacent compartments used by its transfer reactions
         local_species_population (:obj:`LocalSpeciesPopulation`): the store that maintains this
             dynamic submodel's species population
         logger (:obj:`logging.Logger`): debug logger

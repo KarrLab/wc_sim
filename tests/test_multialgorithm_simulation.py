@@ -13,7 +13,7 @@ from wc_onto import onto
 from wc_sim.config import core as config_core_multialgorithm
 from wc_sim.make_models import MakeModel
 from wc_sim.multialgorithm_checkpointing import (MultialgorithmicCheckpointingSimObj,
-                                                                MultialgorithmCheckpoint)
+                                                 MultialgorithmCheckpoint)
 from wc_sim.dynamic_components import DynamicModel
 from wc_sim.multialgorithm_errors import MultialgorithmError, SpeciesPopulationError
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
@@ -65,7 +65,7 @@ class Invariant(object):
         return True
 
 
-class TestMultialgorithmSimulation(unittest.TestCase):
+class TestMultialgorithmSimulationStatically(unittest.TestCase):
 
     MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_model.xlsx')
 
@@ -219,7 +219,8 @@ class TestMultialgorithmSimulation(unittest.TestCase):
         self.assertIn('species_1[e]', str(self.multialgorithm_simulation))
         self.assertIn('model:', str(self.multialgorithm_simulation))
 
-@unittest.skip('Disable temporarily, while Arthur finishes "incomplete-updates" branch')
+
+# TODO(Arthur): make broad dynamical multialgorithmic tests here
 class TestRunSSASimulation(unittest.TestCase):
 
     def setUp(self):
@@ -259,7 +260,8 @@ class TestRunSSASimulation(unittest.TestCase):
         return checkpoint_times
 
     def perform_ssa_test_run(self, model_type, run_time, initial_species_copy_numbers, initial_species_stds,
-                             expected_mean_copy_numbers, delta, num_submodels=1, invariants=None, iterations=3, init_vols=None):
+                             expected_mean_copy_numbers, delta, num_submodels=1, invariants=None,
+                             iterations=3, init_vols=None):
         """ Test SSA by comparing expected and actual simulation copy numbers
 
         Args:
@@ -308,8 +310,10 @@ class TestRunSSASimulation(unittest.TestCase):
             self.assertTrue(invariant_obj.eval())
 
         # check the checkpoint times
-        self.assertEqual(MultialgorithmCheckpoint.list_checkpoints(self.results_dir), self.checkpoint_times(run_time))
+        self.assertEqual(MultialgorithmCheckpoint.list_checkpoints(self.results_dir),
+                         self.checkpoint_times(run_time))
 
+    @unittest.skip('debug')
     def test_run_ssa_suite(self):
         specie = 'spec_type_0[compt_1]'
         # tests checkpoint history in which the last checkpoint time < run time
@@ -324,18 +328,19 @@ class TestRunSSASimulation(unittest.TestCase):
         for time in MultialgorithmCheckpoint.list_checkpoints(self.results_dir):
             ckpt = MultialgorithmCheckpoint.get_checkpoint(self.results_dir, time=time)
             if prev_ckpt:
-                prev_species_pops, prev_observables, prev_functions, prev_aggregate_state = RunResults.get_state_components(prev_ckpt.state)
+                prev_species_pops, prev_observables, prev_functions, prev_aggregate_state = \
+                    RunResults.get_state_components(prev_ckpt.state)
                 species_pops, observables, functions, aggregate_state = RunResults.get_state_components(ckpt.state)
                 self.assertTrue(species_pops[specie] < prev_species_pops[specie])
                 self.assertTrue(aggregate_state['cell mass'] < prev_aggregate_state['cell mass'])
             prev_ckpt = ckpt
 
         self.perform_ssa_test_run('2 species, 1 reaction',
-                                  run_time=1000,
-                                  initial_species_copy_numbers={'spec_type_0[compt_1]': 3000, 'spec_type_1[compt_1]': 0},
-                                  initial_species_stds={'spec_type_0[compt_1]': 0, 'spec_type_1[compt_1]': 0},
-                                  expected_mean_copy_numbers={'spec_type_0[compt_1]': 2000,  'spec_type_1[compt_1]': 1000},
-                                  delta=50)
+            run_time=1000,
+            initial_species_copy_numbers={'spec_type_0[compt_1]': 3000, 'spec_type_1[compt_1]': 0},
+            initial_species_stds={'spec_type_0[compt_1]': 0, 'spec_type_1[compt_1]': 0},
+            expected_mean_copy_numbers={'spec_type_0[compt_1]': 2000,  'spec_type_1[compt_1]': 1000},
+            delta=50)
 
     def test_runtime_errors(self):
         init_spec_type_0_pop = 2000
@@ -354,6 +359,7 @@ class TestRunSSASimulation(unittest.TestCase):
                                       delta=0,
                                       init_vols=1E-22)
 
+    @unittest.skip('debug')
     def test_run_multiple_ssa_submodels(self):
         # 1 submodel per compartment, no transfer reactions
         num_submodels = 3
@@ -428,23 +434,6 @@ class TestRunSSASimulation(unittest.TestCase):
         print("\n".join(unprofiled_perf))
         self.restore_logging()
 
-
-@unittest.skip('Disable temporarily')
-class TestSSaExceptions(unittest.TestCase):
-
-    def setUp(self):
-        self.model = \
-            MakeModel.make_test_model('2 species, 1 reaction, with rates given by reactant population',
-                                      species_copy_numbers={'spec_type_0[compt_1]': 10, 'spec_type_1[compt_1]': 10},
-                                      species_stds={'spec_type_0[compt_1]': 0, 'spec_type_1[compt_1]': 0})
-
-    def test_nan_propensities(self):
-        st_0 = self.model.species_types.get_one(id='spec_type_0')
-        st_0.structure.molecular_weight = float('NaN')
-        multialgorithm_simulation = MultialgorithmSimulation(self.model, {})
-        simulation_engine, _ = multialgorithm_simulation.build_simulation()
-        with self.assertRaisesRegex(AssertionError, "total propensities is 'NaN'"):
-            simulation_engine.initialize()
 
     # TODO(Arthur): test multiple ssa submodels, in shared or different compartments
     # TODO(Arthur): test have identify_enabled_reactions() return a disabled reaction & ssa submodel with reactions that cannot run

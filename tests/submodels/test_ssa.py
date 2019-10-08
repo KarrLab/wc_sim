@@ -13,6 +13,23 @@ from wc_sim.submodels.ssa import SsaSubmodel
 import unittest
 
 
+class TestSSaExceptions(unittest.TestCase):
+
+    def setUp(self):
+        self.model = \
+            MakeModel.make_test_model('2 species, 1 reaction, with rates given by reactant population',
+                                      species_copy_numbers={'spec_type_0[compt_1]': 10, 'spec_type_1[compt_1]': 10},
+                                      species_stds={'spec_type_0[compt_1]': 0, 'spec_type_1[compt_1]': 0})
+
+    def test_nan_propensities(self):
+        st_0 = self.model.species_types.get_one(id='spec_type_0')
+        st_0.structure.molecular_weight = float('NaN')
+        multialgorithm_simulation = MultialgorithmSimulation(self.model, {})
+        simulation_engine, _ = multialgorithm_simulation.build_simulation()
+        with self.assertRaisesRegex(AssertionError, "total propensities is 'NaN'"):
+            simulation_engine.initialize()
+
+
 class TestSsaSubmodel(unittest.TestCase):
 
     def make_ssa_submodel(self, model, default_center_of_mass=None):

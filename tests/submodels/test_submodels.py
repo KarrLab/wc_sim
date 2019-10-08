@@ -50,10 +50,9 @@ def make_dynamic_submodel_params(model, lang_submodel):
             multialgorithm_simulation.local_species_population)
 
 
-class TestDynamicSubmodel(unittest.TestCase):
+class TestDynamicSubmodelStatically(unittest.TestCase):
 
     def setUp(self, std_init_concentrations=None):
-        warnings.simplefilter("ignore")
 
         self.MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures',
                                            'test_submodel_no_shared_species.xlsx')

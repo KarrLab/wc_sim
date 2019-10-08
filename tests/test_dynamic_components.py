@@ -375,9 +375,8 @@ class TestInitializedDynamicCompartment(unittest.TestCase):
         empty_local_species_pop = LocalSpeciesPopulation('test', {}, {},
             random_state=RandomStateManager.instance())
         dynamic_compartment = DynamicCompartment(None, self.random_state, self.compartment)
-        with warnings.catch_warnings(record=True) as w:
+        with self.assertRaisesRegex(MultialgorithmError, "initial accounted ratio is 0"):
             dynamic_compartment.initialize_mass_and_density(empty_local_species_pop)
-            self.assertIn("initial accounted ratio is 0", str(w[-1].message))
 
         dynamic_compartment = self.specify_init_accounted_ratio(
             (DynamicCompartment.MAX_ALLOWED_INIT_ACCOUNTED_RATIO + 1)/2)
