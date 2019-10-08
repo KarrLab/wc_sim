@@ -80,6 +80,10 @@ class TestDynamicSubmodelStatically(unittest.TestCase):
         for dynamic_submodel in self.dynamic_submodels.values():
             self.assertEqual(dynamic_submodel.get_state(), DynamicSubmodel.GET_STATE_METHOD_MESSAGE)
 
+    def test_get_num_submodels(self):
+        for dynamic_submodel in self.dynamic_submodels.values():
+            self.assertEqual(dynamic_submodel.get_num_submodels(), 2)
+
     def expected_molar_conc(self, dynamic_submodel, species_id):
         species = list(filter(lambda s: s.id == species_id, dynamic_submodel.species))[0]
         init_volume = species.compartment.init_volume.mean
