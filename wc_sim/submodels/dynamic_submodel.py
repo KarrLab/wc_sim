@@ -17,16 +17,17 @@ from wc_sim.multialgorithm_errors import MultialgorithmError, SpeciesPopulationE
 from wc_sim.utils import get_species_and_compartment_from_name
 import numpy as np
 
-# TODO(Arthur): reactions -> dynamic reactions
+# TODO(Arthur): rename reactions -> dynamic reactions
 # TODO(Arthur): species -> dynamic species, or morph into species populations species
 # TODO(Arthur): add logging/debugging, using fast logger
 # TODO(Arthur): use lists instead of sets for reproducibility
 
 
 class DynamicSubmodel(ApplicationSimulationObject):
-    """ Provide eneric dynamic submodel functionality
+    """ Provide generic dynamic submodel functionality
 
-    Subclasses of `DynamicSubmodel` are combined into a multi-algorithmic model.
+    All submodels are implemented as subclasses of `DynamicSubmodel`. Instances of them are combined
+    to make a multi-algorithmic model.
 
     Attributes:
         id (:obj:`str`): unique id of this dynamic submodel / simulation object
@@ -110,9 +111,9 @@ class DynamicSubmodel(ApplicationSimulationObject):
     def calc_reaction_rates(self):
         """ Calculate the rates for this dynamic submodel's reactions
 
-        Rates computed by eval'ing reactions provided in this dynamic submodel's definition,
-        with species concentrations obtained by lookup from the dict
-        `species_concentrations`. This assumes that all reversible reactions have been split
+        Rates are computed by eval'ing rate laws for reactions used by this dynamic submodel,
+        with species populations obtained from the simulations's :obj:`LocalSpeciesPopulation`.
+        This assumes that all reversible reactions have been split
         into two forward reactions, as is done by `wc_lang.transform.SplitReversibleReactionsTransform`.
 
         Returns:
@@ -163,7 +164,7 @@ class DynamicSubmodel(ApplicationSimulationObject):
         """ Determine which reactions have adequate specie counts to run
 
         Returns:
-            np array: an array indexed by reaction number; 0 indicates reactions without adequate
+            :obj:`np.array`: an array indexed by reaction number; 0 indicates reactions without adequate
                 species counts
         """
         enabled = np.full(len(self.reactions), 1)
@@ -176,8 +177,8 @@ class DynamicSubmodel(ApplicationSimulationObject):
     def execute_reaction(self, reaction):
         """ Update species counts to reflect the execution of a reaction
 
-        Called by discrete submodels, like SSA. Counts are updated in the `AccessSpeciesPopulations`
-        that store them.
+        Called by discrete submodels, like SSA. Counts are updated in the :obj:`LocalSpeciesPopulation`
+        that stores them.
 
         Args:
             reaction (:obj:`Reaction`): the reaction being executed
@@ -198,7 +199,7 @@ class DynamicSubmodel(ApplicationSimulationObject):
                 self.time, self.id, reaction.id, e))
 
     # TODO(Arthur): cover after MVP wc_sim done
-    def handle_get_current_prop_event(self, event):   # pragma: no cover
+    def handle_get_current_prop_event(self, event):   # pragma: no cover    not used
         """ Handle a GetCurrentProperty simulation event.
 
         Args:

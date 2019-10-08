@@ -58,19 +58,19 @@ class TestDynamicSubmodelStatically(unittest.TestCase):
                                            'test_submodel_no_shared_species.xlsx')
         self.model = Reader().run(self.MODEL_FILENAME)[Model][0]
         prepare_model(self.model)
-        self.dynamic_submodels = {}
-        self.misconfigured_dynamic_submodels = {}
 
         if std_init_concentrations is not None:
             for conc in self.model.distribution_init_concentrations:
-                conc.std = 0
+                conc.std = std_init_concentrations
 
+        self.misconfigured_dynamic_submodels = {}
+        self.dynamic_submodels = {}
         for lang_submodel in self.model.get_submodels():
             self.dynamic_submodels[lang_submodel.id] = DynamicSubmodel(
                 *make_dynamic_submodel_params(self.model, lang_submodel))
 
             # create dynamic submodels that lack a dynamic compartment
-            (id, dynamic_model, reactions, species, dynamic_compartments, local_species_pop) = \
+            id, dynamic_model, reactions, species, dynamic_compartments, local_species_pop = \
                 make_dynamic_submodel_params(self.model, lang_submodel)
             dynamic_compartments.popitem()
             self.misconfigured_dynamic_submodels[lang_submodel.id] = DynamicSubmodel(
@@ -82,18 +82,24 @@ class TestDynamicSubmodelStatically(unittest.TestCase):
 
     def expected_molar_conc(self, dynamic_submodel, species_id):
         species = list(filter(lambda s: s.id == species_id, dynamic_submodel.species))[0]
-        volume = species.compartment.init_volume.mean
-        copy_num = ModelUtilities.concentration_to_molecules(species, volume, RandomStateManager.instance())
+        init_volume = species.compartment.init_volume.mean
+        copy_num = ModelUtilities.concentration_to_molecules(species, init_volume, RandomStateManager.instance())
         volume = dynamic_submodel.dynamic_compartments[species.compartment.id].volume()
         return copy_num / (volume * Avogadro)
 
     def test_calc_reaction_rates(self):
+        # set standard deviation of initial conc. to 0
         self.setUp(std_init_concentrations=0.)
 
-        # reaction_4 is adjusted w V * NA factor to account for calculating rxn rate in copy space
+        # rate law for reaction_4-forward: k_cat_4_for * max(species_4[c], p_4)
+        k_cat_4_for = 1
+        p_4 = 2
+        species_4_c_pop = \
+            self.dynamic_submodels['submodel_2'].local_species_population.read_one(0, 'species_4[c]')
+        expected_rate_reaction_4_forward = k_cat_4_for * max(species_4_c_pop, p_4)
         expected_rates = {
             'reaction_2': 0.0,
-            'reaction_4': 13791.0,
+            'reaction_4': expected_rate_reaction_4_forward
         }
         for dynamic_submodel in self.dynamic_submodels.values():
             rates = dynamic_submodel.calc_reaction_rates()
