@@ -62,7 +62,7 @@ class SimController(cement.Controller):
                 help="checkpointing period (sec)")),
             (['--fba-time-step'], dict(
                 type=float,
-                default=config['fba_time_step'],
+                default=config['dfba_time_step'],
                 help="timestep for FBA submodel(s) (sec)")),
         ]
 

@@ -7,6 +7,7 @@
 """
 
 from wc_lang import Model, Compartment, Species
+from wc_sim.config import core as config_core_multialgorithm
 from wc_sim.dynamic_components import DynamicModel, DynamicCompartment
 from de_sim.simulation_engine import SimulationEngine
 from wc_sim.model_utilities import ModelUtilities
@@ -24,10 +25,11 @@ from wc_onto import onto
 from wc_utils.util.rand import RandomStateManager
 import numpy.random
 
+config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
+
 # TODO(Arthur): use lists instead of sets to ensure deterministic behavior
 # TODO(Arthur): add logging
-# TODO (Arthur): put CHECKPOINTING_SIM_OBJ in config file
-# TODO (Arthur): initialize with non-zero fluxes
+# TODO (Arthur): initialize with non-zero fluxes, by running continuous submodels first
 
 """
 Design notes:
@@ -85,8 +87,7 @@ multiple SimObjs on different cores or processors?
 Direct exchange of species count changes for shared species through a shared membrane vs. exchange of
 species copy number changes through shared population.
 """
-
-CHECKPOINTING_SIM_OBJ = 'CHECKPOINTING_SIM_OBJ'
+CHECKPOINTING_SIM_OBJ = config_multialgorithm['checkpointing_sim_obj_name']
 
 
 class MultialgorithmSimulation(object):
@@ -307,7 +308,7 @@ class MultialgorithmSimulation(object):
                     lang_submodel.get_children(kind='submodel', __type=Species),
                     self.get_dynamic_compartments(lang_submodel),
                     self.local_species_population,
-                    self.args['fba_time_step']
+                    self.args['dfba_time_step']
                 )
 
             elif are_terms_equivalent(lang_submodel.framework, onto['WC:ordinary_differential_equations']):

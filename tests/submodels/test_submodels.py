@@ -121,11 +121,11 @@ class TestDynamicSubmodelStatically(unittest.TestCase):
             for rxn in dynamic_submodel.reactions:
                 if dynamic_submodel.enabled_reaction(rxn):
                     enabled.add(rxn.id)
-            self.assertEqual(TestDynamicSubmodel.expected_enabled[dynamic_submodel.id], enabled)
+            self.assertEqual(TestDynamicSubmodelStatically.expected_enabled[dynamic_submodel.id], enabled)
 
     def test_identify_enabled_reactions(self):
         for dynamic_submodel in self.dynamic_submodels.values():
-            expected_set = TestDynamicSubmodel.expected_enabled[dynamic_submodel.id]
+            expected_set = TestDynamicSubmodelStatically.expected_enabled[dynamic_submodel.id]
             expected_array =\
                 numpy.asarray([r.id in expected_set for r in dynamic_submodel.reactions]).astype(int)
             enabled = dynamic_submodel.identify_enabled_reactions()
@@ -134,7 +134,7 @@ class TestDynamicSubmodelStatically(unittest.TestCase):
     def test_execute_disabled_reactions(self):
         # test exception by executing reactions that aren't enabled
         enabled_rxn_ids = []
-        for set_rxn_ids in TestDynamicSubmodel.expected_enabled.values():
+        for set_rxn_ids in TestDynamicSubmodelStatically.expected_enabled.values():
             enabled_rxn_ids.extend(list(set_rxn_ids))
         enabled_reactions = [get_component_by_id(self.model.get_reactions(), rxn_id)
                              for rxn_id in enabled_rxn_ids]

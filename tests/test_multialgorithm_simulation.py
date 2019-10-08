@@ -10,7 +10,6 @@ from wc_lang import Model
 from wc_lang.io import Reader
 from wc_lang.transform import PrepForWcSimTransform
 from wc_onto import onto
-from wc_sim.config import core as config_core_multialgorithm
 from wc_sim.make_models import MakeModel
 from wc_sim.multialgorithm_checkpointing import (MultialgorithmicCheckpointingSimObj,
                                                  MultialgorithmCheckpoint)
@@ -30,8 +29,6 @@ import shutil
 import tempfile
 import time
 import unittest
-
-config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 
 
 # TODO(Arthur): transcode & eval invariants
@@ -75,7 +72,7 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
         for conc in self.model.distribution_init_concentrations:
             conc.std = 0.
         PrepForWcSimTransform().run(self.model)
-        self.args = dict(fba_time_step=1,
+        self.args = dict(dfba_time_step=1,
                          results_dir=None)
         self.multialgorithm_simulation = MultialgorithmSimulation(self.model, self.args)
         self.test_dir = tempfile.mkdtemp()
@@ -175,7 +172,7 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
         self.multialgorithm_simulation.initialize_infrastructure()
         self.assertTrue(isinstance(self.multialgorithm_simulation.dynamic_model, DynamicModel))
 
-        args = dict(fba_time_step=1,
+        args = dict(dfba_time_step=1,
                     results_dir=self.results_dir,
                     checkpoint_period=10)
         multialg_sim = MultialgorithmSimulation(self.model, args)
@@ -187,7 +184,7 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
         self.assertTrue(isinstance(multialg_sim.dynamic_model, DynamicModel))
 
     def test_build_simulation(self):
-        args = dict(fba_time_step=1,
+        args = dict(dfba_time_step=1,
                     results_dir=self.results_dir,
                     checkpoint_period=10)
         multialgorithm_simulation = MultialgorithmSimulation(self.model, args)
@@ -225,7 +222,7 @@ class TestRunSSASimulation(unittest.TestCase):
 
     def setUp(self):
         self.results_dir = tempfile.mkdtemp()
-        self.args = dict(fba_time_step=1,
+        self.args = dict(dfba_time_step=1,
                          results_dir=self.results_dir,
                          checkpoint_period=10)
         self.out_dir = tempfile.mkdtemp()

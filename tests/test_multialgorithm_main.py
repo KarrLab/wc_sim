@@ -34,7 +34,7 @@ class SimControllerTestCase(unittest.TestCase):
             end_time=100,
             checkpoint_period=4,
             checkpoints_dir=self.checkpoints_dir,
-            fba_time_step=5
+            dfba_time_step=5
         )
 
     def tearDown(self):
