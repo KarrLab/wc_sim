@@ -69,6 +69,9 @@ class MakeModel(object):
                           species_copy_numbers, species_stds, expressions):
         """ Create a test submodel
 
+        Copy number arguments are converted into concentrations at the mean specified compartment
+        volume.
+
         * 1 compartment
         * 1 submodel
         * 1 or 2 species
@@ -81,15 +84,13 @@ class MakeModel(object):
             comp (:obj:`Compartment`): the submodel's compartment
             species_types (:obj:`list` of :obj:`SpeciesType`): species types
             default_species_copy_number (:obj:`int`): default population of all species in their compartments
-            default_species_std (:obj:`int`): default standard deviation of species concentrations
+            default_species_std (:obj:`float`): default standard deviation of species populations
             species_copy_numbers (:obj:`dict`): populations for particular species, which overrides
                 `default_species_copy_number`
-            species_stds (:obj:`dict`): standard deviations of species concentrations
+            species_stds (:obj:`dict`): standard deviations of species population, which overrides
+                `default_species_std`
             expressions (:obj:`dict`):
         """
-        default_concentration = cls.convert_pop_conc(default_species_copy_number, comp.init_volume.mean)
-        default_std = cls.convert_pop_conc(default_species_std, comp.init_volume.std)
-
         num_species, num_reactions, reversible, rate_law_type = cls.get_model_type_params(model_type)
 
         objects = {
@@ -122,18 +123,21 @@ class MakeModel(object):
         objects[Function][volume.id] = volume
 
         # Species, Concentrations and Observables
+        default_concentration = cls.convert_pop_conc(default_species_copy_number, comp.init_volume.mean)
+        default_std = cls.convert_pop_conc(default_species_std, comp.init_volume.mean)
         species = []
         for i in range(num_species):
             specie = comp.species.create(species_type=species_types[i], model=model)
             specie.id = specie.gen_id()
             species.append(specie)
             objects[Species][specie.id] = specie
+            # todo: test concentration calculations
             if species_copy_numbers is not None and specie.id in species_copy_numbers:
                 mean = cls.convert_pop_conc(species_copy_numbers[specie.id], comp.init_volume.mean)
                 if species_stds:
-                    std = cls.convert_pop_conc(species_stds[specie.id], comp.init_volume.std)
+                    std = cls.convert_pop_conc(species_stds[specie.id], comp.init_volume.mean)
                 else:
-                    std = mean / 10.
+                    std = cls.convert_pop_conc(default_species_std, comp.init_volume.mean)
                 conc = DistributionInitConcentration(
                     species=specie, mean=mean, std=std,
                     units=unit_registry.parse_units('M'),
@@ -279,7 +283,6 @@ class MakeModel(object):
             :obj:`ValueError`: if arguments are inconsistent
         """
         # TODO(Arthur): implement transfer reactions
-        # TODO(Arthur): make sure all if branches covered
         num_species, num_reactions, reversible, rate_law_type = cls.get_model_type_params(model_type)
         if (2 < num_species or 1 < num_reactions or
             (0 < num_reactions and num_species == 0) or

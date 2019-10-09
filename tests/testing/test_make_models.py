@@ -5,13 +5,18 @@
 :License: MIT
 """
 
-from wc_lang import Model, RateLawDirection
-from wc_lang.io import Reader, Writer
-from wc_sim.testing.make_models import MakeModel, RateLawType
+from numpy.random import RandomState
+from scipy.constants import Avogadro
+import numpy as np
 import os
 import shutil
 import tempfile
 import unittest
+
+from wc_lang import Model, RateLawDirection
+from wc_lang.io import Reader, Writer
+from wc_sim.testing.make_models import MakeModel, RateLawType
+from wc_sim.model_utilities import ModelUtilities
 
 
 class TestMakeModels(unittest.TestCase):
@@ -144,3 +149,76 @@ class TestMakeModels(unittest.TestCase):
         # test exception
         with self.assertRaises(ValueError):
             MakeModel.make_test_model('3 reactions')
+
+    def get_volume(self, compartment):
+        # sample the volume in compartment
+        mean = compartment.init_volume.mean
+        std = compartment.init_volume.std
+        volume = max(0., RandomState().normal(mean, std))
+        return volume
+
+    def get_cn(self, model, species):
+        volume = self.get_volume(model.compartments[0])
+        dist_conc = species.distribution_init_concentration
+        mean = dist_conc.mean
+        std = dist_conc.std
+        print('mean, stddev', mean, std)
+        return ModelUtilities.concentration_to_molecules(species, volume, RandomState())
+
+    def test_make_test_model_init_vols(self):
+        print()
+        # no vol arguments
+        default_vol = 1E-16
+        volumes = []
+        for _ in range(10):
+            model = MakeModel.make_test_model('no reactions')
+            volumes.append(self.get_volume(model.compartments[0]))
+        self.assertTrue(np.abs((np.mean(volumes) - default_vol) / default_vol) < 0.1)
+
+        # just init_vols
+        specified_vol = 5E-16
+        volumes = []
+        for _ in range(10):
+            model = MakeModel.make_test_model('no reactions', init_vols=[specified_vol])
+            volumes.append(self.get_volume(model.compartments[0]))
+        self.assertTrue(np.abs((np.mean(volumes) - specified_vol) / specified_vol) < 0.1)
+
+        # just init_vol_stds
+        volumes = []
+        for _ in range(10):
+            model = MakeModel.make_test_model('no reactions', init_vol_stds=[default_vol/10.])
+            volumes.append(self.get_volume(model.compartments[0]))
+        self.assertTrue(np.abs((np.mean(volumes) - default_vol) / default_vol) < 0.1)
+
+        # no variance
+        model = MakeModel.make_test_model('no reactions', init_vol_stds=[0])
+        self.assertEqual(self.get_volume(model.compartments[0]), default_vol)
+
+        # both init_vols and init_vol_stds
+        volumes = []
+        for _ in range(10):
+            model = MakeModel.make_test_model('no reactions',
+                                              init_vols=[default_vol],
+                                              init_vol_stds=[default_vol/10.])
+            volumes.append(self.get_volume(model.compartments[0]))
+        self.assertTrue(np.abs((np.mean(volumes) - default_vol) / default_vol) < 0.1)
+
+        # raise init_vols or init_vol_stds exception
+        with self.assertRaises(ValueError):
+            MakeModel.make_test_model('no reactions', init_vols=[default_vol, default_vol])
+
+        with self.assertRaises(ValueError):
+            MakeModel.make_test_model('no reactions', init_vol_stds=[])
+
+    def test_make_test_model_species_pop(self):
+        print()
+        one_specie = 'spec_type_0[compt_1]'
+        initial_cn = 1000000
+        for i in range(5):
+            model = MakeModel.make_test_model('1 species, 1 reaction',
+                                              init_vol_stds=[0],
+                                              species_copy_numbers={one_specie: initial_cn},
+                                              species_stds={one_specie: 0})
+            # get species population
+            cn_one_specie = self.get_cn(model, model.species[0])
+            print('cn_one_specie', cn_one_specie)
