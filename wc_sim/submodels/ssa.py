@@ -21,8 +21,7 @@ from wc_sim.config import core as config_core_multialgorithm
 from wc_sim.submodels.dynamic_submodel import DynamicSubmodel
 from wc_sim.multialgorithm_errors import MultialgorithmError
 
-config_multialgorithm = \
-    config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
+config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 
 
 class SsaSubmodel(DynamicSubmodel):
@@ -61,16 +60,12 @@ class SsaSubmodel(DynamicSubmodel):
         *  2nd order recovery because other submodels can modify shared species counts
 
     Attributes:
-        TODO: make true or remove
-        random: a numpy RandomState() instance object; private PRNG; may be reproducible, as
-            determined by the value of de_sim.config.core.get_config()['de_sim']['reproducible_seed']
-            and how the main program, MultiAlgorithm, calls ReproducibleRandom.init()
-        num_SsaWaits: integer; count of SsaWaits
-        ema_of_inter_event_time: an ExponentialMovingAverage; an EMA of the time between
-            ExecuteSsaReaction events; when total propensities == 0, ema_of_inter_event_time
-            is used as the time between SsaWait events
-        Plus see superclasses.
-
+        num_SsaWaits (:obj:`int`): count of :obj:`SsaWaits` executed by this :obj:`SsaSubmodel`
+        ema_of_inter_event_time (:obj:`ExponentialMovingAverage`): an EMA of the time between
+            :obj:`ExecuteSsaReaction` events; when total propensities == 0, `ema_of_inter_event_time`
+            is used as the time delay between :obj:`SsaWait` events
+        random_state (:obj:`numpy.random.RandomState`): the random state that is shared across the
+            simulation, which enables reproducible checkpoint and restore of a simulation
     """
 
     # message types sent by SsaSubmodel
@@ -89,8 +84,8 @@ class SsaSubmodel(DynamicSubmodel):
         message_types.GivePopulation,
         message_types.ExecuteSsaReaction]
 
-    # todo: report a compile time error if messages_sent or event_handlers is undefined
-    # todo: make example with multiple event handlers
+    # TODO(Arthur): report a compile time error if messages_sent or event_handlers is undefined
+    # TODO(Arthur): make example with multiple event handlers
     event_handlers = [(sim_msg_type, 'handle_{}_msg'.format(sim_msg_type.__name__))
         for sim_msg_type in MESSAGE_TYPES_BY_PRIORITY]
 
@@ -104,24 +99,24 @@ class SsaSubmodel(DynamicSubmodel):
             reactions (:obj:`list` of :obj:`Reaction`): the reactions modeled by this SSA submodel
             species (:obj:`list` of :obj:`Species`): the species that participate in the reactions modeled
                 by this SSA submodel, with their initial concentrations
-            dynamic_compartments (:obj:`dict`): `DynamicCompartment`s, keyed by id, that contain
+            dynamic_compartments (:obj:`dict`): :obj:`DynamicCompartment`\ s, keyed by id, that contain
                 species which participate in reactions that this SSA submodel models, including
                 adjacent compartments used by its transfer reactions
             local_species_population (:obj:`LocalSpeciesPopulation`): the store that maintains this
                 SSA submodel's species population
-            default_center_of_mass (:obj:`float`, optional): the center_of_mass for the
-                ExponentialMovingAverage
+            default_center_of_mass (:obj:`float`, optional): the center-of-mass for the
+                :obj:`ExponentialMovingAverage`
 
         Raises:
-            MultialgorithmError: if the initial SSA wait exponential moving average is not positive
+            :obj:`MultialgorithmError`: if the initial SSA wait exponential moving average is not positive
         """
         super().__init__(id, dynamic_model, reactions, species, dynamic_compartments, local_species_population)
 
         self.num_SsaWaits=0
-        # The 'initial_ssa_wait_ema' must be positive, as otherwise an infinite sequence of SsaWait
-        # messages will be executed at the start of a simulation if no reactions are enabled
         if default_center_of_mass is None:
             default_center_of_mass = config_multialgorithm['default_center_of_mass']
+        # `initial_ssa_wait_ema` must be positive, as otherwise an infinite sequence of SsaWait
+        # messages will be executed at the start of a simulation if no reactions are enabled
         if config_multialgorithm['initial_ssa_wait_ema'] <= 0:
             raise MultialgorithmError("'initial_ssa_wait_ema' must be positive to avoid infinite sequence of "
             "SsaWait messages, but it is {}".format(config_multialgorithm['initial_ssa_wait_ema']))
@@ -152,7 +147,7 @@ class SsaSubmodel(DynamicSubmodel):
             reaction (propensities, total_propensities)
 
         Raises:
-            MultialgorithmError: if the simulation has 1 submodel and the total propensities are 0
+            :obj:`MultialgorithmError`: if the simulation has 1 submodel and the total propensities are 0
         """
 
         # TODO(Arthur): optimization: only calculate new reaction rates only for species whose counts have changed
@@ -180,7 +175,11 @@ class SsaSubmodel(DynamicSubmodel):
         # Solution(s): a) if sequence of SsaWait occurs, increase EMA delay, or b) terminate
 
     def schedule_ExecuteSsaReaction(self, dt, reaction_index):
-        """ Schedule an ExecuteSsaReaction.
+        """ Schedule an :obj:`ExecuteSsaReaction` event.
+
+        Args:
+            dt (:obj:`float`): simulation delay until the :obj:`ExecuteSsaReaction` will execute
+            reaction_index (:obj:`int`): index of the reaction to execute
         """
         self.send_event(dt, self, message_types.ExecuteSsaReaction(reaction_index))
 
@@ -188,7 +187,7 @@ class SsaSubmodel(DynamicSubmodel):
         self.ema_of_inter_event_time.add_value(dt)
 
     def schedule_next_SSA_reaction(self):
-        """ Schedule the next SSA reaction for this SSA submodel
+        """ Schedule the next SSA reaction for this SSA submodel.
 
         If the sum of propensities is positive, schedule a reaction, otherwise schedule a wait. The
         delay until the next reaction is an exponential sample with mean 1/sum(propensities).
@@ -204,7 +203,7 @@ class SsaSubmodel(DynamicSubmodel):
         5. schedule the next reaction
 
         Returns:
-            :obj:`float`: the delay until the next SSA reaction, or `None` if no reaction is scheduled
+            :obj:`float`: the delay until the next SSA reaction, or `None` if a wait is scheduled
         """
         (propensities, total_propensities) = self.determine_reaction_propensities()
         assert not math.isnan(total_propensities), "total propensities is 'NaN'"
@@ -219,7 +218,7 @@ class SsaSubmodel(DynamicSubmodel):
         # schedule next reaction
         # dividing propensities by total_propensities isn't needed -- it wouldn't change relative propensities
         # however, numpy choice() requires valid probabilities for p
-        # TODO(Arthur): consider using Python's random.choice() which accepts weights
+        # TODO(Arthur): optimization: consider using Python's random.choice() which accepts weights
         reaction_index = self.random_state.choice(len(propensities), p=propensities/total_propensities)
         self.schedule_ExecuteSsaReaction(dt, reaction_index)
         return dt
@@ -230,9 +229,10 @@ class SsaSubmodel(DynamicSubmodel):
 
         # schedule next SSA reaction, or a SSA wait if no reaction is ready to fire
         time_to_next_reaction = self.schedule_next_SSA_reaction()
+        return
 
-        return  # TODO(Arthur): cover after MVP wc_sim done
-
+        # TODO(Arthur): cover after MVP wc_sim done
+        pass    # pragma: no cover
         # prefetch into cache
         if not (math.isnan(time_to_next_reaction) or self.access_species_pop is None):  # pragma: no cover
             self.access_species_pop.prefetch(time_to_next_reaction, self.get_species_ids())
@@ -248,7 +248,7 @@ class SsaSubmodel(DynamicSubmodel):
         self.execute_reaction(self.reactions[reaction_index])
 
     def handle_SsaWait_msg(self, event):
-        """ Handle an event containing a SsaWait message
+        """ Handle an event containing a :obj:`SsaWait` message
 
         Args:
             event (:obj:`Event`): a simulation event
@@ -273,7 +273,7 @@ class SsaSubmodel(DynamicSubmodel):
         self.log_with_time("GivePopulation: {}".format(str(event.message)))
 
     def handle_ExecuteSsaReaction_msg(self, event):
-        """ Handle an event containing a ExecuteSsaReaction message
+        """ Handle an event containing a :obj:`ExecuteSsaReaction` message
 
         Args:
             event (:obj:`Event`): a simulation event
