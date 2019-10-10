@@ -10,7 +10,7 @@ from wc_lang import Model
 from wc_lang.io import Reader
 from wc_lang.transform import PrepForWcSimTransform
 from wc_onto import onto
-from wc_sim.make_models import MakeModel
+from wc_sim.testing.make_models import MakeModel
 from wc_sim.multialgorithm_checkpointing import (MultialgorithmicCheckpointingSimObj,
                                                  MultialgorithmCheckpoint)
 from wc_sim.dynamic_components import DynamicModel

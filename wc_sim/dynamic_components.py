@@ -478,6 +478,7 @@ class DynamicCompartment(DynamicComponent):
                                       "number.".format(self.name, init_density))
         self.init_density = init_density
 
+    # todo: define in config
     MAX_ALLOWED_INIT_ACCOUNTED_RATIO = 1.5
     def initialize_mass_and_density(self, species_population):
         """ Initialize the species populations and the mass accounted for by species.

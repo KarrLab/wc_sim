@@ -12,12 +12,12 @@ from wc_lang.io import Reader
 from wc_lang.transform import PrepForWcSimTransform
 from de_sim.simulation_engine import SimulationEngine
 from wc_sim.dynamic_components import DynamicModel
-from wc_sim.make_models import MakeModel
+from wc_sim.testing.make_models import MakeModel
 from wc_sim.model_utilities import ModelUtilities
 from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.submodels.dynamic_submodel import DynamicSubmodel
-from wc_sim.submodels.skeleton_submodel import SkeletonSubmodel
+from wc_sim.submodels.testing.skeleton_submodel import SkeletonSubmodel
 from wc_utils.util.rand import RandomStateManager
 from wc_utils.util.string import indent_forest
 from scipy.constants import Avogadro

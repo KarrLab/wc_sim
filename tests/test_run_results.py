@@ -16,7 +16,7 @@ from capturer import CaptureOutput
 from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_sim.simulation import Simulation
 from wc_sim.run_results import RunResults
-from wc_sim.make_models import MakeModel
+from wc_sim.testing.make_models import MakeModel
 
 
 class TestRunResults(unittest.TestCase):

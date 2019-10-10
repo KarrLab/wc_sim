@@ -19,7 +19,7 @@ from de_sim.sim_metadata import SimulationMetadata
 from de_sim.checkpoint import Checkpoint
 from wc_sim.simulation import Simulation
 from wc_sim.run_results import RunResults
-from wc_sim.make_models import MakeModel
+from wc_sim.testing.make_models import MakeModel
 from wc_sim.multialgorithm_errors import MultialgorithmError
 
 TOY_MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', '2_species_1_reaction.xlsx')
