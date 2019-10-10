@@ -131,7 +131,6 @@ class MakeModel(object):
             specie.id = specie.gen_id()
             species.append(specie)
             objects[Species][specie.id] = specie
-            # todo: test concentration calculations
             if species_copy_numbers is not None and specie.id in species_copy_numbers:
                 mean = cls.convert_pop_conc(species_copy_numbers[specie.id], comp.init_volume.mean)
                 if species_stds:
@@ -171,6 +170,7 @@ class MakeModel(object):
             id = 'test_reaction_{}_1'.format(submodel_num)
             reaction = submodel.reactions.create(id=id, name=id, reversible=reversible, model=model)
             reaction.participants.create(species=forward_reactant, coefficient=-1)
+            # TODO(Arthur): test all branches here
             if rate_law_type.name == 'constant':
                 param = model.parameters.create(id='k_cat_{}_1_for'.format(submodel_num),
                                                 value=1., units=unit_registry.parse_units('s^-1'))
@@ -308,7 +308,7 @@ class MakeModel(object):
             raise ValueError("len(init_vols) ({}) or len(init_vol_stds) ({}) != num_submodels ({})".format(
                              len(init_vols), len(init_vol_stds), num_submodels))
 
-        # make InitVolumes, which must have unique attributes
+        # make InitVolumes, which must have unique attributes for round-trip model file equality
         initial_volumes = {}
         for i in range(num_submodels):
             attributes = (init_vols[i], init_vol_stds[i])

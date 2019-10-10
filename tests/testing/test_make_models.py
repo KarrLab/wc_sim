@@ -13,10 +13,12 @@ import shutil
 import tempfile
 import unittest
 
-from wc_lang import Model, RateLawDirection
+from wc_lang import Model, RateLawDirection, InitVolume
 from wc_lang.io import Reader, Writer
+from wc_onto import onto
 from wc_sim.testing.make_models import MakeModel, RateLawType
 from wc_sim.model_utilities import ModelUtilities
+from wc_utils.util.units import unit_registry
 
 
 class TestMakeModels(unittest.TestCase):
@@ -120,35 +122,12 @@ class TestMakeModels(unittest.TestCase):
         ])
         self.assertEqual(participant_elements, expected_participants)
 
-        # test default_species_copy_number, species_copy_numbers, and init_vols
-        default_cn = 2000000
-        spec_type_0_cn = 100000
-        init_vols = [1E-13]
-        model = MakeModel.make_test_model(self.model_types[4], default_species_copy_number=default_cn,
-                                          species_copy_numbers={'spec_type_0[compt_1]': spec_type_0_cn},
-                                          init_vols=init_vols)
-
-        def get_concentrations(model):
-            concentrations = []
-            for concentration in model.get_distribution_init_concentrations():
-                concentrations.append((concentration.species.species_type.id, concentration.mean))
-            return tuple(concentrations)
-
-        expected_concentrations = (
-            ('spec_type_0', MakeModel.convert_pop_conc(spec_type_0_cn, init_vols[0])),
-            ('spec_type_1', MakeModel.convert_pop_conc(default_cn, init_vols[0])),
-        )
-        self.assertEqual(get_concentrations(model), expected_concentrations)
-
-        init_vol_stds = [0]
-        model = MakeModel.make_test_model(self.model_types[4], default_species_copy_number=default_cn,
-                                          species_copy_numbers={'spec_type_0[compt_1]': spec_type_0_cn},
-                                          init_vols=init_vols, init_vol_stds=init_vol_stds)
-        self.assertEqual(get_concentrations(model), expected_concentrations)
-
-        # test exception
+        # test exceptions
         with self.assertRaises(ValueError):
             MakeModel.make_test_model('3 reactions')
+
+        with self.assertRaises(ValueError):
+            MakeModel.make_test_model(self.model_types[0], num_submodels=0)
 
     def get_volume(self, compartment):
         # sample the volume in compartment
@@ -162,11 +141,10 @@ class TestMakeModels(unittest.TestCase):
         dist_conc = species.distribution_init_concentration
         mean = dist_conc.mean
         std = dist_conc.std
-        print('mean, stddev', mean, std)
         return ModelUtilities.concentration_to_molecules(species, volume, RandomState())
 
     def test_make_test_model_init_vols(self):
-        print()
+        # test the volume settings in make_test_model
         # no vol arguments
         default_vol = 1E-16
         volumes = []
@@ -210,15 +188,85 @@ class TestMakeModels(unittest.TestCase):
         with self.assertRaises(ValueError):
             MakeModel.make_test_model('no reactions', init_vol_stds=[])
 
-    def test_make_test_model_species_pop(self):
-        print()
-        one_specie = 'spec_type_0[compt_1]'
-        initial_cn = 1000000
-        for i in range(5):
-            model = MakeModel.make_test_model('1 species, 1 reaction',
-                                              init_vol_stds=[0],
-                                              species_copy_numbers={one_specie: initial_cn},
-                                              species_stds={one_specie: 0})
-            # get species population
-            cn_one_specie = self.get_cn(model, model.species[0])
-            print('cn_one_specie', cn_one_specie)
+    def setup_submodel_params(self, model_type, num_species, vol_mean, vol_std):
+        # make Model
+        model = Model(id='test_model', name=model_type,
+                      version='0.0.0', wc_lang_version='0.0.1')
+        # make SpeciesTypes
+        species_types = []
+        for i in range(num_species):
+            spec_type = model.species_types.create(id='spec_type_{}'.format(i))
+            species_types.append(spec_type)
+        initial_volume = InitVolume(mean=vol_mean, std=vol_std, units=unit_registry.parse_units('l'))
+        comp = model.compartments.create(id='compt_1',
+                                         biological_type=onto['WC:cellular_compartment'],
+                                         init_volume=initial_volume)
+        comp.init_density = model.parameters.create(id='density_compt_1',
+                                                    value=1100, units=unit_registry.parse_units('g l^-1'))
+        return (model, species_types, comp)
+
+    def test_add_test_submodel(self):
+        # test the concentration initialization in add_test_submodel
+        model_type = '1 species, 1 reaction'
+        num_species = 1
+        vol_mean, vol_std = 1E-16, 1E-17
+        specie_id = 'spec_type_0[compt_1]'
+        model, species_types, comp = self.setup_submodel_params(model_type, num_species, vol_mean, vol_std)
+        default_species_copy_number, default_species_std = 1_000_000, 100_000
+        species_copy_numbers, species_stds = {}, {}
+
+        # specie not in species_copy_numbers or species_stds
+        MakeModel.add_test_submodel(model, model_type, 0, comp, species_types,
+                                    default_species_copy_number,
+                                    default_species_std,
+                                    species_copy_numbers,
+                                    species_stds, {})
+        conc = model.get_distribution_init_concentrations()[0]
+        expected_mean_conc = MakeModel.convert_pop_conc(default_species_copy_number, vol_mean)
+        expected_std_conc = MakeModel.convert_pop_conc(default_species_std, vol_mean)
+        self.assertEqual(conc.mean, expected_mean_conc)
+        self.assertEqual(conc.std, expected_std_conc)
+
+        # specie only in species_copy_numbers
+        model, species_types, comp = self.setup_submodel_params(model_type, num_species, vol_mean, vol_std)
+        species_copy_number = 1_000_000
+        species_copy_numbers, species_stds = {specie_id: species_copy_number}, {}
+        MakeModel.add_test_submodel(model, model_type, 0, comp, species_types,
+                                    default_species_copy_number,
+                                    default_species_std,
+                                    species_copy_numbers,
+                                    species_stds, {})
+        conc = model.get_distribution_init_concentrations()[0]
+        expected_mean_conc = MakeModel.convert_pop_conc(species_copy_number, vol_mean)
+        expected_std_conc = MakeModel.convert_pop_conc(default_species_std, vol_mean)
+        self.assertEqual(conc.mean, expected_mean_conc)
+        self.assertEqual(conc.std, expected_std_conc)
+
+        # specie only in species_stds
+        model, species_types, comp = self.setup_submodel_params(model_type, num_species, vol_mean, vol_std)
+        species_std = 100_000
+        species_copy_numbers, species_stds = {}, {specie_id: species_std}
+        MakeModel.add_test_submodel(model, model_type, 0, comp, species_types,
+                                    default_species_copy_number,
+                                    default_species_std,
+                                    species_copy_numbers,
+                                    species_stds, {})
+        conc = model.get_distribution_init_concentrations()[0]
+        expected_mean_conc = MakeModel.convert_pop_conc(default_species_copy_number, vol_mean)
+        expected_std_conc = MakeModel.convert_pop_conc(default_species_std, vol_mean)
+        self.assertEqual(conc.mean, expected_mean_conc)
+        self.assertEqual(conc.std, expected_std_conc)
+
+        # specie in species_copy_numbers and species_stds
+        model, species_types, comp = self.setup_submodel_params(model_type, num_species, vol_mean, vol_std)
+        species_copy_numbers, species_stds = {specie_id: species_copy_number}, {specie_id: species_std}
+        MakeModel.add_test_submodel(model, model_type, 0, comp, species_types,
+                                    default_species_copy_number,
+                                    default_species_std,
+                                    species_copy_numbers,
+                                    species_stds, {})
+        conc = model.get_distribution_init_concentrations()[0]
+        expected_mean_conc = MakeModel.convert_pop_conc(species_copy_number, vol_mean)
+        expected_std_conc = MakeModel.convert_pop_conc(species_std, vol_mean)
+        self.assertEqual(conc.mean, expected_mean_conc)
+        self.assertEqual(conc.std, expected_std_conc)
