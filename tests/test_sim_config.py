@@ -161,7 +161,7 @@ class TestSimulationConfig(unittest.TestCase):
 
     @unittest.skip('Not yet implemented')
     def test_apply_perturbations(self):
-        # .. todo :: implement
+        # todo: implement
         cfg = sim_config.SimulationConfig(time_max=100, time_step=2)
         cfg.apply_perturbations(None)
 
