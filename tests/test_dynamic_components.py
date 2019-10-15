@@ -353,11 +353,11 @@ class TestInitializedDynamicCompartment(unittest.TestCase):
         self.dynamic_compartment = DynamicCompartment(None, self.random_state, self.compartment,
             self.species_ids)
 
-    def specify_init_accounted_ratio(self, desired_init_accounted_ratio):
-        # make a DynamicCompartment with accounted_ratio ~= desired_init_accounted_ratio
+    def specify_init_accounted_fraction(self, desired_init_accounted_fraction):
+        # make a DynamicCompartment with accounted_fraction ~= desired_init_accounted_fraction
         # without changing init_accounted_mass or init_volume
         init_density = self.dynamic_compartment.init_accounted_mass / \
-            (desired_init_accounted_ratio * self.dynamic_compartment.init_volume)
+            (desired_init_accounted_fraction * self.dynamic_compartment.init_volume)
         self.compartment.init_density = Parameter(id='density_x', value=init_density,
             units=unit_registry.parse_units('g l^-1'))
         return DynamicCompartment(None, self.random_state, self.compartment)
@@ -369,7 +369,7 @@ class TestInitializedDynamicCompartment(unittest.TestCase):
         self.assertAlmostEqual(self.dynamic_compartment.init_accounted_mass, estimated_accounted_mass,
             places=14)
         self.assertTrue(0 < self.dynamic_compartment.init_mass)
-        self.assertAlmostEqual(self.dynamic_compartment.accounted_ratio,
+        self.assertAlmostEqual(self.dynamic_compartment.accounted_fraction,
             self.dynamic_compartment.init_accounted_mass / self.dynamic_compartment.init_mass, places=14)
 
         empty_local_species_pop = LocalSpeciesPopulation('test', {}, {},
@@ -378,14 +378,14 @@ class TestInitializedDynamicCompartment(unittest.TestCase):
         with self.assertRaisesRegex(MultialgorithmError, "initial accounted ratio is 0"):
             dynamic_compartment.initialize_mass_and_density(empty_local_species_pop)
 
-        dynamic_compartment = self.specify_init_accounted_ratio(
-            (DynamicCompartment.MAX_ALLOWED_INIT_ACCOUNTED_RATIO + 1)/2)
+        dynamic_compartment = self.specify_init_accounted_fraction(
+            (DynamicCompartment.MAX_ALLOWED_INIT_ACCOUNTED_FRACTION + 1)/2)
         with warnings.catch_warnings(record=True) as w:
             dynamic_compartment.initialize_mass_and_density(self.local_species_pop)
             self.assertIn("initial accounted ratio (", str(w[-1].message))
             self.assertIn(") greater than 1.0", str(w[-1].message))
 
-        dynamic_compartment = self.specify_init_accounted_ratio(2)
+        dynamic_compartment = self.specify_init_accounted_fraction(2)
         with self.assertRaises(MultialgorithmError):
             dynamic_compartment.initialize_mass_and_density(self.local_species_pop)
 
@@ -506,7 +506,7 @@ class TestDynamicModel(unittest.TestCase):
             cell_masses.append(self.dynamic_model.cell_mass())
             computed_aggregate_states.append(self.dynamic_model.get_aggregate_state())
 
-        # todo: revise the model so that mean_accounted_ratio ~= 1
+        # todo: revise the model so that mean_accounted_fraction ~= 1
         actual_cellular_mass = self.compute_expected_actual_masses(self.MODEL_FILENAME)['c']
         self.almost_equal_test(numpy.mean(cell_masses), actual_cellular_mass, frac_diff=1e-1)
 
