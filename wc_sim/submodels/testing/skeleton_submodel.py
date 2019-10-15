@@ -36,6 +36,7 @@ class SkeletonSubmodel(DynamicSubmodel):
         self.schedule_the_next_reaction()
 
     # register the event handler for each type of message received
+    # todo: to avoid confusion, use other message types
     event_handlers =[
             (message_types.GivePopulation, 'handle_GivePopulation_event'),
             (message_types.ExecuteSsaReaction, 'handle_ExecuteSsaReaction_event')]

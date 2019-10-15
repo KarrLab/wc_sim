@@ -115,6 +115,7 @@ class ModelUtilities(object):
             mean = dist_conc.mean
             std = dist_conc.std
             if numpy.isnan(std):
+                # todo: make the ratio of mean / std a config setting
                 std = mean / 10.
             conc = max(0., random_state.normal(mean, std))
 

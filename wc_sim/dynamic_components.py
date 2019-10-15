@@ -457,6 +457,7 @@ class DynamicCompartment(DynamicComponent):
             mean = wc_lang_compartment.init_volume.mean
             std = wc_lang_compartment.init_volume.std
             if numpy.isnan(std):
+                # todo: make the ratio of mean / std a config setting
                 std = mean / 10.
             self.init_volume = max(0., random_state.normal(mean, std))
         else:
@@ -497,6 +498,7 @@ class DynamicCompartment(DynamicComponent):
         self.init_mass = self.init_density * self.init_volume
         self.init_accounted_density = self.init_accounted_mass / self.init_volume
         # calculate fraction of initial mass or density represented by species
+        # todo: rename accounted_ratio -> accounted_fraction
         self.accounted_ratio = self.init_accounted_density / self.init_density
         # also, accounted_ratio = self.init_accounted_mass / self.init_mass
 
@@ -723,6 +725,7 @@ class DynamicModel(object):
             for dynamic_expression in dynamic_expression_group.values():
                 dynamic_expression.prepare()
 
+    # todo: add methods for cell volume, cell accounted_mass, and cell accounted_volume
     def cell_mass(self):
         """ Compute the cell's mass
 
@@ -740,11 +743,13 @@ class DynamicModel(object):
         Returns:
             :obj:`dict`: the cell's aggregate state
         """
+        # todo: add cell volume, cell accounted_mass, and cell accounted_volume
         aggregate_state = {
             'cell mass': self.cell_mass(),
         }
 
         compartments = {}
+        # todo: add volume, accounted_mass, and accounted_volume
         for dynamic_compartment in self.cellular_dyn_compartments:
             compartments[dynamic_compartment.id] = {
                 'name': dynamic_compartment.name,
