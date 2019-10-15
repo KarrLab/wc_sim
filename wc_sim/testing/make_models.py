@@ -238,6 +238,7 @@ class MakeModel(object):
     def make_test_model(cls, model_type,
                         init_vols=None,
                         init_vol_stds=None,
+                        density=1100,
                         molecular_weight=10.,
                         charge=0,
                         num_submodels=1,
@@ -253,13 +254,13 @@ class MakeModel(object):
 
         * Each submodel runs SSA
         * Each submodel has one compartment
-        * Compartments have density 1100 g/l
 
         Args:
             model_type (:obj:`str`): model type description
             init_vols (:obj:`list` of :obj:`float`, optional): initial volume of each compartment; default=1E-16
             init_vol_stds (:obj:`list` of :obj:`float`, optional): initial std. dev. of volume of each
                 compartment; default=`init_vols/10.`
+            density (:obj:`float`, optional): the density of each compartment; default=1100 g/l
             molecular_weight (:obj:`float`, optional): the molecular weight of each species type; default=10
             charge (:obj:`int`, optional): charge of each species type; default=0
             num_submodels (:obj:`int`, optional): number of submodels
@@ -324,7 +325,7 @@ class MakeModel(object):
                                              biological_type=onto['WC:cellular_compartment'],
                                              init_volume=init_volume)
             comp.init_density = model.parameters.create(id='density_compt_{}'.format(comp_num),
-                                                        value=1100, units=unit_registry.parse_units('g l^-1'))
+                                                        value=density, units=unit_registry.parse_units('g l^-1'))
             compartments.append(comp)
 
         # make SpeciesTypes
