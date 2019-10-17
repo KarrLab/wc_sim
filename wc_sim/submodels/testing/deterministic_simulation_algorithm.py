@@ -1,4 +1,4 @@
-""" A deterministic version of SSA for testing submodels and the simulator
+""" A deterministic version of SSA for testing DynamicSubmodel and the simulator
 
 :Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2019-10-15
@@ -7,14 +7,14 @@
 """
 
 from de_sim.simulation_message import SimulationMessage
-from wc_sim.submodels.dynamic_submodel import DynamicSubmodel
 from wc_sim.multialgorithm_errors import MultialgorithmError
+from wc_sim.submodels.dynamic_submodel import DynamicSubmodel
 
 
 class ExecuteDsaReaction(SimulationMessage):
-    """ A simulation message sent by a :obj:`DeterministicSimulationAlgorithmSubmodel` instance to itself.
+    """ A simulation message sent by a :obj:`DeterministicSimulationAlgorithmSubmodel` instance to itself
 
-    Schedules a Deterministic Simulation Algorithm reaction execution.
+    Provides data needed to execute a Deterministic Simulation Algorithm reaction.
 
     Attributes:
         reaction_index (:obj:`int`): index of the selected reaction in
@@ -24,11 +24,11 @@ class ExecuteDsaReaction(SimulationMessage):
 
 
 class DeterministicSimulationAlgorithmSubmodel(DynamicSubmodel):
-    """ Init a :obj:`DeterministicSimulationAlgorithmSubmodel`.
+    """ Init a :obj:`DeterministicSimulationAlgorithmSubmodel`
 
     The Deterministic Simulation Algorithm (DSA) is a deterministic version of the Stochastic Simulation
-    Algorithm. Each reaction executes deterministically at the rate determined by its rate law.
-    This is achieved by scheduling the next execution of a reaction when the reaction executes.
+    Algorithm. Each reaction executes deterministically at the rate determined by its rate law,
+    which is achieved by scheduling the next execution of a reaction when the reaction executes.
     E.g., if reaction `R` executes at time `t`, and at time `t` `R`\ 's rate law calculates a rate of
     `r` then the next execution of `R` will occur at time `t + 1/r`.
 

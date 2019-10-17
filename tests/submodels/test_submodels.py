@@ -22,6 +22,7 @@ from wc_sim.dynamic_components import DynamicModel
 from wc_sim.model_utilities import ModelUtilities
 from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
+from wc_sim.simulation import Simulation
 from wc_sim.submodels.dynamic_submodel import DynamicSubmodel
 from wc_sim.submodels.testing.deterministic_simulation_algorithm import (DeterministicSimulationAlgorithmSubmodel,
                                                                          ExecuteDsaReaction)
@@ -39,6 +40,8 @@ def prepare_model(model):
         raise ValueError(indent_forest(['The model is invalid:', [errors]]))
 
 
+# TODO(Arthur): make more reliable and comprehensive tests using approach in
+# TestDeterministicSimulationAlgorithmSubmodel instead of make_dynamic_submodel_params
 def make_dynamic_submodel_params(model, lang_submodel):
     multialgorithm_simulation = MultialgorithmSimulation(model, None)
     multialgorithm_simulation.initialize_components()
@@ -229,24 +232,27 @@ class TestDeterministicSimulationAlgorithmSubmodel(unittest.TestCase):
                                            'test_submodel_no_shared_species.xlsx')
         self.model = Reader().run(self.MODEL_FILENAME)[Model][0]
 
-        # change the frameworks of the SSA submodel to experimental deterministic simulation algorithm
-        for submodel in self.model.submodels:
+    @staticmethod
+    def transform_model_for_dsa_simulation(model):
+        # change the framework of the SSA submodel to experimental deterministic simulation algorithm
+        for submodel in model.submodels:
             if are_terms_equivalent(submodel.framework, onto['WC:stochastic_simulation_algorithm']):
                 submodel.framework = onto['WC:X_deterministic_simulation_algorithm']
 
         # to make deterministic initial conditions, set variances of distributions to 0
-        for conc in self.model.distribution_init_concentrations:
+        for conc in model.distribution_init_concentrations:
             conc.std = 0.
-        for compartment in self.model.compartments:
+        for compartment in model.compartments:
             compartment.init_volume.std = 0.
-        prepare_model(self.model)
-        self.multialgorithm_simulation = MultialgorithmSimulation(self.model, dict(dfba_time_step=1))
-        self.simulation_engine, dynamic_model = self.multialgorithm_simulation.build_simulation()
-        self.simulation_engine.initialize()
 
-    def test_deterministic_simulation_algorithm_submodel(self):
+    def test_deterministic_simulation_algorithm_submodel_statics(self):
+        self.transform_model_for_dsa_simulation(self.model)
+        prepare_model(self.model)
+        multialgorithm_simulation = MultialgorithmSimulation(self.model, dict(dfba_time_step=1))
+        simulation_engine, _ = multialgorithm_simulation.build_simulation()
+        simulation_engine.initialize()
         dsa_submodel_name = 'submodel_2'
-        dsa_submodel = self.multialgorithm_simulation.simulation_submodels[dsa_submodel_name]
+        dsa_submodel = multialgorithm_simulation.simulation_submodels[dsa_submodel_name]
         self.assertTrue(isinstance(dsa_submodel, DeterministicSimulationAlgorithmSubmodel))
 
         # test init: is reaction_table correct?
@@ -257,7 +263,7 @@ class TestDeterministicSimulationAlgorithmSubmodel(unittest.TestCase):
 
         # test send_initial_events(), schedule_next_reaction_execution() & schedule_ExecuteDsaReaction()
         # all of dsa_submodel's reactions should be scheduled to execute
-        events = self.simulation_engine.event_queue.render(sim_obj=dsa_submodel, as_list=True)
+        events = simulation_engine.event_queue.render(sim_obj=dsa_submodel, as_list=True)
         reaction_indices = set()
         send_time_idx, _, sender_idx, receiver_idx, event_type_idx, reaction_idx = list(range(6))
         for event in events[1:]:
@@ -268,4 +274,38 @@ class TestDeterministicSimulationAlgorithmSubmodel(unittest.TestCase):
             reaction_indices.add(event[reaction_idx])
         self.assertEqual(reaction_indices, set([str(i) for i in range(len(dsa_submodel.reactions))]))
 
-        # test handle_ExecuteDsaReaction_msg(): hand execute a reaction
+        # test handle_ExecuteDsaReaction_msg(): execute next reaction
+        # reaction_3_forward has the highest reaction rate
+        events = simulation_engine.event_queue.next_events()
+        self.assertEqual(len(events), 1)
+        event = events[0]
+        self.assertEqual(dsa_submodel.reactions[event.message.reaction_index].id, 'reaction_3_forward')
+        # reaction_3_forward: [c]: species_2 + (2) species_4 ==> species_5
+        # check population changes
+        species = ['species_2[c]', 'species_4[c]', 'species_5[c]']
+        pops_before = {}
+        populations = multialgorithm_simulation.local_species_population
+        for specie_id in species:
+            pops_before[specie_id] = populations.read_one(event.event_time, specie_id)
+        expected_pop_changes = dict(zip(species, [-1, -2, +1]))
+        # set time of dsa_submodel to time of the event
+        dsa_submodel.time = event.event_time
+        dsa_submodel.handle_ExecuteDsaReaction_msg(event)
+        for s_id, expected_pop_change in expected_pop_changes.items():
+            self.assertEqual(pops_before[s_id] + expected_pop_changes[s_id],
+                             populations.read_one(event.event_time, s_id))
+
+        # zero populations and test exception
+        for specie_id in species:
+            pop = populations.read_one(event.event_time, specie_id)
+            populations.adjust_discretely(event.event_time, {specie_id: -pop})
+        with self.assertRaises(MultialgorithmError):
+            dsa_submodel.handle_ExecuteDsaReaction_msg(event)
+
+    def test_simulate_deterministic_simulation_algorithm_submodel(self):
+        # test that deterministic simulation algorithm; corrects trajectories tested elsewhere
+        model = MakeModel.make_test_model('1 species, 1 reaction')
+        self.transform_model_for_dsa_simulation(model)
+        simulation = Simulation(model)
+        num_events, _ = simulation.run(end_time=100)
+        self.assertGreater(num_events, 0)
