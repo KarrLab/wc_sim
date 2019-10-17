@@ -113,12 +113,13 @@ class RunResults(object):
         simulation_metadata = SimulationMetadata.read_metadata(self.results_dir)
         return pandas.Series(as_dict(simulation_metadata))
 
+    # todo: provide get functionality that hides the internal structure of state components
     @staticmethod
     def get_state_components(state):
         return (state['population'], state['observables'], state['functions'], state['aggregate_state'])
 
     def convert_checkpoints(self):
-        """ Convert the data in saved checkpoints into pandas dataframes
+        """ Convert the data in saved checkpoints into pandas dataframes for loading into hdf
 
         Returns:
             :obj:`tuple` of pandas objects: dataframes of the components of a simulation checkpoint history

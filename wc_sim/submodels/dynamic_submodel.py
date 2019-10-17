@@ -30,7 +30,7 @@ class DynamicSubmodel(ApplicationSimulationObject):
     to make a multi-algorithmic model.
 
     Attributes:
-        id (:obj:`str`): unique id of this dynamic submodel / simulation object
+        id (:obj:`str`): unique id of this dynamic submodel and simulation object
         dynamic_model (:obj:`DynamicModel`): the aggregate state of a simulation
         reactions (:obj:`list` of :obj:`Reaction`): the reactions modeled by this dynamic submodel
         rates (:obj:`np.array`): array to hold reaction rates

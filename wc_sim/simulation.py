@@ -80,7 +80,7 @@ class Simulation(object):
         self.sim_config = sim_config
 
     def _prepare(self):
-        """ Prepare simulation model and metadata
+        """ Prepare and validate the model, and create simulation metadata
         """
         # prepare & check the model
         PrepForWcSimTransform().run(self.model)

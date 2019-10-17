@@ -6,25 +6,30 @@
 :License: MIT
 """
 
-from obj_tables.utils import get_component_by_id
-from wc_lang import Model, Species, Validator
-from wc_lang.io import Reader
-from wc_lang.transform import PrepForWcSimTransform
-from de_sim.simulation_engine import SimulationEngine
-from wc_sim.dynamic_components import DynamicModel
-from wc_sim.testing.make_models import MakeModel
-from wc_sim.model_utilities import ModelUtilities
-from wc_sim.multialgorithm_errors import MultialgorithmError
-from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
-from wc_sim.submodels.dynamic_submodel import DynamicSubmodel
-from wc_sim.submodels.testing.skeleton_submodel import SkeletonSubmodel
-from wc_utils.util.rand import RandomStateManager
-from wc_utils.util.string import indent_forest
 from scipy.constants import Avogadro
 import numpy
 import os
 import unittest
 import warnings
+
+from de_sim.simulation_engine import SimulationEngine
+from obj_tables.utils import get_component_by_id
+from wc_lang import Model, Species, Validator
+from wc_lang.io import Reader
+from wc_lang.transform import PrepForWcSimTransform
+from wc_onto import onto
+from wc_sim.dynamic_components import DynamicModel
+from wc_sim.model_utilities import ModelUtilities
+from wc_sim.multialgorithm_errors import MultialgorithmError
+from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
+from wc_sim.submodels.dynamic_submodel import DynamicSubmodel
+from wc_sim.submodels.testing.deterministic_simulation_algorithm import (DeterministicSimulationAlgorithmSubmodel,
+                                                                         ExecuteDsaReaction)
+from wc_sim.submodels.testing.skeleton_submodel import SkeletonSubmodel
+from wc_sim.testing.make_models import MakeModel
+from wc_utils.util.ontology import are_terms_equivalent
+from wc_utils.util.rand import RandomStateManager
+from wc_utils.util.string import indent_forest
 
 
 def prepare_model(model):
@@ -214,3 +219,53 @@ class TestSkeletonSubmodel(unittest.TestCase):
             delta = pop_after - pop_before
             self.assertEqual(delta, interval / behavior[SkeletonSubmodel.INTER_REACTION_TIME])
             pop_before = pop_after
+
+
+class TestDeterministicSimulationAlgorithmSubmodel(unittest.TestCase):
+
+    def setUp(self):
+        warnings.simplefilter("ignore")
+        self.MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures',
+                                           'test_submodel_no_shared_species.xlsx')
+        self.model = Reader().run(self.MODEL_FILENAME)[Model][0]
+
+        # change the frameworks of the SSA submodel to experimental deterministic simulation algorithm
+        for submodel in self.model.submodels:
+            if are_terms_equivalent(submodel.framework, onto['WC:stochastic_simulation_algorithm']):
+                submodel.framework = onto['WC:X_deterministic_simulation_algorithm']
+
+        # to make deterministic initial conditions, set variances of distributions to 0
+        for conc in self.model.distribution_init_concentrations:
+            conc.std = 0.
+        for compartment in self.model.compartments:
+            compartment.init_volume.std = 0.
+        prepare_model(self.model)
+        self.multialgorithm_simulation = MultialgorithmSimulation(self.model, dict(dfba_time_step=1))
+        self.simulation_engine, dynamic_model = self.multialgorithm_simulation.build_simulation()
+        self.simulation_engine.initialize()
+
+    def test_deterministic_simulation_algorithm_submodel(self):
+        dsa_submodel_name = 'submodel_2'
+        dsa_submodel = self.multialgorithm_simulation.simulation_submodels[dsa_submodel_name]
+        self.assertTrue(isinstance(dsa_submodel, DeterministicSimulationAlgorithmSubmodel))
+
+        # test init: is reaction_table correct?
+        self.assertEqual(len(dsa_submodel.reaction_table), len(dsa_submodel.reactions))
+        for rxn_id, rxn_index in dsa_submodel.reaction_table.items():
+            # map reaction id to index
+            self.assertEqual(dsa_submodel.reactions[rxn_index].id, rxn_id)
+
+        # test send_initial_events(), schedule_next_reaction_execution() & schedule_ExecuteDsaReaction()
+        # all of dsa_submodel's reactions should be scheduled to execute
+        events = self.simulation_engine.event_queue.render(sim_obj=dsa_submodel, as_list=True)
+        reaction_indices = set()
+        send_time_idx, _, sender_idx, receiver_idx, event_type_idx, reaction_idx = list(range(6))
+        for event in events[1:]:
+            self.assertEqual(event[send_time_idx], 0.)
+            self.assertEqual(event[sender_idx], dsa_submodel_name)
+            self.assertEqual(event[receiver_idx], dsa_submodel_name)
+            self.assertEqual(event[event_type_idx], ExecuteDsaReaction.__name__)
+            reaction_indices.add(event[reaction_idx])
+        self.assertEqual(reaction_indices, set([str(i) for i in range(len(dsa_submodel.reactions))]))
+
+        # test handle_ExecuteDsaReaction_msg(): hand execute a reaction

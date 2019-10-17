@@ -18,6 +18,7 @@ from wc_sim.species_populations import (LocalSpeciesPopulation, AccessSpeciesPop
 from wc_sim.submodels.dynamic_submodel import DynamicSubmodel
 from wc_sim.submodels.fba import DfbaSubmodel
 from wc_sim.submodels.ssa import SsaSubmodel
+from wc_sim.submodels.testing.deterministic_simulation_algorithm import DeterministicSimulationAlgorithmSubmodel
 from wc_utils.util.list import det_dedupe
 from wc_utils.util.misc import obj_to_str
 from wc_utils.util.ontology import are_terms_equivalent
@@ -107,7 +108,8 @@ class MultialgorithmSimulation(object):
             species, derived from the specification in `model`
         local_species_population (:obj:`LocalSpeciesPopulation`): a shared species population for the
             multialgorithm simulation
-        simulation_submodels (:obj:`list` of :obj:`DynamicSubmodel`): the simulation's dynamic submodels
+        simulation_submodels (:obj:`dict` of :obj:`DynamicSubmodel`): the simulation's dynamic submodels,
+            keyed by id
         dynamic_model (:obj:`DynamicModel`): the dynamic state of a model being simulated
         dynamic_compartments (:obj:`dict`): the simulation's `DynamicCompartment`s, one for each
             compartment in `model`
@@ -285,7 +287,7 @@ class MultialgorithmSimulation(object):
         """
 
         # make the simulation's submodels
-        simulation_submodels = []
+        simulation_submodels = {}
         for lang_submodel in self.model.get_submodels():
 
             if are_terms_equivalent(lang_submodel.framework, onto['WC:stochastic_simulation_algorithm']):
@@ -300,7 +302,6 @@ class MultialgorithmSimulation(object):
 
             elif are_terms_equivalent(lang_submodel.framework, onto['WC:dynamic_flux_balance_analysis']):
                 # TODO(Arthur): make DFBA submodels work
-
                 simulation_submodel = DfbaSubmodel(
                     lang_submodel.id,
                     self.dynamic_model,
@@ -314,10 +315,22 @@ class MultialgorithmSimulation(object):
             elif are_terms_equivalent(lang_submodel.framework, onto['WC:ordinary_differential_equations']):
                 # TODO(Arthur): add ODE submodels from wc_sim fall 2019
                 raise MultialgorithmError("Need ODE implementation")
+
+            elif are_terms_equivalent(lang_submodel.framework, onto['WC:X_deterministic_simulation_algorithm']):
+                # an experimental deterministic simulation algorithm, used for testing
+                simulation_submodel = DeterministicSimulationAlgorithmSubmodel(
+                    lang_submodel.id,
+                    self.dynamic_model,
+                    list(lang_submodel.reactions),
+                    lang_submodel.get_children(kind='submodel', __type=Species),
+                    self.get_dynamic_compartments(lang_submodel),
+                    self.local_species_population
+                )
+
             else:
                 raise MultialgorithmError("Unsupported lang_submodel framework '{}'".format(lang_submodel.framework))
 
-            simulation_submodels.append(simulation_submodel)
+            simulation_submodels[simulation_submodel.id] = simulation_submodel
 
             # add the submodel to the simulation
             self.simulation.add_object(simulation_submodel)
