@@ -108,6 +108,35 @@ class DynamicSubmodel(ApplicationSimulationObject):
         """
         return self.dynamic_model.get_num_submodels()
 
+    # TODO(Arthur): unittest
+    def get_rate_law_eval_argument(self):
+        """ Provide the species counts and compartment masses needed to eval rate laws
+
+        Returns:
+            :obj:`dict`: species counts and compartment masses for the reaction
+        """
+        # TODO(Arthur): optimization: get counts only for modifiers in the reactions
+        species_counts = self.get_species_counts()
+        # TODO(Arthur): mass looks wrong! SB volume I think
+        compartment_masses = self.get_compartment_masses()
+        return {Species: species_counts, Compartment: compartment_masses}
+
+    # TODO(Arthur): unittest
+    def calc_reaction_rate(self, reaction, eval_argument):
+        """ Calculate the rate for a reaction
+
+        The rate is computed by eval'ing the reaction's rate law,
+        with species populations obtained from the simulations's :obj:`LocalSpeciesPopulation`.
+
+        Args:
+            reaction (:obj:`Reaction`): the reaction to evaluate
+            eval_argument (:obj:`dict`): species counts and compartment masses for the reaction
+
+        Returns:
+            :obj:`float`: the reaction's rate
+        """
+        return reaction.rate_laws[0].expression._parsed_expression.eval(eval_argument)
+
     def calc_reaction_rates(self):
         """ Calculate the rates for this dynamic submodel's reactions
 
@@ -119,16 +148,10 @@ class DynamicSubmodel(ApplicationSimulationObject):
         Returns:
             :obj:`np.ndarray`: a numpy array of reaction rates, indexed by reaction index
         """
-        # TODO(Arthur): optimization: get counts only for modifiers in the reactions
-        species_counts = self.get_species_counts()
-        compartment_masses = self.get_compartment_masses()
-
+        rate_law_eval_argument = self.get_rate_law_eval_argument()
         for idx_reaction, rxn in enumerate(self.reactions):
             if rxn.rate_laws:
-                self.rates[idx_reaction] = rxn.rate_laws[0].expression._parsed_expression.eval({
-                    Species: species_counts,
-                    Compartment: compartment_masses,
-                    })
+                self.rates[idx_reaction] = self.calc_reaction_rate(rxn, rate_law_eval_argument)
 
         # TODO(Arthur): optimization: get this if to work:
         # if self.logger.isEnabledFor(self.logger.getEffectiveLevel()):

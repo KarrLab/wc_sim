@@ -174,7 +174,7 @@ class DynamicComponent(object):
         rv.append("id: {}".format(self.id))
         return '\n'.join(rv)
 
-
+# todo: test eval all DynamicExpressions
 class DynamicExpression(DynamicComponent):
     """ Simulation representation of a mathematical expression, based on :obj:`ParsedExpression`
 

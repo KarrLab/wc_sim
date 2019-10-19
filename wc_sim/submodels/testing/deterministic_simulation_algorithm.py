@@ -1,4 +1,4 @@
-""" A deterministic version of SSA for testing DynamicSubmodel and the simulator
+""" A deterministic version of SSA for testing DynamicSubmodel and multialgorithmic simulation
 
 :Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2019-10-15
@@ -29,8 +29,8 @@ class DeterministicSimulationAlgorithmSubmodel(DynamicSubmodel):
     The Deterministic Simulation Algorithm (DSA) is a deterministic version of the Stochastic Simulation
     Algorithm. Each reaction executes deterministically at the rate determined by its rate law,
     which is achieved by scheduling the next execution of a reaction when the reaction executes.
-    E.g., if reaction `R` executes at time `t`, and at time `t` `R`\ 's rate law calculates a rate of
-    `r` then the next execution of `R` will occur at time `t + 1/r`.
+    E.g., if reaction `R` executes at time `t` and `R`\ 's rate law has a rate of
+    `r` then, the next execution of `R` will occur at time `t + 1/r`.
 
     Attributes:
         reaction_table (:obj:`dict`): map from reaction id to reaction index in `self.reactions`
@@ -97,8 +97,6 @@ class DeterministicSimulationAlgorithmSubmodel(DynamicSubmodel):
             reaction (:obj:`Reaction`): the reaction being scheduled
         """
         reaction_index = self.reaction_table[reaction.id]
-        # todo: optimization: factor out calculation of rate of single reaction in calc_reaction_rates()
-        rates = self.calc_reaction_rates()
-        rate = rates[reaction_index]
+        rate = self.calc_reaction_rate(reaction, self.get_rate_law_eval_argument())
         dt = 1.0/rate
         self.schedule_ExecuteDsaReaction(dt, reaction_index)
