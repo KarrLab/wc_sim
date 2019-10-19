@@ -316,7 +316,7 @@ class MultialgorithmSimulation(object):
                 # TODO(Arthur): add ODE submodels from wc_sim fall 2019
                 raise MultialgorithmError("Need ODE implementation")
 
-            elif are_terms_equivalent(lang_submodel.framework, onto['WC:X_deterministic_simulation_algorithm']):
+            elif are_terms_equivalent(lang_submodel.framework, onto['WC:deterministic_simulation_algorithm']):
                 # an experimental deterministic simulation algorithm, used for testing
                 simulation_submodel = DeterministicSimulationAlgorithmSubmodel(
                     lang_submodel.id,

@@ -237,7 +237,7 @@ class TestDeterministicSimulationAlgorithmSubmodel(unittest.TestCase):
         # change the framework of the SSA submodel to experimental deterministic simulation algorithm
         for submodel in model.submodels:
             if are_terms_equivalent(submodel.framework, onto['WC:stochastic_simulation_algorithm']):
-                submodel.framework = onto['WC:X_deterministic_simulation_algorithm']
+                submodel.framework = onto['WC:deterministic_simulation_algorithm']
 
         # to make deterministic initial conditions, set variances of distributions to 0
         for conc in model.distribution_init_concentrations:
