@@ -356,17 +356,17 @@ class TwoSpeciesTestCase(unittest.TestCase):
         k_syn_constant.value = 1.
         k_deg_constant.value = 2e-2
 
-        # analyze steady-state
-        # steady-state (ss) mass:
-        # in ss, spec_constant concentration (molecules) is given by:
+        # analyze steady-state (ss)
+        # mass:
+        # in ss, spec_constant concentration in molecules is given by:
         # k_syn_constant.value / k_deg_constant.value = 50
         spec_constant_ss_pop = k_syn_constant.value / k_deg_constant.value
+        std_spec_constant_ss_pop = numpy.sqrt(spec_constant_ss_pop)
         # mass of spec_constant is given by:
         # 50 * self.st_constant.structure.molecular_weight / NA
-        std_spec_constant_ss_pop = numpy.sqrt(spec_constant_ss_pop)
         mass_spec_constant_ss = spec_constant_ss_pop * self.st_constant.structure.molecular_weight / NA
         std_mass_spec_constant_ss = std_spec_constant_ss_pop * self.st_constant.structure.molecular_weight / NA
-        # these are equal because st_dynamic.structure.molecular_weight = 0:
+        # entire ss mass equals mass of spec_constant because st_dynamic.structure.molecular_weight = 0:
         mass_ss = mass_spec_constant_ss
         std_mass_ss = std_mass_spec_constant_ss
 
