@@ -564,15 +564,15 @@ class DynamicCompartment(DynamicComponent):
         return self.accounted_volume(time=time) / self.accounted_fraction
 
     def eval(self, time=None):
-        """ Provide the volume of this :obj:`DynamicCompartment`
+        """ Provide the mass of this :obj:`DynamicCompartment`
 
         Args:
             time (:obj:`Rational`, optional): the current simulation time
 
         Returns:
-            :obj:`float`: this compartment's current volume (l)
+            :obj:`float`: this compartment's current mass (g)
         """
-        return self.volume(time=time)
+        return self.mass(time=time)
 
     def fold_change_total_mass(self, time=None):
         """ Provide the fold change of the total mass of this :obj:`DynamicCompartment`
