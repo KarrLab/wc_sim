@@ -33,8 +33,21 @@ from wc_utils.util.rand import RandomStateManager
 from wc_utils.util.units import unit_registry
 
 
-# todo: double-check that this test is good
-class TestDynamicExpression(unittest.TestCase):
+# todo: test all DynamicExpressions, each with all the objects they use
+'''
+context
+    initialized MultialgorithmSimulation with a dynamic submodel
+for each DynamicExpression
+    1. one with only constant and function terms
+    2. one each with one of its expression_term_models
+    3. one with all of its expression_term_models
+    4. test a volume function for each compartment
+'''
+# Almost all machines map Python floats to IEEE-754 64-bit “double precision”, which provides 15 to 17 decimal digits
+# places for comparing values that should be equal to within the precision of floating point representation
+IEEE_64_BIT_FLOATING_POINT_PLACES = 14
+
+class TestDynamicExpressions(unittest.TestCase):
 
     def make_objects(self):
         model = Model()
@@ -71,7 +84,6 @@ class TestDynamicExpression(unittest.TestCase):
             dynamic_objects[fun] = DynamicFunction(self.dynamic_model, self.local_species_population,
                                                    fun, fun.expression._parsed_expression)
         self.dynamic_objects = dynamic_objects
-        # todo: test other DynamicComponents
 
     def test_simple_dynamic_expressions(self):
         for dyn_obj in self.dynamic_objects.values():
@@ -278,6 +290,9 @@ class TestDynamics(unittest.TestCase):
 class TestUninitializedDynamicCompartment(unittest.TestCase):
     """ Test DynamicCompartment without a species population
     """
+    # Almost all machines map Python floats to IEEE-754 64-bit “double precision”, which provides 15 to 17 decimal digits
+    # places for comparing values that should be equal to within the precision of floating point representation
+    IEEE_64_BIT_FLOATING_POINT_PLACES = 14
 
     def setUp(self):
 
@@ -365,12 +380,12 @@ class TestInitializedDynamicCompartment(unittest.TestCase):
     def test_initialize_mass_and_density(self):
         self.dynamic_compartment.initialize_mass_and_density(self.local_species_pop)
         estimated_accounted_mass = self.num_species * self.all_pops * self.all_m_weights / Avogadro
-        # IEEE 64-bit floating point has 53 bits in the mantissa, providing 15 to 17 decimal digits
         self.assertAlmostEqual(self.dynamic_compartment.init_accounted_mass, estimated_accounted_mass,
-            places=14)
+            places=IEEE_64_BIT_FLOATING_POINT_PLACES)
         self.assertTrue(0 < self.dynamic_compartment.init_mass)
         self.assertAlmostEqual(self.dynamic_compartment.accounted_fraction,
-            self.dynamic_compartment.init_accounted_mass / self.dynamic_compartment.init_mass, places=14)
+            self.dynamic_compartment.init_accounted_mass / self.dynamic_compartment.init_mass,
+            places=IEEE_64_BIT_FLOATING_POINT_PLACES)
 
         empty_local_species_pop = LocalSpeciesPopulation('test', {}, {},
             random_state=RandomStateManager.instance())
@@ -398,9 +413,9 @@ class TestInitializedDynamicCompartment(unittest.TestCase):
     def test_init_volume_and_eval(self):
         self.dynamic_compartment.initialize_mass_and_density(self.local_species_pop)
         self.assertAlmostEqual(self.dynamic_compartment.volume(), self.dynamic_compartment.init_volume,
-            places=14)
-        self.assertAlmostEqual(self.dynamic_compartment.eval(), self.dynamic_compartment.init_volume,
-            places=14)
+            places=IEEE_64_BIT_FLOATING_POINT_PLACES)
+        self.assertAlmostEqual(self.dynamic_compartment.eval(), self.dynamic_compartment.init_mass,
+            places=IEEE_64_BIT_FLOATING_POINT_PLACES)
 
     def test_str(self):
         dynamic_compartment = DynamicCompartment(None, self.random_state, self.compartment)
