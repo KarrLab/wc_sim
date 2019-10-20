@@ -1,12 +1,14 @@
 """ Tests of constant and dynamically changing mass
 
 :Author: Jonathan Karr <karr@mssm.edu>
+:Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2019-01-17
 :Copyright: 2019, Karr Lab
 :License: MIT
 """
 
 from matplotlib import pyplot
+from scipy.constants import Avogadro as NA
 from test.support import EnvironmentVarGuard
 from wc_sim.run_results import RunResults
 from wc_sim.simulation import Simulation
@@ -15,7 +17,6 @@ from wc_utils.util.units import unit_registry
 import numpy
 import numpy.testing
 import os
-import scipy.constants
 import shutil
 import tempfile
 import unittest
@@ -26,56 +27,89 @@ import wc_sim
 
 
 class TwoSpeciesTestCase(unittest.TestCase):
-    """
-    * (One compartment)
-    * (Two species types)
-    * Two species
-
-        * One whose copy number changes dynamically
-        * One whose copy number doesn't change (isn't involved in any reactions)
-
-    * (One submodel)
-    * Two reactions which produce and consume the dynamically changing species
-    """
 
     def setUp(self):
         self.tempdir = tempfile.mkdtemp()
+        self.model = self.gen_model()
+        self.st_constant = self.model.species_types.get_one(id='st_constant')
+        self.st_dynamic = self.model.species_types.get_one(id='st_dynamic')
+        self.comp = self.model.compartments.get_one(id='comp')
+        self.volume = self.model.functions.get_one(id='volume')
+        self.density = self.model.parameters.get_one(id='density')
+        self.spec_constant = self.model.species.get_one(species_type=self.st_constant, compartment=self.comp)
+        self.spec_dynamic = self.model.species.get_one(species_type=self.st_dynamic, compartment=self.comp)
+        # species populations, because the units for these concentrations are molecules
+        self.spec_constant_pop = self.spec_constant.distribution_init_concentration
+        self.spec_dynamic_pop = self.spec_dynamic.distribution_init_concentration
+        self.k_syn_dynamic = self.model.parameters.get_one(id='k_syn_dynamic')
+        self.k_deg_dynamic = self.model.parameters.get_one(id='k_deg_dynamic')
 
     def tearDown(self):
         shutil.rmtree(self.tempdir)
 
     def gen_model(self):
-        # tests constant mass (and constant volume)
-        model = model = wc_lang.Model(id='model', version='0.0.1', wc_lang_version='0.0.1')
+        """ Generate this model:
 
-        # compartments and species
-        st_constant = model.species_types.create(id='st_constant', structure=wc_lang.ChemicalStructure(charge=0.,
-            molecular_weight=1.))
-        st_dynamic = model.species_types.create(id='st_dynamic', structure=wc_lang.ChemicalStructure(charge=0.,
-            molecular_weight=0.))
+        * One compartment, comp
+        * Two submodels, submodel_synthesis and submodel_degradation
+        * Two species types
+        * Two species
+
+            * One whose copy number increases at a constant rate, st_constant[comp]
+            * One whose copy number changes dynamically, st_dynamic[comp]
+
+        * Four reactions which produce and consume the dynamically changing species
+
+            * In submodel_synthesis
+
+                * rxn_synthesis_constant: -> st_constant[comp]; k_syn_constant
+                * rxn_synthesis_dynamic: -> st_dynamic[comp]; k_syn_dynamic
+
+            * In submodel_degradation
+
+                * rxn_degradation_constant: st_constant[comp] -> ; k_deg_constant * st_constant[comp]
+                * rxn_degradation_dynamic: st_dynamic[comp] -> ; k_deg_dynamic * st_dynamic[comp]
+
+        * Default values
+
+            * k_syn_constant = 0
+            * k_deg_constant = 0
+        """
+        model = wc_lang.Model(id='model', version='0.0.1', wc_lang_version='0.0.1')
+
+        # species, compartment and initial concentrations
+        st_constant = model.species_types.create(id='st_constant',
+                                                 structure=wc_lang.ChemicalStructure(charge=0., molecular_weight=1.))
+        st_dynamic = model.species_types.create(id='st_dynamic',
+                                                structure=wc_lang.ChemicalStructure(charge=0., molecular_weight=0.))
         comp = model.compartments.create(id='comp', init_volume=wc_lang.InitVolume(std=0.))
         spec_constant = model.species.create(species_type=st_constant, compartment=comp)
         spec_dynamic = model.species.create(species_type=st_dynamic, compartment=comp)
         spec_constant.id = spec_constant.gen_id()
         spec_dynamic.id = spec_dynamic.gen_id()
         conc_constant = model.distribution_init_concentrations.create(
-            species=spec_constant, std=0., units=unit_registry.parse_units('molecule'))
+                                                                      species=spec_constant, std=0.,
+                                                                      units=unit_registry.parse_units('molecule'))
         conc_dynamic = model.distribution_init_concentrations.create(
-            species=spec_dynamic, std=0., units=unit_registry.parse_units('molecule'))
+                                                                     species=spec_dynamic, std=0.,
+                                                                     units=unit_registry.parse_units('molecule'))
         conc_constant.id = conc_constant.gen_id()
         conc_dynamic.id = conc_dynamic.gen_id()
 
+        # density and volume
         density = comp.init_density = model.parameters.create(id='density', value=1.,
                                                               units=unit_registry.parse_units('g l^-1'))
         volume = model.functions.create(id='volume', units=unit_registry.parse_units('l'))
         volume.expression, error = wc_lang.FunctionExpression.deserialize(f'{comp.id} / {density.id}', {
-            wc_lang.Compartment: {comp.id: comp},
-            wc_lang.Parameter: {density.id: density}})
+                                                                          wc_lang.Compartment: {comp.id: comp},
+                                                                          wc_lang.Parameter: {density.id: density}})
         assert error is None, str(error)
 
         # submodels
-        submdl_syn = model.submodels.create(id='submodel_synthesis', framework=onto['WC:stochastic_simulation_algorithm'])
-        submdl_deg = model.submodels.create(id='submodel_degradation', framework=onto['WC:stochastic_simulation_algorithm'])
+        submdl_syn = model.submodels.create(id='submodel_synthesis',
+                                            framework=onto['WC:stochastic_simulation_algorithm'])
+        submdl_deg = model.submodels.create(id='submodel_degradation',
+                                            framework=onto['WC:stochastic_simulation_algorithm'])
 
         # reactions
         rxn_syn_constant = model.reactions.create(id='rxn_synthesis_constant', submodel=submdl_syn)
@@ -94,8 +128,10 @@ class TwoSpeciesTestCase(unittest.TestCase):
         rxn_deg_constant.participants.create(species=spec_constant, coefficient=-1)
         rl_deg_constant = model.rate_laws.create(reaction=rxn_deg_constant)
         rl_deg_constant.id = rl_deg_constant.gen_id()
-        k_deg_constant = model.parameters.create(id='k_deg_constant', value=0., units=unit_registry.parse_units('s^-1 molecule^-1'))
-        rl_deg_constant.expression, error = wc_lang.RateLawExpression.deserialize(f'{k_deg_constant.id} * {spec_constant.id}', {
+        k_deg_constant = model.parameters.create(id='k_deg_constant', value=0.,
+                                                 units=unit_registry.parse_units('s^-1 molecule^-1'))
+        rl_deg_constant.expression, error = \
+            wc_lang.RateLawExpression.deserialize(f'{k_deg_constant.id} * {spec_constant.id}', {
             wc_lang.Parameter: {
                 k_deg_constant.id: k_deg_constant,
             },
@@ -121,31 +157,26 @@ class TwoSpeciesTestCase(unittest.TestCase):
         rxn_deg_dynamic.participants.create(species=spec_dynamic, coefficient=-1)
         rl_deg_dynamic = model.rate_laws.create(reaction=rxn_deg_dynamic)
         rl_deg_dynamic.id = rl_deg_dynamic.gen_id()
-        k_deg_dynamic = model.parameters.create(id='k_deg_dynamic', units=unit_registry.parse_units('s^-1 molecule^-1'))
-        rl_deg_dynamic.expression, error = wc_lang.RateLawExpression.deserialize(f'{k_deg_dynamic.id} * {spec_dynamic.id}', {
-            wc_lang.Parameter: {
-                k_deg_dynamic.id: k_deg_dynamic,
-            },
-            wc_lang.Species: {
-                spec_dynamic.id: spec_dynamic,
-            }
-        })
+        k_deg_dynamic = model.parameters.create(id='k_deg_dynamic',
+                                                units=unit_registry.parse_units('s^-1 molecule^-1'))
+        rl_deg_dynamic.expression, error = \
+            wc_lang.RateLawExpression.deserialize(f'{k_deg_dynamic.id} * {spec_dynamic.id}', {
+                wc_lang.Parameter: {
+                    k_deg_dynamic.id: k_deg_dynamic,
+                },
+                wc_lang.Species: {
+                    spec_dynamic.id: spec_dynamic,
+                }
+            })
         assert error is None, str(error)
 
-        # other parameters
-        Avogadro = model.parameters.create(id='Avogadro', value=scipy.constants.Avogadro, units=unit_registry.parse_units('molecule'))
+        # other parameter
+        model.parameters.create(id='Avogadro', value=NA,
+                                units=unit_registry.parse_units('molecule mol^-1'))
 
-        # return model
         return model
 
     def simulate(self, model, end_time=100.):
-        st_constant = model.species_types.get_one(id='st_constant')
-        st_dynamic = model.species_types.get_one(id='st_dynamic')
-        comp = model.compartments.get_one(id='comp')
-        volume = model.functions.get_one(id='volume')
-        spec_constant = model.species.get_one(species_type=st_constant, compartment=comp)
-        spec_dynamic = model.species.get_one(species_type=st_dynamic, compartment=comp)
-
         # simulate
         env = EnvironmentVarGuard()
         env.set('CONFIG__DOT__wc_lang__DOT__validation__DOT__validate_element_charge_balance', '0')
@@ -160,215 +191,215 @@ class TwoSpeciesTestCase(unittest.TestCase):
         results = RunResults(results_dirname)
 
         agg_states = results.get('aggregate_states')
-        comp_mass = agg_states[(comp.id, 'mass')]
-        comp_vol = results.get('functions')[volume.id]
+        comp_mass = agg_states[(self.comp.id, 'mass')]
+        comp_vol = results.get('functions')[self.volume.id]
 
         pops = results.get('populations')
         time = pops.index
-        pop_constant = pops[spec_constant.id]
-        pop_dynamic = pops[spec_dynamic.id]
+        pop_constant = pops[self.spec_constant.id]
+        pop_dynamic = pops[self.spec_dynamic.id]
 
         return (time, pop_constant, pop_dynamic, comp_mass, comp_vol)
 
     def test_exponentially_increase_to_steady_state_count_with_constant_mass(self):
-        model = self.gen_model()
-        st_constant = model.species_types.get_one(id='st_constant')
-        st_dynamic = model.species_types.get_one(id='st_dynamic')
-        comp = model.compartments.get_one(id='comp')
-        density = model.parameters.get_one(id='density')
-        spec_constant = model.species.get_one(species_type=st_constant, compartment=comp)
-        spec_dynamic = model.species.get_one(species_type=st_dynamic, compartment=comp)
-
         # set quantitative values
-        comp.init_volume.mean = 100e-15
-        st_constant.structure.molecular_weight = 1.
-        st_dynamic.structure.molecular_weight = 0.
-        spec_constant.distribution_init_concentration.mean = 1e6
-        spec_dynamic.distribution_init_concentration.mean = 10.
-        init_mass = (spec_constant.distribution_init_concentration.mean * st_constant.structure.molecular_weight +
-                     spec_dynamic.distribution_init_concentration.mean * st_dynamic.structure.molecular_weight
-                     ) / scipy.constants.Avogadro
-        init_density = density.value = init_mass / comp.init_volume.mean
-        model.parameters.get_one(id='k_syn_dynamic').value = 1.
-        model.parameters.get_one(id='k_deg_dynamic').value = 2e-2
+        self.comp.init_volume.mean = 100e-15
+        self.st_constant.structure.molecular_weight = 1.
+        self.st_dynamic.structure.molecular_weight = 0.
+        self.spec_constant_pop.mean = 1e6
+        self.spec_dynamic_pop.mean = 10.
+        init_mass = (self.spec_constant_pop.mean * self.st_constant.structure.molecular_weight +
+                     self.spec_dynamic_pop.mean * self.st_dynamic.structure.molecular_weight
+                     ) / NA
+        init_density = self.density.value = init_mass / self.comp.init_volume.mean
+        self.k_syn_dynamic.value = 1.
+        self.k_deg_dynamic.value = 2e-2
 
         # simulate
-        time, pop_constant, pop_dynamic, comp_mass, comp_vol = self.simulate(model, end_time=200.)
+        time, pop_constant, pop_dynamic, comp_mass, comp_vol = self.simulate(self.model, end_time=200.)
 
         # verify results
-        numpy.testing.assert_equal(pop_constant, numpy.full((201,), spec_constant.distribution_init_concentration.mean))
-        numpy.testing.assert_equal(comp_mass, numpy.full((201,), spec_constant.distribution_init_concentration.mean
-                                                         * st_constant.structure.molecular_weight
-                                                         / scipy.constants.Avogadro))
-        self.assertEqual(density.value, init_density)
+        numpy.testing.assert_equal(pop_constant, numpy.full((201,),
+                                   self.spec_constant_pop.mean))
+        numpy.testing.assert_equal(comp_mass,
+                                   numpy.full((201,),
+                                              self.spec_constant_pop.mean *
+                                              self.st_constant.structure.molecular_weight / NA))
+        self.assertEqual(self.density.value, init_density)
 
-        spec_dynamic_ss = model.parameters.get_one(id='k_syn_dynamic').value / model.parameters.get_one(id='k_deg_dynamic').value
+        spec_dynamic_ss = self.k_syn_dynamic.value / self.k_deg_dynamic.value
         std_spec_dynamic_ss = numpy.sqrt(spec_dynamic_ss)
         self.assertGreater(numpy.mean(pop_dynamic[101:]), spec_dynamic_ss - 3 * std_spec_dynamic_ss)
         self.assertLess(numpy.mean(pop_dynamic[101:]), spec_dynamic_ss + 3 * std_spec_dynamic_ss)
 
     def test_exponentially_increase_to_steady_state_count_and_mass(self):
-        model = self.gen_model()
-        st_constant = model.species_types.get_one(id='st_constant')
-        st_dynamic = model.species_types.get_one(id='st_dynamic')
-        comp = model.compartments.get_one(id='comp')
-        density = model.parameters.get_one(id='density')
-        spec_constant = model.species.get_one(species_type=st_constant, compartment=comp)
-        spec_dynamic = model.species.get_one(species_type=st_dynamic, compartment=comp)
-
         # set quantitative values
-        comp.init_volume.mean = 100e-15
-        st_constant.structure.molecular_weight = 0.
-        st_dynamic.structure.molecular_weight = 1.
-        spec_constant.distribution_init_concentration.mean = 0.
-        spec_dynamic.distribution_init_concentration.mean = 10.
-        init_mass = (spec_constant.distribution_init_concentration.mean * st_constant.structure.molecular_weight +
-                     spec_dynamic.distribution_init_concentration.mean * st_dynamic.structure.molecular_weight
-                     ) / scipy.constants.Avogadro
-        init_density = density.value = init_mass / comp.init_volume.mean
-        model.parameters.get_one(id='k_syn_dynamic').value = 5.
-        model.parameters.get_one(id='k_deg_dynamic').value = 5e-2
+        self.comp.init_volume.mean = 100e-15
+        self.st_constant.structure.molecular_weight = 0.
+        self.st_dynamic.structure.molecular_weight = 1.
+        self.spec_constant_pop.mean = 0.
+        self.spec_dynamic_pop.mean = 10.
+        init_mass = (self.spec_constant_pop.mean * self.st_constant.structure.molecular_weight +
+                     self.spec_dynamic_pop.mean * self.st_dynamic.structure.molecular_weight
+                     ) / NA
+        init_density = self.density.value = init_mass / self.comp.init_volume.mean
+        self.k_syn_dynamic.value = 5.
+        self.k_deg_dynamic.value = 5e-2
 
         # simulate
-        time, pop_constant, pop_dynamic, comp_mass, comp_vol = self.simulate(model, end_time=200.)
+        time, pop_constant, pop_dynamic, comp_mass, comp_vol = self.simulate(self.model, end_time=200.)
 
         # verify results
-        numpy.testing.assert_equal(pop_constant, numpy.full((201,), spec_constant.distribution_init_concentration.mean))
+        numpy.testing.assert_equal(pop_constant, numpy.full((201,),
+                                   self.spec_constant_pop.mean))
         numpy.testing.assert_equal(comp_mass[0], init_mass)
-        self.assertEqual(density.value, init_density)
+        self.assertEqual(self.density.value, init_density)
 
-        spec_dynamic_ss = model.parameters.get_one(id='k_syn_dynamic').value / model.parameters.get_one(id='k_deg_dynamic').value
+        spec_dynamic_ss = self.k_syn_dynamic.value / self.k_deg_dynamic.value
         std_spec_dynamic_ss = numpy.sqrt(spec_dynamic_ss)
         self.assertGreater(numpy.mean(pop_dynamic[101:]), spec_dynamic_ss - 3 * std_spec_dynamic_ss)
         self.assertLess(numpy.mean(pop_dynamic[101:]), spec_dynamic_ss + 3 * std_spec_dynamic_ss)
 
-        mass_ss = spec_dynamic_ss * st_dynamic.structure.molecular_weight / scipy.constants.Avogadro
-        std_mass_ss = std_spec_dynamic_ss * st_dynamic.structure.molecular_weight / scipy.constants.Avogadro
+        mass_ss = spec_dynamic_ss * self.st_dynamic.structure.molecular_weight / NA
+        std_mass_ss = std_spec_dynamic_ss * self.st_dynamic.structure.molecular_weight / NA
         self.assertGreater(numpy.mean(comp_mass[101:]), mass_ss - 3 * std_mass_ss)
         self.assertLess(numpy.mean(comp_mass[101:]), mass_ss + 3 * std_mass_ss)
 
     def test_exponentially_descend_to_steady_state_count_and_mass(self):
-        model = self.gen_model()
-        st_constant = model.species_types.get_one(id='st_constant')
-        st_dynamic = model.species_types.get_one(id='st_dynamic')
-        comp = model.compartments.get_one(id='comp')
-        density = model.parameters.get_one(id='density')
-        spec_constant = model.species.get_one(species_type=st_constant, compartment=comp)
-        spec_dynamic = model.species.get_one(species_type=st_dynamic, compartment=comp)
+        """
+        Reactions:
 
+        * In submodel_synthesis:
+
+            * rxn_synthesis_constant: -> st_constant[comp]; 0
+            * rxn_synthesis_dynamic: -> st_dynamic[comp]; 1
+
+        * In submodel_degradation:
+
+            * rxn_degradation_constant: st_constant[comp] -> ; 0
+            * rxn_degradation_dynamic: st_dynamic[comp] -> ; 0.05 * st_dynamic[comp]
+        """
         # set quantitative values
-        comp.init_volume.mean = 100e-15
-        st_constant.structure.molecular_weight = 0.
-        st_dynamic.structure.molecular_weight = 1.
-        spec_constant.distribution_init_concentration.mean = 0.
-        spec_dynamic.distribution_init_concentration.mean = 100.
-        init_mass = (spec_constant.distribution_init_concentration.mean * st_constant.structure.molecular_weight +
-                     spec_dynamic.distribution_init_concentration.mean * st_dynamic.structure.molecular_weight
-                     ) / scipy.constants.Avogadro
-        init_density = density.value = init_mass / comp.init_volume.mean
-        model.parameters.get_one(id='k_syn_dynamic').value = 1.
-        model.parameters.get_one(id='k_deg_dynamic').value = 5e-2
+        self.comp.init_volume.mean = 100e-15
+        self.st_constant.structure.molecular_weight = 0.
+        self.st_dynamic.structure.molecular_weight = 1.
+        self.spec_constant_pop.mean = 0.
+        self.spec_dynamic_pop.mean = 100.
+        init_mass = (self.spec_constant_pop.mean * self.st_constant.structure.molecular_weight +
+                     self.spec_dynamic_pop.mean * self.st_dynamic.structure.molecular_weight) / NA
+        init_density = self.density.value = init_mass / self.comp.init_volume.mean
+        self.k_syn_dynamic.value = 1.
+        self.k_deg_dynamic.value = 5e-2
 
         # simulate
-        time, pop_constant, pop_dynamic, comp_mass, comp_vol = self.simulate(model, end_time=200.)
+        time, pop_constant, pop_dynamic, comp_mass, comp_vol = self.simulate(self.model, end_time=200.)
 
         # verify results
-        numpy.testing.assert_equal(pop_constant, numpy.full((201,), spec_constant.distribution_init_concentration.mean))
+        numpy.testing.assert_equal(pop_constant,
+                                   numpy.full((201,), self.spec_constant_pop.mean))
         numpy.testing.assert_equal(comp_mass[0], init_mass)
-        self.assertEqual(density.value, init_density)
+        self.assertEqual(self.density.value, init_density)
 
-        spec_dynamic_ss = model.parameters.get_one(id='k_syn_dynamic').value / model.parameters.get_one(id='k_deg_dynamic').value
+        spec_dynamic_ss = self.k_syn_dynamic.value / self.k_deg_dynamic.value
         std_spec_dynamic_ss = numpy.sqrt(spec_dynamic_ss)
         self.assertGreater(numpy.mean(pop_dynamic[101:]), spec_dynamic_ss - 3 * std_spec_dynamic_ss)
         self.assertLess(numpy.mean(pop_dynamic[101:]), spec_dynamic_ss + 3 * std_spec_dynamic_ss)
 
-        mass_ss = spec_dynamic_ss * st_dynamic.structure.molecular_weight / scipy.constants.Avogadro
-        std_mass_ss = std_spec_dynamic_ss * st_dynamic.structure.molecular_weight / scipy.constants.Avogadro
+        mass_ss = spec_dynamic_ss * self.st_dynamic.structure.molecular_weight / NA
+        std_mass_ss = std_spec_dynamic_ss * self.st_dynamic.structure.molecular_weight / NA
         self.assertGreater(numpy.mean(comp_mass[101:]), mass_ss - 3 * std_mass_ss)
         self.assertLess(numpy.mean(comp_mass[101:]), mass_ss + 3 * std_mass_ss)
 
-    @unittest.skip("needs to be debugged")
     def test_exponentially_increase_to_steady_state_mass_and_descend_to_concentration(self):
-        model = self.gen_model()
-        st_constant = model.species_types.get_one(id='st_constant')
-        st_dynamic = model.species_types.get_one(id='st_dynamic')
-        comp = model.compartments.get_one(id='comp')
-        volume = model.functions.get_one(id='volume')
-        density = model.parameters.get_one(id='density')
-        spec_constant = model.species.get_one(species_type=st_constant, compartment=comp)
-        spec_dynamic = model.species.get_one(species_type=st_dynamic, compartment=comp)
+        """
+        Reactions, including new rate law below:
 
+        * In submodel_synthesis:
+
+            * rxn_synthesis_constant: -> st_constant[comp]; k_syn_constant
+            * rxn_synthesis_dynamic: -> st_dynamic[comp]; k_syn_dynamic * volume * NA
+
+        * In submodel_degradation:
+
+            * rxn_degradation_constant: st_constant[comp] -> ; k_deg_constant * st_constant[comp]
+            * rxn_degradation_dynamic: st_dynamic[comp] -> ; k_deg_dynamic * st_dynamic[comp]
+        """
         # change rate law
-        rxn_syn_dynamic = model.reactions.get_one(id='rxn_synthesis_dynamic')
+        rxn_syn_dynamic = self.model.reactions.get_one(id='rxn_synthesis_dynamic')
         rl_syn_dynamic = rxn_syn_dynamic.rate_laws[0]
-        k_syn_dynamic = model.parameters.get_one(id='k_syn_dynamic')
-        k_syn_dynamic.units = unit_registry.parse_units('s^-1 l^-1 molecule^-1')
-        Avogadro = model.parameters.get_one(id='Avogadro')
+        self.k_syn_dynamic.units = unit_registry.parse_units('mol s^-1 l^-1 molecule^-1')
+        Avogadro = self.model.parameters.get_one(id='Avogadro')
         rl_syn_dynamic.expression.parameters = []
-        rl_syn_dynamic.expression, error = wc_lang.RateLawExpression.deserialize(f'{k_syn_dynamic.id} * {volume.id} * {Avogadro.id}', {
-            wc_lang.Parameter: {
-                k_syn_dynamic.id: k_syn_dynamic,
-                Avogadro.id: Avogadro,
-            },
-            wc_lang.Function: {
-                volume.id: volume,
-            },
-        })
+        rl_syn_dynamic.expression, error = \
+            wc_lang.RateLawExpression.deserialize(f'{self.k_syn_dynamic.id} * {self.volume.id} * {Avogadro.id}', {
+                wc_lang.Parameter: {
+                    self.k_syn_dynamic.id: self.k_syn_dynamic,
+                    Avogadro.id: Avogadro,
+                },
+                wc_lang.Function: {
+                    self.volume.id: self.volume,
+                },
+            })
         assert error is None, str(error)
 
         # set quantitative values
-        comp.init_volume.mean = 100e-15
-        st_constant.structure.molecular_weight = 1.
-        st_dynamic.structure.molecular_weight = 0.
-        spec_constant.distribution_init_concentration.mean = 10.
-        spec_dynamic.distribution_init_concentration.mean = 100.
-        init_mass = (spec_constant.distribution_init_concentration.mean * st_constant.structure.molecular_weight +
-                     spec_dynamic.distribution_init_concentration.mean * st_dynamic.structure.molecular_weight
-                     ) / scipy.constants.Avogadro
-        init_density = density.value = init_mass / comp.init_volume.mean
-        model.parameters.get_one(id='k_syn_constant').value = 1.
-        model.parameters.get_one(id='k_deg_constant').value = 2e-2
+        self.comp.init_volume.mean = 100e-15
+        self.st_constant.structure.molecular_weight = 1.
+        self.st_dynamic.structure.molecular_weight = 0.
+        self.spec_constant_pop.mean = 10.
+        self.spec_dynamic_pop.mean = 100.
+        init_mass = (self.spec_constant_pop.mean * self.st_constant.structure.molecular_weight +
+                     self.spec_dynamic_pop.mean * self.st_dynamic.structure.molecular_weight) / NA
+        init_density = self.density.value = init_mass / self.comp.init_volume.mean
+        k_syn_constant = self.model.parameters.get_one(id='k_syn_constant')
+        k_deg_constant = self.model.parameters.get_one(id='k_deg_constant')
+        k_syn_constant.value = 1.
+        k_deg_constant.value = 2e-2
 
-        spec_constant_ss = model.parameters.get_one(id='k_syn_constant').value / model.parameters.get_one(id='k_deg_constant').value
-        std_spec_constant_ss = numpy.sqrt(spec_constant_ss)
-        mass_ss = spec_constant_ss * st_constant.structure.molecular_weight / scipy.constants.Avogadro
-        std_mass_ss = spec_constant_ss * st_constant.structure.molecular_weight / scipy.constants.Avogadro
-        vol_ss = mass_ss / density.value
-        std_vol_ss = std_mass_ss / density.value
+        # analyze steady-state
+        # steady-state (ss) mass:
+        # in ss, spec_constant concentration (molecules) is given by:
+        # k_syn_constant.value / k_deg_constant.value = 50
+        spec_constant_ss_pop = k_syn_constant.value / k_deg_constant.value
+        # mass of spec_constant is given by:
+        # 50 * self.st_constant.structure.molecular_weight / NA
+        std_spec_constant_ss_pop = numpy.sqrt(spec_constant_ss_pop)
+        mass_spec_constant_ss = spec_constant_ss_pop * self.st_constant.structure.molecular_weight / NA
+        std_mass_spec_constant_ss = std_spec_constant_ss_pop * self.st_constant.structure.molecular_weight / NA
+        # these are equal because st_dynamic.structure.molecular_weight = 0:
+        mass_ss = mass_spec_constant_ss
+        std_mass_ss = std_mass_spec_constant_ss
 
-        model.parameters.get_one(id='k_syn_dynamic').value = 1. / scipy.constants.Avogadro / vol_ss
-        model.parameters.get_one(id='k_deg_dynamic').value = 5e-2
+        vol_ss = mass_ss / self.density.value
+        std_vol_ss = std_mass_ss / self.density.value
 
-        spec_dynamic_ss = model.parameters.get_one(id='k_syn_dynamic').value / model.parameters.get_one(id='k_deg_dynamic').value \
-            * vol_ss * scipy.constants.Avogadro
-        std_spec_dynamic_ss = numpy.sqrt(spec_dynamic_ss)
-        spec_dynamic_ss_conc = spec_dynamic_ss / vol_ss / scipy.constants.Avogadro
-        std_spec_dynamic_ss_conc = std_spec_dynamic_ss / vol_ss / scipy.constants.Avogadro
+        self.k_syn_dynamic.value = 1. / (NA * vol_ss)
+        self.k_deg_dynamic.value = 5e-2
+        k_syn_dynamic = self.k_syn_dynamic
+        k_deg_dynamic = self.k_deg_dynamic
+
+        # in ss, spec_dynamic population (molecule) is:
+        spec_dynamic_ss_pop = self.k_syn_dynamic.value * vol_ss * NA / self.k_deg_dynamic.value
+        std_spec_dynamic_ss_pop = numpy.sqrt(spec_dynamic_ss_pop)
+
+        init_vol = self.comp.init_volume.mean
+
+        spec_dynamic_ss_conc = spec_dynamic_ss_pop / (vol_ss * NA)
+        std_spec_dynamic_ss_conc = std_spec_dynamic_ss_pop / (vol_ss * NA)
 
         # simulate
         end_time = 1000.
-        time, pop_constant, pop_dynamic, comp_mass, comp_vol = self.simulate(model, end_time=end_time)
-        conc_dynamic = pop_dynamic / comp_vol / scipy.constants.Avogadro
+        time, pop_constant, pop_dynamic, comp_mass, comp_vol = self.simulate(self.model, end_time=end_time)
+        conc_dynamic = pop_dynamic / comp_vol / NA
 
         # verify results
         numpy.testing.assert_equal(comp_mass[0], init_mass)
-        # silly
-        # todo: test final density = initial
-        self.assertEqual(density.value, init_density)
+        self.assertEqual(self.density.value, init_density)
+        # confirm that density remains constant
+        comp_density = comp_mass / comp_vol
+        numpy.testing.assert_allclose(comp_density.values, [self.density.value]*int(end_time + 1))
 
-        self.assertGreater(numpy.mean(comp_mass[101:]), mass_ss - 3 * std_mass_ss)
-        self.assertLess(numpy.mean(comp_mass[101:]), mass_ss + 3 * std_mass_ss)
-
-        self.assertGreater(numpy.mean(comp_vol[101:]), vol_ss - 3 * std_vol_ss)
-        self.assertLess(numpy.mean(comp_vol[101:]), vol_ss + 3 * std_vol_ss)
-
-        self.assertGreater(numpy.mean(conc_dynamic[101:]), spec_dynamic_ss_conc - 3 * std_spec_dynamic_ss_conc)
-        self.assertLess(numpy.mean(conc_dynamic[101:]), spec_dynamic_ss_conc + 3 * std_spec_dynamic_ss_conc)
-
-        self.assertGreater(numpy.mean(pop_dynamic[151:]),  spec_dynamic_ss - 3 * std_spec_dynamic_ss)
-        self.assertLess(numpy.mean(pop_dynamic[151:]), spec_dynamic_ss + 3 * std_spec_dynamic_ss)
-
-        fig, axes = pyplot.subplots(nrows=2, ncols=2)
+        fig, axes = pyplot.subplots(nrows=2, ncols=3)
 
         axes[0][0].plot(time, comp_mass)
         axes[0][0].set_xlabel('Time (s)')
@@ -378,13 +409,21 @@ class TwoSpeciesTestCase(unittest.TestCase):
         axes[0][1].set_xlabel('Time (s)')
         axes[0][1].set_ylabel('Volume (l)')
 
+        axes[0][2].plot(time, comp_mass/comp_vol)
+        axes[0][2].set_xlabel('Time (s)')
+        axes[0][2].set_ylabel('Density (g/l)')
+
         axes[1][0].plot(time, pop_dynamic)
         axes[1][0].set_xlabel('Time (s)')
         axes[1][0].set_ylabel('Dynamic copy number')
 
-        axes[1][1].plot(time, pop_dynamic)
+        axes[1][1].plot(time, comp_vol/self.comp.init_volume.mean)
         axes[1][1].set_xlabel('Time (s)')
-        axes[1][1].set_ylabel('Dynamic concentration')
+        axes[1][1].set_ylabel('Fold change volume')
+
+        axes[1][2].plot(time, comp_mass/init_mass)
+        axes[1][2].set_xlabel('Time (s)')
+        axes[1][2].set_ylabel('Fold change mass')
 
         dirname = os.path.join(os.path.dirname(__file__), 'results')
         if not os.path.isdir(dirname):
@@ -394,6 +433,24 @@ class TwoSpeciesTestCase(unittest.TestCase):
                                 '.py', 'exponentially_increase_to_steady_state_mass_and_concentration.pdf'))
         fig.savefig(filename)
         pyplot.close(fig)
+
+        mid_point = (end_time / 2) + 1
+        self.assertGreater(numpy.mean(comp_mass[mid_point:]), mass_ss - 3 * std_mass_ss)
+        self.assertLess(numpy.mean(comp_mass[mid_point:]), mass_ss + 3 * std_mass_ss)
+
+        self.assertGreater(numpy.mean(comp_vol[mid_point:]), vol_ss - 3 * std_vol_ss)
+        self.assertLess(numpy.mean(comp_vol[mid_point:]), vol_ss + 3 * std_vol_ss)
+
+        self.assertGreater(numpy.mean(conc_dynamic[mid_point:]),
+                           spec_dynamic_ss_conc - 3 * std_spec_dynamic_ss_conc)
+        self.assertLess(numpy.mean(conc_dynamic[mid_point:]),
+                        spec_dynamic_ss_conc + 3 * std_spec_dynamic_ss_conc)
+
+        third_quarter = int((3 * end_time / 4) + 1)
+        self.assertGreater(numpy.mean(pop_dynamic[third_quarter:]),
+                           spec_dynamic_ss_pop - 3 * std_spec_dynamic_ss_pop)
+        self.assertLess(numpy.mean(pop_dynamic[third_quarter:]),
+                        spec_dynamic_ss_pop + 3 * std_spec_dynamic_ss_pop)
 
 
 class MetabolismAndGeneExpressionTestCase(unittest.TestCase):
@@ -473,14 +530,14 @@ class MetabolismAndGeneExpressionTestCase(unittest.TestCase):
 
         # metabolites
         axes[0][1].plot(time / 3600, 1e3 * numpy.stack((
-                        (pops['ala[e]'] / volume_e / scipy.constants.Avogadro).values,
-                        (pops['amp[e]'] / volume_e / scipy.constants.Avogadro).values)).T)
+                        (pops['ala[e]'] / volume_e / NA).values,
+                        (pops['amp[e]'] / volume_e / NA).values)).T)
         axes[0][1].set_title('Extracellular metabolites')
         axes[0][1].set_ylabel('mM')
 
         axes[1][1].plot(time / 3600, 1e3 * numpy.stack((
-                        (pops['ala[c]'] / volume_c / scipy.constants.Avogadro).values,
-                        (pops['amp[c]'] / volume_c / scipy.constants.Avogadro).values)).T)
+                        (pops['ala[c]'] / volume_c / NA).values,
+                        (pops['amp[c]'] / volume_c / NA).values)).T)
         axes[1][1].set_title('Cytosol metabolites')
         axes[1][1].set_ylabel('mM')
 
