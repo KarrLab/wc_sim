@@ -7,10 +7,11 @@
 :License: MIT
 """
 
+from collections import namedtuple
+import inspect
 import math
 import numpy
 import warnings
-from collections import namedtuple
 
 from obj_tables import utils
 from obj_tables.expression import ObjTablesTokenCodes
@@ -22,7 +23,6 @@ from wc_utils.util.enumerate import CaseInsensitiveEnum
 from wc_utils.util.ontology import are_terms_equivalent
 import obj_tables
 import wc_lang
-
 
 '''
 # old TODOs:
@@ -52,7 +52,6 @@ Expression eval design:
             can process operators, literals, and Python functions
             estimate how much this would improve performance
 '''
-
 
 # mapping from wc_lang Models to DynamicComponents
 WC_LANG_MODEL_TO_DYNAMIC_MODEL = {}
@@ -139,9 +138,8 @@ class DynamicComponent(object):
 
         raise MultialgorithmError("model type '{}' has wrong type".format(model_type))
 
-    # todo: either use or discard this method
     @staticmethod
-    def get_dynamic_component(model_type, id): # pragma: no cover # not used
+    def get_dynamic_component(model_type, id):
         """ Get a simulation's dynamic component
 
         Args:
@@ -154,13 +152,15 @@ class DynamicComponent(object):
         Raises:
             :obj:`MultialgorithmError`: if the dynamic component cannot be found
         """
-        model_type = DynamicComponent.get_dynamic_model_type(model_type)
+        if not inspect.isclass(model_type) or not issubclass(model_type, DynamicComponent):
+            model_type = DynamicComponent.get_dynamic_model_type(model_type)
         if model_type not in DynamicComponent.dynamic_components_objs:
             raise MultialgorithmError("model type '{}' not in DynamicComponent.dynamic_components_objs".format(
                 model_type.__name__))
         if id not in DynamicComponent.dynamic_components_objs[model_type]:
-            raise MultialgorithmError("model type '{}' with id='{}' not in DynamicComponent.dynamic_components_objs".format(
-                model_type.__name__, id))
+            raise MultialgorithmError(
+                "model type '{}' with id='{}' not in DynamicComponent.dynamic_components_objs".format(
+                    model_type.__name__, id))
         return DynamicComponent.dynamic_components_objs[model_type][id]
 
     def __str__(self):
@@ -174,7 +174,7 @@ class DynamicComponent(object):
         rv.append("id: {}".format(self.id))
         return '\n'.join(rv)
 
-# todo: test eval all DynamicExpressions
+
 class DynamicExpression(DynamicComponent):
     """ Simulation representation of a mathematical expression, based on :obj:`ParsedExpression`
 
@@ -338,6 +338,22 @@ class DynamicObservable(DynamicExpression):
         super().__init__(*args)
 
 
+class DynamicDfbaObjective(DynamicExpression):
+    """ The dynamic representation of a :obj:`wc_lang.DfbaObjective`
+    """
+
+    def __init__(self, *args):
+        super().__init__(*args)
+
+
+class DynamicRateLaw(DynamicExpression):
+    """ The dynamic representation of a :obj:`wc_lang.RateLaw`
+    """
+
+    def __init__(self, *args):
+        super().__init__(*args)
+
+
 class DynamicParameter(DynamicComponent):
     """ The dynamic representation of a :obj:`wc_lang.Parameter`
     """
@@ -385,22 +401,6 @@ class DynamicSpecies(DynamicComponent):
             time (:obj:`float`): the current simulation time
         """
         return self.species_obj.get_population(time)
-
-
-class DynamicDfbaObjective(DynamicExpression):
-    """ The dynamic representation of an :obj:`wc_lang.DfbaObjective`
-    """
-
-    def __init__(self, *args):
-        super().__init__(*args)
-
-
-class DynamicRateLaw(DynamicExpression):
-    """ The dynamic representation of a :obj:`wc_lang.RateLaw`
-    """
-
-    def __init__(self, *args):
-        super().__init__(*args)
 
 
 class DynamicCompartment(DynamicComponent):
@@ -652,13 +652,17 @@ class DynamicModel(object):
         species_population (:obj:`LocalSpeciesPopulation`): populations of all the species in the model
         dynamic_species (:obj:`dict` of `DynamicSpecies`): the simulation's dynamic species,
             indexed by their ids
+        dynamic_parameters (:obj:`dict` of `DynamicParameter`): the simulation's parameters,
+            indexed by their ids
         dynamic_observables (:obj:`dict` of `DynamicObservable`): the simulation's dynamic observables,
             indexed by their ids
         dynamic_functions (:obj:`dict` of `DynamicFunction`): the simulation's dynamic functions,
             indexed by their ids
         dynamic_stop_conditions (:obj:`dict` of `DynamicStopCondition`): the simulation's stop conditions,
             indexed by their ids
-        dynamic_parameters (:obj:`dict` of `DynamicParameter`): the simulation's parameters,
+        dynamic_rate_laws (:obj:`dict` of `DynamicRateLaw`): the simulation's rate laws,
+            indexed by their ids
+        dynamic_dfba_objectives (:obj:`dict` of `DynamicDfbaObjective`): the simulation's dFBA Objective,
             indexed by their ids
     """
 
@@ -689,7 +693,7 @@ class DynamicModel(object):
                 DynamicParameter(self, self.species_population, parameter, parameter.value)
 
         # create dynamic species
-        # todo: how do these relate to the species used by local species population?
+        # todo: relate these to the species used by local species population
         self.dynamic_species = {}
         for species in model.get_species():
             self.dynamic_species[species.id] = \
@@ -717,10 +721,29 @@ class DynamicModel(object):
                 DynamicStopCondition(self, self.species_population, stop_condition,
                                      stop_condition.expression._parsed_expression)
 
+        # create dynamic rate laws
+        self.dynamic_rate_laws = {}
+        for rate_law in model.rate_laws:
+            self.dynamic_rate_laws[rate_law.id] = \
+                DynamicRateLaw(self, self.species_population, rate_law,
+                                     rate_law.expression._parsed_expression)
+
+        # create dynamic dFBA Objectives
+        self.dynamic_dfba_objectives = {}
+        '''
+        # todo: fix: 'DfbaObjReaction.Metabolism_biomass must be prepared to create 'dfba-obj-test_submodel''
+        for dfba_objective in model.dfba_objs:
+            self.dynamic_dfba_objectives[dfba_objective.id] = \
+                DynamicDfbaObjective(self, self.species_population, dfba_objective,
+                                     dfba_objective.expression._parsed_expression)
+        '''
+
         # prepare dynamic expressions
         for dynamic_expression_group in [self.dynamic_observables,
                                          self.dynamic_functions,
-                                         self.dynamic_stop_conditions]:
+                                         self.dynamic_stop_conditions,
+                                         self.dynamic_rate_laws,
+                                         self.dynamic_dfba_objectives]:
             for dynamic_expression in dynamic_expression_group.values():
                 dynamic_expression.prepare()
 

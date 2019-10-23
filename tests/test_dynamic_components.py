@@ -25,29 +25,65 @@ from wc_lang import (Model, Compartment, Species, Parameter,
 from wc_lang.io import Reader
 from wc_sim.dynamic_components import (SimTokCodes, WcSimToken, DynamicComponent, DynamicExpression,
                                      DynamicModel, DynamicSpecies, DynamicFunction, DynamicParameter,
-                                     DynamicCompartment)
+                                     DynamicCompartment, DynamicStopCondition)
 from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.species_populations import LocalSpeciesPopulation, MakeTestLSP
 from wc_utils.util.rand import RandomStateManager
 from wc_utils.util.units import unit_registry
 
-
-# todo: test all DynamicExpressions, each with all the objects they use
-'''
-context
-    initialized MultialgorithmSimulation with a dynamic submodel
-for each DynamicExpression
-    1. one with only constant and function terms
-    2. one each with one of its expression_term_models
-    3. one with all of its expression_term_models
-    4. test a volume function for each compartment
-'''
-# Almost all machines map Python floats to IEEE-754 64-bit “double precision”, which provides 15 to 17 decimal digits
-# places for comparing values that should be equal to within the precision of floating point representation
+# Almost all machines map Python floats to IEEE-754 64-bit “double precision”, which provides 15 to
+# 17 decimal digits. Places for comparing values that should be equal to within the precision of floats
 IEEE_64_BIT_FLOATING_POINT_PLACES = 14
 
-class TestDynamicExpressions(unittest.TestCase):
+
+class TestDynamicExpressionsComprehensively(unittest.TestCase):
+
+    def setUp(self):
+        self.model_file = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_dynamic_expressions.xlsx')
+        self.model = Reader().run(self.model_file)[Model][0]
+        multialgorithm_simulation = MultialgorithmSimulation(self.model, None)
+        _, self.dynamic_model = multialgorithm_simulation.build_simulation()
+
+    def test(self):
+        # test all DynamicExpressions, each with all the objects they use
+        # DynamicFunction
+        for id, dynamic_function in self.dynamic_model.dynamic_functions.items():
+            expected_value = float(self.model.get_functions(id=id)[0].comments)
+            numpy.testing.assert_approx_equal(dynamic_function.eval(0), expected_value)
+
+        # DynamicStopCondition
+        for id, dynamic_stop_condition in self.dynamic_model.dynamic_stop_conditions.items():
+            expected_val_in_comment = self.model.get_stop_conditions(id=id)[0].comments
+            if expected_val_in_comment == 'True':
+                expected_value = True
+            elif expected_val_in_comment == 'False':
+                expected_value = False
+            self.assertEqual(expected_value, dynamic_stop_condition.eval(0))
+
+        # DynamicObservable
+        for id, dynamic_observable in self.dynamic_model.dynamic_observables.items():
+            expected_value = float(self.model.get_observables(id=id)[0].comments)
+            numpy.testing.assert_approx_equal(dynamic_observable.eval(0), expected_value)
+
+        # DynamicRateLaw
+        for id, dynamic_rate_law in self.dynamic_model.dynamic_rate_laws.items():
+            expected_value = float(self.model.get_rate_laws(id=id)[0].comments)
+            numpy.testing.assert_approx_equal(dynamic_rate_law.eval(0), expected_value)
+
+        # Test DynamicCompartment & DynamicParameter which have eval() methods, although they're not Expressions
+        # DynamicCompartment
+        for id, dynamic_compartment in self.dynamic_model.dynamic_compartments.items():
+            expected_value = float(self.model.get_compartments(id=id)[0].comments)
+            numpy.testing.assert_approx_equal(dynamic_compartment.eval(0), expected_value)
+
+        # DynamicParameter
+        for id, dynamic_parameter in self.dynamic_model.dynamic_parameters.items():
+            expected_value = float(self.model.get_parameters(id=id)[0].comments)
+            numpy.testing.assert_approx_equal(dynamic_parameter.eval(0), expected_value)
+
+
+class TestDynamicComponentAndDynamicExpressions(unittest.TestCase):
 
     def make_objects(self):
         model = Model()
@@ -76,14 +112,48 @@ class TestDynamicExpressions(unittest.TestCase):
         self.dynamic_model = DynamicModel(self.model, self.local_species_population, {})
 
         # create a DynamicParameter and some DynamicFunctions
-        dynamic_objects = {}
+        self.dynamic_objects = dynamic_objects = {}
         dynamic_objects[self.parameter] = DynamicParameter(self.dynamic_model, self.local_species_population,
                                                            self.parameter, self.parameter.value)
 
         for fun in [self.fun1, self.fun2]:
             dynamic_objects[fun] = DynamicFunction(self.dynamic_model, self.local_species_population,
                                                    fun, fun.expression._parsed_expression)
-        self.dynamic_objects = dynamic_objects
+
+    def test_get_dynamic_model_type(self):
+
+        self.assertEqual(DynamicComponent.get_dynamic_model_type(Function), DynamicFunction)
+        with self.assertRaisesRegex(MultialgorithmError,
+                                    "model class of type 'FunctionExpression' not found"):
+            DynamicComponent.get_dynamic_model_type(FunctionExpression)
+
+        self.assertEqual(DynamicComponent.get_dynamic_model_type(self.fun1), DynamicFunction)
+        expr_model_obj, _ = Expression.make_expression_obj(Function, '11.11', {})
+        with self.assertRaisesRegex(MultialgorithmError, "model of type 'FunctionExpression' not found"):
+            DynamicComponent.get_dynamic_model_type(expr_model_obj)
+
+        self.assertEqual(DynamicComponent.get_dynamic_model_type('Function'), DynamicFunction)
+        with self.assertRaisesRegex(MultialgorithmError, "model type 'NoSuchModel' not defined"):
+            DynamicComponent.get_dynamic_model_type('NoSuchModel')
+        with self.assertRaisesRegex(MultialgorithmError, "model type '3' has wrong type"):
+            DynamicComponent.get_dynamic_model_type(3)
+        with self.assertRaisesRegex(MultialgorithmError, "model type 'None' has wrong type"):
+            DynamicComponent.get_dynamic_model_type(None)
+        with self.assertRaisesRegex(MultialgorithmError, "model of type 'RateLawDirection' not found"):
+            DynamicComponent.get_dynamic_model_type('RateLawDirection')
+
+    def test_get_dynamic_component(self):
+
+        self.assertEqual(DynamicComponent.get_dynamic_component(Parameter, 'param'),
+                         self.dynamic_objects[self.parameter])
+        self.assertEqual(DynamicComponent.get_dynamic_component(DynamicParameter, 'param'),
+                         self.dynamic_objects[self.parameter])
+        with self.assertRaisesRegex(MultialgorithmError,
+                                    "model type '.*' not in DynamicComponent.dynamic_components_objs"):
+            DynamicComponent.get_dynamic_component(DynamicStopCondition, 'x')
+        with self.assertRaisesRegex(MultialgorithmError,
+                                    "model type '.*' with id='.*' not in DynamicComponent.*"):
+            DynamicComponent.get_dynamic_component(DynamicParameter, 'no such param')
 
     def test_simple_dynamic_expressions(self):
         for dyn_obj in self.dynamic_objects.values():
@@ -128,6 +198,11 @@ class TestDynamicExpressions(unittest.TestCase):
             DynamicFunction(self.dynamic_model, self.local_species_population,
                             self.fun1, self.fun1.expression._parsed_expression)
 
+        # remove param from registered dynamic components so fun2 prepare() fails
+        del DynamicComponent.dynamic_components_objs[DynamicParameter]['param']
+        with self.assertRaisesRegex(MultialgorithmError, 'must be prepared to create'):
+            self.dynamic_objects[self.fun2].prepare()
+
         expr = 'max(1) - 2'
         fun = Expression.make_obj(self.model, Function, 'fun', expr, {}, allow_invalid_objects=True)
         dynamic_function = DynamicFunction(self.dynamic_model, self.local_species_population,
@@ -136,29 +211,7 @@ class TestDynamicExpressions(unittest.TestCase):
         with self.assertRaisesRegex(MultialgorithmError, re.escape("eval of '{}' raises".format(expr))):
             dynamic_function.eval(1)
 
-    def test_get_dynamic_model_type(self):
 
-        self.assertEqual(DynamicComponent.get_dynamic_model_type(Function), DynamicFunction)
-        with self.assertRaisesRegex(MultialgorithmError,
-                                    "model class of type 'FunctionExpression' not found"):
-            DynamicComponent.get_dynamic_model_type(FunctionExpression)
-
-        self.assertEqual(DynamicComponent.get_dynamic_model_type(self.fun1), DynamicFunction)
-        expr_model_obj, _ = Expression.make_expression_obj(Function, '11.11', {})
-        with self.assertRaisesRegex(MultialgorithmError, "model of type 'FunctionExpression' not found"):
-            DynamicComponent.get_dynamic_model_type(expr_model_obj)
-
-        self.assertEqual(DynamicComponent.get_dynamic_model_type('Function'), DynamicFunction)
-        with self.assertRaisesRegex(MultialgorithmError, "model type 'NoSuchModel' not defined"):
-            DynamicComponent.get_dynamic_model_type('NoSuchModel')
-        with self.assertRaisesRegex(MultialgorithmError, "model type '3' has wrong type"):
-            DynamicComponent.get_dynamic_model_type(3)
-        with self.assertRaisesRegex(MultialgorithmError, "model type 'None' has wrong type"):
-            DynamicComponent.get_dynamic_model_type(None)
-        with self.assertRaisesRegex(MultialgorithmError, "model of type 'RateLawDirection' not found"):
-            DynamicComponent.get_dynamic_model_type('RateLawDirection')
-
-# todo: double-check that this test is good
 class TestDynamics(unittest.TestCase):
 
     def setUp(self):
@@ -290,9 +343,6 @@ class TestDynamics(unittest.TestCase):
 class TestUninitializedDynamicCompartment(unittest.TestCase):
     """ Test DynamicCompartment without a species population
     """
-    # Almost all machines map Python floats to IEEE-754 64-bit “double precision”, which provides 15 to 17 decimal digits
-    # places for comparing values that should be equal to within the precision of floating point representation
-    IEEE_64_BIT_FLOATING_POINT_PLACES = 14
 
     def setUp(self):
 
@@ -426,42 +476,6 @@ class TestInitializedDynamicCompartment(unittest.TestCase):
         self.assertIn("has been initialized", str(dynamic_compartment))
         self.assertIn('Fold change total mass: 1.0', str(dynamic_compartment))
 
-    @unittest.skip("todo: refactor into new tests")
-    def test_simple_dynamic_compartment_old(self):
-
-        # test DynamicCompartment
-        masses = []
-        for i_trial in range(10):
-            self.dynamic_compartment = DynamicCompartment(None, self.random_state, self.compartment,
-                self.species_ids)
-            masses.append(self.dynamic_compartment.mass())
-        self.assertIn(self.dynamic_compartment.id, str(self.dynamic_compartment))
-        estimated_mass = self.num_species * self.all_pops * self.all_m_weights / Avogadro
-        self.assertLess(numpy.abs((numpy.mean(masses) - estimated_mass) / estimated_mass), 0.1)
-
-        # self.compartment containing just the first element of self.species_ids
-        self.dynamic_compartment = DynamicCompartment(None, self.random_state, self.compartment,
-            self.species_ids[:1])
-        estimated_mass = self.all_pops*self.all_m_weights / Avogadro
-        self.assertAlmostEqual(self.dynamic_compartment.mass(), estimated_mass)
-
-        # set population of species to 0
-        init_populations = dict(zip(self.species_ids, [0] * len(self.species_ids)))
-        local_species_pop = LocalSpeciesPopulation('test2', init_populations, self.molecular_weights,
-                                                   random_state=RandomStateManager.instance())
-        for i_trial in range(10):
-            with warnings.catch_warnings(record=True) as w:
-                dynamic_compartment = DynamicCompartment(None, local_species_pop, self.compartment,
-                    self.species_ids)
-                self.assertIn("initial mass is 0", str(w[-1].message))
-            self.assertEqual(dynamic_compartment.init_mass, 0.)
-            self.assertEqual(dynamic_compartment.mass(), 0.)
-
-        # check that 'mass increases'
-        self.assertEqual(dynamic_compartment.mass(), 0.)
-        local_species_pop.adjust_discretely(0, {self.species_ids[0]: 5})
-        self.assertEqual(dynamic_compartment.mass(), 5 * self.all_m_weights / Avogadro)
-
 
 class TestDynamicModel(unittest.TestCase):
 
@@ -490,11 +504,6 @@ class TestDynamicModel(unittest.TestCase):
             expected_actual_masses[compartment.id] = compartment.init_volume.mean * compartment.init_density.value
         return expected_actual_masses
 
-    # TODO(Arthur): move this proportional test to a utility & use it instead of assertAlmostEqual everywhere
-    def almost_equal_test(self, a, b, frac_diff=1/100):
-        delta = min(a, b) * frac_diff
-        self.assertAlmostEqual(a, b, delta=delta)
-
     def compare_aggregate_states(self, expected_aggregate_state, computed_aggregate_state, frac_diff=1e-1):
         list_of_nested_keys_to_test = [
             ['cell mass'],
@@ -506,9 +515,9 @@ class TestDynamicModel(unittest.TestCase):
             for key in nested_keys_to_test:
                 expected = expected[key]
                 computed = computed[key]
-            self.almost_equal_test(expected, computed, frac_diff=frac_diff)
+            numpy.testing.assert_approx_equal(expected, computed, significant=1)
 
-    # TODO(Arthur): test with multiple compartments
+    # TODO(Arthur): test with multiple compartments that have exchange reactions
     def test_dynamic_model(self):
         self.make_dynamic_model(self.MODEL_FILENAME)
         self.assertEqual(len(self.dynamic_model.cellular_dyn_compartments), 1)
@@ -516,14 +525,14 @@ class TestDynamicModel(unittest.TestCase):
 
         cell_masses = []
         computed_aggregate_states = []
-        for i_trial in range(10):
+        for i_trial in range(100):
             self.make_dynamic_model(self.MODEL_FILENAME)
             cell_masses.append(self.dynamic_model.cell_mass())
             computed_aggregate_states.append(self.dynamic_model.get_aggregate_state())
 
         # todo: revise the model so that mean_accounted_fraction ~= 1
         actual_cellular_mass = self.compute_expected_actual_masses(self.MODEL_FILENAME)['c']
-        self.almost_equal_test(numpy.mean(cell_masses), actual_cellular_mass, frac_diff=1e-1)
+        numpy.testing.assert_approx_equal(actual_cellular_mass, numpy.mean(cell_masses), significant=1)
 
         expected_aggregate_state = {
             'cell mass': actual_cellular_mass,
@@ -539,7 +548,7 @@ class TestDynamicModel(unittest.TestCase):
         }
         self.compare_aggregate_states(expected_aggregate_state, computed_aggregate_state, frac_diff=2.5e-1)
 
-    @unittest.skip("skip dry")
+    @unittest.skip("todo: fix or toss test_dry_dynamic_model")
     def test_dry_dynamic_model(self):
         cell_masses = []
         computed_aggregate_states = []
@@ -549,7 +558,8 @@ class TestDynamicModel(unittest.TestCase):
             computed_aggregate_states.append(self.dynamic_model.get_aggregate_state())
 
         # expected values computed in tests/fixtures/test_dry_model_with_mass_computation.xlsx
-        self.almost_equal_test(numpy.mean(cell_masses), 9.160E-19, frac_diff=1e-1)
+        # todo: fix tests/fixtures/test_dry_model_with_mass_computation.xlsx
+        numpy.testing.assert_approx_equal(numpy.mean(cell_masses), 9.160E-19)
         aggregate_state = self.dynamic_model.get_aggregate_state()
         expected_aggregate_state = {
             'cell mass': 9.160E-19,
@@ -565,7 +575,6 @@ class TestDynamicModel(unittest.TestCase):
         }
         self.compare_aggregate_states(expected_aggregate_state, computed_aggregate_state, frac_diff=2.5e-1)
 
-    # todo: double-check that this test is good
     def test_eval_dynamic_observables(self):
         # make a Model
         model = Model()
@@ -635,7 +644,6 @@ class TestDynamicModel(unittest.TestCase):
                     expected_val += d_index * sum([i*i for i in range(d_index+1)])
                 self.assertEqual(expected_val, obs_val)
 
-    # todo: double-check that this test is good
     def test_eval_dynamic_functions(self):
         # make a Model
         model = Model()
