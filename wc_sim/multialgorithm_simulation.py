@@ -1,4 +1,4 @@
-""" Initialize a multialgorithm simulation from a language model and run-time parameters.
+""" Initialize a multialgorithm simulation from a language model and run-time parameters
 
 :Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2017-02-07

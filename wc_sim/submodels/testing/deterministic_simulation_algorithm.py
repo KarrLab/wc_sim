@@ -96,7 +96,7 @@ class DeterministicSimulationAlgorithmSubmodel(DynamicSubmodel):
         Args:
             reaction (:obj:`Reaction`): the reaction being scheduled
         """
-        reaction_index = self.reaction_table[reaction.id]
-        rate = self.calc_reaction_rate(reaction, self.get_rate_law_eval_argument())
+        rate = self.calc_reaction_rate(reaction)
         dt = 1.0/rate
+        reaction_index = self.reaction_table[reaction.id]
         self.schedule_ExecuteDsaReaction(dt, reaction_index)

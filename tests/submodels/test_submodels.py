@@ -102,18 +102,20 @@ class TestDynamicSubmodelStatically(unittest.TestCase):
     def test_calc_reaction_rates(self):
         # set standard deviation of initial conc. to 0
         self.setUp(std_init_concentrations=0.)
+        multialgorithm_simulation = MultialgorithmSimulation(self.model, {'dfba_time_step': 1})
+        _, dynamic_model = multialgorithm_simulation.build_simulation()
 
         # rate law for reaction_4-forward: k_cat_4_for * max(species_4[c], p_4)
         k_cat_4_for = 1
         p_4 = 2
         species_4_c_pop = \
-            self.dynamic_submodels['submodel_2'].local_species_population.read_one(0, 'species_4[c]')
+            multialgorithm_simulation.local_species_population.read_one(0, 'species_4[c]')
         expected_rate_reaction_4_forward = k_cat_4_for * max(species_4_c_pop, p_4)
         expected_rates = {
             'reaction_2': 0.0,
             'reaction_4': expected_rate_reaction_4_forward
         }
-        for dynamic_submodel in self.dynamic_submodels.values():
+        for dynamic_submodel in multialgorithm_simulation.simulation_submodels.values():
             rates = dynamic_submodel.calc_reaction_rates()
             for index, rxn in enumerate(dynamic_submodel.reactions):
                 if rxn.id in expected_rates:
