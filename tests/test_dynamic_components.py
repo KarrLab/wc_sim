@@ -46,11 +46,21 @@ class TestDynamicExpressionsComprehensively(unittest.TestCase):
         _, self.dynamic_model = multialgorithm_simulation.build_simulation()
 
     def test(self):
-        # test all DynamicExpressions, each with all the objects they use
+        # test all DynamicExpressions
+        # each one is tested using each of the objects it uses in some instance in self.model_file
         # DynamicFunction
         for id, dynamic_function in self.dynamic_model.dynamic_functions.items():
             expected_value = float(self.model.get_functions(id=id)[0].comments)
             numpy.testing.assert_approx_equal(dynamic_function.eval(0), expected_value)
+        # test eval_dynamic_functions()
+        for func_id, func_val in self.dynamic_model.eval_dynamic_functions(0).items():
+            expected_value = float(self.model.get_functions(id= func_id)[0].comments)
+            numpy.testing.assert_approx_equal(func_val, expected_value)
+        a_func_id = list(self.dynamic_model.dynamic_functions)[0]
+        for func_id, func_val in \
+            self.dynamic_model.eval_dynamic_functions(0, functions_to_eval=[a_func_id]).items():
+            expected_value = float(self.model.get_functions(id= func_id)[0].comments)
+            numpy.testing.assert_approx_equal(func_val, expected_value)
 
         # DynamicStopCondition
         for id, dynamic_stop_condition in self.dynamic_model.dynamic_stop_conditions.items():
@@ -65,6 +75,15 @@ class TestDynamicExpressionsComprehensively(unittest.TestCase):
         for id, dynamic_observable in self.dynamic_model.dynamic_observables.items():
             expected_value = float(self.model.get_observables(id=id)[0].comments)
             numpy.testing.assert_approx_equal(dynamic_observable.eval(0), expected_value)
+        # test eval_dynamic_observables()
+        for obs_id, obs_val in self.dynamic_model.eval_dynamic_observables(0).items():
+            expected_value = float(self.model.get_observables(id=obs_id)[0].comments)
+            numpy.testing.assert_approx_equal(obs_val, expected_value)
+        an_obs_id = list(self.dynamic_model.dynamic_observables)[0]
+        for obs_id, obs_val in \
+            self.dynamic_model.eval_dynamic_observables(0, observables_to_eval=[an_obs_id]).items():
+            expected_value = float(self.model.get_observables(id=obs_id)[0].comments)
+            numpy.testing.assert_approx_equal(obs_val, expected_value)
 
         # DynamicRateLaw
         for id, dynamic_rate_law in self.dynamic_model.dynamic_rate_laws.items():
@@ -146,14 +165,19 @@ class TestDynamicComponentAndDynamicExpressions(unittest.TestCase):
 
         self.assertEqual(DynamicComponent.get_dynamic_component(Parameter, 'param'),
                          self.dynamic_objects[self.parameter])
+        self.assertEqual(DynamicComponent.get_dynamic_component('Parameter', 'param'),
+                         self.dynamic_objects[self.parameter])
         self.assertEqual(DynamicComponent.get_dynamic_component(DynamicParameter, 'param'),
                          self.dynamic_objects[self.parameter])
+
+        class NewDynamicExpression(DynamicComponent): pass
         with self.assertRaisesRegex(MultialgorithmError,
-                                    "model type '.*' not in DynamicComponent.dynamic_components_objs"):
-            DynamicComponent.get_dynamic_component(DynamicStopCondition, 'x')
+                                    "model type 'NewDynamicExpression' not in DynamicComponent.*"):
+            DynamicComponent.get_dynamic_component(NewDynamicExpression, '')
+        bad_id = 'no such param'
         with self.assertRaisesRegex(MultialgorithmError,
-                                    "model type '.*' with id='.*' not in DynamicComponent.*"):
-            DynamicComponent.get_dynamic_component(DynamicParameter, 'no such param')
+                                    f"model type '.*' with id='{bad_id}' not in DynamicComponent.*"):
+            DynamicComponent.get_dynamic_component(DynamicParameter, bad_id)
 
     def test_simple_dynamic_expressions(self):
         for dyn_obj in self.dynamic_objects.values():
@@ -523,6 +547,7 @@ class TestDynamicModel(unittest.TestCase):
         self.assertEqual(len(self.dynamic_model.cellular_dyn_compartments), 1)
         self.assertEqual(self.dynamic_model.cellular_dyn_compartments[0].name, 'Cell')
 
+        self.assertEqual(self.dynamic_model.get_num_submodels(), 2)
         cell_masses = []
         computed_aggregate_states = []
         for i_trial in range(100):
