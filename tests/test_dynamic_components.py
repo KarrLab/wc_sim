@@ -36,7 +36,7 @@ from wc_utils.util.units import unit_registry
 # 17 decimal digits. Places for comparing values that should be equal to within the precision of floats
 IEEE_64_BIT_FLOATING_POINT_PLACES = 14
 
-
+# DfbaObjectiveExpression: expression_term_models = ('Reaction', 'DfbaObjReaction')
 class TestDynamicExpressionsComprehensively(unittest.TestCase):
 
     def setUp(self):
@@ -600,6 +600,7 @@ class TestDynamicModel(unittest.TestCase):
         }
         self.compare_aggregate_states(expected_aggregate_state, computed_aggregate_state, frac_diff=2.5e-1)
 
+    # todo: probably delete, because doesn't additional coverage beyond TestDynamicExpressionsComprehensively
     def test_eval_dynamic_observables(self):
         # make a Model
         model = Model()
@@ -669,6 +670,7 @@ class TestDynamicModel(unittest.TestCase):
                     expected_val += d_index * sum([i*i for i in range(d_index+1)])
                 self.assertEqual(expected_val, obs_val)
 
+    # todo: probably delete, because doesn't additional coverage beyond TestDynamicExpressionsComprehensively
     def test_eval_dynamic_functions(self):
         # make a Model
         model = Model()

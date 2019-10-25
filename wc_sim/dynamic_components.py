@@ -17,12 +17,15 @@ from obj_tables import utils
 from obj_tables.expression import ObjTablesTokenCodes
 from wc_lang import Species, Compartment
 from wc_onto import onto
+from wc_sim.config import core as config_core_multialgorithm
 from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_sim.species_populations import LocalSpeciesPopulation
 from wc_utils.util.enumerate import CaseInsensitiveEnum
 from wc_utils.util.ontology import are_terms_equivalent
 import obj_tables
 import wc_lang
+
+config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 
 '''
 # old TODOs:
@@ -428,6 +431,8 @@ class DynamicCompartment(DynamicComponent):
         species_ids (:obj:`list` of :obj:`str`): the IDs of the species stored in this
             :obj:`DynamicCompartment`\ ; if `None`, use the IDs of all species in `species_population`
     """
+    MAX_ALLOWED_INIT_ACCOUNTED_FRACTION = config_multialgorithm['max_allowed_init_accounted_fraction']
+    MEAN_TO_STD_DEV_RATIO = config_multialgorithm['mean_to_std_dev_ratio']
 
     def __init__(self, dynamic_model, random_state, wc_lang_compartment, species_ids=None):
         """ Initialize the volume and density of this :obj:`DynamicCompartment`\ .
@@ -457,8 +462,7 @@ class DynamicCompartment(DynamicComponent):
             mean = wc_lang_compartment.init_volume.mean
             std = wc_lang_compartment.init_volume.std
             if numpy.isnan(std):
-                # todo: make the ratio of mean / std a config setting
-                std = mean / 10.
+                std = mean / self.MEAN_TO_STD_DEV_RATIO
             self.init_volume = max(0., random_state.normal(mean, std))
         else:
             raise MultialgorithmError('Initial volume must be normally distributed')
@@ -479,8 +483,6 @@ class DynamicCompartment(DynamicComponent):
                                       "number.".format(self.name, init_density))
         self.init_density = init_density
 
-    # todo: define in config
-    MAX_ALLOWED_INIT_ACCOUNTED_FRACTION = 1.5
     def initialize_mass_and_density(self, species_population):
         """ Initialize the species populations and the mass accounted for by species.
 
@@ -491,7 +493,7 @@ class DynamicCompartment(DynamicComponent):
 
         Raises:
             :obj:`MultialgorithmError`: if `accounted_fraction == 0` or
-                if `MAX_ALLOWED_INIT_ACCOUNTED_FRACTION < accounted_fraction`
+                if `self.MAX_ALLOWED_INIT_ACCOUNTED_FRACTION < accounted_fraction`
         """
         self.species_population = species_population
         self.init_accounted_mass = self.accounted_mass(time=0)
@@ -501,7 +503,8 @@ class DynamicCompartment(DynamicComponent):
         self.accounted_fraction = self.init_accounted_density / self.init_density
         # also, accounted_fraction = self.init_accounted_mass / self.init_mass
 
-        # usually 1 - epsilon < accounted_fraction <= 1, with epsilon ~= 0.1
+        # usually epsilon < accounted_fraction <= 1, where epsilon depends on how thoroughly
+        # processes in the compartment are characterized
         if 0 == self.accounted_fraction:
             raise MultialgorithmError("DynamicCompartment '{}': initial accounted ratio is 0".format(
                                       self.name))
@@ -510,7 +513,7 @@ class DynamicCompartment(DynamicComponent):
                 self.name, self.accounted_fraction))
         if self.MAX_ALLOWED_INIT_ACCOUNTED_FRACTION < self.accounted_fraction:
             raise MultialgorithmError("DynamicCompartment {}: initial accounted ratio ({:.3E}) greater "
-                                      "than MAX_ALLOWED_INIT_ACCOUNTED_FRACTION ({}).".format(self.name,
+                                      "than self.MAX_ALLOWED_INIT_ACCOUNTED_FRACTION ({}).".format(self.name,
                                       self.accounted_fraction, self.MAX_ALLOWED_INIT_ACCOUNTED_FRACTION))
 
     def accounted_mass(self, time=None):

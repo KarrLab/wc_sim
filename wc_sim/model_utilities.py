@@ -6,18 +6,23 @@
 :License: MIT
 """
 
+from enum import Enum
+from numpy.random import RandomState
+from scipy.constants import Avogadro
 import collections
 import numpy
 import pint
 import re
-from enum import Enum
-from numpy.random import RandomState
-from scipy.constants import Avogadro
+
 from wc_lang import Species
 from wc_onto import onto
+from wc_sim.config import core as config_core_multialgorithm
 from wc_utils.util.list import difference
 from wc_utils.util.ontology import are_terms_equivalent
 from wc_utils.util.units import unit_registry
+
+config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
+MEAN_TO_STD_DEV_RATIO = config_multialgorithm['mean_to_std_dev_ratio']
 
 
 class ModelUtilities(object):
@@ -115,8 +120,7 @@ class ModelUtilities(object):
             mean = dist_conc.mean
             std = dist_conc.std
             if numpy.isnan(std):
-                # todo: make the ratio of mean / std a config setting
-                std = mean / 10.
+                std = mean / MEAN_TO_STD_DEV_RATIO
             conc = max(0., random_state.normal(mean, std))
 
             if not isinstance(dist_conc.units, unit_registry.Unit):
