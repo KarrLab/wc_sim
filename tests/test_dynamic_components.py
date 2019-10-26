@@ -29,10 +29,10 @@ from wc_sim.dynamic_components import (SimTokCodes, WcSimToken, DynamicComponent
 from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.species_populations import LocalSpeciesPopulation, MakeTestLSP
+from wc_sim.testing.utils import read_model_and_set_all_std_devs_to_0
 from wc_utils.util.rand import RandomStateManager
 from wc_utils.util.units import unit_registry
 import obj_tables
-import wc_lang
 
 # Almost all machines map Python floats to IEEE-754 64-bit “double precision”, which provides 15 to
 # 17 decimal digits. Places for comparing values that should be equal to within the precision of floats
@@ -552,28 +552,12 @@ class TestDynamicModel(unittest.TestCase):
 
         self.assertEqual(self.dynamic_model.get_num_submodels(), 2)
 
-    def read_model_and_set_all_std_devs_to_0(self, model_filename):
-        # read model while ignoring missing models
-        data = Reader().run(model_filename, ignore_extra_models=True)
-        # set all standard deviations to 0
-        models_with_std_devs = (wc_lang.InitVolume,
-                                wc_lang.Ph,
-                                wc_lang.DistributionInitConcentration,
-                                wc_lang.Parameter,
-                                wc_lang.Observation,
-                                wc_lang.Conclusion)
-        for model, instances in data.items():
-            if model in models_with_std_devs:
-                for instance in instances:
-                    instance.std = 0
-        return data[Model][0]
-
     def test_dynamic_components(self):
         # test agregate properties like mass and volume against independent calculations of their values
         # calculations made in the model's spreadsheet
 
         # read model while ignoring missing models
-        model = self.read_model_and_set_all_std_devs_to_0(self.MODEL_FILENAME)
+        model = read_model_and_set_all_std_devs_to_0(self.MODEL_FILENAME)
         # create dynamic model
         multialgorithm_simulation = MultialgorithmSimulation(model, None)
         multialgorithm_simulation.initialize_components()
