@@ -31,12 +31,15 @@ from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.species_populations import LocalSpeciesPopulation, MakeTestLSP
 from wc_utils.util.rand import RandomStateManager
 from wc_utils.util.units import unit_registry
+import obj_tables
+import wc_lang
 
 # Almost all machines map Python floats to IEEE-754 64-bit “double precision”, which provides 15 to
 # 17 decimal digits. Places for comparing values that should be equal to within the precision of floats
 IEEE_64_BIT_FLOATING_POINT_PLACES = 14
 
-# DfbaObjectiveExpression: expression_term_models = ('Reaction', 'DfbaObjReaction')
+
+# todo: DfbaObjectiveExpression: expression_term_models = ('Reaction', 'DfbaObjReaction')
 class TestDynamicExpressionsComprehensively(unittest.TestCase):
 
     def setUp(self):
@@ -510,7 +513,7 @@ class TestDynamicModel(unittest.TestCase):
     def setUpClass(cls):
         cls.models = {}
         for model_file in [cls.MODEL_FILENAME, cls.DRY_MODEL_FILENAME]:
-            cls.models[model_file] = Reader().run(model_file)[Model][0]
+            cls.models[model_file] = Reader().run(model_file, ignore_extra_models=True)[Model][0]
 
     def make_dynamic_model(self, model_filename):
         # read and initialize a model
@@ -548,6 +551,7 @@ class TestDynamicModel(unittest.TestCase):
         self.assertEqual(self.dynamic_model.cellular_dyn_compartments[0].name, 'Cell')
 
         self.assertEqual(self.dynamic_model.get_num_submodels(), 2)
+        '''
         cell_masses = []
         computed_aggregate_states = []
         for i_trial in range(100):
@@ -572,6 +576,84 @@ class TestDynamicModel(unittest.TestCase):
                               'name': 'Cell'}}
         }
         self.compare_aggregate_states(expected_aggregate_state, computed_aggregate_state, frac_diff=2.5e-1)
+        '''
+
+    def read_model_and_set_all_std_devs_to_0(self, model_filename):
+        # read model while ignoring missing models
+        data = Reader().run(model_filename, ignore_extra_models=True)
+        # set all standard deviations to 0
+        models_with_std_devs = (wc_lang.InitVolume,
+                                wc_lang.Ph,
+                                wc_lang.DistributionInitConcentration,
+                                wc_lang.Parameter,
+                                wc_lang.Observation,
+                                wc_lang.Conclusion)
+        for model, instances in data.items():
+            if model in models_with_std_devs:
+                for instance in instances:
+                    instance.std = 0
+        return data[Model][0]
+
+    def test_dynamic_components(self):
+        # test agregate properties like mass and volume against independent calculations of their values
+        # calculations made in the model's spreadsheet
+
+        # read model while ignoring missing models
+        model = self.read_model_and_set_all_std_devs_to_0(self.MODEL_FILENAME)
+        # create dynamic model
+        multialgorithm_simulation = MultialgorithmSimulation(model, None)
+        multialgorithm_simulation.initialize_components()
+        dynamic_model = DynamicModel(model, multialgorithm_simulation.local_species_population,
+            multialgorithm_simulation.dynamic_compartments)
+
+        # a Model to store expected initial values
+        class ExpectedInitialValue(obj_tables.Model):
+            component = obj_tables.StringAttribute()
+            attribute = obj_tables.StringAttribute()
+            expected_initial_value = obj_tables.FloatAttribute()
+            comment = obj_tables.StringAttribute()
+            class Meta(obj_tables.Model.Meta):
+                attribute_order = ('component', 'attribute', 'expected_initial_value', 'comment')
+
+        # get calculations of expected initial values from the workbook
+        expected_initial_values = \
+            obj_tables.io.Reader().run(self.MODEL_FILENAME, models=[ExpectedInitialValue],
+                                       ignore_extra_models=True)[ExpectedInitialValue]
+        for cellular_compartment in dynamic_model.cellular_dyn_compartments:
+            compartment = dynamic_model.dynamic_compartments[cellular_compartment.id]
+            actual_values = {
+                'mass': compartment.mass(),
+                'volume': compartment.volume(),
+                'accounted mass': compartment.accounted_mass(),
+                'accounted volume': compartment.accounted_volume()}
+            for expected_initial_value in expected_initial_values:
+                if expected_initial_value.component == cellular_compartment.id:
+                    expected_value = expected_initial_value.expected_initial_value
+                    actual_value = actual_values[expected_initial_value.attribute]
+                    numpy.testing.assert_approx_equal(actual_value, expected_value)
+
+        # cell mass, cell volume, etc.
+        actual_values = {
+            'mass': dynamic_model.cell_mass(),
+            'volume': dynamic_model.cell_volume(),
+            'accounted mass': dynamic_model.cell_accounted_mass(),
+            'accounted volume': dynamic_model.cell_accounted_volume()}
+        for expected_initial_value in expected_initial_values:
+            if expected_initial_value.component == 'whole_cell':
+                expected_value = expected_initial_value.expected_initial_value
+                actual_value = actual_values[expected_initial_value.attribute]
+                numpy.testing.assert_approx_equal(actual_value, expected_value)
+
+        # test dynamic_model.get_aggregate_state()
+        aggregate_state = dynamic_model.get_aggregate_state()
+        for eiv_record in expected_initial_values:
+            expected_value = eiv_record.expected_initial_value
+            if eiv_record.component == 'whole_cell':
+                actual_value = aggregate_state[f"cell {eiv_record.attribute}"]
+                numpy.testing.assert_approx_equal(actual_value, expected_value)
+            else:
+                actual_value = aggregate_state['compartments'][eiv_record.component][eiv_record.attribute]
+                numpy.testing.assert_approx_equal(actual_value, expected_value)
 
     @unittest.skip("todo: fix or toss test_dry_dynamic_model")
     def test_dry_dynamic_model(self):
@@ -600,7 +682,7 @@ class TestDynamicModel(unittest.TestCase):
         }
         self.compare_aggregate_states(expected_aggregate_state, computed_aggregate_state, frac_diff=2.5e-1)
 
-    # todo: probably delete, because doesn't additional coverage beyond TestDynamicExpressionsComprehensively
+    # todo: probably delete, as doesn't provide additional coverage beyond TestDynamicExpressionsComprehensively
     def test_eval_dynamic_observables(self):
         # make a Model
         model = Model()
@@ -670,7 +752,7 @@ class TestDynamicModel(unittest.TestCase):
                     expected_val += d_index * sum([i*i for i in range(d_index+1)])
                 self.assertEqual(expected_val, obs_val)
 
-    # todo: probably delete, because doesn't additional coverage beyond TestDynamicExpressionsComprehensively
+    # todo: probably delete, as doesn't provide additional coverage beyond TestDynamicExpressionsComprehensively
     def test_eval_dynamic_functions(self):
         # make a Model
         model = Model()

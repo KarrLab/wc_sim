@@ -525,6 +525,7 @@ class DynamicCompartment(DynamicComponent):
         Returns:
             :obj:`float`: the total current mass of all species (g)
         """
+        # todo: species_population.compartmental_mass() should error if time is in the future
         return self.species_population.compartmental_mass(self.id, time=time)
 
     def accounted_volume(self, time=None):
@@ -750,17 +751,47 @@ class DynamicModel(object):
             for dynamic_expression in dynamic_expression_group.values():
                 dynamic_expression.prepare()
 
-    # todo: add methods for cell volume, cell accounted_mass, and cell accounted_volume
     def cell_mass(self):
-        """ Compute the cell's mass
+        """ Provide the cell's current mass
 
-        Sum the mass of all :obj:`DynamicCompartment`\ s that are not extracellular.
-        Assumes compartment volumes are in L and concentrations in mol/L.
+        Sum the mass of all cellular :obj:`DynamicCompartment`\ s.
 
         Returns:
-            :obj:`float`: the cell's mass (g)
+            :obj:`float`: the cell's current mass (g)
         """
         return sum([dynamic_compartment.mass() for dynamic_compartment in self.cellular_dyn_compartments])
+
+    def cell_volume(self):
+        """ Provide the cell's current volume
+
+        Sum the volume of all cellular :obj:`DynamicCompartment`\ s.
+
+        Returns:
+            :obj:`float`: the cell's current volume (l)
+        """
+        return sum([dynamic_compartment.volume() for dynamic_compartment in self.cellular_dyn_compartments])
+
+    def cell_accounted_mass(self):
+        """ Provide the total current mass of all species in the cell
+
+        Sum the current mass of all species in cellular :obj:`DynamicCompartment`\ s.
+
+        Returns:
+            :obj:`float`: the current mass of all species in the cell (g)
+        """
+        return sum([dynamic_compartment.accounted_mass()
+                   for dynamic_compartment in self.cellular_dyn_compartments])
+
+    def cell_accounted_volume(self):
+        """ Provide the current volume occupied by all species in the cell
+
+        Sum the current volume occupied by all species in cellular :obj:`DynamicCompartment`\ s.
+
+        Returns:
+            :obj:`float`: the current volume occupied by all species in the cell (l)
+        """
+        return sum([dynamic_compartment.accounted_volume()
+                   for dynamic_compartment in self.cellular_dyn_compartments])
 
     def get_aggregate_state(self):
         """ Report the cell's aggregate state
@@ -768,17 +799,21 @@ class DynamicModel(object):
         Returns:
             :obj:`dict`: the cell's aggregate state
         """
-        # todo: add cell volume, cell accounted_mass, and cell accounted_volume
         aggregate_state = {
             'cell mass': self.cell_mass(),
+            'cell volume': self.cell_volume(),
+            'cell accounted mass': self.cell_accounted_mass(),
+            'cell accounted volume': self.cell_accounted_volume(),
         }
 
         compartments = {}
-        # todo: add volume, accounted_mass, and accounted_volume
         for dynamic_compartment in self.cellular_dyn_compartments:
             compartments[dynamic_compartment.id] = {
                 'name': dynamic_compartment.name,
                 'mass': dynamic_compartment.mass(),
+                'volume': dynamic_compartment.volume(),
+                'accounted mass': dynamic_compartment.accounted_mass(),
+                'accounted volume': dynamic_compartment.accounted_volume()
             }
         aggregate_state['compartments'] = compartments
         return aggregate_state

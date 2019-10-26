@@ -27,7 +27,7 @@ class TestModelUtilities(unittest.TestCase):
 
     def setUp(self):
         # read a model
-        self.model = Reader().run(self.MODEL_FILENAME)[wc_lang.Model][0]
+        self.model = Reader().run(self.MODEL_FILENAME, ignore_extra_models=True)[wc_lang.Model][0]
 
     def test_find_private_species(self):
         # since set() operations are being used, this test does not ensure that the methods being

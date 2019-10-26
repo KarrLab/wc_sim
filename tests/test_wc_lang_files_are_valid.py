@@ -29,7 +29,7 @@ class ValidateWcLangFilesTestCase(unittest.TestCase):
         for file in self.FILES:
             try:
                 # reader already does validation
-                wc_lang.io.Reader().run(file, validate=True)
+                wc_lang.io.Reader().run(file, validate=True, ignore_extra_models=True)
             except ValueError as err:
                 errs.append("File: {}\n{}".format(file, str(err)))
         if errs:
