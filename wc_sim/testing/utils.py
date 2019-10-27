@@ -34,5 +34,3 @@ def read_model_and_set_all_std_devs_to_0(model_filename):
             for instance in instances:
                 instance.std = 0
     return data[Model][0]
-
-

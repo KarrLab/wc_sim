@@ -592,14 +592,14 @@ class TestDynamicModel(unittest.TestCase):
 
         # cell mass, cell volume, etc.
         actual_values = {
-            'mass': dynamic_model.cell_mass(),
-            'volume': dynamic_model.cell_volume(),
-            'accounted mass': dynamic_model.cell_accounted_mass(),
-            'accounted volume': dynamic_model.cell_accounted_volume()}
+            'cell mass': dynamic_model.cell_mass(),
+            'cell volume': dynamic_model.cell_volume(),
+            'cell accounted mass': dynamic_model.cell_accounted_mass(),
+            'cell accounted volume': dynamic_model.cell_accounted_volume()}
         for expected_initial_value in expected_initial_values:
             if expected_initial_value.component == 'whole_cell':
                 expected_value = expected_initial_value.expected_initial_value
-                actual_value = actual_values[expected_initial_value.attribute]
+                actual_value = actual_values[f"cell {expected_initial_value.attribute}"]
                 numpy.testing.assert_approx_equal(actual_value, expected_value)
 
         # test dynamic_model.get_aggregate_state()
