@@ -66,7 +66,8 @@ class MakeModel(object):
     @classmethod
     def add_test_submodel(cls, model, model_type, submodel_num, comp, species_types,
                           default_species_copy_number, default_species_std,
-                          species_copy_numbers, species_stds, expressions):
+                          species_copy_numbers, species_stds, expressions,
+                          submodel_framework='WC:stochastic_simulation_algorithm'):
         """ Create a test submodel
 
         Copy number arguments are converted into concentrations at the mean specified compartment
@@ -89,7 +90,10 @@ class MakeModel(object):
                 `default_species_copy_number`
             species_stds (:obj:`dict`): standard deviations of species population, which overrides
                 `default_species_std`
-            expressions (:obj:`dict`):
+            expressions (:obj:`dict`): expression objects, indexed by expression string; cumulative
+                for all submodels
+            submodel_framework (:obj:`str`, optional): the integration fraemwork of the submodel; default is
+                `WC:stochastic_simulation_algorithm`
         """
         num_species, num_reactions, reversible, rate_law_type = cls.get_model_type_params(model_type)
 
@@ -158,7 +162,7 @@ class MakeModel(object):
 
         # Submodel
         id = 'submodel_{}'.format(submodel_num)
-        submodel = model.submodels.create(id=id, name=id, framework=onto['WC:stochastic_simulation_algorithm'])
+        submodel = model.submodels.create(id=id, name=id, framework=onto[submodel_framework])
 
         # Reactions and RateLaws
         if num_species:
@@ -247,7 +251,8 @@ class MakeModel(object):
                         species_copy_numbers=None,
                         species_stds=None,
                         transfer_reactions=False,
-                        transform_prep_and_check=True):
+                        transform_prep_and_check=True,
+                        submodel_framework='WC:stochastic_simulation_algorithm'):
         """ Create a test model with multiple SSA submodels
 
         Properties of the model:
@@ -276,6 +281,8 @@ class MakeModel(object):
                 between compartments; to be implemented
             transform_prep_and_check (:obj:`bool`, optional): whether to transform, prepare and check
                 the model
+            submodel_framework (:obj:`str`): the integration fraemwork for submodels; default is
+                `WC:stochastic_simulation_algorithm`
 
         Returns:
             :obj:`Model`: a `wc_lang` model
@@ -345,7 +352,7 @@ class MakeModel(object):
                                   species_types, default_species_copy_number=default_species_copy_number,
                                   default_species_std=default_species_std,
                                   species_copy_numbers=species_copy_numbers, species_stds=species_stds,
-                                  expressions=expressions)
+                                  expressions=expressions, submodel_framework=submodel_framework)
 
         if transform_prep_and_check:
             # prepare & check the model

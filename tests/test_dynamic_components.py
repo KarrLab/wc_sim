@@ -548,7 +548,7 @@ class TestDynamicModel(unittest.TestCase):
     def test_dynamic_model(self):
         self.make_dynamic_model(self.MODEL_FILENAME)
         self.assertEqual(len(self.dynamic_model.cellular_dyn_compartments), 1)
-        self.assertEqual(self.dynamic_model.cellular_dyn_compartments[0].name, 'Cell')
+        self.assertEqual(self.dynamic_model.cellular_dyn_compartments[0].id, 'c')
 
         self.assertEqual(self.dynamic_model.get_num_submodels(), 2)
 

@@ -51,6 +51,7 @@ class Simulation(object):
     Attributes:
         model_path (:obj:`str`): path to a file describing a `wc_lang` model
         model (:obj:`Model`): a `wc_lang` model description
+        dynamic_model (:obj:`DynamicModel`): the simulation's :obj:`DynamicModel`
         sim_config (:obj:`sim_config.SimulationConfig`): a simulation configuration
         simulation_engine (:obj:`SimulationEngine`): the `SimulationEngine`
     """
@@ -215,7 +216,7 @@ class Simulation(object):
             timestamped_results_dir = simulation_args['results_dir']
 
         multialgorithm_simulation = MultialgorithmSimulation(self.model, simulation_args)
-        self.simulation_engine, dynamic_model = multialgorithm_simulation.build_simulation()
+        self.simulation_engine, self.dynamic_model = multialgorithm_simulation.build_simulation()
         self.simulation_engine.initialize()
 
         if timestamped_results_dir:

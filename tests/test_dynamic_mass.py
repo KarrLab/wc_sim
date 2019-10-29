@@ -10,20 +10,20 @@
 from matplotlib import pyplot
 from scipy.constants import Avogadro as NA
 from test.support import EnvironmentVarGuard
-from wc_sim.run_results import RunResults
-from wc_sim.simulation import Simulation
-from wc_onto import onto
-from wc_utils.util.units import unit_registry
 import numpy
 import numpy.testing
 import os
 import shutil
 import tempfile
 import unittest
+
+from wc_onto import onto
+from wc_sim.run_results import RunResults
+from wc_sim.simulation import Simulation
+from wc_utils.util.units import unit_registry
 import wc_lang
 import wc_lang.io
 import wc_lang.util
-import wc_sim
 
 
 class TwoSpeciesTestCase(unittest.TestCase):
@@ -397,7 +397,7 @@ class TwoSpeciesTestCase(unittest.TestCase):
         self.assertEqual(self.density.value, init_density)
         # confirm that density remains constant
         comp_density = comp_mass / comp_vol
-        numpy.testing.assert_allclose(comp_density.values, [self.density.value]*int(end_time + 1))
+        numpy.testing.assert_allclose(list(comp_density.to_numpy()), [self.density.value]*int(end_time + 1))
 
         fig, axes = pyplot.subplots(nrows=2, ncols=3)
 

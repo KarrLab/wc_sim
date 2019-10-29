@@ -70,7 +70,7 @@ class SimulationConfig(object):
         try:
             time_max = float(time_max)
         except (TypeError, ValueError):
-            raise SimulationConfigError('time_max must be a float')
+            raise SimulationConfigError(f'time_max ({time_max}) must be a float')
 
         if time_max <= time_init:
             raise SimulationConfigError('time_max must be greater than time_init')

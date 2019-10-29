@@ -72,7 +72,7 @@ README.rst
 
 # temporary files
 .~lock*
-.~*.xlsx
+~$*.xls*
 
 # Jupyter files #
 #################

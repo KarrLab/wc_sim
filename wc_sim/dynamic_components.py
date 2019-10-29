@@ -414,7 +414,6 @@ class DynamicCompartment(DynamicComponent):
 
     Attributes:
         id (:obj:`str`): id of this :obj:`DynamicCompartment`, copied from the `wc_lang` `Compartment`
-        name (:obj:`str`): name of this :obj:`DynamicCompartment`, copied from the `Compartment`
         biological_type (:obj:`pronto.term.Term`): biological type of this :obj:`DynamicCompartment`,
             copied from the `Compartment`
         random_state (:obj:`numpy.random.RandomState`): a random state
@@ -451,7 +450,6 @@ class DynamicCompartment(DynamicComponent):
         super(DynamicCompartment, self).__init__(dynamic_model, None, wc_lang_compartment)
 
         self.id = wc_lang_compartment.id
-        self.name = wc_lang_compartment.name
         self.biological_type = wc_lang_compartment.biological_type
         self.species_ids = species_ids
 
@@ -469,18 +467,18 @@ class DynamicCompartment(DynamicComponent):
 
         if math.isnan(self.init_volume):    # pragma no cover: cannot be True
             raise MultialgorithmError("DynamicCompartment {}: init_volume is NaN, but must be a positive "
-                                      "number.".format(self.name))
+                                      "number.".format(self.id))
         if self.init_volume <= 0:
             raise MultialgorithmError("DynamicCompartment {}: init_volume ({}) must be a positive "
-                                      "number.".format(self.name, self.init_volume))
+                                      "number.".format(self.id, self.init_volume))
 
         init_density = wc_lang_compartment.init_density.value
         if math.isnan(init_density):
             raise MultialgorithmError("DynamicCompartment {}: init_density is NaN, but must be a positive "
-                                      "number.".format(self.name))
+                                      "number.".format(self.id))
         if init_density <= 0:
             raise MultialgorithmError("DynamicCompartment {}: init_density ({}) must be a positive "
-                                      "number.".format(self.name, init_density))
+                                      "number.".format(self.id, init_density))
         self.init_density = init_density
 
     def initialize_mass_and_density(self, species_population):
@@ -507,13 +505,13 @@ class DynamicCompartment(DynamicComponent):
         # processes in the compartment are characterized
         if 0 == self.accounted_fraction:
             raise MultialgorithmError("DynamicCompartment '{}': initial accounted ratio is 0".format(
-                                      self.name))
+                                      self.id))
         elif 1.0 < self.accounted_fraction <= self.MAX_ALLOWED_INIT_ACCOUNTED_FRACTION:
             warnings.warn("DynamicCompartment '{}': initial accounted ratio ({:.3E}) greater than 1.0".format(
-                self.name, self.accounted_fraction))
+                self.id, self.accounted_fraction))
         if self.MAX_ALLOWED_INIT_ACCOUNTED_FRACTION < self.accounted_fraction:
             raise MultialgorithmError("DynamicCompartment {}: initial accounted ratio ({:.3E}) greater "
-                                      "than self.MAX_ALLOWED_INIT_ACCOUNTED_FRACTION ({}).".format(self.name,
+                                      "than self.MAX_ALLOWED_INIT_ACCOUNTED_FRACTION ({}).".format(self.id,
                                       self.accounted_fraction, self.MAX_ALLOWED_INIT_ACCOUNTED_FRACTION))
 
     def accounted_mass(self, time=None):
@@ -616,24 +614,23 @@ class DynamicCompartment(DynamicComponent):
         """
         values = []
         values.append("ID: " + self.id)
-        values.append("Name: " + self.name)
         if self._initialized():
-            values.append("Initialization state: '{}' has been initialized.".format(self.name))
+            values.append("Initialization state: '{}' has been initialized.".format(self.id))
         else:
-            values.append("Initialization state: '{}' has not been initialized.".format(self.name))
+            values.append("Initialization state: '{}' has not been initialized.".format(self.id))
 
+        # todo: be careful with units; if initial values are specified in other units, are the converted?
         values.append("Initial volume (l): {:.3E}".format(self.init_volume))
         values.append("Specified density (g l^-1): {}".format(self.init_density))
         if self._initialized():
             values.append("Initial mass in species (g): {:.3E}".format(self.init_accounted_mass))
             values.append("Initial total mass (g): {:.3E}".format(self.init_mass))
+            values.append(f"Fraction of mass accounted for by species (dimensionless): {self.accounted_fraction:.3E}")
 
-        if self._initialized():
             values.append("Current mass in species (g): {:.3E}".format(self.accounted_mass()))
             values.append("Current total mass (g): {:.3E}".format(self.mass()))
             values.append("Fold change total mass: {:.3E}".format(self.fold_change_total_mass()))
 
-        if self._initialized():
             values.append("Current volume in species (l): {:.3E}".format(self.accounted_volume()))
             values.append("Current total volume (l): {:.3E}".format(self.volume()))
             values.append("Fold change total volume: {:.3E}".format(self.fold_change_total_volume()))
@@ -669,6 +666,7 @@ class DynamicModel(object):
         dynamic_dfba_objectives (:obj:`dict` of `DynamicDfbaObjective`): the simulation's dFBA Objective,
             indexed by their ids
     """
+    AGGREGATE_VALUES = ['mass', 'volume', 'accounted mass', 'accounted volume']
 
     def __init__(self, model, species_population, dynamic_compartments):
         """ Prepare a `DynamicModel` for a discrete-event simulation
@@ -799,23 +797,21 @@ class DynamicModel(object):
         Returns:
             :obj:`dict`: the cell's aggregate state
         """
-        aggregate_state = {
-            'cell mass': self.cell_mass(),
-            'cell volume': self.cell_volume(),
-            'cell accounted mass': self.cell_accounted_mass(),
-            'cell accounted volume': self.cell_accounted_volume(),
-        }
+        # get the state values configured in DynamicModel.AGGREGATE_VALUES
+        aggregate_state = {}
 
-        compartments = {}
+        cell_aggregate_values = [f'cell {value}' for value in self.AGGREGATE_VALUES]
+        for cell_aggregate_value in cell_aggregate_values:
+            aggregate_func = getattr(self, cell_aggregate_value.replace(' ', '_'))
+            aggregate_state[cell_aggregate_value] = aggregate_func()
+
+        compartment_values = {}
         for dynamic_compartment in self.cellular_dyn_compartments:
-            compartments[dynamic_compartment.id] = {
-                'name': dynamic_compartment.name,
-                'mass': dynamic_compartment.mass(),
-                'volume': dynamic_compartment.volume(),
-                'accounted mass': dynamic_compartment.accounted_mass(),
-                'accounted volume': dynamic_compartment.accounted_volume()
-            }
-        aggregate_state['compartments'] = compartments
+            compartment_values[dynamic_compartment.id] = {}
+            for aggregate_value in self.AGGREGATE_VALUES:
+                aggregate_func = getattr(dynamic_compartment, aggregate_value.replace(' ', '_'))
+                compartment_values[dynamic_compartment.id][aggregate_value] = aggregate_func()
+        aggregate_state['compartments'] = compartment_values
         return aggregate_state
 
     def eval_dynamic_observables(self, time, observables_to_eval=None):
