@@ -58,10 +58,16 @@ class DeterministicSimulationAlgorithmSubmodel(DynamicSubmodel):
     def send_initial_events(self):
         """ Send this DSA submodel's initial events
 
+        Schedule initial reactions at time `1 / (2 rate)` so that the linear approximation for the number
+        of times a reaction with constant rate r has executed is `y = rate x`.
+
         This method overrides a :obj:`DynamicSubmodel` method.
         """
         for reaction in self.reactions:
-            self.schedule_next_reaction_execution(reaction)
+            rate = self.calc_reaction_rate(reaction)
+            dt = 1.0/(2 * rate)
+            reaction_index = self.reaction_table[reaction.id]
+            self.schedule_ExecuteDsaReaction(dt, reaction_index)
 
     def handle_ExecuteDsaReaction_msg(self, event):
         """ Handle a simulation event that contains an :obj:`ExecuteDsaReaction` message
@@ -77,7 +83,7 @@ class DeterministicSimulationAlgorithmSubmodel(DynamicSubmodel):
         # execute reaction if it is enabled
         reaction = self.reactions[reaction_index]
         if not self.enabled_reaction(reaction):
-            raise MultialgorithmError(f"Insufficient reactants to execute reaction {reaction.id}")
+            raise MultialgorithmError(f"Insufficient reactants to execute reaction {reaction.id} at {self.time}")
         self.execute_reaction(reaction)
         self.schedule_next_reaction_execution(reaction)
 

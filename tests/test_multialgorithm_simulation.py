@@ -267,12 +267,11 @@ class TestMultialgorithmSimulationDynamically(unittest.TestCase):
                 copy numbers in the test; provides an iterator for each species, indexed by the species id
             expected_property_trajectories (:obj:`dict`, optional): expected trajectories of aggregate properties
                  for each compartment in the test; provides an iterator for each property; indexed by
-                 compartment id. Properties must be keyed as structured by `AccessState.get_checkpoint_state()`.
+                 compartment id. Properties must be keyed as structured by `AccessState.get_checkpoint_state()`
+                 and `RunResults.convert_checkpoints()`
             delta (:obj:`bool`, optional): if set, then compare trajectory values approximately, reporting
                 values that differ by more than `delta` as different
         """
-        test_name = self._testMethodName
-
 
         # test initial values
         if expected_initial_values:
@@ -282,11 +281,11 @@ class TestMultialgorithmSimulationDynamically(unittest.TestCase):
                     actual_value = getattr(dynamic_compartment, initial_attribute)
                     if delta:
                         self.assertAlmostEqual(actual_value, expected_value, delta=delta,
-                                         msg=f"In test {test_name}, {initial_attribute} is {actual_value}, "
+                                         msg=f"In model {dynamic_model.id}, {initial_attribute} is {actual_value}, "
                                             f"not within {delta} of {expected_value}")
                     else:
                         self.assertEqual(actual_value, expected_value,
-                                         msg=f"In test {test_name}, {initial_attribute} is {actual_value}, "
+                                         msg=f"In model {dynamic_model.id}, {initial_attribute} is {actual_value}, "
                                             f"not {expected_value}")
 
         # get results
@@ -298,10 +297,10 @@ class TestMultialgorithmSimulationDynamically(unittest.TestCase):
         # test expected_times
         if expected_times:
             np.testing.assert_array_equal(populations_df.index, expected_times,
-                                          err_msg=f"In test {test_name}, time sequence for populations "
+                                          err_msg=f"In model {dynamic_model.id}, time sequence for populations "
                                           f"differs from expected time sequence:")
             np.testing.assert_array_equal(aggregate_states_df.index, expected_times,
-                                          err_msg=f"In test {test_name}, time sequence for aggregate states "
+                                          err_msg=f"In model {dynamic_model.id}, time sequence for aggregate states "
                                           f"differs from expected time sequence:")
 
 
@@ -312,11 +311,11 @@ class TestMultialgorithmSimulationDynamically(unittest.TestCase):
                 if delta:
                     np.testing.assert_allclose(actual_trajectory, expected_trajectory, equal_nan=False,
                                                atol=delta,
-                                               err_msg=f"In test {test_name}, trajectory for {specie_id} "
+                                               err_msg=f"In model {dynamic_model.id}, trajectory for {specie_id} "
                                                    f"not almost equal to expected trajectory:")
                 else:
                     np.testing.assert_array_equal(actual_trajectory, expected_trajectory,
-                                                  err_msg=f"In test {test_name}, trajectory for {specie_id} "
+                                                  err_msg=f"In model {dynamic_model.id}, trajectory for {specie_id} "
                                                       f"differs from expected trajectory:")
 
         # test expected trajectories of properties of compartments
@@ -338,7 +337,7 @@ class TestMultialgorithmSimulationDynamically(unittest.TestCase):
                     # todo: when fixed, remove list()
                     np.testing.assert_allclose(list(actual_trajectory.to_numpy()), expected_trajectory, equal_nan=False,
                                                atol=delta,
-                                               err_msg=f"In test {test_name}, trajectory of {property} "
+                                               err_msg=f"In model {dynamic_model.id}, trajectory of {property} "
                                                   f"of compartment {compartment_id} "
                                                   f"not almost equal to expected trajectory:")
 
@@ -378,7 +377,7 @@ class TestMultialgorithmSimulationDynamically(unittest.TestCase):
         self.check_simul_results(dynamic_model, results_dir,
                                  expected_initial_values=expected_initial_values,
                                  expected_species_trajectories=\
-                                     {'spec_type_0[compt_1]':[10000., 10000., 9999.]})
+                                     {'spec_type_0[compt_1]':[10000., 9999., 9998.]})
         with self.assertRaises(AssertionError):
             self.check_simul_results(dynamic_model, results_dir,
                                      expected_initial_values=expected_initial_values,
@@ -392,7 +391,7 @@ class TestMultialgorithmSimulationDynamically(unittest.TestCase):
         self.check_simul_results(dynamic_model, results_dir,
                                  expected_initial_values=expected_initial_values,
                                  expected_species_trajectories=\
-                                    {'spec_type_0[compt_1]':[10000., 10000., 9999.]},
+                                    {'spec_type_0[compt_1]':[10000., 9999., 9998.]},
                                     delta=1E-5)
         self.check_simul_results(dynamic_model, results_dir,
                                  expected_property_trajectories={'compt_1':
@@ -558,9 +557,14 @@ class TestMultialgorithmSimulationDynamically(unittest.TestCase):
         # todo: plot expected & actual trajectories
 
     def test_closed_form_models(self):
-        model_filename = os.path.join(os.path.dirname(__file__), 'fixtures', 'dynamic_tests', 'static.xlsx')
-        self.verify_closed_form_model(model_filename)
-        # todo: test other models
+        models_to_test = 'static one_reaction_linear'.split()
+        models_to_test = 'one_reaction_linear'.split()
+        print()
+        for model_name in models_to_test:
+            print(f'testing {model_name}')
+            model_filename = os.path.join(os.path.dirname(__file__), 'fixtures', 'dynamic_tests', f'{model_name}.xlsx')
+            self.verify_closed_form_model(model_filename)
+        # todo: create and test other models
         models = 'static one_reaction_linear one_rxn_exponential two_compts_exponential_1 two_compts_exponential_2'.split()
         '''
         models = 'template static one_reaction_linear one_rxn_exponential'.split()

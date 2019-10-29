@@ -647,6 +647,7 @@ class DynamicModel(object):
     dynamic compartments.
 
     Attributes:
+        id (:obj:`str`): id of the `wc_lang` model
         dynamic_compartments (:obj:`dict`): map from compartment ID to :obj:`DynamicCompartment`\ ;
             the simulation's :obj:`DynamicCompartment`\ s, one for each compartment in `model`
         cellular_dyn_compartments (:obj:`list`): list of the cellular compartments
@@ -677,6 +678,7 @@ class DynamicModel(object):
             dynamic_compartments (:obj:`dict`): the simulation's :obj:`DynamicCompartment`\ s, one
                 for each compartment in `model`
         """
+        self.id = model.id
         self.dynamic_compartments = dynamic_compartments
         self.species_population = species_population
         self.num_submodels = len(model.get_submodels())

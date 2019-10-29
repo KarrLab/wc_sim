@@ -161,6 +161,7 @@ class RunResults(object):
             for function_id, function in functions.items():
                 functions_df.loc[time, function_id] = function
 
+            # todo: could add cell aggregate properties to aggregate_states_df
             compartment_states = aggregate_state['compartments']
             for compartment_id, agg_states in compartment_states.items():
                 for property, value in agg_states.items():

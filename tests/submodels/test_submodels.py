@@ -305,7 +305,6 @@ class TestDeterministicSimulationAlgorithmSubmodel(unittest.TestCase):
             dsa_submodel.handle_ExecuteDsaReaction_msg(event)
 
     def test_simulate_deterministic_simulation_algorithm_submodel(self):
-        # test that deterministic simulation algorithm; corrects trajectories tested elsewhere
         model = MakeModel.make_test_model('1 species, 1 reaction')
         self.transform_model_for_dsa_simulation(model)
         simulation = Simulation(model)
