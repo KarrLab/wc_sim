@@ -495,6 +495,7 @@ class TestMultialgorithmSimulationDynamically(unittest.TestCase):
         # read model while ignoring missing models, with std dev = 0
         model = read_model_and_set_all_std_devs_to_0(model_filename)
         # simulate model
+        # todo: move end_time & checkpoint_period to a separate simulation params worksheet
         end_time = model.parameters.get_one(id='end_time').value
         checkpoint_period = model.parameters.get_one(id='checkpoint_period').value
         args = dict(results_dir=self.results_dir,
@@ -557,8 +558,7 @@ class TestMultialgorithmSimulationDynamically(unittest.TestCase):
         # todo: plot expected & actual trajectories
 
     def test_closed_form_models(self):
-        models_to_test = 'static one_reaction_linear'.split()
-        models_to_test = 'one_reaction_linear'.split()
+        models_to_test = 'static one_reaction_linear one_rxn_exponential'.split()
         print()
         for model_name in models_to_test:
             print(f'testing {model_name}')
