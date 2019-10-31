@@ -292,11 +292,7 @@ class TestMultialgorithmSimulationDynamically(unittest.TestCase):
         if expected_species_trajectories or expected_property_trajectories:
             run_results = RunResults(results_dir)
             populations_df = run_results.get('populations')
-            print(populations_df)
-            populations_df.plot()
             aggregate_states_df = run_results.get('aggregate_states')
-            print(aggregate_states_df)
-            aggregate_states_df.plot()
 
         # test expected_times
         if expected_times and not np.isnan(expected_times).all():
@@ -342,7 +338,6 @@ class TestMultialgorithmSimulationDynamically(unittest.TestCase):
                     if not delta:
                         delta = 1E-9
                     # todo: investigate possible numpy bug: without list(), this fails with
-
                     # "TypeError: ufunc 'isfinite' not supported for the input types, ..." but ndarray works elsewhere
                     # todo: when fixed, remove list()
                     np.testing.assert_allclose(list(actual_trajectory.to_numpy()), expected_trajectory, equal_nan=False,
@@ -467,13 +462,15 @@ class TestMultialgorithmSimulationDynamically(unittest.TestCase):
                 'type': obj_tables.FloatAttribute()
             }
         for compartment in model.get_compartments():
-            for aggregate_value in DynamicModel.AGGREGATE_VALUES:
-                attr_name = f'compartment {compartment.id} {aggregate_value}'
-                attr_name.replace(' ', '_')
-                cls['attrs'][attr_name] = {
-                    'name': attr_name,
-                    'type': obj_tables.FloatAttribute()
-                }
+            # ignore compartments that aren't cellular
+            if compartment.biological_type == onto['WC:cellular_compartment']:
+                for aggregate_value in DynamicModel.AGGREGATE_VALUES:
+                    attr_name = f'compartment {compartment.id} {aggregate_value}'
+                    attr_name.replace(' ', '_')
+                    cls['attrs'][attr_name] = {
+                        'name': attr_name,
+                        'type': obj_tables.FloatAttribute()
+                    }
 
         # create the classes
         trajectory_classes = {}
@@ -512,8 +509,6 @@ class TestMultialgorithmSimulationDynamically(unittest.TestCase):
                     checkpoint_period=checkpoint_period)
         simulation = Simulation(model)
         _, results_dir = simulation.run(end_time=end_time, **args)
-        for dynamic_compartment in simulation.dynamic_model.dynamic_compartments.values():
-            print(str(dynamic_compartment))
 
         # test dynamics
         # read expected trajectories
