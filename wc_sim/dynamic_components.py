@@ -627,6 +627,7 @@ class DynamicCompartment(DynamicComponent):
             values.append("Initial total mass (g): {:.3E}".format(self.init_mass))
             values.append(f"Fraction of mass accounted for by species (dimensionless): {self.accounted_fraction:.3E}")
 
+            # todo: include simulation time
             values.append("Current mass in species (g): {:.3E}".format(self.accounted_mass()))
             values.append("Current total mass (g): {:.3E}".format(self.mass()))
             values.append("Fold change total mass: {:.3E}".format(self.fold_change_total_mass()))

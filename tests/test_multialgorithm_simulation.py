@@ -292,10 +292,14 @@ class TestMultialgorithmSimulationDynamically(unittest.TestCase):
         if expected_species_trajectories or expected_property_trajectories:
             run_results = RunResults(results_dir)
             populations_df = run_results.get('populations')
+            print(populations_df)
+            populations_df.plot()
             aggregate_states_df = run_results.get('aggregate_states')
+            print(aggregate_states_df)
+            aggregate_states_df.plot()
 
         # test expected_times
-        if expected_times:
+        if expected_times and not np.isnan(expected_times).all():
             np.testing.assert_array_equal(populations_df.index, expected_times,
                                           err_msg=f"In model {dynamic_model.id}, time sequence for populations "
                                           f"differs from expected time sequence:")
@@ -307,6 +311,8 @@ class TestMultialgorithmSimulationDynamically(unittest.TestCase):
         # test expected trajectories of species
         if expected_species_trajectories:
             for specie_id, expected_trajectory in expected_species_trajectories.items():
+                if np.isnan(expected_trajectory).all():
+                    continue
                 actual_trajectory = populations_df[specie_id]
                 if delta:
                     np.testing.assert_allclose(actual_trajectory, expected_trajectory, equal_nan=False,
@@ -327,8 +333,12 @@ class TestMultialgorithmSimulationDynamically(unittest.TestCase):
             for compartment_id in expected_property_trajectories:
                 dynamic_compartment = dynamic_model.dynamic_compartments[compartment_id]
                 for property in properties:
+                    if compartment_id not in aggregate_states_df:
+                        continue
                     actual_trajectory = aggregate_states_df[compartment_id][property]
                     expected_trajectory = expected_property_trajectories[compartment_id][property]
+                    if np.isnan(expected_trajectory).all():
+                        continue
                     if not delta:
                         delta = 1E-9
                     # todo: investigate possible numpy bug: without list(), this fails with
@@ -528,11 +538,6 @@ class TestMultialgorithmSimulationDynamically(unittest.TestCase):
         for expected_species_trajectory in expected_trajectories[SpeciesTrajectory]:
             expected_trajectory_times.append(expected_species_trajectory.time)
 
-        # compare expected & actual trajectories
-        self.check_simul_results(simulation.dynamic_model, results_dir,
-                                 expected_times=expected_trajectory_times,
-                                 expected_species_trajectories=expected_species_trajectories)
-
         # get aggregate trajectories from model workbook
         expected_aggregate_trajectories = {}
         for dyn_compartment_id in simulation.dynamic_model.dynamic_compartments:
@@ -554,23 +559,23 @@ class TestMultialgorithmSimulationDynamically(unittest.TestCase):
         # compare expected & actual trajectories
         self.check_simul_results(simulation.dynamic_model, results_dir,
                                  expected_times=expected_trajectory_times,
+                                 expected_species_trajectories=expected_species_trajectories,
                                  expected_property_trajectories=expected_aggregate_trajectories)
         # todo: plot expected & actual trajectories
 
     def test_closed_form_models(self):
-        models_to_test = 'static one_reaction_linear one_rxn_exponential'.split()
         print()
+        models_to_test = 'static one_reaction_linear one_rxn_exponential one_exchange_rxn_compt_growth'.split()
         for model_name in models_to_test:
             print(f'testing {model_name}')
             model_filename = os.path.join(os.path.dirname(__file__), 'fixtures', 'dynamic_tests', f'{model_name}.xlsx')
             self.verify_closed_form_model(model_filename)
         # todo: create and test other models
-        models = 'static one_reaction_linear one_rxn_exponential two_compts_exponential_1 two_compts_exponential_2'.split()
+        models = 'static one_reaction_linear one_rxn_exponential one_exchange_rxn_compt_growth two_compts_exponential_2'.split()
         '''
         models = 'template static one_reaction_linear one_rxn_exponential'.split()
         for model_name in models:
             model_filename = os.path.join(os.path.dirname(__file__), 'fixtures', 'dynamic_tests', f'{model_name}.xlsx')
-            print('reading', f'{model_name}.xlsx')
             model = Reader().run(model_filename, ignore_extra_models=True)[Model][0]
         '''
 
