@@ -17,7 +17,7 @@ md = pkg_utils.get_package_metadata(dirname, name)
 setuptools.setup(
     name=name,
     version=md.version,
-    description="Sequential whole-cell model simulator",
+    description="Multialgorithmic whole-cell model simulator",
     long_description=md.long_description,
     url="https://github.com/KarrLab/" + name,
     download_url='https://github.com/KarrLab/' + name,

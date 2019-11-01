@@ -18,4 +18,3 @@ from . import model_utilities
 from . import multialgorithm_errors
 from . import multialgorithm_simulation
 from . import species_populations
-from . import utils

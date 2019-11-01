@@ -25,7 +25,6 @@ from wc_sim.debug_logs import logs as debug_logs
 from wc_sim.model_utilities import ModelUtilities
 from wc_sim.multialgorithm_errors import NegativePopulationError, SpeciesPopulationError
 from wc_sim import distributed_properties
-from wc_sim.utils import get_species_and_compartment_from_name
 from wc_utils.util.dict import DictUtil
 from wc_utils.util.rand import RandomStateManager
 
@@ -784,7 +783,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             time = self.time
         mass = 0.
         for species_id in species_ids:
-            _, comp = get_species_and_compartment_from_name(species_id)
+            _, comp = wc_lang.Species.parse_id(species_id)
             if comp == compartment_id:
                 try:
                     mw = self._molecular_weights[species_id]              

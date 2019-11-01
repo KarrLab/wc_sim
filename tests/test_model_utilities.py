@@ -57,17 +57,6 @@ class TestModelUtilities(unittest.TestCase):
         self.assertEqual(set(ModelUtilities.find_shared_species(self.model, return_ids=True)),
                          set(['species_2[c]', 'species_3[c]', 'H2O[e]', 'H2O[c]']))
 
-    def test_parse_species_id(self):
-        self.assertEqual(wc_lang.Species.parse_id('good_id[good_compt]'), ('good_id', 'good_compt'))
-        self.assertEqual(wc_lang.Species.parse_id('H[c]'), ('H', 'c'))
-        self.assertEqual(wc_lang.Species.parse_id('HO[c]'), ('HO', 'c'))
-        self.assertEqual(wc_lang.Species.parse_id('H2[c]'), ('H2', 'c'))
-        self.assertEqual(wc_lang.Species.parse_id('H2O[c]'), ('H2O', 'c'))
-        with self.assertRaises(ValueError):
-            wc_lang.Species.parse_id('+_bad_good_id[good_compt]')
-        with self.assertRaises(ValueError):
-            wc_lang.Species.parse_id('good_id[+_bad_compt]')
-
     def test_get_species_types(self):
         self.assertEqual(ModelUtilities.get_species_types([]), [])
 
