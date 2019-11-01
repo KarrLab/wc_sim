@@ -64,7 +64,7 @@ class TestModelUtilities(unittest.TestCase):
         species_ids = [specie.serialize() for specie in self.model.get_species()]
         self.assertEqual(sorted(ModelUtilities.get_species_types(species_ids)), sorted(species_type_ids))
 
-    def test_concentration_to_molecules(self):
+    def test_sample_copy_num_from_concentration(self):
         model = wc_lang.Model()
 
         submodel = model.submodels.create(id='submodel', framework=onto['WC:stochastic_simulation_algorithm'])
@@ -100,7 +100,7 @@ class TestModelUtilities(unittest.TestCase):
             elif key == 'no_concentration':
                 continue
 
-        conc_to_molecules = ModelUtilities.concentration_to_molecules
+        conc_to_molecules = ModelUtilities.sample_copy_num_from_concentration
         random_state = numpy.random.RandomState()
         copy_number = conc_to_molecules(species['molecule'], species['molecule'].compartment.init_volume.mean, random_state)
         self.assertEqual(copy_number, conc_value)
@@ -133,7 +133,7 @@ class TestModelUtilities(unittest.TestCase):
         wc_lang.DistributionInitConcentration(species=species_tmp, mean=conc_value, std=std_value, 
             units='molecule')
         with self.assertRaises(ValueError):
-            ModelUtilities.concentration_to_molecules(species_tmp, species_tmp.compartment.init_volume.mean,
+            ModelUtilities.sample_copy_num_from_concentration(species_tmp, species_tmp.compartment.init_volume.mean,
                 random_state)
         
         species_tmp2 = wc_lang.Species(species_type=species_type,
@@ -141,5 +141,5 @@ class TestModelUtilities(unittest.TestCase):
         species_tmp2.id = species_tmp2.gen_id()
         wc_lang.DistributionInitConcentration(species=species_tmp2, mean=conc_value, std=std_value, units=0)
         with self.assertRaises(ValueError):
-            ModelUtilities.concentration_to_molecules(species_tmp2, species_tmp2.compartment.init_volume.mean,
+            ModelUtilities.sample_copy_num_from_concentration(species_tmp2, species_tmp2.compartment.init_volume.mean,
                 random_state)

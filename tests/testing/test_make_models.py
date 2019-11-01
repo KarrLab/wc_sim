@@ -141,7 +141,7 @@ class TestMakeModels(unittest.TestCase):
         dist_conc = species.distribution_init_concentration
         mean = dist_conc.mean
         std = dist_conc.std
-        return ModelUtilities.concentration_to_molecules(species, volume, RandomState())
+        return ModelUtilities.sample_copy_num_from_concentration(species, volume, RandomState())
 
     def test_make_test_model_init_vols(self):
         # test the volume settings in make_test_model

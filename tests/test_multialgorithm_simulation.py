@@ -125,7 +125,7 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
 
     def test_prepare_dynamic_compartments(self):
         self.multialgorithm_simulation.create_dynamic_compartments()
-        self.multialgorithm_simulation.initialize_species_populations()
+        self.multialgorithm_simulation.init_species_pop_from_distribution()
         self.multialgorithm_simulation.local_species_population = \
             self.multialgorithm_simulation.make_local_species_population(retain_history=False)
         self.multialgorithm_simulation.prepare_dynamic_compartments()
@@ -134,9 +134,9 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
             self.assertTrue(0 < dynamic_compartment.accounted_mass())
             self.assertTrue(0 < dynamic_compartment.mass())
 
-    def test_initialize_species_populations(self):
+    def test_init_species_pop_from_distribution(self):
         self.multialgorithm_simulation.create_dynamic_compartments()
-        self.multialgorithm_simulation.initialize_species_populations()
+        self.multialgorithm_simulation.init_species_pop_from_distribution()
         species_wo_init_conc = ['species_1[c]', 'species_3[c]']
         for species_id in species_wo_init_conc:
             self.assertEqual(self.multialgorithm_simulation.init_populations[species_id], 0)
@@ -144,12 +144,12 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
             self.assertTrue(0 <= self.multialgorithm_simulation.init_populations[concentration.species.id])
 
         # todo: statistically evaluate sampled population
-        # ensure that over multiple runs of initialize_species_populations():
+        # ensure that over multiple runs of init_species_pop_from_distribution():
         # mean(species population) ~= mean(volume) * mean(concentration)
 
     def test_make_local_species_population(self):
         self.multialgorithm_simulation.create_dynamic_compartments()
-        self.multialgorithm_simulation.initialize_species_populations()
+        self.multialgorithm_simulation.init_species_pop_from_distribution()
         local_species_population = self.multialgorithm_simulation.make_local_species_population()
         self.assertEqual(local_species_population._molecular_weights,
             self.multialgorithm_simulation.molecular_weights_for_species())
@@ -216,7 +216,7 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
 
     def test_str(self):
         self.multialgorithm_simulation.create_dynamic_compartments()
-        self.multialgorithm_simulation.initialize_species_populations()
+        self.multialgorithm_simulation.init_species_pop_from_distribution()
         self.multialgorithm_simulation.local_species_population = \
             self.multialgorithm_simulation.make_local_species_population(retain_history=False)
         self.assertIn('species_1[e]', str(self.multialgorithm_simulation))

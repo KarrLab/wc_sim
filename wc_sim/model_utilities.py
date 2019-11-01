@@ -92,9 +92,10 @@ class ModelUtilities(object):
         return(shared_species)
 
     @staticmethod
-    def concentration_to_molecules(species, volume, random_state):
-        """ Provide the initial copy number of `species` from its concentration
+    def sample_copy_num_from_concentration(species, volume, random_state):
+        """ Provide the initial copy number of `species` from its specified value
 
+        The initial copy number is sampled from a specified distribution in molecules or molarity.
         Copy number is rounded to the closest integer to avoid truncating small populations.
 
         Args:
@@ -114,7 +115,6 @@ class ModelUtilities(object):
         if dist_conc is None:
             return 0
         else:
-            # todo: support distributions other than normal
             if not are_terms_equivalent(dist_conc.distribution, onto['WC:normal_distribution']): # normal
                 raise ValueError('Unsupported random distribution `{}`'.format(dist_conc.distribution.name))
             mean = dist_conc.mean

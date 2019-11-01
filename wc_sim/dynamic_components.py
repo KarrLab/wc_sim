@@ -395,6 +395,7 @@ class DynamicSpecies(DynamicComponent):
         """
         super().__init__(dynamic_model, local_species_population, wc_lang_model)
         # Grab a reference to the right wc_lang.Species object used by local_species_population
+        # todo: fix: use read_one() to get the right population!
         self.species_obj = local_species_population._population[wc_lang_model.id]
 
     def eval(self, time):
@@ -454,7 +455,6 @@ class DynamicCompartment(DynamicComponent):
         self.species_ids = species_ids
 
         # obtain initial compartment volume by sampling its specified distribution
-        # todo: support distributions other than normal
         if wc_lang_compartment.init_volume and \
             are_terms_equivalent(wc_lang_compartment.init_volume.distribution, onto['WC:normal_distribution']):
             mean = wc_lang_compartment.init_volume.mean

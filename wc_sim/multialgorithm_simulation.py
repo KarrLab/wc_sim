@@ -144,7 +144,7 @@ class MultialgorithmSimulation(object):
         """ Initialize the biological components of a simulation
         """
         self.create_dynamic_compartments()
-        self.initialize_species_populations()
+        self.init_species_pop_from_distribution()
         self.local_species_population = self.make_local_species_population()
         self.prepare_dynamic_compartments()
 
@@ -185,14 +185,15 @@ class MultialgorithmSimulation(object):
                 species_weights[species_id] = float('nan')
         return species_weights
 
-    def initialize_species_populations(self):
+    def init_species_pop_from_distribution(self):
         """ Initialize the species populations
+
+        Uses the dynamic compartment volume previously sampled from its distribution
         """
         self.init_populations = {}
         for species in self.model.get_species():
             dynamic_compartment = self.dynamic_compartments[species.compartment.id]
-            self.init_populations[species.id] = ModelUtilities.concentration_to_molecules(
-                # use dynamic compartment volume sampled from specified distribution
+            self.init_populations[species.id] = ModelUtilities.sample_copy_num_from_concentration(
                 species, dynamic_compartment.init_volume, self.random_state)
 
     def get_dynamic_compartments(self, submodel):
