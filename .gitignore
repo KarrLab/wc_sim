@@ -80,3 +80,8 @@ README.rst
 
 # test results
 tests/multialgorithm/results/
+tests/results/
+
+examples/**/*.h5
+examples/**/*.pickle
+examples/**/*.pdf
