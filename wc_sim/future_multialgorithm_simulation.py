@@ -6,12 +6,13 @@
 :License: MIT
 """
 
-DEFAULT_VALUES = dict(
+DEFAULT_VALUES = dict(  # pragma: no cover
     shared_species_store='SHARED_SPECIE_STORE'
 )
 
 
-class MultialgorithmSimulation(object):
+# TODO(Arthur): not currently used; incorporate after MVP wc_sim done
+class MultialgorithmSimulation(object):   # pragma: no cover; code for use later
     """ Initialize a multialgorithm simulation from a language model and run-time parameters
 
     Attributes:
@@ -57,7 +58,6 @@ class MultialgorithmSimulation(object):
         self.simulation.add_object(species_pop_sim_obj)
         return {self.shared_species_store_name: species_pop_sim_obj}
 
-    # TODO(Arthur): not currently used; test after MVP wc_sim done
     def create_access_species_pop(self, lang_submodel):   # pragma: no cover
         """ Create a `LocalSpeciesPopulations` for a submodel and wrap it in an `AccessSpeciesPopulations`
 

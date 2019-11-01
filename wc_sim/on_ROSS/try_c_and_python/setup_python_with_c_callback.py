@@ -10,7 +10,7 @@ import os
 
 DIR = os.path.dirname(__file__)
 
-def call_setup():
+def call_setup():   # pragma: no cover
     module1 = Extension('callbacks',
         sources = [os.path.join(DIR, 'callbacks.c')])
 

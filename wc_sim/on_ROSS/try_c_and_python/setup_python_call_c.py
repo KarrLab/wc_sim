@@ -11,7 +11,7 @@ import os
 DIR = os.path.dirname(__file__)
 
 
-def call_setup():
+def call_setup():   # pragma: no cover
     '''
     Build an extension module.
 
