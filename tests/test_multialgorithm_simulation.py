@@ -87,6 +87,11 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.test_dir)
 
+    def test_init(self):
+        self.model.submodels = []
+        with self.assertRaises(MultialgorithmError):
+            MultialgorithmSimulation(self.model, None)
+
     def test_molecular_weights_for_species(self):
         multi_alg_sim = self.multialgorithm_simulation
         expected = {
