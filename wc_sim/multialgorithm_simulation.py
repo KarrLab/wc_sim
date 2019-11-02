@@ -108,8 +108,6 @@ class MultialgorithmSimulation(object):
             species, derived from the specification in `model`
         local_species_population (:obj:`LocalSpeciesPopulation`): a shared species population for the
             multialgorithm simulation
-        simulation_submodels (:obj:`dict` of :obj:`DynamicSubmodel`): the simulation's dynamic submodels,
-            keyed by id
         dynamic_model (:obj:`DynamicModel`): the dynamic state of a model being simulated
         dynamic_compartments (:obj:`dict`): the simulation's `DynamicCompartment`s, one for each
             compartment in `model`
@@ -160,7 +158,7 @@ class MultialgorithmSimulation(object):
             self.checkpointing_sim_obj = self.create_multialgorithm_checkpointing(
                 self.args['results_dir'],
                 self.args['checkpoint_period'])
-        self.simulation_submodels = self.create_dynamic_submodels()
+        self.dynamic_model.dynamic_submodels = self.create_dynamic_submodels()
 
     def molecular_weights_for_species(self, species=None):
         """ Obtain the molecular weights for species with specified ids

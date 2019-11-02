@@ -67,7 +67,7 @@ class AccessState(AccessStateObjectInterface):
         random_states = {}
         random_states['local_species_population'] = self.local_species_population.random_state.get_state()
         random_states['submodels'] = {}
-        for submodel in self.multialgorithm_simulation.simulation_submodels.values():
+        for submodel in self.multialgorithm_simulation.dynamic_model.dynamic_submodels.values():
             if isinstance(submodel, SsaSubmodel):
                 # only SSA submodels use random numbers
                 random_states['submodels'][submodel.id] = submodel.random_state.get_state()

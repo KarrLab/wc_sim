@@ -653,6 +653,8 @@ class DynamicModel(object):
             the simulation's :obj:`DynamicCompartment`\ s, one for each compartment in `model`
         cellular_dyn_compartments (:obj:`list`): list of the cellular compartments
         species_population (:obj:`LocalSpeciesPopulation`): populations of all the species in the model
+        dynamic_submodels (:obj:`dict` of `DynamicSubmodel`): the simulation's dynamic submodels,
+            indexed by their ids
         dynamic_species (:obj:`dict` of `DynamicSpecies`): the simulation's dynamic species,
             indexed by their ids
         dynamic_parameters (:obj:`dict` of `DynamicParameter`): the simulation's parameters,
@@ -877,7 +879,6 @@ class DynamicModel(object):
 
             def stop_condition(time):
                 for dynamic_stop_condition in dynamic_stop_conditions:
-                    print('checking dynamic_stop_condition', dynamic_stop_condition)
                     if dynamic_stop_condition.eval(time):
                         return True
                 return False

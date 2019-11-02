@@ -115,7 +115,7 @@ class TestDynamicSubmodelStatically(unittest.TestCase):
             'reaction_2': 0.0,
             'reaction_4': expected_rate_reaction_4_forward
         }
-        for dynamic_submodel in multialgorithm_simulation.simulation_submodels.values():
+        for dynamic_submodel in multialgorithm_simulation.dynamic_model.dynamic_submodels.values():
             rates = dynamic_submodel.calc_reaction_rates()
             for index, rxn in enumerate(dynamic_submodel.reactions):
                 if rxn.id in expected_rates:
@@ -254,7 +254,7 @@ class TestDeterministicSimulationAlgorithmSubmodel(unittest.TestCase):
         simulation_engine, _ = multialgorithm_simulation.build_simulation()
         simulation_engine.initialize()
         dsa_submodel_name = 'submodel_2'
-        dsa_submodel = multialgorithm_simulation.simulation_submodels[dsa_submodel_name]
+        dsa_submodel = multialgorithm_simulation.dynamic_model.dynamic_submodels[dsa_submodel_name]
         self.assertTrue(isinstance(dsa_submodel, DeterministicSimulationAlgorithmSubmodel))
 
         # test init: is reaction_table correct?
