@@ -118,8 +118,8 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
 
     def test_create_dynamic_compartments(self):
         self.multialgorithm_simulation.create_dynamic_compartments()
-        self.assertEqual(set(['c', 'e']), set(self.multialgorithm_simulation.dynamic_compartments))
-        for id, dynamic_compartment in self.multialgorithm_simulation.dynamic_compartments.items():
+        self.assertEqual(set(['c', 'e']), set(self.multialgorithm_simulation.temp_dynamic_compartments))
+        for id, dynamic_compartment in self.multialgorithm_simulation.temp_dynamic_compartments.items():
             self.assertEqual(id, dynamic_compartment.id)
             self.assertTrue(0 < dynamic_compartment.init_density)
 
@@ -129,7 +129,7 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
         self.multialgorithm_simulation.local_species_population = \
             self.multialgorithm_simulation.make_local_species_population(retain_history=False)
         self.multialgorithm_simulation.prepare_dynamic_compartments()
-        for dynamic_compartment in self.multialgorithm_simulation.dynamic_compartments.values():
+        for dynamic_compartment in self.multialgorithm_simulation.temp_dynamic_compartments.values():
             self.assertTrue(dynamic_compartment._initialized())
             self.assertTrue(0 < dynamic_compartment.accounted_mass())
             self.assertTrue(0 < dynamic_compartment.mass())
@@ -170,7 +170,7 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
         self.multialgorithm_simulation.initialize_components()
         self.assertTrue(isinstance(self.multialgorithm_simulation.local_species_population,
                         LocalSpeciesPopulation))
-        for dynamic_compartment in self.multialgorithm_simulation.dynamic_compartments.values():
+        for dynamic_compartment in self.multialgorithm_simulation.temp_dynamic_compartments.values():
             self.assertTrue(isinstance(dynamic_compartment.species_population, LocalSpeciesPopulation))
 
     def test_initialize_infrastructure(self):

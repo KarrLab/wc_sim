@@ -109,8 +109,8 @@ class MultialgorithmSimulation(object):
         local_species_population (:obj:`LocalSpeciesPopulation`): a shared species population for the
             multialgorithm simulation
         dynamic_model (:obj:`DynamicModel`): the dynamic state of a model being simulated
-        dynamic_compartments (:obj:`dict`): the simulation's `DynamicCompartment`s, one for each
-            compartment in `model`
+        temp_dynamic_compartments (:obj:`dict`): the simulation's `DynamicCompartment`s, one for each
+            compartment in `model`; temporary attribute used until :obj:`DynamicModel` is made
     """
 
     def __init__(self, model, args):
@@ -150,8 +150,9 @@ class MultialgorithmSimulation(object):
         """ Initialize the infrastructure of a simulation
         """
         self.dynamic_model = DynamicModel(self.model, self.local_species_population,
-                                          self.dynamic_compartments)
-        for comp in self.dynamic_compartments.values():
+                                          self.temp_dynamic_compartments)
+        self.temp_dynamic_compartments = None
+        for comp in self.dynamic_model.dynamic_compartments.values():
             comp.dynamic_model = self.dynamic_model
         self.dynamic_model.set_stop_condition(self.simulation)
         if 'results_dir' in self.args and self.args['results_dir']:
@@ -190,7 +191,7 @@ class MultialgorithmSimulation(object):
         """
         self.init_populations = {}
         for species in self.model.get_species():
-            dynamic_compartment = self.dynamic_compartments[species.compartment.id]
+            dynamic_compartment = self.temp_dynamic_compartments[species.compartment.id]
             self.init_populations[species.id] = ModelUtilities.sample_copy_num_from_concentration(
                 species, dynamic_compartment.init_volume, self.random_state)
 
@@ -206,22 +207,22 @@ class MultialgorithmSimulation(object):
         """
         dynamic_compartments = {}
         for comp in submodel.get_children(kind='submodel', __type=Compartment):
-            dynamic_compartments[comp.id] = self.dynamic_compartments[comp.id]
+            dynamic_compartments[comp.id] = self.dynamic_model.dynamic_compartments[comp.id]
         return dynamic_compartments
 
     def create_dynamic_compartments(self):
         """ Create the :obj:`DynamicCompartment`\ s for this simulation
         """
         # create DynamicCompartments
-        self.dynamic_compartments = {}
+        self.temp_dynamic_compartments = {}
         for compartment in self.model.get_compartments():
-            self.dynamic_compartments[compartment.id] = DynamicCompartment(None, self.random_state,
+            self.temp_dynamic_compartments[compartment.id] = DynamicCompartment(None, self.random_state,
                                                                            compartment)
 
     def prepare_dynamic_compartments(self):
         """ Prepare the :obj:`DynamicCompartment`\ s for this simulation
         """
-        for dynamic_compartment in self.dynamic_compartments.values():
+        for dynamic_compartment in self.temp_dynamic_compartments.values():
             dynamic_compartment.initialize_mass_and_density(self.local_species_population)
 
     def make_local_species_population(self, retain_history=True):

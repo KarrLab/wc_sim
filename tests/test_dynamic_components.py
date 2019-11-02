@@ -521,7 +521,7 @@ class TestDynamicModel(unittest.TestCase):
         multialgorithm_simulation = MultialgorithmSimulation(self.model, None)
         multialgorithm_simulation.initialize_components()
         self.dynamic_model = DynamicModel(self.model, multialgorithm_simulation.local_species_population,
-            multialgorithm_simulation.dynamic_compartments)
+            multialgorithm_simulation.temp_dynamic_compartments)
 
     def compute_expected_actual_masses(self, model_filename):
         # provide the expected actual masses for the compartments in model_filename, keyed by compartment id
@@ -562,7 +562,7 @@ class TestDynamicModel(unittest.TestCase):
         multialgorithm_simulation = MultialgorithmSimulation(model, None)
         multialgorithm_simulation.initialize_components()
         dynamic_model = DynamicModel(model, multialgorithm_simulation.local_species_population,
-            multialgorithm_simulation.dynamic_compartments)
+            multialgorithm_simulation.temp_dynamic_compartments)
 
         # a Model to store expected initial values
         class ExpectedInitialValue(obj_tables.Model):

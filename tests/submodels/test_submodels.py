@@ -48,7 +48,7 @@ def make_dynamic_submodel_params(model, lang_submodel):
     multialgorithm_simulation.dynamic_model = \
         DynamicModel(multialgorithm_simulation.model,
                      multialgorithm_simulation.local_species_population,
-                     multialgorithm_simulation.dynamic_compartments)
+                     multialgorithm_simulation.temp_dynamic_compartments)
 
     return (lang_submodel.id,
             multialgorithm_simulation.dynamic_model,
