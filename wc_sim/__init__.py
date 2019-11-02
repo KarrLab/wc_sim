@@ -5,7 +5,6 @@ with open(pkg_resources.resource_filename('wc_sim', 'VERSION'), 'r') as file:
 # :obj:`str`: version
 
 # API
-from . import log
 from . import config
 
 from . import sim_config
