@@ -44,7 +44,6 @@ def read_model_and_set_all_std_devs_to_0(model_filename):
     return data[Model][0]
 
 
-# todo: test that compartment densities remain constant
 def check_simul_results(test_case, dynamic_model, results_dir, expected_initial_values=None,
                         expected_times=None, expected_species_trajectories=None,
                         expected_property_trajectories=None, delta=None):
@@ -239,7 +238,6 @@ def verify_closed_form_model(test_case, model_filename, results_dir):
     # read model while ignoring missing models, with std dev = 0
     model = read_model_and_set_all_std_devs_to_0(model_filename)
     # simulate model
-    # todo: move end_time & checkpoint_period to a separate simulation params worksheet
     end_time = model.parameters.get_one(id='end_time').value
     checkpoint_period = model.parameters.get_one(id='checkpoint_period').value
     args = dict(results_dir=results_dir,
@@ -293,4 +291,3 @@ def verify_closed_form_model(test_case, model_filename, results_dir):
                              expected_times=expected_trajectory_times,
                              expected_species_trajectories=expected_species_trajectories,
                              expected_property_trajectories=expected_aggregate_trajectories)
-    # todo: plot expected & actual trajectories

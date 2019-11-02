@@ -37,8 +37,6 @@ class TestSimulation(unittest.TestCase):
         with CaptureOutput(relay=False):
             num_events, results_dir = simulation.run(end_time=100, results_dir=self.results_dir,
                                                      checkpoint_period=10)
-
-        # TODO(Arthur): add more specific tests
         self.assertTrue(0 < num_events)
         self.assertTrue(os.path.isdir(results_dir))
         run_results = RunResults(results_dir)

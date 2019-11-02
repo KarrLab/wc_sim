@@ -36,7 +36,6 @@ class TestMakeModels(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.test_dir)
 
-    # TODO(Arthur): fully test wc_sim/testing/make_models.py
     def test_make_test_model(self):
         '''
         Simple SSA model tests:

@@ -39,7 +39,6 @@ import obj_tables
 IEEE_64_BIT_FLOATING_POINT_PLACES = 14
 
 
-# todo: DfbaObjectiveExpression: expression_term_models = ('Reaction', 'DfbaObjReaction')
 class TestDynamicExpressionsComprehensively(unittest.TestCase):
 
     def setUp(self):
@@ -544,12 +543,10 @@ class TestDynamicModel(unittest.TestCase):
                 computed = computed[key]
             numpy.testing.assert_approx_equal(expected, computed, significant=1)
 
-    # TODO(Arthur): test with multiple compartments that have exchange reactions
     def test_dynamic_model(self):
         self.make_dynamic_model(self.MODEL_FILENAME)
         self.assertEqual(len(self.dynamic_model.cellular_dyn_compartments), 1)
         self.assertEqual(self.dynamic_model.cellular_dyn_compartments[0].id, 'c')
-
         self.assertEqual(self.dynamic_model.get_num_submodels(), 2)
 
     def test_dynamic_components(self):
@@ -613,7 +610,7 @@ class TestDynamicModel(unittest.TestCase):
                 actual_value = aggregate_state['compartments'][eiv_record.component][eiv_record.attribute]
                 numpy.testing.assert_approx_equal(actual_value, expected_value)
 
-    @unittest.skip("todo: fix or toss test_dry_dynamic_model")
+    @unittest.skip("todo: fix or toss test_dry_dynamic_model()")
     def test_dry_dynamic_model(self):
         cell_masses = []
         computed_aggregate_states = []

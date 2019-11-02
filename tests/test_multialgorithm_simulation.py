@@ -247,14 +247,11 @@ class TestMultialgorithmSimulationDynamically(unittest.TestCase):
         shutil.rmtree(self.tmp_dir)
 
     def test_closed_form_models(self):
-        print()
         models_to_test = 'static one_reaction_linear one_rxn_exponential one_exchange_rxn_compt_growth'.split()
         for model_name in models_to_test:
             print(f'testing {model_name}')
             model_filename = os.path.join(os.path.dirname(__file__), 'fixtures', 'dynamic_tests', f'{model_name}.xlsx')
             verify_closed_form_model(self, model_filename, self.results_dir)
-        # todo: create and test other models
-        models = 'static one_reaction_linear one_rxn_exponential one_exchange_rxn_compt_growth two_compts_exponential_2'.split()
 
     def test_one_reaction_constant_species_pop(self):
         # test statics
@@ -510,5 +507,4 @@ class TestRunSSASimulation(unittest.TestCase):
     # TODO(Arthur): test multiple ssa submodels, in shared or different compartments
     # TODO(Arthur): test have identify_enabled_reactions() return a disabled reaction & ssa submodel with reactions that cannot run
     # TODO(Arthur): use invariants to test saving aggregate values from DynamicModel in checkpoints
-    # TODO(Arthur): delete unused parts of CheckpointLogger
     # TODO(Arthur): catch MultialgorithmErrors from get_species_counts, and elsewhere

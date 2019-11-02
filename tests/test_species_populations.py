@@ -225,7 +225,6 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
 
 # TODO(Arthur): test multiple SpeciesPopSimObjects
 # TODO(Arthur): test adjust_continuously of remote_pop_stores
-# TODO(Arthur): evaluate coverage
 
 
 class TestLocalSpeciesPopulation(unittest.TestCase):
