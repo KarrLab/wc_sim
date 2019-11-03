@@ -138,24 +138,18 @@ class Simulation(object):
         if 'results_dir' in args:
             results_sup_dir = os.path.abspath(os.path.expanduser(args['results_dir']))
 
-            # if results_sup_dir is a file, raise error
-            if os.path.isfile(results_sup_dir):
-                raise MultialgorithmError("results_dir ({}) is a file, not a dir".format(results_sup_dir))
+            if os.path.exists(results_sup_dir):
+                # raise error if results_sup_dir exists and is not a dir
+                if not os.path.isdir(results_sup_dir):
+                    raise MultialgorithmError(f"results_dir ({results_sup_dir}) is not a dir")
+
+                # raise error if results_sup_dir is not empty
+                if os.listdir(results_sup_dir):
+                    raise MultialgorithmError(f"results_dir ({results_sup_dir}) is not empty")
 
             # if results_sup_dir does not exist, make it
             if not os.path.exists(results_sup_dir):
                 os.makedirs(results_sup_dir)
-
-            # make a time-stamped sub-dir for this run
-            time_stamped_sub_dir = os.path.join(results_sup_dir, datetime.datetime.now().strftime(
-                '%Y-%m-%d-%H-%M-%S'))
-            if os.path.exists(time_stamped_sub_dir):
-                raise MultialgorithmError("timestamped sub-directory of results_dir ({}) already exists".format(
-                    time_stamped_sub_dir))
-            else:
-                os.makedirs(time_stamped_sub_dir)
-            # update results_dir
-            args['results_dir'] = time_stamped_sub_dir
 
         # validate args
         if 'end_time' not in args:
@@ -166,8 +160,9 @@ class Simulation(object):
 
         if 'checkpoint_period' in args:
             if args['checkpoint_period'] <= 0 or args['end_time'] < args['checkpoint_period']:
-                raise MultialgorithmError("Checkpointing period ({}) must be positive and less than or equal to end time".format(
-                    args['checkpoint_period']))
+                raise MultialgorithmError("Checkpointing period ({}) must be positive and "
+                                          "less than or equal to end time".format(
+                                          args['checkpoint_period']))
 
             if args['end_time'] / args['checkpoint_period'] % 1 != 0:
                 raise MultialgorithmError('end_time ({}) must be a multiple of checkpoint_period ({})'.format(
@@ -211,16 +206,13 @@ class Simulation(object):
             simulation_args['checkpoint_period'] = checkpoint_period
 
         self.process_and_validate_args(simulation_args)
-        timestamped_results_dir = None
-        if results_dir:
-            timestamped_results_dir = simulation_args['results_dir']
 
         multialgorithm_simulation = MultialgorithmSimulation(self.model, simulation_args)
         self.simulation_engine, self.dynamic_model = multialgorithm_simulation.build_simulation()
         self.simulation_engine.initialize()
 
-        if timestamped_results_dir:
-            SimulationMetadata.write_metadata(self.simulation_metadata, timestamped_results_dir)
+        if results_dir:
+            SimulationMetadata.write_metadata(self.simulation_metadata, results_dir)
 
         # run simulation
         try:
@@ -234,15 +226,15 @@ class Simulation(object):
 
         self.simulation_metadata.run.record_end()
         # update metadata in file
-        if timestamped_results_dir:
-            SimulationMetadata.write_metadata(self.simulation_metadata, timestamped_results_dir)
+        if results_dir:
+            SimulationMetadata.write_metadata(self.simulation_metadata, results_dir)
 
         print('Simulated {} events'.format(num_events))
-        if timestamped_results_dir:
-            # summarize results in an HDF5 file in timestamped_results_dir
-            RunResults(timestamped_results_dir)
-            print("Saved checkpoints and run results in '{}'".format(timestamped_results_dir))
-            return (num_events, timestamped_results_dir)
+        if results_dir:
+            # summarize results in an HDF5 file in results_dir
+            RunResults(results_dir)
+            print("Saved checkpoints and run results in '{}'".format(results_dir))
+            return (num_events, results_dir)
         else:
             return (num_events, None)
 

@@ -8,6 +8,7 @@
 
 import os
 import matplotlib.pyplot as plt
+import tempfile
 
 # import simulation and run results
 from wc_sim.simulation import Simulation
@@ -17,7 +18,7 @@ from wc_sim.run_results import RunResults
 # use a toy model
 model_filename = os.path.join(os.path.dirname(__file__), '../tests/fixtures',
                                    '2_species_1_reaction.xlsx')
-results_dir = os.path.expanduser('~/tmp/checkpoints_dir')
+results_dir = tempfile.mkdtemp(dir=os.path.join(os.path.expanduser('~/tmp/checkpoints_dir')))
 
 # create and run simulation
 simulation = Simulation(model_filename)

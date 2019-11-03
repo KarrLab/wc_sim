@@ -98,8 +98,8 @@ class MultialgorithmSimulation(object):
 
     Attributes:
         model (:obj:`Model`): a model description
-        args (:obj:`dict`): parameters for the simulation; if `results_dir` is provided, then also
-            must include checkpoint_period
+        args (:obj:`dict`): parameters for the simulation; if `results_dir` is an entry in `args`,
+            then `checkpoint_period` must also be included
         simulation (:obj:`SimulationEngine`): the initialized simulation
         checkpointing_sim_obj (:obj:`MultialgorithmicCheckpointingSimObj`): the checkpointing object;
             `None` if absent

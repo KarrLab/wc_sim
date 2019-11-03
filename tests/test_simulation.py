@@ -76,7 +76,8 @@ class TestSimulation(unittest.TestCase):
         end_time = 30
         with CaptureOutput(relay=False):
             num_events, results_dir = Simulation(TOY_MODEL_FILENAME).run(end_time=end_time,
-                                                                         results_dir=self.results_dir, checkpoint_period=10)
+                                                                         results_dir=self.results_dir,
+                                                                         checkpoint_period=10)
 
         # check time, and simulation config in checkpoints
         for time in Checkpoint.list_checkpoints(results_dir):
@@ -93,7 +94,8 @@ class TestSimulation(unittest.TestCase):
             tmp_results_dir = tempfile.mkdtemp()
             with CaptureOutput(relay=False):
                 num_events, results_dir = Simulation(TOY_MODEL_FILENAME).run(end_time=20,
-                                                                             results_dir=tmp_results_dir, checkpoint_period=5, seed=seed)
+                                                                             results_dir=tmp_results_dir,
+                                                                             checkpoint_period=5, seed=seed)
             results[seed] = {}
             results[seed]['num_events'] = num_events
             run_results[seed] = RunResults(results_dir)
@@ -109,7 +111,8 @@ class TestSimulation(unittest.TestCase):
             tmp_results_dir = tempfile.mkdtemp()
             with CaptureOutput(relay=False):
                 num_events, results_dir = Simulation(TOY_MODEL_FILENAME).run(end_time=20,
-                                                                             results_dir=tmp_results_dir, checkpoint_period=5, seed=seed)
+                                                                             results_dir=tmp_results_dir,
+                                                                             checkpoint_period=5, seed=seed)
             results[rep] = {}
             results[rep]['num_events'] = num_events
             run_results[rep] = RunResults(results_dir)
@@ -160,43 +163,27 @@ class TestProcessAndValidateArgs(unittest.TestCase):
         self.assertEqual(simulation_metadata.simulation.time_step, 1)
 
     def test_ckpt_dir_processing_1(self):
-        # checkpoints_dir does not exist
+        # checkpoints_dir gets created because it does not exist
         self.args['results_dir'] = os.path.join(self.results_dir, 'no_such_dir', 'no_such_sub_dir')
         self.simulation.process_and_validate_args(self.args)
         self.assertTrue(os.path.isdir(self.args['results_dir']))
 
     def test_ckpt_dir_processing_2(self):
-        # checkpoints_dir exists, and is empty
-        root_dir = self.args['results_dir']
-        self.simulation.process_and_validate_args(self.args)
-        # process_and_validate_args creates 1 timestamped sub-dir
-        self.assertEqual(len(os.listdir(root_dir)), 1)
+        # checkpoints_dir is a file
+        path = os.path.join(self.args['results_dir'], 'new_file')
+        self.args['results_dir'] = path
+        with open(path, 'w'):
+            pass
+        with self.assertRaises(MultialgorithmError):
+            self.simulation.process_and_validate_args(self.args)
 
     def test_ckpt_dir_processing_3(self):
-        # checkpoints_dir is a file
-        self.args['results_dir'] = os.path.join(self.args['results_dir'], 'new_file')
-        try:
-            open(self.args['results_dir'], 'x')
-            with self.assertRaises(MultialgorithmError):
-                self.simulation.process_and_validate_args(self.args)
-        except FileExistsError:
+        # checkpoints_dir is not empty
+        path = os.path.join(self.args['results_dir'], 'new_file')
+        with open(path, 'w'):
             pass
-
-    def test_ckpt_dir_processing_4(self):
-        # timestamped sub-directory of checkpoints-dir already exists
-        root_dir = self.args['results_dir']
-        self.simulation.process_and_validate_args(self.args)
-        # given the chance, albeit small, that the second has advanced and
-        # a different timestamped sub-directory is made, try repeatedly to create the error
-        # the for loop takes about 0.01 sec
-        raised = False
-        for i in range(10):
-            self.args['results_dir'] = root_dir
-            try:
-                self.simulation.process_and_validate_args(self.args)
-            except:
-                raised = True
-        self.assertTrue(raised)
+        with self.assertRaises(MultialgorithmError):
+            self.simulation.process_and_validate_args(self.args)
 
     def test_process_and_validate_args1(self):
         original_args = copy(self.args)

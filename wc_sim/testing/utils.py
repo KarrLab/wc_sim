@@ -8,6 +8,7 @@
 
 from collections import defaultdict
 import numpy as np
+import os
 
 from wc_lang import Model
 from wc_lang.io import Reader
@@ -234,7 +235,12 @@ def define_trajectory_classes(model):
 
 
 def verify_closed_form_model(test_case, model_filename, results_dir):
-    # alternatively, just load the SpeciesTrajectory & AggregateTrajectory worksheets into pandas
+    # empty results_dir
+    for file in os.listdir(results_dir):
+        file_path = os.path.join(results_dir, file)
+        if os.path.isfile(file_path):
+            os.unlink(file_path)
+
     # read model while ignoring missing models, with std dev = 0
     model = read_model_and_set_all_std_devs_to_0(model_filename)
     # simulate model
