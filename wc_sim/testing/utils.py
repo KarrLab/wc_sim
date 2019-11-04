@@ -7,8 +7,12 @@
 """
 
 from collections import defaultdict
+import math
+from matplotlib import pyplot
+from matplotlib.backends.backend_pdf import PdfPages
 import numpy as np
 import os
+import tempfile
 
 from wc_lang import Model
 from wc_lang.io import Reader
@@ -95,8 +99,8 @@ def check_simul_results(test_case, dynamic_model, results_dir, expected_initial_
                                       err_msg=f"In model {dynamic_model.id}, time sequence for populations "
                                       f"differs from expected time sequence:")
         np.testing.assert_array_equal(aggregate_states_df.index, expected_times,
-                                      err_msg=f"In model {dynamic_model.id}, time sequence for aggregate states "
-                                      f"differs from expected time sequence:")
+                                      err_msg=f"In model {dynamic_model.id}, time sequence for aggregate "
+                                      f"states differs from expected time sequence:")
 
 
     # test expected trajectories of species
@@ -297,3 +301,135 @@ def verify_closed_form_model(test_case, model_filename, results_dir):
                              expected_times=expected_trajectory_times,
                              expected_species_trajectories=expected_species_trajectories,
                              expected_property_trajectories=expected_aggregate_trajectories)
+
+    # plot trajectories
+    plots_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'tests', 'results'))
+    os.makedirs(plots_dir, exist_ok=True)
+    plots = plot_expected_vs_actual(simulation.dynamic_model,
+                                    results_dir,
+                                    trajectory_times=expected_trajectory_times,
+                                    plots_dir=plots_dir,
+                                    expected_species_trajectories=expected_species_trajectories,
+                                    expected_property_trajectories=expected_aggregate_trajectories)
+    print(f"trajectories plotted in '{plots}'")
+
+def plot_expected_vs_actual(dynamic_model,
+                            results_dir,
+                            trajectory_times,
+                            plots_dir=None,
+                            expected_species_trajectories=None,
+                            expected_property_trajectories=None):
+    """ Plot expected vs. actual trajectories
+
+    Args:
+        dynamic_model (:obj:`DynamicModel`): the simulation's :obj:`DynamicModel`
+        results_dir (:obj:`str`): simulation results directory
+        trajectory_times (:obj:`iterator`): time sequence for all trajectories
+        plots_dir (:obj:`str`, optional): directory for plot files
+        expected_species_trajectories (:obj:`dict`, optional): expected trajectories of species
+            copy numbers in the test; provides an iterator for each species, indexed by the species id
+        expected_property_trajectories (:obj:`dict`, optional): expected trajectories of aggregate properties
+             for each compartment in the test; provides an iterator for each property; indexed by
+             compartment id. Properties must be keyed as structured by `AccessState.get_checkpoint_state()`
+             and `RunResults.convert_checkpoints()`
+
+    Returns:
+        :obj:`str`: the directory containing plots
+    """
+    model_id = dynamic_model.id
+    run_results = RunResults(results_dir)
+    populations_df = run_results.get('populations')
+    aggregate_states_df = run_results.get('aggregate_states')
+
+    if not plots_dir:
+        # make dir
+        plots_dir = tempfile.mkdtemp()
+
+    # calculate nrows, ncols
+    def nrows_ncols(num_subplots):
+        nrows = ncols = math.ceil(math.sqrt(num_subplots))
+        return nrows, ncols
+
+    # plotting options
+    pyplot.rc('font', size=6)
+    # linestyles, designed so that actual and expected curves which are equal will both be visible
+    loosely_dashed = (0, (4, 6))
+    dashdotted = (0, (2, 3, 3, 2))
+    actual_plot_kwargs = dict(color='blue', label='actual', linestyle=loosely_dashed)
+    expected_plot_kwargs = dict(color='red', label='expected', linestyle=dashdotted)
+
+    # plot expected vs. actual trajectories of species
+    if expected_species_trajectories:
+        # calculate num subplots
+        num_subplots = 0
+        for expected_trajectory in expected_species_trajectories.values():
+            # 1 subplot for each species
+            if not np.isnan(expected_trajectory).all():
+                num_subplots += 1
+        nrows, ncols = nrows_ncols(num_subplots)
+        fig = pyplot.figure()
+        fig.suptitle(f'Species copy numbers of model {model_id}')
+        index = 0
+        for specie_id, expected_trajectory in expected_species_trajectories.items():
+            if np.isnan(expected_trajectory).all():
+                continue
+            # plot expected_trajectory vs. actual_trajectory
+            actual_trajectory = populations_df[specie_id]
+            index += 1
+            axes = fig.add_subplot(nrows, ncols, index)
+            axes.ticklabel_format(axis='y', style='scientific', scilimits=(0, 0))
+            axes.plot(trajectory_times, actual_trajectory, **actual_plot_kwargs)
+            axes.plot(trajectory_times, expected_trajectory, **expected_plot_kwargs)
+            axes.set_xlabel('Time (s)')
+            y_label = f'{specie_id} (copy number)'
+            axes.set_ylabel(y_label)
+            axes.legend()
+        figure_name = f'{model_id}_species_trajectories'
+        filename = os.path.join(plots_dir, figure_name + '.pdf')
+        fig.savefig(filename)
+        pyplot.close(fig)
+
+    # plot expected vs. actual trajectories of properties of compartments
+    units_for_properties = {
+        'volume': 'l',
+        'mass': 'g',
+    }
+    def get_units(property):
+        rv = 'unknown'
+        for prop, units in units_for_properties.items():
+            if prop in property:
+                rv = units
+        return rv
+
+    if expected_property_trajectories:
+        # get all properties
+        properties = set()
+        for property_array_dict in expected_property_trajectories.values():
+            properties.update(property_array_dict.keys())
+
+        nrows, ncols = nrows_ncols(len(properties))
+        fig = pyplot.figure()
+        fig.suptitle(f'Properties of model {model_id}')
+        index = 0
+        for property in properties:
+            for compartment_id in expected_property_trajectories:
+                dynamic_compartment = dynamic_model.dynamic_compartments[compartment_id]
+                if compartment_id not in aggregate_states_df:
+                    continue
+                # plot expected_trajectory vs. actual_trajectory
+                actual_trajectory = aggregate_states_df[compartment_id][property]
+                expected_trajectory = expected_property_trajectories[compartment_id][property]
+                index += 1
+                axes = fig.add_subplot(nrows, ncols, index)
+                axes.ticklabel_format(axis='y', style='scientific', scilimits=(0, 0))
+                axes.plot(trajectory_times, actual_trajectory, **actual_plot_kwargs)
+                axes.plot(trajectory_times, expected_trajectory, **expected_plot_kwargs)
+                axes.set_xlabel('Time (s)')
+                y_label = f"{property} in {compartment_id} ({get_units(property)})"
+                axes.set_ylabel(y_label)
+                axes.legend()
+            figure_name = f'{model_id}_properties'
+            filename = os.path.join(plots_dir, figure_name + '.pdf')
+            fig.savefig(filename)
+            pyplot.close(fig)
+    return plots_dir

@@ -79,6 +79,7 @@ README.rst
 .ipynb_checkpoints
 
 # test results
+################
 tests/multialgorithm/results/
 tests/results/
 

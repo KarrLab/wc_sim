@@ -31,7 +31,7 @@ from wc_sim.simulation import Simulation
 from wc_sim.species_populations import LocalSpeciesPopulation
 from wc_sim.testing.make_models import MakeModel
 from wc_sim.testing.utils import (read_model_and_set_all_std_devs_to_0, check_simul_results,
-                                  verify_closed_form_model)
+                                  verify_closed_form_model, plot_expected_vs_actual)
 from wc_utils.util.dict import DictUtil
 from wc_utils.util.rand import RandomStateManager
 

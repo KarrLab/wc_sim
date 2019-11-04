@@ -7,6 +7,7 @@
 """
 
 from scipy.constants import Avogadro
+import os
 import shutil
 import tempfile
 import unittest
@@ -14,7 +15,8 @@ import unittest
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.simulation import Simulation
 from wc_sim.testing.make_models import MakeModel
-from wc_sim.testing.utils import read_model_and_set_all_std_devs_to_0, check_simul_results
+from wc_sim.testing.utils import (read_model_and_set_all_std_devs_to_0, check_simul_results,
+                                  plot_expected_vs_actual)
 
 
 class TestTestingUtils(unittest.TestCase):
@@ -29,7 +31,6 @@ class TestTestingUtils(unittest.TestCase):
         shutil.rmtree(self.tmp_dir)
 
     def test_check_simul_results(self):
-        # test check_simul_results above
         init_volume = 1E-16
         init_density = 1000
         molecular_weight = 100.
@@ -86,3 +87,14 @@ class TestTestingUtils(unittest.TestCase):
                                  expected_property_trajectories={'compt_1':
                                     {'mass':[1.000e-13, 1.000e-13, 9.999e-14]}},
                                     delta=1E-7)
+        plots_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'results'))
+        os.makedirs(plots_dir, exist_ok=True)
+        plot_expected_vs_actual(dynamic_model,
+                                results_dir,
+                                trajectory_times=[0, 1, 2],
+                                plots_dir=plots_dir,
+                                expected_species_trajectories=\
+                                    {'spec_type_0[compt_1]':[10000., 10000., 9998.]},
+                                expected_property_trajectories=\
+                                    {'compt_1':
+                                        {'mass':[1.000e-13, 1.000e-13, 9.999e-14]}})
