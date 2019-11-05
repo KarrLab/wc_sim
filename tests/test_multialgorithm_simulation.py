@@ -31,7 +31,7 @@ from wc_sim.simulation import Simulation
 from wc_sim.species_populations import LocalSpeciesPopulation
 from wc_sim.testing.make_models import MakeModel
 from wc_sim.testing.utils import (read_model_and_set_all_std_devs_to_0, check_simul_results,
-                                  verify_closed_form_model, plot_expected_vs_actual)
+                                  verify_hand_solved_model, plot_expected_vs_actual)
 from wc_utils.util.dict import DictUtil
 from wc_utils.util.rand import RandomStateManager
 
@@ -251,12 +251,13 @@ class TestMultialgorithmSimulationDynamically(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tmp_dir)
 
-    def test_closed_form_models(self):
+    def test_hand_solved_models(self):
         models_to_test = 'static one_reaction_linear one_rxn_exponential one_exchange_rxn_compt_growth'.split()
+        models_to_test = ['stop_conditions']
         for model_name in models_to_test:
             print(f'testing {model_name}')
             model_filename = os.path.join(os.path.dirname(__file__), 'fixtures', 'dynamic_tests', f'{model_name}.xlsx')
-            verify_closed_form_model(self, model_filename, self.results_dir)
+            verify_hand_solved_model(self, model_filename, self.results_dir)
 
     def test_one_reaction_constant_species_pop(self):
         # test statics

@@ -227,7 +227,7 @@ def define_trajectory_classes(model):
     return(trajectory_classes)
 
 
-def verify_closed_form_model(test_case, model_filename, results_dir):
+def verify_hand_solved_model(test_case, model_filename, results_dir):
     # empty results_dir
     for file in os.listdir(results_dir):
         file_path = os.path.join(results_dir, file)
@@ -267,6 +267,15 @@ def verify_closed_form_model(test_case, model_filename, results_dir):
     for expected_species_trajectory in expected_trajectories[SpeciesTrajectory]:
         expected_trajectory_times.append(expected_species_trajectory.time)
 
+    # plot trajectories
+    plots_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'tests', 'results'))
+    os.makedirs(plots_dir, exist_ok=True)
+    plots = plot_expected_vs_actual(simulation.dynamic_model,
+                                    results_dir,
+                                    trajectory_times=expected_trajectory_times,
+                                    plots_dir=plots_dir,
+                                    expected_species_trajectories=expected_species_trajectories)
+
     # get aggregate trajectories from model workbook
     expected_aggregate_trajectories = {}
     for dyn_compartment_id in simulation.dynamic_model.dynamic_compartments:
@@ -286,13 +295,10 @@ def verify_closed_form_model(test_case, model_filename, results_dir):
                 expected_trajectory_times.append(expected_aggregate_trajectory.time)
 
     # plot trajectories
-    plots_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'tests', 'results'))
-    os.makedirs(plots_dir, exist_ok=True)
     plots = plot_expected_vs_actual(simulation.dynamic_model,
                                     results_dir,
                                     trajectory_times=expected_trajectory_times,
                                     plots_dir=plots_dir,
-                                    expected_species_trajectories=expected_species_trajectories,
                                     expected_property_trajectories=expected_aggregate_trajectories)
     print(f"trajectories plotted in '{plots}'")
 
@@ -348,7 +354,7 @@ def plot_expected_vs_actual(dynamic_model,
     expected_plot_kwargs = dict(color='red', label='expected', linestyle=dashdotted)
 
     # plot expected vs. actual trajectories of species
-    if expected_species_trajectories:
+    if trajectory_times and expected_species_trajectories:
         # calculate num subplots
         num_subplots = 0
         for expected_trajectory in expected_species_trajectories.values():
@@ -393,7 +399,7 @@ def plot_expected_vs_actual(dynamic_model,
                 rv = units
         return rv
 
-    if expected_property_trajectories:
+    if trajectory_times and expected_property_trajectories:
         # get all properties
         properties = set()
         for property_array_dict in expected_property_trajectories.values():
