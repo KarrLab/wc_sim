@@ -51,7 +51,7 @@ def read_model_and_set_all_std_devs_to_0(model_filename):
 
 def check_simul_results(test_case, dynamic_model, results_dir, expected_initial_values=None,
                         expected_times=None, expected_species_trajectories=None,
-                        expected_property_trajectories=None, delta=None):
+                        expected_property_trajectories=None, rel_tol=1e-7):
     """ Evaluate whether a simulation predicted the expected results
 
     The expected trajectories must contain expected values at the times of the simulation's checkpoints.
@@ -68,8 +68,9 @@ def check_simul_results(test_case, dynamic_model, results_dir, expected_initial_
              for each compartment in the test; provides an iterator for each property; indexed by
              compartment id. Properties must be keyed as structured by `AccessState.get_checkpoint_state()`
              and `RunResults.convert_checkpoints()`
-        delta (:obj:`bool`, optional): if set, then compare trajectory values approximately, reporting
-            values that differ by more than `delta` as different
+        rel_tol (:obj:`float`, optional): simulation predictions are compared approximately; `rel_tol` is
+            relative tolerance, as used in `math.isclose()` and `numpy.testing.assert_allclose()`;
+            default `rel_tol` is `1e-7`; absolute tolerance is set to 0
     """
 
     # test initial values
@@ -78,14 +79,9 @@ def check_simul_results(test_case, dynamic_model, results_dir, expected_initial_
             dynamic_compartment = dynamic_model.dynamic_compartments[compartment_id]
             for initial_attribute, expected_value in expected_initial_values[compartment_id].items():
                 actual_value = getattr(dynamic_compartment, initial_attribute)
-                if delta:
-                    test_case.assertAlmostEqual(actual_value, expected_value, delta=delta,
-                                     msg=f"In model {dynamic_model.id}, {initial_attribute} is {actual_value}, "
-                                        f"not within {delta} of {expected_value}")
-                else:
-                    test_case.assertEqual(actual_value, expected_value,
-                                     msg=f"In model {dynamic_model.id}, {initial_attribute} is {actual_value}, "
-                                        f"not {expected_value}")
+                test_case.assertTrue(math.isclose(actual_value, expected_value, rel_tol=rel_tol),
+                                     msg=f"In model {dynamic_model.id}, {initial_attribute} is "
+                                     f"{actual_value}, not within {rel_tol} of {expected_value}")
 
     # get results
     if expected_species_trajectories or expected_property_trajectories:
@@ -109,15 +105,10 @@ def check_simul_results(test_case, dynamic_model, results_dir, expected_initial_
             if np.isnan(expected_trajectory).all():
                 continue
             actual_trajectory = populations_df[specie_id]
-            if delta:
-                np.testing.assert_allclose(actual_trajectory, expected_trajectory, equal_nan=False,
-                                           atol=delta,
-                                           err_msg=f"In model {dynamic_model.id}, trajectory for {specie_id} "
-                                               f"not almost equal to expected trajectory:")
-            else:
-                np.testing.assert_array_equal(actual_trajectory, expected_trajectory,
-                                              err_msg=f"In model {dynamic_model.id}, trajectory for {specie_id} "
-                                                  f"differs from expected trajectory:")
+            np.testing.assert_allclose(actual_trajectory, expected_trajectory, equal_nan=False,
+                                       rtol=rel_tol,
+                                       err_msg=f"In model {dynamic_model.id}, trajectory for {specie_id} "
+                                           f"not almost equal to expected trajectory:")
 
     # test expected trajectories of properties of compartments
     if expected_property_trajectories:
@@ -134,13 +125,11 @@ def check_simul_results(test_case, dynamic_model, results_dir, expected_initial_
                 expected_trajectory = expected_property_trajectories[compartment_id][property]
                 if np.isnan(expected_trajectory).all():
                     continue
-                if not delta:
-                    delta = 1E-9
                 # todo: investigate possible numpy bug: without list(), this fails with
                 # "TypeError: ufunc 'isfinite' not supported for the input types, ..." but ndarray works elsewhere
                 # todo: when fixed, remove list()
                 np.testing.assert_allclose(list(actual_trajectory.to_numpy()), expected_trajectory, equal_nan=False,
-                                           atol=delta,
+                                           rtol=rel_tol,
                                            err_msg=f"In model {dynamic_model.id}, trajectory of {property} "
                                               f"of compartment {compartment_id} "
                                               f"not almost equal to expected trajectory:")
@@ -366,28 +355,31 @@ def plot_expected_vs_actual(dynamic_model,
             # 1 subplot for each species
             if not np.isnan(expected_trajectory).all():
                 num_subplots += 1
-        nrows, ncols = nrows_ncols(num_subplots)
-        fig = pyplot.figure()
-        fig.suptitle(f'Species copy numbers of model {model_id}')
-        index = 0
-        for specie_id, expected_trajectory in expected_species_trajectories.items():
-            if np.isnan(expected_trajectory).all():
-                continue
-            # plot expected_trajectory vs. actual_trajectory
-            actual_trajectory = populations_df[specie_id]
-            index += 1
-            axes = fig.add_subplot(nrows, ncols, index)
-            axes.ticklabel_format(axis='y', style='scientific', scilimits=(0, 0))
-            axes.plot(trajectory_times, actual_trajectory, **actual_plot_kwargs)
-            axes.plot(trajectory_times, expected_trajectory, **expected_plot_kwargs)
-            axes.set_xlabel('Time (s)')
-            y_label = f'{specie_id} (copy number)'
-            axes.set_ylabel(y_label)
-            axes.legend()
-        figure_name = f'{model_id}_species_trajectories'
-        filename = os.path.join(plots_dir, figure_name + '.pdf')
-        fig.savefig(filename)
-        pyplot.close(fig)
+        if not num_subplots:
+            print(f"no expected data provided for plot of {model_id} species trajectories")
+        else:
+            nrows, ncols = nrows_ncols(num_subplots)
+            fig = pyplot.figure()
+            fig.suptitle(f'Species copy numbers of model {model_id}')
+            index = 0
+            for specie_id, expected_trajectory in expected_species_trajectories.items():
+                if np.isnan(expected_trajectory).all():
+                    continue
+                # plot expected_trajectory vs. actual_trajectory
+                actual_trajectory = populations_df[specie_id]
+                index += 1
+                axes = fig.add_subplot(nrows, ncols, index)
+                axes.ticklabel_format(axis='y', style='scientific', scilimits=(0, 0))
+                axes.plot(trajectory_times, actual_trajectory, **actual_plot_kwargs)
+                axes.plot(trajectory_times, expected_trajectory, **expected_plot_kwargs)
+                axes.set_xlabel('Time (s)')
+                y_label = f'{specie_id} (copy number)'
+                axes.set_ylabel(y_label)
+                axes.legend()
+            figure_name = f'{model_id}_species_trajectories'
+            filename = os.path.join(plots_dir, figure_name + '.pdf')
+            fig.savefig(filename)
+            pyplot.close(fig)
 
     # plot expected vs. actual trajectories of properties of compartments
     units_for_properties = {
@@ -407,29 +399,32 @@ def plot_expected_vs_actual(dynamic_model,
         for property_array_dict in expected_property_trajectories.values():
             properties.update(property_array_dict.keys())
 
-        nrows, ncols = nrows_ncols(len(properties))
-        fig = pyplot.figure()
-        fig.suptitle(f'Properties of model {model_id}')
-        index = 0
-        for property in properties:
-            for compartment_id in expected_property_trajectories:
-                dynamic_compartment = dynamic_model.dynamic_compartments[compartment_id]
-                if compartment_id not in aggregate_states_df:
-                    continue
-                # plot expected_trajectory vs. actual_trajectory
-                actual_trajectory = aggregate_states_df[compartment_id][property]
-                expected_trajectory = expected_property_trajectories[compartment_id][property]
-                index += 1
-                axes = fig.add_subplot(nrows, ncols, index)
-                axes.ticklabel_format(axis='y', style='scientific', scilimits=(0, 0))
-                axes.plot(trajectory_times, actual_trajectory, **actual_plot_kwargs)
-                axes.plot(trajectory_times, expected_trajectory, **expected_plot_kwargs)
-                axes.set_xlabel('Time (s)')
-                y_label = f"{property} in {compartment_id} ({get_units(property)})"
-                axes.set_ylabel(y_label)
-                axes.legend()
-            figure_name = f'{model_id}_properties'
-            filename = os.path.join(plots_dir, figure_name + '.pdf')
-            fig.savefig(filename)
-            pyplot.close(fig)
+        if not len(properties):
+            print(f"no properties provided for plot of {model_id} properties trajectories")
+        else:
+            nrows, ncols = nrows_ncols(len(properties))
+            fig = pyplot.figure()
+            fig.suptitle(f'Properties of model {model_id}')
+            index = 0
+            for property in properties:
+                for compartment_id in expected_property_trajectories:
+                    dynamic_compartment = dynamic_model.dynamic_compartments[compartment_id]
+                    if compartment_id not in aggregate_states_df:
+                        continue
+                    # plot expected_trajectory vs. actual_trajectory
+                    actual_trajectory = aggregate_states_df[compartment_id][property]
+                    expected_trajectory = expected_property_trajectories[compartment_id][property]
+                    index += 1
+                    axes = fig.add_subplot(nrows, ncols, index)
+                    axes.ticklabel_format(axis='y', style='scientific', scilimits=(0, 0))
+                    axes.plot(trajectory_times, actual_trajectory, **actual_plot_kwargs)
+                    axes.plot(trajectory_times, expected_trajectory, **expected_plot_kwargs)
+                    axes.set_xlabel('Time (s)')
+                    y_label = f"{property} in {compartment_id} ({get_units(property)})"
+                    axes.set_ylabel(y_label)
+                    axes.legend()
+                figure_name = f'{model_id}_properties'
+                filename = os.path.join(plots_dir, figure_name + '.pdf')
+                fig.savefig(filename)
+                pyplot.close(fig)
     return plots_dir

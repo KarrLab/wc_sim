@@ -58,8 +58,8 @@ STOCH_A = 100
 END_TIME = 120
 CHECKPOINT_INTERVAL = 10
 
-# todo: calculate this
-ACCOUNTED_FRACTION_C = 1.510E-01
+# todo: calculate this from initialization data
+ACCOUNTED_FRACTION_C = 1.5095809458E-01
 
 def volume_c(pop_A,
              mw_A=MW_A,

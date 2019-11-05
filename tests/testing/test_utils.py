@@ -61,33 +61,42 @@ class TestTestingUtils(unittest.TestCase):
         # test dynamics
         simulation = Simulation(model)
         _, results_dir = simulation.run(end_time=2, **self.args)
+        nan = float('NaN')
         check_simul_results(self, dynamic_model, results_dir,
-                                 expected_initial_values=expected_initial_values,
-                                 expected_species_trajectories=\
-                                     {'spec_type_0[compt_1]':[10000., 9999., 9998.]})
+                           expected_initial_values=expected_initial_values,
+                           expected_species_trajectories=\
+                               {'spec_type_0[compt_1]':[10000., 9999., 9998.]})
+        check_simul_results(self, dynamic_model, results_dir,
+                           expected_initial_values=expected_initial_values,
+                           expected_species_trajectories=\
+                               {'spec_type_0[compt_1]':[nan, nan, nan]})
         with self.assertRaises(AssertionError):
             check_simul_results(self, dynamic_model, results_dir,
-                                     expected_initial_values=expected_initial_values,
-                                     expected_species_trajectories=\
-                                         {'spec_type_0[compt_1]':[10000., 10000., 9998.]})
+                                expected_initial_values=expected_initial_values,
+                                expected_species_trajectories=\
+                                    {'spec_type_0[compt_1]':[10000., 10000., 9998.]})
         with self.assertRaises(AssertionError):
             check_simul_results(self, dynamic_model, results_dir,
-                                     expected_initial_values=expected_initial_values,
-                                     expected_species_trajectories=\
-                                         {'spec_type_0[compt_1]':[10000., 10000.]})
+                                expected_initial_values=expected_initial_values,
+                                expected_species_trajectories=\
+                                    {'spec_type_0[compt_1]':[10000., 10000.]})
         check_simul_results(self, dynamic_model, results_dir,
-                                 expected_initial_values=expected_initial_values,
-                                 expected_species_trajectories=\
-                                    {'spec_type_0[compt_1]':[10000., 9999., 9998.]},
-                                    delta=1E-5)
+                            expected_initial_values=expected_initial_values,
+                            expected_species_trajectories=\
+                                {'spec_type_0[compt_1]':[10000., 9999., 9998.]},
+                                rel_tol=1E-5)
         check_simul_results(self, dynamic_model, results_dir,
-                                 expected_property_trajectories={'compt_1':
-                                    {'mass':[1.000e-13, 1.000e-13, 9.999e-14]}})
+                            expected_property_trajectories={'compt_1':
+                                {'mass':[1.000e-13, 9.999e-14, 9.998e-14]}})
         check_simul_results(self, dynamic_model, results_dir,
-                                 expected_property_trajectories={'compt_1':
+                            expected_property_trajectories={'compt_1':
+                                {'mass':[nan, nan, nan]}})
+        with self.assertRaises(AssertionError):
+            check_simul_results(self, dynamic_model, results_dir,
+                                expected_property_trajectories={'compt_1':
                                     {'mass':[1.000e-13, 1.000e-13, 9.999e-14]}},
-                                    delta=1E-7)
-        plots_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'results'))
+                                    rel_tol=0)
+        plots_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'tests', 'results'))
         os.makedirs(plots_dir, exist_ok=True)
         plot_expected_vs_actual(dynamic_model,
                                 results_dir,
@@ -98,3 +107,25 @@ class TestTestingUtils(unittest.TestCase):
                                 expected_property_trajectories=\
                                     {'compt_1':
                                         {'mass':[1.000e-13, 1.000e-13, 9.999e-14]}})
+        plot_expected_vs_actual(dynamic_model,
+                                results_dir,
+                                trajectory_times=[0, 1, 2],
+                                plots_dir=plots_dir,
+                                expected_property_trajectories=\
+                                    {'compt_1':
+                                        {'mass':[1.000e-13, 1.000e-13, 9.999e-14]}})
+        plot_expected_vs_actual(dynamic_model,
+                                results_dir,
+                                trajectory_times=[0, 1, 2],
+                                plots_dir=plots_dir,
+                                expected_species_trajectories=\
+                                    {'spec_type_0[compt_1]':[10000., 10000., 9998.]})
+        plot_expected_vs_actual(dynamic_model,
+                                results_dir,
+                                trajectory_times=[0, 1, 2],
+                                plots_dir=plots_dir,
+                                expected_species_trajectories=\
+                                    {'spec_type_0[compt_1]':[nan, nan, nan]},
+                                expected_property_trajectories=\
+                                    {'compt_1':
+                                        {'mass':[nan, nan, nan]}})
