@@ -377,7 +377,10 @@ class DynamicParameter(DynamicComponent):
 
         Args:
             time (:obj:`float`): the current simulation time; not needed, but included so that all
-                dynamic expression models have the same signature for 'eval`
+                dynamic expression models have the same signature for `eval`
+
+        Returns:
+            :obj:`float`: the dynamic parameter's value
         """
         return self.value
 
@@ -394,17 +397,17 @@ class DynamicSpecies(DynamicComponent):
             wc_lang_model (:obj:`obj_tables.Model`): the corresponding :obj:`wc_lang.Species`
         """
         super().__init__(dynamic_model, local_species_population, wc_lang_model)
-        # Grab a reference to the right wc_lang.Species object used by local_species_population
-        # todo: fix: use read_one() to get the right population!
-        self.species_obj = local_species_population._population[wc_lang_model.id]
 
     def eval(self, time):
         """ Provide the population of this species
 
         Args:
             time (:obj:`float`): the current simulation time
+
+        Returns:
+            :obj:`float`: the population of this species at time `time`
         """
-        return self.species_obj.get_population(time)
+        return self.local_species_population.read_one(time, self.id)
 
 
 class DynamicCompartment(DynamicComponent):
@@ -619,7 +622,7 @@ class DynamicCompartment(DynamicComponent):
         else:
             values.append("Initialization state: '{}' has not been initialized.".format(self.id))
 
-        # todo: be careful with units; if initial values are specified in other units, are the converted?
+        # todo: be careful with units; if initial values are specified in other units, are they converted?
         values.append("Initial volume (l): {:.3E}".format(self.init_volume))
         values.append("Specified density (g l^-1): {}".format(self.init_density))
         if self._initialized():

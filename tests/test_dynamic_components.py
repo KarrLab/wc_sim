@@ -24,8 +24,8 @@ from wc_lang import (Model, Compartment, Species, Parameter,
                      Function, FunctionExpression, InitVolume)
 from wc_lang.io import Reader
 from wc_sim.dynamic_components import (SimTokCodes, WcSimToken, DynamicComponent, DynamicExpression,
-                                     DynamicModel, DynamicSpecies, DynamicFunction, DynamicParameter,
-                                     DynamicCompartment, DynamicStopCondition)
+                                       DynamicModel, DynamicSpecies, DynamicFunction, DynamicParameter,
+                                       DynamicCompartment, DynamicStopCondition)
 from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.species_populations import LocalSpeciesPopulation, MakeTestLSP
@@ -39,7 +39,7 @@ import obj_tables
 IEEE_64_BIT_FLOATING_POINT_PLACES = 14
 
 
-class TestDynamicExpressionsComprehensively(unittest.TestCase):
+class TestInitialDynamicComponentsComprehensively(unittest.TestCase):
 
     def setUp(self):
         self.model_file = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_dynamic_expressions.xlsx')
@@ -48,7 +48,9 @@ class TestDynamicExpressionsComprehensively(unittest.TestCase):
         _, self.dynamic_model = multialgorithm_simulation.build_simulation()
 
     def test(self):
-        # test all DynamicExpressions
+        # test all DynamicComponents that implement eval()
+
+        ### Test DynamicExpressions ###
         # each one is tested using each of the objects it uses in some instance in self.model_file
         # DynamicFunction
         for id, dynamic_function in self.dynamic_model.dynamic_functions.items():
@@ -92,7 +94,7 @@ class TestDynamicExpressionsComprehensively(unittest.TestCase):
             expected_value = float(self.model.get_rate_laws(id=id)[0].comments)
             numpy.testing.assert_approx_equal(dynamic_rate_law.eval(0), expected_value)
 
-        # Test DynamicCompartment & DynamicParameter which have eval() methods, although they're not Expressions
+        ### Test DynamicComponents ###
         # DynamicCompartment
         for id, dynamic_compartment in self.dynamic_model.dynamic_compartments.items():
             expected_value = float(self.model.get_compartments(id=id)[0].comments)
@@ -102,6 +104,11 @@ class TestDynamicExpressionsComprehensively(unittest.TestCase):
         for id, dynamic_parameter in self.dynamic_model.dynamic_parameters.items():
             expected_value = float(self.model.get_parameters(id=id)[0].comments)
             numpy.testing.assert_approx_equal(dynamic_parameter.eval(0), expected_value)
+
+        # DynamicSpecies
+        for id, dynamic_species in self.dynamic_model.dynamic_species.items():
+            expected_value = float(self.model.get_species(id=id)[0].comments)
+            numpy.testing.assert_approx_equal(dynamic_species.eval(0), expected_value)
 
 
 class TestDynamicComponentAndDynamicExpressions(unittest.TestCase):

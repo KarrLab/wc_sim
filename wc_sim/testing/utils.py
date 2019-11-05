@@ -285,12 +285,6 @@ def verify_closed_form_model(test_case, model_filename, results_dir):
             for expected_aggregate_trajectory in expected_trajectories[AggregateTrajectory]:
                 expected_trajectory_times.append(expected_aggregate_trajectory.time)
 
-    # compare expected & actual trajectories
-    check_simul_results(test_case, simulation.dynamic_model, results_dir,
-                             expected_times=expected_trajectory_times,
-                             expected_species_trajectories=expected_species_trajectories,
-                             expected_property_trajectories=expected_aggregate_trajectories)
-
     # plot trajectories
     plots_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'tests', 'results'))
     os.makedirs(plots_dir, exist_ok=True)
@@ -301,6 +295,12 @@ def verify_closed_form_model(test_case, model_filename, results_dir):
                                     expected_species_trajectories=expected_species_trajectories,
                                     expected_property_trajectories=expected_aggregate_trajectories)
     print(f"trajectories plotted in '{plots}'")
+
+    # compare expected & actual trajectories
+    check_simul_results(test_case, simulation.dynamic_model, results_dir,
+                             expected_times=expected_trajectory_times,
+                             expected_species_trajectories=expected_species_trajectories,
+                             expected_property_trajectories=expected_aggregate_trajectories)
 
 def plot_expected_vs_actual(dynamic_model,
                             results_dir,
