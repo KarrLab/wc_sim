@@ -6,6 +6,7 @@
 """
 
 #### one_rxn_exponential.xlsx ####
+# todo: to stay synched with the models, obtain these constants by reading the model & its simul params
 CHECKPOINT_INTERVAL = 10
 K_CAT = 0.04
 END_TIME = 50
@@ -48,7 +49,6 @@ def pop_trajectory(initial_population,
 #### one_exchange_rxn_compt_growth.xlsx ####
 
 from scipy.constants import Avogadro
-# todo: obtain these constants by reading the model, & the simul params in the model
 INIT_VOL_C = 1.00E-17
 K_CAT = 2.50E+16
 DENSITY_C = 1100
