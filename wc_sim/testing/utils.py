@@ -116,8 +116,8 @@ def check_simul_results(test_case, dynamic_model, results_dir, expected_initial_
         properties = set()
         for property_array_dict in expected_property_trajectories.values():
             properties.update(property_array_dict.keys())
+        # check property trajectories
         for compartment_id in expected_property_trajectories:
-            dynamic_compartment = dynamic_model.dynamic_compartments[compartment_id]
             for property in properties:
                 if compartment_id not in aggregate_states_df:
                     continue
@@ -127,12 +127,32 @@ def check_simul_results(test_case, dynamic_model, results_dir, expected_initial_
                     continue
                 # todo: investigate possible numpy bug: without list(), this fails with
                 # "TypeError: ufunc 'isfinite' not supported for the input types, ..." but ndarray works elsewhere
-                # todo: when fixed, remove list()
-                np.testing.assert_allclose(list(actual_trajectory.to_numpy()), expected_trajectory, equal_nan=False,
-                                           rtol=rel_tol,
+                # todo: when fixed, remove list(), and below too
+                np.testing.assert_allclose(list(actual_trajectory.to_numpy()), expected_trajectory,
+                                           equal_nan=False, rtol=rel_tol,
                                            err_msg=f"In model {dynamic_model.id}, trajectory of {property} "
-                                              f"of compartment {compartment_id} "
-                                              f"not almost equal to expected trajectory:")
+                                               f"of compartment {compartment_id} "
+                                               f"not almost equal to expected trajectory:")
+        # confirm that compartment densities are constants
+        density_ratios = (('mass', 'volume'),
+                          ('accounted mass', 'accounted volume'))
+        for mass_property, volume_property in density_ratios:
+            if {mass_property, volume_property} <= properties:
+                for compartment_id in expected_property_trajectories:
+                    if compartment_id not in aggregate_states_df:
+                        continue
+                    mass_trajectory = aggregate_states_df[compartment_id][mass_property].to_numpy()
+                    volume_trajectory = aggregate_states_df[compartment_id][volume_property].to_numpy()
+                    density_trajectory = mass_trajectory / volume_trajectory
+                    constant_density = np.full_like(density_trajectory, density_trajectory[0])
+                    err_msg = (f"In model {dynamic_model.id}, density trajectory for "
+                        f"'{mass_property}' / '{volume_property}' of compartment {compartment_id} "
+                        f"is not constant:")
+                    np.testing.assert_allclose(list(density_trajectory),
+                                               list(constant_density),
+                                               equal_nan=False,
+                                               rtol=rel_tol,
+                                               err_msg=err_msg)
 
 
 def specie_id_to_pop_attr(specie_id):

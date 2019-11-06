@@ -252,9 +252,8 @@ class TestMultialgorithmSimulationDynamically(unittest.TestCase):
         shutil.rmtree(self.tmp_dir)
 
     def test_hand_solved_models(self):
-        models_to_test = 'static one_reaction_linear one_rxn_exponential one_exchange_rxn_compt_growth'.split()
-        models_to_test = ['stop_conditions']
-        for model_name in models_to_test:
+        models = 'static one_reaction_linear one_rxn_exponential one_exchange_rxn_compt_growth stop_conditions'.split()
+        for model_name in models:
             print(f'testing {model_name}')
             model_filename = os.path.join(os.path.dirname(__file__), 'fixtures', 'dynamic_tests', f'{model_name}.xlsx')
             verify_hand_solved_model(self, model_filename, self.results_dir)
@@ -288,15 +287,6 @@ class TestMultialgorithmSimulationDynamically(unittest.TestCase):
         # test dynamics
         simulation = Simulation(model)
         _, results_dir = simulation.run(end_time=20, **self.args)
-
-    def test_one_reaction_linear_species_pop_change(self):
-        pass
-
-    def test_two_submodels_linear_species_pop_changes(self):
-        pass
-
-    def test_two_submodels_exponential_species_pop_changes(self):
-        pass
 
 
 class TestRunSSASimulation(unittest.TestCase):
