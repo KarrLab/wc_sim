@@ -6,21 +6,23 @@
 :License: MIT
 """
 
+from capturer import CaptureOutput
+from copy import copy
 import os
 import pandas
 import shutil
 import tempfile
 import time
 import unittest
-from capturer import CaptureOutput
-from copy import copy
-from wc_sim import sim_config
-from de_sim.sim_metadata import SimulationMetadata
+
 from de_sim.checkpoint import Checkpoint
-from wc_sim.simulation import Simulation
-from wc_sim.run_results import RunResults
-from wc_sim.testing.make_models import MakeModel
+from de_sim.sim_metadata import SimulationMetadata
+from de_sim.simulation_engine import SimulationEngine
+from wc_sim import sim_config
 from wc_sim.multialgorithm_errors import MultialgorithmError
+from wc_sim.run_results import RunResults
+from wc_sim.simulation import Simulation
+from wc_sim.testing.make_models import MakeModel
 
 TOY_MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', '2_species_1_reaction.xlsx')
 
@@ -33,10 +35,11 @@ class TestSimulation(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.results_dir)
 
-    def run_simulation(self, simulation):
+    def run_simulation(self, simulation, end_time=100):
+        checkpoint_period = min(10, end_time)
         with CaptureOutput(relay=False):
-            num_events, results_dir = simulation.run(end_time=100, results_dir=self.results_dir,
-                                                     checkpoint_period=10)
+            num_events, results_dir = simulation.run(end_time=end_time, results_dir=self.results_dir,
+                                                     checkpoint_period=checkpoint_period)
         self.assertTrue(0 < num_events)
         self.assertTrue(os.path.isdir(results_dir))
         run_results = RunResults(results_dir)
@@ -44,15 +47,24 @@ class TestSimulation(unittest.TestCase):
         for component in RunResults.COMPONENTS:
             self.assertTrue(isinstance(run_results.get(component), (pandas.DataFrame, pandas.Series)))
 
+    def test_prepare(self):
+        model = MakeModel.make_test_model('2 species, 1 reaction, with rates given by reactant population',
+                                          transform_prep_and_check=False)
+        model.id = 'illegal id'
+        simulation = Simulation(model)
+        with self.assertRaises(MultialgorithmError):
+            simulation._prepare()
+
     def test_simulation_model_in_file(self):
-        self.run_simulation(Simulation(TOY_MODEL_FILENAME))
+        self.run_simulation(Simulation(TOY_MODEL_FILENAME), end_time=5)
 
     def test_simulation_model_in_memory(self):
         model = MakeModel.make_test_model('2 species, 1 reaction', transform_prep_and_check=False)
         self.run_simulation(Simulation(model))
 
     def test_simulation_errors(self):
-        with self.assertRaisesRegex(MultialgorithmError, 'model must be a wc_lang Model or a pathname'):
+        with self.assertRaisesRegex(MultialgorithmError,
+                                    'model must be a `wc_lang Model` or a pathname for a model'):
             Simulation(2)
 
         model = MakeModel.make_test_model('2 species, 1 reaction, with rates given by reactant population',
@@ -68,16 +80,15 @@ class TestSimulation(unittest.TestCase):
 
     def test_simulate_wo_output_files(self):
         with CaptureOutput(relay=False):
-            num_events, results_dir = Simulation(TOY_MODEL_FILENAME).run(end_time=100)
+            num_events, results_dir = Simulation(TOY_MODEL_FILENAME).run(end_time=5)
         self.assertTrue(0 < num_events)
         self.assertEqual(results_dir, None)
 
     def test_simulate(self):
-        end_time = 30
         with CaptureOutput(relay=False):
-            num_events, results_dir = Simulation(TOY_MODEL_FILENAME).run(end_time=end_time,
+            num_events, results_dir = Simulation(TOY_MODEL_FILENAME).run(end_time=5,
                                                                          results_dir=self.results_dir,
-                                                                         checkpoint_period=10)
+                                                                         checkpoint_period=1)
 
         # check time, and simulation config in checkpoints
         for time in Checkpoint.list_checkpoints(results_dir):
@@ -93,7 +104,7 @@ class TestSimulation(unittest.TestCase):
         for seed in seeds:
             tmp_results_dir = tempfile.mkdtemp()
             with CaptureOutput(relay=False):
-                num_events, results_dir = Simulation(TOY_MODEL_FILENAME).run(end_time=20,
+                num_events, results_dir = Simulation(TOY_MODEL_FILENAME).run(end_time=5,
                                                                              results_dir=tmp_results_dir,
                                                                              checkpoint_period=5, seed=seed)
             results[seed] = {}
@@ -110,7 +121,7 @@ class TestSimulation(unittest.TestCase):
         for rep in range(2):
             tmp_results_dir = tempfile.mkdtemp()
             with CaptureOutput(relay=False):
-                num_events, results_dir = Simulation(TOY_MODEL_FILENAME).run(end_time=20,
+                num_events, results_dir = Simulation(TOY_MODEL_FILENAME).run(end_time=5,
                                                                              results_dir=tmp_results_dir,
                                                                              checkpoint_period=5, seed=seed)
             results[rep] = {}
@@ -123,6 +134,22 @@ class TestSimulation(unittest.TestCase):
             # metadata differs, because it includes timestamp
             if component != 'metadata':
                 self.assertTrue(run_results[0].get(component).equals(run_results[1].get(component)))
+
+    def test_get_simulation_engine(self):
+        model = MakeModel.make_test_model('2 species, 1 reaction, with rates given by reactant population')
+        simulation = Simulation(model)
+        self.assertEqual(simulation.get_simulation_engine(), None)
+        with CaptureOutput(relay=False):
+            simulation.run(end_time=5)
+        self.assertTrue(isinstance(simulation.get_simulation_engine(), SimulationEngine))
+
+    def test_provide_event_counts(self):
+        model = MakeModel.make_test_model('2 species, 1 reaction, with rates given by reactant population')
+        simulation = Simulation(model)
+        self.assertTrue('execute run() to obtain event counts' in simulation.provide_event_counts())
+        with CaptureOutput(relay=False):
+            simulation.run(end_time=100)
+        self.assertTrue('Event type' in simulation.provide_event_counts())
 
 
 class TestProcessAndValidateArgs(unittest.TestCase):

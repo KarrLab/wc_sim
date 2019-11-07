@@ -253,11 +253,11 @@ class MakeModel(object):
                         transfer_reactions=False,
                         transform_prep_and_check=True,
                         submodel_framework='WC:stochastic_simulation_algorithm'):
-        """ Create a test model with multiple SSA submodels
+        """ Create a whole-cell model for testing `wc_sim` software
 
         Properties of the model:
 
-        * Each submodel runs SSA
+        * Each submodel uses the integration framework in `submodel_framework`
         * Each submodel has one compartment
 
         Args:

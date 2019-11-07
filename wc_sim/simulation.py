@@ -72,11 +72,9 @@ class Simulation(object):
             # read model
             self.model_path = os.path.abspath(os.path.expanduser(model))
             self.model = Reader().run(self.model_path)[Model][0]
-            if self.model is None:
-                raise MultialgorithmError("No model found in model file '{}'".format(self.model_path))
         else:
-            raise MultialgorithmError("model must be a wc_lang Model or a pathname for a model, but its "
-                "type is {}".format(type(model)))
+            raise MultialgorithmError("model must be a `wc_lang Model` or a pathname for a model, "
+                                      "but its type is {}".format(type(model)))
 
         self.sim_config = sim_config
 
@@ -87,7 +85,7 @@ class Simulation(object):
         PrepForWcSimTransform().run(self.model)
         errors = Validator().run(self.model)
         if errors:
-            raise ValueError(indent_forest(['The model is invalid:', [errors]]))
+            raise MultialgorithmError(indent_forest(['The model is invalid:', [errors]]))
 
         # create metadata
         self.simulation_metadata = self._create_metadata()
@@ -220,7 +218,7 @@ class Simulation(object):
         except MultialgorithmError as e:
             print('Simulation terminated with multialgorithm error: {}'.format(e))
             return
-        except BaseException as e:
+        except BaseException as e:  # pragma: no cover
             print('Simulation terminated with error: {}'.format(e))
             return
 
