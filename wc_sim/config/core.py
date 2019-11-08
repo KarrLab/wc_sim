@@ -21,6 +21,7 @@ def get_config(extra=None):
     Returns:
         :obj:`configobj.ConfigObj`: nested dictionary with the configuration settings loaded from the configuration source(s).
     """
+    # todo: since it has been removed, replace 'wc_sim.core' with 'wc_sim'
     paths = wc_utils.config.core.ConfigPaths(
         default=pkg_resources.resource_filename('wc_sim', 'config/core.default.cfg'),
         schema=pkg_resources.resource_filename('wc_sim', 'config/core.schema.cfg'),

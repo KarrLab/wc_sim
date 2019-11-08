@@ -18,7 +18,7 @@ from obj_tables.expression import ObjTablesTokenCodes
 from wc_lang import Species, Compartment
 from wc_onto import onto
 from wc_sim.config import core as config_core_multialgorithm
-from wc_sim.multialgorithm_errors import MultialgorithmError
+from wc_sim.multialgorithm_errors import MultialgorithmError, MultialgorithmWarning
 from wc_sim.species_populations import LocalSpeciesPopulation
 from wc_utils.util.enumerate import CaseInsensitiveEnum
 from wc_utils.util.ontology import are_terms_equivalent
@@ -511,7 +511,7 @@ class DynamicCompartment(DynamicComponent):
                                       self.id))
         elif 1.0 < self.accounted_fraction <= self.MAX_ALLOWED_INIT_ACCOUNTED_FRACTION:
             warnings.warn("DynamicCompartment '{}': initial accounted ratio ({:.3E}) greater than 1.0".format(
-                self.id, self.accounted_fraction))
+                self.id, self.accounted_fraction), MultialgorithmWarning)
         if self.MAX_ALLOWED_INIT_ACCOUNTED_FRACTION < self.accounted_fraction:
             raise MultialgorithmError("DynamicCompartment {}: initial accounted ratio ({:.3E}) greater "
                                       "than self.MAX_ALLOWED_INIT_ACCOUNTED_FRACTION ({}).".format(self.id,
@@ -776,6 +776,15 @@ class DynamicModel(object):
             :obj:`float`: the cell's current volume (l)
         """
         return sum([dynamic_compartment.volume() for dynamic_compartment in self.cellular_dyn_compartments])
+
+    def cell_growth(self):
+        """ Report the cell's growth in cell/s, relative to the cell's initial volume
+
+        Returns:
+            :obj:`float`: growth in cell/s, relative to the cell's initial volume
+        """
+        # TODO(Arthur): implement growth
+        pass
 
     def cell_accounted_mass(self):
         """ Provide the total current mass of all species in the cell

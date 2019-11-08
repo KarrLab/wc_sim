@@ -15,6 +15,9 @@ from wc_utils.util.misc import as_dict
 from de_sim.checkpoint import Checkpoint
 from de_sim.sim_metadata import SimulationMetadata
 from wc_sim.multialgorithm_errors import MultialgorithmError
+# todo: have hdf use disk more efficiently; for unknown reasons, in one example hdf uses 4.4M to
+# store the data in 52 pickle files of 8K each
+# todo: speedup convert_checkpoints() which runs slowly
 
 
 class RunResults(object):
@@ -25,7 +28,7 @@ class RunResults(object):
             HDF5 file storing the combined results
         run_results (:obj:`dict`): dictionary of RunResults components, indexed by component name
     """
-    # component stored in a RunResults instance and the HDF file it manages
+    # components stored in a RunResults instance and the HDF file it manages
     COMPONENTS = {
         'populations',          # predicted populations of species at all checkpoint times
         'aggregate_states',     # predicted aggregate states of the cell over the simulation
@@ -33,6 +36,10 @@ class RunResults(object):
         'functions',            # predicted values of all functions over the simulation
         'random_states',        # states of the simulation's random number geerators over the simulation
         'metadata',             # the simulation's global metadata
+    }
+    # components computed from the stored components; a map from component name to the method that computes it
+    COMPUTED_COMPONENTS = {
+        'concentrations': 'get_concentrations',     # concentrations of species at all checkpoint times
     }
     HDF5_FILENAME = 'run_results.h5'
 
@@ -55,14 +62,19 @@ class RunResults(object):
 
             # create the HDF file containing the run results
             population_df, observables_df, functions_df, aggregate_states_df, random_states_s = self.convert_checkpoints()
+
             # populations
             population_df.to_hdf(self._hdf_file(), 'populations')
+
             # observables
             observables_df.to_hdf(self._hdf_file(), 'observables')
+
             # functions
             functions_df.to_hdf(self._hdf_file(), 'functions')
+
             # aggregate states
             aggregate_states_df.to_hdf(self._hdf_file(), 'aggregate_states')
+
             # random states
             random_states_s.to_hdf(self._hdf_file(), 'random_states')
 
@@ -71,6 +83,21 @@ class RunResults(object):
             metadata_s.to_hdf(self._hdf_file(), 'metadata')
 
             self._load_hdf_file()
+
+    @classmethod
+    def prepare_computed_components(cls):
+        """ Check and initialize the `COMPUTED_COMPONENTS`
+
+        Raises:
+            :obj:`MultialgorithmError`: if a value in `self.COMPUTED_COMPONENTS` is not a method
+                in `RunResults`
+        """
+        for component, function in cls.COMPUTED_COMPONENTS.items():
+            if hasattr(cls, function):
+                cls.COMPUTED_COMPONENTS[component] = getattr(cls, function)
+            else:
+                raise MultialgorithmError("'{}' in COMPUTED_COMPONENTS is not a function in {}".format(
+                    function, cls.__class__.__name__))
 
     def _hdf_file(self):
         """ Provide the pathname of the HDF5 file storing the combined results
@@ -87,7 +114,7 @@ class RunResults(object):
             self.run_results[component] = pandas.read_hdf(self._hdf_file(), component)
 
     def get(self, component):
-        """ Read and provide the specified `component`
+        """ Provide the specified `component`
 
         Args:
             component (:obj:`str`): the name of the component to return
@@ -98,11 +125,76 @@ class RunResults(object):
 
         Raises:
             :obj:`MultialgorithmError`: if `component` is not an element of `RunResults.COMPONENTS`
+                or `RunResults.COMPUTED_COMPONENTS`
         """
-        if component not in RunResults.COMPONENTS:
-            raise MultialgorithmError("component '{}' is not an element of {}".format(component,
-                RunResults.COMPONENTS))
+        all_components = RunResults.COMPONENTS.union(RunResults.COMPUTED_COMPONENTS)
+        if component not in all_components:
+            raise MultialgorithmError(f"component '{component}' is not an element of {all_components}")
+        if component in RunResults.COMPUTED_COMPONENTS:
+            return RunResults.COMPUTED_COMPONENTS[component](self)
         return self.run_results[component]
+
+    def get_concentrations(self):
+        """ Get concentrations
+
+        Returns:
+            :obj:`pandas.DataFrame`: the concentrations of this `RunResults`' species
+        """
+        # todo: return concentrations in all compartments
+        # todo: test this by using volumes != 1
+        print("self.get('aggregate_states')\n",self.get('aggregate_states'))
+        #print("self.get_volumes()", self.get_volumes())
+        volumes = self.get('aggregate_states').loc[:, ('c', 'volume')]
+        # get vol for each species
+        return self.get('populations').iloc[:,:].div(volumes, axis=0) / Avogadro
+
+    def get_times(self):
+        """ Get checkpoint times
+
+        Returns:
+            :obj:`numpy.array`: data times
+        """
+        return self.get('populations').index
+
+    def get_volumes(self, compartment_id=None):
+        """ Get compartment volume(s) at checkpoint times
+
+        Args:
+            compartment_id (:obj:`str`): the id of a compartment's volumes to return; if not
+                provided return volumes for all compartments
+
+        Returns:
+            :obj:`pandas.DataFrame`: the volumes of compartment(s) at all checkpoint times
+        """
+        return self._get_property('volume', compartment_id=compartment_id)
+
+    def get_masses(self, compartment_id=None):
+        """ Get compartment mass(es) at checkpoint times
+
+        Args:
+            compartment_id (:obj:`str`): the id of a compartment's mass to return; if not
+                provided return masses for all compartments
+
+        Returns:
+            :obj:`pandas.DataFrame`: the mass(es) of compartment(s) at all checkpoint times
+        """
+        return self._get_property('mass', compartment_id=compartment_id)
+
+    def _get_property(self, property, compartment_id=None):
+        """ Get property values at checkpoint times
+
+        Args:
+            property (:obj:`str`): the property to return
+            compartment_id (:obj:`str`): the id of a compartment's property to return; if not
+                provid the property for all compartments
+
+        Returns:
+            :obj:`pandas.DataFrame`: the properties of compartment(s) at all checkpoint times
+        """
+        aggregate_states_df = self.get('aggregate_states')
+        if compartment_id is None:
+            return aggregate_states_df[property]
+        return aggregate_states_df[property, compartment_id]
 
     def convert_metadata(self):
         """ Convert the saved simulation metadata into a pandas series
@@ -118,6 +210,7 @@ class RunResults(object):
     def get_state_components(state):
         return (state['population'], state['observables'], state['functions'], state['aggregate_state'])
 
+    # todo: check ideas for convert_checkpoints() in wc_sim_fall_18/wc_sim/multialgorithm/run_results.py
     def convert_checkpoints(self):
         """ Convert the data in saved checkpoints into pandas dataframes for loading into hdf
 

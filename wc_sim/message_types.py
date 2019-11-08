@@ -193,6 +193,11 @@ class RunFba(SimulationMessage):
     """
 
 
+class RunOde(SimulationMessage):
+    """ A WC sent by a OdeSubmodel to itself to schedule the next solution of the ODE equations.
+    """
+
+
 ALL_MESSAGE_TYPES = [
     AdjustPopulationByDiscreteSubmodel,    # A discrete model changes the population.
     AdjustPopulationByContinuousSubmodel,  # A continuous model changes the population.

@@ -6,17 +6,21 @@
 :License: MIT
 """
 
+import numpy.random
+import warnings
+
 from wc_lang import Model, Compartment, Species
 from wc_sim.config import core as config_core_multialgorithm
 from wc_sim.dynamic_components import DynamicModel, DynamicCompartment
 from de_sim.simulation_engine import SimulationEngine
 from wc_sim.model_utilities import ModelUtilities
 from wc_sim.multialgorithm_checkpointing import MultialgorithmicCheckpointingSimObj
-from wc_sim.multialgorithm_errors import MultialgorithmError
+from wc_sim.multialgorithm_errors import MultialgorithmError, MultialgorithmWarning
 from wc_sim.species_populations import (LocalSpeciesPopulation, AccessSpeciesPopulations,
                                                        LOCAL_POP_STORE, SpeciesPopSimObject)
 from wc_sim.submodels.dynamic_submodel import DynamicSubmodel
 from wc_sim.submodels.fba import DfbaSubmodel
+from wc_sim.submodels.odes import OdeSubmodel
 from wc_sim.submodels.ssa import SsaSubmodel
 from wc_sim.submodels.testing.deterministic_simulation_algorithm import DeterministicSimulationAlgorithmSubmodel
 from wc_utils.util.list import det_dedupe
@@ -24,7 +28,6 @@ from wc_utils.util.misc import obj_to_str
 from wc_utils.util.ontology import are_terms_equivalent
 from wc_onto import onto
 from wc_utils.util.rand import RandomStateManager
-import numpy.random
 
 config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 
@@ -296,6 +299,12 @@ class MultialgorithmSimulation(object):
         simulation_submodels = {}
         for lang_submodel in self.model.get_submodels():
 
+            # don't create a submodel with no reactions
+            if not lang_submodel.reactions:
+                warnings.warn(f"not creating submodel '{lang_submodel.id}': no reactions provided",
+                              MultialgorithmWarning)
+                continue
+
             if are_terms_equivalent(lang_submodel.framework, onto['WC:stochastic_simulation_algorithm']):
                 simulation_submodel = SsaSubmodel(
                     lang_submodel.id,
@@ -319,11 +328,18 @@ class MultialgorithmSimulation(object):
                 )
 
             elif are_terms_equivalent(lang_submodel.framework, onto['WC:ordinary_differential_equations']):
-                # TODO(Arthur): add ODE submodels from wc_sim fall 2019
-                raise MultialgorithmError("Need ODE implementation")
+                simulation_submodel = OdeSubmodel(
+                    lang_submodel.id,
+                    self.dynamic_model,
+                    list(lang_submodel.reactions),
+                    lang_submodel.get_children(kind='submodel', __type=Species),
+                    self.get_dynamic_compartments(lang_submodel),
+                    self.local_species_population,
+                    self.args['time_step']
+                )
 
             elif are_terms_equivalent(lang_submodel.framework, onto['WC:deterministic_simulation_algorithm']):
-                # an experimental deterministic simulation algorithm, used for testing
+                # a deterministic simulation algorithm, used for testing
                 simulation_submodel = DeterministicSimulationAlgorithmSubmodel(
                     lang_submodel.id,
                     self.dynamic_model,
@@ -334,7 +350,7 @@ class MultialgorithmSimulation(object):
                 )
 
             else:
-                raise MultialgorithmError("Unsupported lang_submodel framework '{}'".format(lang_submodel.framework))
+                raise MultialgorithmError(f"Unsupported lang_submodel framework '{lang_submodel.framework}'")
 
             simulation_submodels[simulation_submodel.id] = simulation_submodel
 

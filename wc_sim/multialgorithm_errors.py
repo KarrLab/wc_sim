@@ -1,4 +1,4 @@
-"""Define multi-algoritmic simulation errors.
+""" Define multi-algoritmic simulation errors.
 
 :Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2016-12-12
@@ -19,7 +19,21 @@ class Error(Exception):
 
 
 class MultialgorithmError(Error):
-    """ Exception raised for errors in wc_sim.multialgorithm
+    """ Exception raised for errors in package `wc_sim`
+
+    Attributes:
+        message (:obj:`str`): the exception's message
+    """
+
+    def __init__(self, message=None):
+        super().__init__(message)
+# todo: make subclass of MultialgorithmError for exceptions that occur during simulation, giving
+# it a time attribute so they're easier to debug
+# subclass NegativePopulationError, FrozenSimulationError and a new DynamicMultialgorithmError from it
+
+
+class SpeciesPopulationError(Error):
+    """ Exception raised when species population management encounters a problem
 
     Attributes:
         message (:obj:`str`): the exception's message
@@ -29,8 +43,10 @@ class MultialgorithmError(Error):
         super().__init__(message)
 
 
-class SpeciesPopulationError(Error):
-    """ Exception raised when species population management encounters a problem
+class FrozenSimulationError(MultialgorithmError):
+    """ Exception raised by an SSA submodel when it is the only submodel and total propensities == 0
+
+    A simulation in this state cannot progress.
 
     Attributes:
         message (:obj:`str`): the exception's message
@@ -86,3 +102,8 @@ class NegativePopulationError(Error):
                 return rv + " over {:g} time unit".format(self.delta_time)
             else:
                 return rv + " over {:g} time units".format(self.delta_time)
+
+
+class MultialgorithmWarning(UserWarning):
+    """ `wc_sim` multialgorithm warning """
+    pass
