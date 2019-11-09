@@ -16,12 +16,12 @@ class ValidateWcLangFilesTestCase(unittest.TestCase):
         'tests/fixtures/test_dry_model.xlsx',
         'tests/fixtures/test_model.xlsx',
         'tests/fixtures/MetabolismAndGeneExpression.xlsx',
-        #'tests/fixtures/test_dry_model_with_mass_computation.xlsx', # contains formulae in extra columns/rows
+        'tests/fixtures/test_dry_model_with_mass_computation.xlsx',
         'tests/fixtures/2_species_1_reaction.xlsx',
         'tests/fixtures/test_model_for_access_species_populations.xlsx',
         'tests/fixtures/test_model_for_access_species_populations_steady_state.xlsx',
         'examples/transcription_translation_hybrid_model/model.xlsx',
-        'examples/translation_metabolism_hybrid_model/model.xlsx',
+        'examples/translation_metabolism_hybrid_model/model.xlsx'
     )
 
     def test(self):
