@@ -1,6 +1,7 @@
 """ Ensure that wc-lang-encoded models are validate so that these examples don't diverge from wc-lang.
 
 :Author: Jonathan Karr <karr@mssm.edu>
+:Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2018-11-15
 :Copyright: 2018, Karr Lab
 :License: MIT

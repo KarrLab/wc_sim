@@ -627,7 +627,6 @@ class TestDynamicModel(unittest.TestCase):
             computed_aggregate_states.append(self.dynamic_model.get_aggregate_state())
 
         # expected values computed in tests/fixtures/test_dry_model_with_mass_computation.xlsx
-        # todo: fix tests/fixtures/test_dry_model_with_mass_computation.xlsx
         numpy.testing.assert_approx_equal(numpy.mean(cell_masses), 9.160E-19)
         aggregate_state = self.dynamic_model.get_aggregate_state()
         expected_aggregate_state = {
