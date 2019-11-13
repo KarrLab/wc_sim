@@ -5,11 +5,12 @@
 :License: MIT
 """
 
-import unittest
+from scikits.odes import ode
+import numpy as np
 import os
 import re
-import numpy as np
 import scikits
+import unittest
 
 from wc_lang.io import Reader
 from wc_sim.submodels.odes import OdeSubmodel
@@ -26,9 +27,14 @@ class TestOdeSubmodel(unittest.TestCase):
     # ODE_TEST_CASES = os.path.join(os.path.dirname(__file__), '..', 'fixtures', 'validation', 'testing', 'semantic')
 
     def setUp(self):
-        self.mdl_1_spec = MakeModel.make_test_model('1 species, 1 reaction',
-                                                    submodel_framework='WC:ordinary_differential_equations')
-        self.ode_sbmdl_1_spec = self.make_ode_submodel(self.mdl_1_spec)
+        self.default_species_copy_number = 100_000_000
+        self.mdl_1_spec = \
+            MakeModel.make_test_model('2 species, 1 reaction, with rates given by reactant population',
+                                      init_vol_stds=[0],
+                                      default_species_copy_number=self.default_species_copy_number,
+                                      default_species_std=0,
+                                      submodel_framework='WC:ordinary_differential_equations')
+        self.ode_submodel_1 = self.make_ode_submodel(self.mdl_1_spec)
         '''
         # todo: install SBML tests
         test_case = '00001'
@@ -37,7 +43,7 @@ class TestOdeSubmodel(unittest.TestCase):
         self.case_00001_model = Reader().run(self.sbml_case_00001_file, strict=False)
         '''
 
-    def make_ode_submodel(self, model, time_step=1.0, use_populations=False):
+    def make_ode_submodel(self, model, time_step=1.0):
         """ Make a MultialgorithmSimulation from a wc lang model """
         # assume a single submodel
         # todo: test concurrent OdeSubmodels, perhaps
@@ -47,36 +53,25 @@ class TestOdeSubmodel(unittest.TestCase):
         simulation_engine, dynamic_model = multialgorithm_simulation.build_simulation()
         simulation_engine.initialize()
         submodel_1 = dynamic_model.dynamic_submodels['submodel_1']
-        submodel_1.use_populations = use_populations
         return submodel_1
 
-    # test low level methods
+    ### test low level methods ###
     def test_ode_submodel_init(self):
-        self.assertEqual(self.ode_sbmdl_1_spec.time_step, self.time_step)
+        self.assertEqual(self.ode_submodel_1.time_step, self.time_step)
+
+        # test exception
         bad_time_step = -2
         with self.assertRaisesRegexp(MultialgorithmError,
             'time_step must be positive, but is {}'.format(bad_time_step)):
             self.make_ode_submodel(self.mdl_1_spec, time_step=bad_time_step)
 
     def test_set_up_optimizations(self):
-        ode_submodel = self.ode_sbmdl_1_spec
+        ode_submodel = self.ode_submodel_1
         self.assertTrue(set(ode_submodel.ode_species_ids) == ode_submodel.ode_species_ids_set \
             == set(ode_submodel.adjustments.keys()))
-        for pre_alloc_array in [ode_submodel.concentrations, ode_submodel.populations]:
-            self.assertEqual(pre_alloc_array.shape, (len(ode_submodel.ode_species_ids), ))
+        self.assertEqual(ode_submodel.populations.shape, ((len(ode_submodel.ode_species_ids), )))
 
     # todo: for the next 4 tests, check results against raw properties of self.mdl_1_spec
-    def test_get_compartment_id(self):
-        self.assertEqual(self.ode_sbmdl_1_spec.get_compartment_id(), 'compt_1')
-
-    @unittest.skip("need get_concentrations()")
-    def test_get_concentrations(self):
-        self.assertEqual(self.ode_sbmdl_1_spec.get_concentrations(), np.array([0.01660539040427164]))
-
-    def test_concentrations_to_populations(self):
-        self.assertEqual(self.ode_sbmdl_1_spec.concentrations_to_populations(
-            self.ode_sbmdl_1_spec.concentrations), np.array([0.]))
-
     def test_solver_lock(self):
         self.ode_submodel_empty = OdeSubmodel('test_1', None, [], [], [], None, 1)
         self.assertTrue(self.ode_submodel_empty.get_solver_lock())
@@ -84,14 +79,14 @@ class TestOdeSubmodel(unittest.TestCase):
             self.ode_submodel_empty.get_solver_lock()
         self.assertTrue(self.ode_submodel_empty.release_solver_lock())
 
-    # test solving
+    ### without running the simulator, test solving ###
     def test_set_up_ode_submodel(self):
-        self.ode_sbmdl_1_spec.set_up_ode_submodel()
-        self.assertEqual(self.ode_sbmdl_1_spec, OdeSubmodel.instance)
+        self.assertEqual(self.ode_submodel_1, OdeSubmodel.instance)
+        self.ode_submodel_1.set_up_ode_submodel()
 
-        rate_of_change_expressions = self.ode_sbmdl_1_spec.rate_of_change_expressions
-        # model has 1 species: spec_type_0[compt_1]
-        self.assertEqual(len(rate_of_change_expressions), 1)
+        rate_of_change_expressions = self.ode_submodel_1.rate_of_change_expressions
+        # model has 2 species: spec_type_0[compt_1] and spec_type_1[compt_1]
+        self.assertEqual(len(rate_of_change_expressions), 2)
         # spec_type_0[compt_1] participates in 1 reaction
         self.assertEqual(len(rate_of_change_expressions[0]), 1)
         # the reaction consumes 1 spec_type_0[compt_1]
@@ -99,32 +94,50 @@ class TestOdeSubmodel(unittest.TestCase):
         self.assertEqual(coeffs, -1)
         self.assertEqual(type(rate_law), DynamicRateLaw)
 
-    @unittest.skip("need get_specie_concentrations()")
-    def test_set_up_ode_solver(self):
-        solver_return = self.ode_sbmdl_1_spec.set_up_ode_solver()
-        self.assertTrue(solver_return.flag)
-        self.assertEqual(type(self.ode_sbmdl_1_spec.solver), scikits.odes.ode)
+    def test_create_ode_solver(self):
+        self.assertTrue(isinstance(self.ode_submodel_1.create_ode_solver(), ode))
 
-    @unittest.skip("need get_specie_concentrations()")
     def test_right_hand_side(self):
-        time = 0
-        concentrations = self.ode_sbmdl_1_spec.get_concentrations()
-        concentration_change_rates = np.zeros(len(self.ode_sbmdl_1_spec.concentrations))
-        flag = OdeSubmodel.right_hand_side(time, concentrations, concentration_change_rates)
-        self.assertEqual(flag, 0)
+        pop_change_rates = [0, 0]
+        num_reactants = 100
+        self.assertEqual(0, self.ode_submodel_1.right_hand_side(0, [num_reactants, 0], pop_change_rates))
+        pop_change_rate_spec_1 = pop_change_rates[1]
+        self.assertTrue(0 < pop_change_rate_spec_1)
 
-        # create failure by changing rate_of_change_expressions
-        # turn testing off
-        self.ode_sbmdl_1_spec.testing = False
-        self.ode_sbmdl_1_spec.rate_of_change_expressions[-1] = None
-        self.assertEqual(OdeSubmodel.right_hand_side(time, concentrations, concentration_change_rates), 1)
-        # turn testing on
-        self.ode_sbmdl_1_spec.testing = True
-        with self.assertRaisesRegexp(MultialgorithmError, "OdeSubmodel .* solver.right_hand_side.* failed"):
-            OdeSubmodel.right_hand_side(time, concentrations, concentration_change_rates)
+        # test exceptions
+        short_list = [1]
+        with self.assertRaises(MultialgorithmError):
+            self.ode_submodel_1.right_hand_side(0, [num_reactants, 0], short_list)
+        self.ode_submodel_1.testing = False
+        self.assertEqual(1, self.ode_submodel_1.right_hand_side(0, [num_reactants, 0], short_list))
 
-    @unittest.skip("needs ODE_TEST_CASES")
+        '''
+        # todo: use if species_populations are copied to the LocalSpeciesPopulation
+        # rates decline as reactant converted to product
+        for i in range(1, 10):
+            self.ode_submodel_1.right_hand_side(0, [num_reactants - i, i], pop_change_rates)
+            self.assertTrue(pop_change_rates[1] < pop_change_rate_spec_1)
+            pop_change_rate_spec_1 = pop_change_rates[1]
+        '''
+
+    def test_current_species_populations(self):
+        self.ode_submodel_1.current_species_populations()
+        for pop in self.ode_submodel_1.populations:
+            self.assertEqual(pop, self.default_species_copy_number)
+
     def test_run_ode_solver(self):
+        # todo: make a test after continuous_adjustment and adjust_continuously are fixed
+        self.ode_submodel_1.time += 1
+        print(self.ode_submodel_1.local_species_population)
+        self.ode_submodel_1.run_ode_solver()
+
+        # make OdeSubmodel.right_hand_side fail
+        self.ode_submodel_1.num_species = None
+        with self.assertRaises(MultialgorithmError):
+            self.ode_submodel_1.run_ode_solver()
+
+    @unittest.skip("todo: needs ODE_TEST_CASES")
+    def test_run_ode_solver_2(self):
         '''
         case_00001_ode_submodel = self.make_ode_submodel(self.case_00001_model)
         case_00001_ode_submodel.increment_time_step_count()
@@ -161,9 +174,3 @@ class TestOdeSubmodel(unittest.TestCase):
         # next RunOde event should be at custom_time_step
         custom_ode_submodel.schedule_next_ode_analysis()
         check_next_event(custom_time_step)
-
-    @unittest.skip("needs ODE_TEST_CASES")
-    def test_use_populations(self):
-        case_00001_ode_submodel = self.make_ode_submodel(self.case_00001_model, use_populations=True)
-        case_00001_ode_submodel.increment_time_step_count()
-        case_00001_ode_submodel.run_ode_solver()

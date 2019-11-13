@@ -1221,6 +1221,12 @@ class Specie(object):
         self.last_population += population_change
         return self.get_population(time)
 
+    '''
+    TODO: change `continuous_adjustment` to automatically incorporate
+    population changes predicted by the flux provided by the previous `continuous_adjustment`
+    that is, use:
+        population_change = (time - self.continuous_time) * self.continuous_flux
+    '''
     def continuous_adjustment(self, population_change, time, flux):
         """ A continuous-time submodel adjusts the specie's state
 
