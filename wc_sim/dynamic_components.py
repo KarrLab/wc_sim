@@ -908,7 +908,7 @@ class DynamicModel(object):
         species_counts = numpy.zeros((len(model.species), len(model.compartments)))
         for species in model.species:
             for compartment in model.compartments:
-                species_id = Species._gen_id(species.id, compartment.id)
+                species_id = Species.gen_id(species.id, compartment.id)
                 species_counts[species.index, compartment.index] = \
                     model.local_species_population.read_one(now, species_id)
         return species_counts
