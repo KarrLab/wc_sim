@@ -141,7 +141,7 @@ class SsaSubmodel(DynamicSubmodel):
         # TODO(Arthur): IMPORTANT: optimization: simply use counts to calculate propensities
         # TODO(Arthur): IMPORTANT: create benchmark & profile data to evaluate possible optimizations
         2. calculate propensities for this submodel
-        3. avoid reactions with inadequate specie counts
+        3. avoid reactions with inadequate species counts
 
         Returns:
             reaction (propensities, total_propensities)
@@ -156,7 +156,7 @@ class SsaSubmodel(DynamicSubmodel):
         proportional_propensities = np.maximum(0, self.calc_reaction_rates())
         self.log_with_time("submodel: {}; proportional_propensities: {}".format(self.id, proportional_propensities))
 
-        # avoid reactions with inadequate specie counts
+        # avoid reactions with inadequate species counts
         # TODO(Arthur): incorporate generalization in the COPASI paper
         enabled_reactions = self.identify_enabled_reactions()
         proportional_propensities = enabled_reactions * proportional_propensities
