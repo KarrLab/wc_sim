@@ -1,4 +1,4 @@
-"""Plot a specie population's dynamics. Inputs logging log.
+"""Plot a species population's dynamics. Inputs logging log.
 
 :Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2016-07-12
@@ -49,7 +49,7 @@ class PlotPopulationDynamics(object):
 
     @staticmethod
     def parse_cli_args():
-        parser = argparse.ArgumentParser( description="Plot a specie population's dynamics. "
+        parser = argparse.ArgumentParser( description="Plot a species population's dynamics. "
             "Inputs logging log." )
         parser.add_argument( 'log_file', type=str, help="A log of species population adjustments")
         parser.add_argument( '--pdf_file', '-p', type=str, help='The output pdf file.' )
@@ -58,7 +58,7 @@ class PlotPopulationDynamics(object):
 
     @staticmethod
     def parse_log( file ):
-        """Parse a specie logging log.
+        """Parse a species logging log.
 
         The log's format is determined by the plot handlers in .cfg files.
 
@@ -107,7 +107,7 @@ class PlotPopulationDynamics(object):
 
     @staticmethod
     def plot_species_population_dynamics( args, events ):
-        """Plot a specie population's dynamics.
+        """Plot a species population's dynamics.
         """
 
         # plot markers

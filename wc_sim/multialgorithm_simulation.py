@@ -183,7 +183,7 @@ class MultialgorithmSimulation(object):
             :obj:`dict`: species_type_id -> molecular weight
         """
         species_weights = {}
-        species = species or [specie.id for specie in self.model.get_species()]
+        species = species or [species.id for species in self.model.get_species()]
         for species_id in species:
             species_type_id, _ = Species.parse_id(species_id)
             species_type = self.model.species_types.get_one(id=species_type_id)
@@ -256,8 +256,8 @@ class MultialgorithmSimulation(object):
             if are_terms_equivalent(submodel.framework, onto['WC:ordinary_differential_equations']) or \
                     are_terms_equivalent(submodel.framework, onto['WC:dynamic_flux_balance_analysis']):
                 # todo: understand why get_children() of submodel needs kind=submodel
-                for specie in submodel.get_children(kind='submodel', __type=Species):
-                    initial_fluxes[specie.id] = 0.0
+                for species in submodel.get_children(kind='submodel', __type=Species):
+                    initial_fluxes[species.id] = 0.0
 
         return LocalSpeciesPopulation(
             'LSP_' + self.model.id,

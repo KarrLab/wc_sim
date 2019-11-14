@@ -7,7 +7,7 @@
 """
 
 DEFAULT_VALUES = dict(  # pragma: no cover
-    shared_species_store='SHARED_SPECIE_STORE'
+    shared_species_store='SHARED_SPECIES_STORE'
 )
 
 
@@ -16,7 +16,7 @@ class MultialgorithmSimulation(object):   # pragma: no cover; code for use later
     """ Initialize a multialgorithm simulation from a language model and run-time parameters
 
     Attributes:
-        shared_species_store_name (:obj:`str`): the name for the shared specie store
+        shared_species_store_name (:obj:`str`): the name for the shared species store
         species_pop_objs (:obj:`dict` of `SpeciesPopSimObject`): shared species
             populations used by `SimulationObject`\ 's; not currently used
         private_species (:obj:`dict` of `set`): map from `DynamicSubmodel` to a set of the species

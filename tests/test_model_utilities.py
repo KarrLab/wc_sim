@@ -61,7 +61,7 @@ class TestModelUtilities(unittest.TestCase):
         self.assertEqual(ModelUtilities.get_species_types([]), [])
 
         species_type_ids = [species_type.id for species_type in self.model.get_species_types()]
-        species_ids = [specie.serialize() for specie in self.model.get_species()]
+        species_ids = [species.serialize() for species in self.model.get_species()]
         self.assertEqual(sorted(ModelUtilities.get_species_types(species_ids)), sorted(species_type_ids))
 
     def test_sample_copy_num_from_concentration(self):
@@ -91,12 +91,12 @@ class TestModelUtilities(unittest.TestCase):
 
         conc_value = 2.
         std_value = 0.
-        for key, specie in species.items():
+        for key, species in species.items():
             if key in cus_species_types:
-                wc_lang.DistributionInitConcentration(species=specie, mean=conc_value, std=std_value,
+                wc_lang.DistributionInitConcentration(species=species, mean=conc_value, std=std_value,
                                                       units=cus_species_types[key])
             elif key == 'no_units':
-                wc_lang.DistributionInitConcentration(species=specie, mean=conc_value, std=std_value)
+                wc_lang.DistributionInitConcentration(species=species, mean=conc_value, std=std_value)
             elif key == 'no_concentration':
                 continue
 

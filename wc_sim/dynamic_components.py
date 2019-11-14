@@ -49,7 +49,7 @@ Expression eval design:
             cache = wc_utils.cache.Cache(directory=os.path.join(cache_dir, 'cache'))
             @cache.memoize()
             def eval(time):
-        fast access to specie counts and concentrations:
+        fast access to species counts and concentrations:
             eliminate lookups, extra objects and memory allocation/deallocation
         for maximum speed, don't use eval() -- convert expressions into trees, & use an evaluator that
             can process operators, literals, and Python functions
@@ -903,7 +903,7 @@ class DynamicModel(object):
             now (:obj:`float`): the current simulation time
 
         Returns:
-            numpy array, #species x # compartments, containing count of specie in compartment
+            numpy array, #species x # compartments, containing count of species in compartment
         """
         species_counts = numpy.zeros((len(model.species), len(model.compartments)))
         for species in model.species:

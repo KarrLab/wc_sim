@@ -270,11 +270,11 @@ class TestDynamics(unittest.TestCase):
             submodels[id] = model.submodels.create(id=id)
 
         for c_id, st_id in zip(comp_ids, st_ids):
-            specie = model.species.create(species_type=species_types[st_id], compartment=compartments[c_id])
-            specie.id = specie.gen_id()
-            objects[Species][specie.id] = specie
+            species = model.species.create(species_type=species_types[st_id], compartment=compartments[c_id])
+            species.id = species.gen_id()
+            objects[Species][species.id] = species
             conc = model.distribution_init_concentrations.create(
-                species=specie, mean=0, units=unit_registry.parse_units('M'))
+                species=species, mean=0, units=unit_registry.parse_units('M'))
             conc.id = conc.gen_id()
 
         self.init_pop = {

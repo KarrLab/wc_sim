@@ -101,13 +101,13 @@ def check_simul_results(test_case, dynamic_model, results_dir, expected_initial_
 
     # test expected trajectories of species
     if expected_species_trajectories:
-        for specie_id, expected_trajectory in expected_species_trajectories.items():
+        for species_id, expected_trajectory in expected_species_trajectories.items():
             if np.isnan(expected_trajectory).all():
                 continue
-            actual_trajectory = populations_df[specie_id]
+            actual_trajectory = populations_df[species_id]
             np.testing.assert_allclose(actual_trajectory, expected_trajectory, equal_nan=False,
                                        rtol=rel_tol,
-                                       err_msg=f"In model {dynamic_model.id}, trajectory for {specie_id} "
+                                       err_msg=f"In model {dynamic_model.id}, trajectory for {species_id} "
                                            f"not almost equal to expected trajectory:")
 
     # test expected trajectories of properties of compartments
@@ -155,9 +155,9 @@ def check_simul_results(test_case, dynamic_model, results_dir, expected_initial_
                                                err_msg=err_msg)
 
 
-def specie_id_to_pop_attr(specie_id):
+def species_id_to_pop_attr(species_id):
     # obtain an attribute name for the population of a species
-    return f"pop_{specie_id.replace('[', '_').replace(']', '_')}"
+    return f"pop_{species_id.replace('[', '_').replace(']', '_')}"
 
 
 def define_trajectory_classes(model):
@@ -181,8 +181,8 @@ def define_trajectory_classes(model):
         'name': 'time',
         'type': obj_tables.FloatAttribute()
     }
-    for specie in model.get_species():
-        attr_name = specie_id_to_pop_attr(specie.id)
+    for species in model.get_species():
+        attr_name = species_id_to_pop_attr(species.id)
         cls['attrs'][attr_name] = {
             'name': attr_name,
             'type': obj_tables.FloatAttribute()
@@ -276,13 +276,13 @@ def verify_hand_solved_model(test_case, model_filename, results_dir):
 
     # get species trajectories from model workbook
     expected_species_trajectories = {}
-    species_ids = [specie.id for specie in model.get_species()]
-    for specie_id in species_ids:
-        expected_species_trajectories[specie_id] = []
-    for specie_id in species_ids:
+    species_ids = [species.id for species in model.get_species()]
+    for species_id in species_ids:
+        expected_species_trajectories[species_id] = []
+    for species_id in species_ids:
         for expected_species_trajectory in expected_trajectories[SpeciesTrajectory]:
-            expected_pop = getattr(expected_species_trajectory, specie_id_to_pop_attr(specie_id))
-            expected_species_trajectories[specie_id].append(expected_pop)
+            expected_pop = getattr(expected_species_trajectory, species_id_to_pop_attr(species_id))
+            expected_species_trajectories[species_id].append(expected_pop)
     expected_trajectory_times = []
     for expected_species_trajectory in expected_trajectories[SpeciesTrajectory]:
         expected_trajectory_times.append(expected_species_trajectory.time)
@@ -388,18 +388,18 @@ def plot_expected_vs_actual(dynamic_model,
             fig = pyplot.figure()
             fig.suptitle(f'Species copy numbers of model {model_id}')
             index = 0
-            for specie_id, expected_trajectory in expected_species_trajectories.items():
+            for species_id, expected_trajectory in expected_species_trajectories.items():
                 if np.isnan(expected_trajectory).all():
                     continue
                 # plot expected_trajectory vs. actual_trajectory
-                actual_trajectory = populations_df[specie_id]
+                actual_trajectory = populations_df[species_id]
                 index += 1
                 axes = fig.add_subplot(nrows, ncols, index)
                 axes.ticklabel_format(axis='y', style='scientific', scilimits=(0, 0))
                 axes.plot(trajectory_times, actual_trajectory, **actual_plot_kwargs)
                 axes.plot(trajectory_times, expected_trajectory, **expected_plot_kwargs)
                 axes.set_xlabel('Time (s)')
-                y_label = f'{specie_id} (copy number)'
+                y_label = f'{species_id} (copy number)'
                 axes.set_ylabel(y_label)
                 axes.legend()
             figure_name = f'{model_id}_species_trajectories'

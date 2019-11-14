@@ -147,9 +147,9 @@ class DynamicSubmodel(ApplicationSimulationObject):
     # These methods - enabled_reaction, identify_enabled_reactions, execute_reaction - are used
     # by discrete time submodels like SsaSubmodel and the SkeletonSubmodel.
     def enabled_reaction(self, reaction):
-        """ Determine whether the cell state has adequate specie counts to run a reaction
+        """ Determine whether the cell state has adequate species counts to run a reaction
 
-        Indicate whether the current specie counts are large enough to execute `reaction`, based on
+        Indicate whether the current species counts are large enough to execute `reaction`, based on
         its stoichiometry.
 
         Args:
@@ -168,7 +168,7 @@ class DynamicSubmodel(ApplicationSimulationObject):
         return True
 
     def identify_enabled_reactions(self):
-        """ Determine which reactions have adequate specie counts to run
+        """ Determine which reactions have adequate species counts to run
 
         Returns:
             :obj:`np.array`: an array indexed by reaction number; 0 indicates reactions without adequate

@@ -287,8 +287,8 @@ class TestDeterministicSimulationAlgorithmSubmodel(unittest.TestCase):
         species = ['species_2[c]', 'species_4[c]', 'species_5[c]']
         pops_before = {}
         populations = multialgorithm_simulation.local_species_population
-        for specie_id in species:
-            pops_before[specie_id] = populations.read_one(event.event_time, specie_id)
+        for species_id in species:
+            pops_before[species_id] = populations.read_one(event.event_time, species_id)
         expected_pop_changes = dict(zip(species, [-1, -2, +1]))
         # set time of dsa_submodel to time of the event
         dsa_submodel.time = event.event_time
@@ -298,9 +298,9 @@ class TestDeterministicSimulationAlgorithmSubmodel(unittest.TestCase):
                              populations.read_one(event.event_time, s_id))
 
         # zero populations and test exception
-        for specie_id in species:
-            pop = populations.read_one(event.event_time, specie_id)
-            populations.adjust_discretely(event.event_time, {specie_id: -pop})
+        for species_id in species:
+            pop = populations.read_one(event.event_time, species_id)
+            populations.adjust_discretely(event.event_time, {species_id: -pop})
         with self.assertRaises(MultialgorithmError):
             dsa_submodel.handle_ExecuteDsaReaction_msg(event)
 

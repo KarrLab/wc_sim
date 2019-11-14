@@ -100,7 +100,7 @@ class AdjustPopulationByContinuousSubmodel(SimulationMessage):
 
 
 class GetPopulation(SimulationMessage):
-    """ A WC simulator message sent by a submodel to obtain some current specie populations.
+    """ A WC simulator message sent by a submodel to obtain some current species populations.
 
     Attributes:
         species (:obj:`set` of `str`): set of species_ids; the species whose populations are
@@ -110,14 +110,14 @@ class GetPopulation(SimulationMessage):
 
 
 class GivePopulation(SimulationMessage):
-    """ A WC simulator message sent by a species pop object to report some current specie populations.
+    """ A WC simulator message sent by a species pop object to report some current species populations.
 
     Attributes:
         population (:obj:`dict` of `str`): species_id -> population; the populations of some species.
     """
     attributes = ['population']
 
-# TODO(Arthur): make a pair of messages that Get and Give the population of one specie
+# TODO(Arthur): make a pair of messages that Get and Give the population of one species
 
 
 class AggregateProperty(SimulationMessage):

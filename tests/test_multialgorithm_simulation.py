@@ -335,8 +335,8 @@ class TestRunSSASimulation(unittest.TestCase):
         Args:
             model_type (:obj:`str`): model type description
             run_time (:obj:`float`): duration of the simulation run
-            initial_species_copy_numbers (:obj:`dict`): initial specie counts, with IDs as keys and counts as values
-            expected_mean_copy_numbers (:obj:`dict`): expected final mean specie counts, in same format as
+            initial_species_copy_numbers (:obj:`dict`): initial species counts, with IDs as keys and counts as values
+            expected_mean_copy_numbers (:obj:`dict`): expected final mean species counts, in same format as
                 `initial_species_copy_numbers`
             delta (:obj:`int`): maximum allowed difference between expected and actual counts
             num_submodels (:obj:`int`): number of submodels to create
@@ -382,13 +382,13 @@ class TestRunSSASimulation(unittest.TestCase):
 
     @unittest.skip('debug')
     def test_run_ssa_suite(self):
-        specie = 'spec_type_0[compt_1]'
+        species = 'spec_type_0[compt_1]'
         # tests checkpoint history in which the last checkpoint time < run time
         self.perform_ssa_test_run('1 species, 1 reaction',
                                   run_time=999,
-                                  initial_species_copy_numbers={specie: 3000},
-                                  initial_species_stds={specie: 0},
-                                  expected_mean_copy_numbers={specie: 2000},
+                                  initial_species_copy_numbers={species: 3000},
+                                  initial_species_stds={species: 0},
+                                  expected_mean_copy_numbers={species: 2000},
                                   delta=50)
         # species counts, and cell mass and volume steadily decline
         prev_ckpt = None
@@ -398,7 +398,7 @@ class TestRunSSASimulation(unittest.TestCase):
                 prev_species_pops, prev_observables, prev_functions, prev_aggregate_state = \
                     RunResults.get_state_components(prev_ckpt.state)
                 species_pops, observables, functions, aggregate_state = RunResults.get_state_components(ckpt.state)
-                self.assertTrue(species_pops[specie] < prev_species_pops[specie])
+                self.assertTrue(species_pops[species] < prev_species_pops[species])
                 self.assertTrue(aggregate_state['cell mass'] < prev_aggregate_state['cell mass'])
             prev_ckpt = ckpt
 

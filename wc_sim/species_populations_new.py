@@ -47,7 +47,7 @@ class AccessSpeciesPopulationInterface(metaclass=abc.ABCMeta):   # pragma: no co
 
     @abc.abstractmethod
     def read_one(self, time, species_id):
-        """ Obtain the predicted population of a specie at a particular simulation time """
+        """ Obtain the predicted population of a species at a particular simulation time """
         raise NotImplemented
 
     @abc.abstractmethod
@@ -86,8 +86,8 @@ class AccessSpeciesPopulations(AccessSpeciesPopulationInterface):   # pragma: no
     messages.
 
     AccessSpeciesPopulations enables a submodel to access all of the species populations that it
-    uses through a single convenient interface. The submodel simply indicates the specie(s)
-    being used and the operation type. This object then maps the specie(s) to the entity or entities
+    uses through a single convenient interface. The submodel simply indicates the species
+    being used and the operation type. This object then maps the species to the entity or entities
     storing them, and executes the operation on each entity.
 
     Essentially, an AccessSpeciesPopulations multiplexes a submodel's access to multiple population
@@ -95,7 +95,7 @@ class AccessSpeciesPopulations(AccessSpeciesPopulationInterface):   # pragma: no
 
     Attributes:
         submodel (:obj:`DynamicSubmodel`): the submodel that's using this :obj:`AccessSpeciesPopulations`
-        species_locations (:obj:`dict` of `str`): a map indicating the store for each specie used
+        species_locations (:obj:`dict` of `str`): a map indicating the store for each species used
             by the submodel using this object, that is, the local submodel.
         local_pop_store (:obj:`LocalSpeciesPopulation`): a store of local species
         remote_pop_stores (:obj:`dict` of identifiers of `SpeciesPopSimObject`): a map from store name
@@ -165,7 +165,7 @@ class AccessSpeciesPopulations(AccessSpeciesPopulationInterface):   # pragma: no
         """ Delete entries from the species location map
 
         Remove species location mappings for the species in `species_ids`. To avoid raising an
-        exception when a specie is not in the location map, set `force` to `True`.
+        exception when a species is not in the location map, set `force` to `True`.
 
         Args:
             species_ids (:obj:`list` of species_ids): a list of species ids
@@ -224,25 +224,25 @@ class AccessSpeciesPopulations(AccessSpeciesPopulationInterface):   # pragma: no
         return inverse_loc_map
 
     def read_one(self, time, species_id):
-        """ Obtain the predicted population of specie `species_id` at the time `time`
+        """ Obtain the predicted population of species`species_id` at the time `time`
 
-        If the specie is stored in the local_pop_store, obtain its population there. Otherwise obtain
-        the population from the species_population_cache. If the specie's primary store is a
+        If the species is stored in the local_pop_store, obtain its population there. Otherwise obtain
+        the population from the species_population_cache. If the species' primary store is a
         remote_pop_store, then its population should be in the cache because the population should
         have been prefetched.
 
         Args:
             time (:obj:`float`): the time at which the population should be obtained
-            species_id (:obj:`str`): identifier of the specie whose population will be obtained.
+            species_id (:obj:`str`): identifier of the species whose population will be obtained.
 
         Returns:
             float: the predicted population of `species_id` at simulation time `time`.
 
         Raises:
-            :obj:`SpeciesPopulationError`: if `species_id` is an unknown specie
+            :obj:`SpeciesPopulationError`: if `species_id` is an unknown species
         """
         if species_id not in self.species_locations:
-            raise SpeciesPopulationError("read_one: specie '{}' not in the location map.".format(
+            raise SpeciesPopulationError("read_one: species'{}' not in the location map.".format(
                 species_id))
         store = self.species_locations[species_id]
         if store == LOCAL_POP_STORE:
@@ -379,7 +379,7 @@ class AccessSpeciesPopulations(AccessSpeciesPopulationInterface):   # pragma: no
         """ Provide readable AccessSpeciesPopulations state
 
         Provide the submodel's name, the name of the local_pop_store, and the id and store name of
-        each specie accessed by this AccessSpeciesPopulations.
+        each species accessed by this AccessSpeciesPopulations.
 
         Returns:
             :obj:`str`: a multi-line string describing this AccessSpeciesPopulations' state.
@@ -430,7 +430,7 @@ class SpeciesPopulationCache(object):       # pragma: no cover
         Raises:
             :obj:`SpeciesPopulationError`: if the species are stored in the ASP's local store; they should
                 not be cached.
-            :obj:`SpeciesPopulationError`: if, for any specie, `time` is not greater than its previous
+            :obj:`SpeciesPopulationError`: if, for any species, `time` is not greater than its previous
                 cache time.
         """
         # raise exception if the species are stored in the ASP's local store
@@ -449,11 +449,11 @@ class SpeciesPopulationCache(object):       # pragma: no cover
             self._cache[species_id] = (time, population)
 
     def read_one(self, time, species_id):
-        """ Obtain the cached population of a specie at a particular time
+        """ Obtain the cached population of a species at a particular time
 
         Args:
             time (:obj:`float`): the expected time of the cached values
-            species_id (:obj:`str`): identifier of the specie to obtain.
+            species_id (:obj:`str`): identifier of the species to obtain.
 
         Returns:
             float: the cached population of `species_id` at simulation time `time`.
@@ -461,14 +461,14 @@ class SpeciesPopulationCache(object):       # pragma: no cover
         Raises:
             :obj:`SpeciesPopulationError`: if the species are stored in the ASP's local store, which means
                 that they should not be cached.
-            :obj:`SpeciesPopulationError`: if `time` is not greater than a specie's previous cache time
+            :obj:`SpeciesPopulationError`: if `time` is not greater than a species' previous cache time
         """
         if species_id not in self._cache:
-            raise SpeciesPopulationError("SpeciesPopulationCache.read_one: specie '{}' not "
+            raise SpeciesPopulationError("SpeciesPopulationCache.read_one: species'{}' not "
                                          "in cache.".format(species_id))
         if self._cache[species_id][0] + epsilon < time:
             raise SpeciesPopulationError("SpeciesPopulationCache.read_one: cache age of {} too big "
-                                         "for read at time {} of specie '{}'.".format(
+                                         "for read at time {} of species'{}'.".format(
                                              time-self._cache[species_id][0], time, species_id))
         return self._cache[species_id][1]
 
@@ -488,7 +488,7 @@ class SpeciesPopulationCache(object):       # pragma: no cover
             :obj:`SpeciesPopulationError`: if any of the species were cached at a time that differs
                 from `time`.
         """
-        missing = list(filter(lambda specie: specie not in self._cache, species_ids))
+        missing = list(filter(lambda species: species not in self._cache, species_ids))
         if missing:
             raise SpeciesPopulationError("SpeciesPopulationCache.read: species {} not in cache.".format(
                 str(missing)))
@@ -496,7 +496,7 @@ class SpeciesPopulationCache(object):       # pragma: no cover
         if mistimed:
             raise SpeciesPopulationError("SpeciesPopulationCache.read: species {} not reading "
                                          "recently cached value(s).".format(str(mistimed)))
-        return {specie: self._cache[specie][1] for specie in species_ids}
+        return {species: self._cache[species][1] for species in species_ids}
 
 
 # logging
@@ -511,10 +511,10 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
 
     `LocalSpeciesPopulation` tracks the population of a set of species. Population values (copy numbers)
     can be read or modified (adjusted). To enable multi-algorithmic modeling, it supports writes to
-    a specie's population by both discrete time and continuous time submodels.
+    a species' population by both discrete time and continuous time submodels.
 
     All access operations that read or modify the population must provide a simulation time.
-    For any given specie, all operations must occur in non-decreasing simulation time order.
+    For any given species, all operations must occur in non-decreasing simulation time order.
     Record history operations must also occur in time order.
 
     Simulation time arguments enable detection of temporal causality errors by shared accesses from
@@ -529,18 +529,18 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         name (:obj:`str`): the name of this object
         time (:obj:`float`): the time of the most recent access to this `LocalSpeciesPopulation`
         _molecular_weights (:obj:`dict` of `float`): map: species_id -> molecular_weight; the
-        _population (:obj:`dict` of :obj:`DynamicSpecie`): map: specie_id -> DynamicSpecie(); the species whose
-            counts are stored, represented by DynamicSpecie objects.
-            molecular weight of each specie
+        _population (:obj:`dict` of :obj:`DynamicSpeciesState`): map: species_id -> DynamicSpeciesState(); the species whose
+            counts are stored, represented by DynamicSpeciesState objects.
+            molecular weight of each species
         last_access_time (:obj:`dict` of `float`): map: species_name -> last_time; the last time at
-            which the specie was accessed.
+            which the species was accessed.
         history (:obj:`dict`) nested dict; an optional history of the species' state. The population
             history is recorded at each continuous adjustment.
         random_state (:obj:`numpy.random.RandomState`): a PRNG used by all `Species`
         _record_operations (:obj:`bool`): whether a history is retained for all operations on all species
     """
     # TODO(Arthur): support tracking the population history of species added at any time in the simulation
-    # TODO(Arthur): report an error if a DynamicSpecie is updated by multiple continuous submodels
+    # TODO(Arthur): report an error if a DynamicSpeciesState is updated by multiple continuous submodels
     # because each of them assumes that they model all changes to its population over their time step
     # TODO(Arthur): molecular_weights should accept MW of each species type, like the model does
     def __init__(self, name, initial_population, molecular_weights, initial_fluxes=None,
@@ -577,10 +577,10 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
 
         for species_id in initial_population:
             if initial_fluxes is not None and species_id in initial_fluxes:
-                self.init_cell_state_specie(species_id, initial_population[species_id],
+                self.init_cell_state_species(species_id, initial_population[species_id],
                                             initial_fluxes[species_id])
             else:
-                self.init_cell_state_specie(species_id, initial_population[species_id])
+                self.init_cell_state_species(species_id, initial_population[species_id])
 
         unknown_weights = set(initial_population.keys()) - set(molecular_weights.keys())
         if unknown_weights:
@@ -596,23 +596,23 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         debug_log.debug("initial_fluxes: {}".format(DictUtil.to_string_sorted_by_key(initial_fluxes)),
                         sim_time=self.time)
 
-    def init_cell_state_specie(self, species_id, population, initial_flux_given=None):
-        """ Initialize a specie with the given population and flux
+    def init_cell_state_species(self, species_id, population, initial_flux_given=None):
+        """ Initialize a species with the given population and flux
 
-        Add a specie to the cell state. The specie's population is set at the current time.
+        Add a species to the cell state. The species' population is set at the current time.
 
         Args:
-            species_id (:obj:`str`): the specie's globally unique identifier
-            population (:obj:`float`): initial population of the specie
-            initial_flux_given (:obj:`float`, optional): an initial flux for the specie
+            species_id (:obj:`str`): the species' globally unique identifier
+            population (:obj:`float`): initial population of the species
+            initial_flux_given (:obj:`float`, optional): an initial flux for the species
 
         Raises:
-            :obj:`SpeciesPopulationError`: if the specie is already stored by this LocalSpeciesPopulation
+            :obj:`SpeciesPopulationError`: if the species is already stored by this LocalSpeciesPopulation
         """
         if species_id in self._population:
             raise SpeciesPopulationError("species_id '{}' already stored by this "
                                          "LocalSpeciesPopulation".format(species_id))
-        self._population[species_id] = DynamicSpecie(species_id, self.random_state, population,
+        self._population[species_id] = DynamicSpeciesState(species_id, self.random_state, population,
                                                      initial_flux=initial_flux_given)
         self.last_access_time[species_id] = self.time
         self._add_to_history(species_id)
@@ -637,7 +637,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         Raises:
             :obj:`SpeciesPopulationError`: if species is not a set
             :obj:`SpeciesPopulationError`: if any species in `species` do not exist
-            :obj:`SpeciesPopulationError`: if a specie in `species` is being accessed at a time earlier
+            :obj:`SpeciesPopulationError`: if a species in `species` is being accessed at a time earlier
                 than a prior access.
         """
         if not species is None:
@@ -646,11 +646,11 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             unknown_species = species - self._all_species()
             if unknown_species:
                 # raise exception if some species are non-existent
-                raise SpeciesPopulationError("request for population of unknown specie(s): {}".format(
+                raise SpeciesPopulationError("request for population of unknown species: {}".format(
                     ', '.join(map(lambda x: "'{}'".format(str(x)), unknown_species))))
             early_accesses = list(filter(lambda s: time < self.last_access_time[s], species))
             if early_accesses:
-                raise SpeciesPopulationError("access at time {} is an earlier access of specie(s) {} than at {}".format(
+                raise SpeciesPopulationError("access at time {} is an earlier access of species {} than at {}".format(
                     time, early_accesses, [self.last_access_time[s] for s in early_accesses]))
 
     def _update_access_times(self, time, species=None):
@@ -666,17 +666,17 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             self.last_access_time[species_id] = time
 
     def read_one(self, time, species_id):
-        """ Obtain the predicted population of specie `species_id` at simulation time `time`
+        """ Obtain the predicted population of species`species_id` at simulation time `time`
 
         Args:
             time (:obj:`float`): the time at which the population should be estimated
-            species_id (:obj:`str`): identifier of the specie to access.
+            species_id (:obj:`str`): identifier of the species to access.
 
         Returns:
             :obj:`float`: the predicted population of `species_id` at simulation time `time`.
 
         Raises:
-            :obj:`SpeciesPopulationError`: if the population of an unknown specie was requested
+            :obj:`SpeciesPopulationError`: if the population of an unknown species was requested
         """
         species_id_in_set = {species_id}
         self._check_species(time, species_id_in_set)
@@ -697,14 +697,14 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             requested species at `time`
 
         Raises:
-            :obj:`SpeciesPopulationError`: if the population of unknown specie(s) are requested
+            :obj:`SpeciesPopulationError`: if the population of unknown species are requested
         """
         if species is None:
             species = self._all_species()
         self._check_species(time, species)
         self.time = time
         self._update_access_times(time, species)
-        return {specie: self._population[specie].get_population(time, round=round) for specie in species}
+        return {s: self._population[s].get_population(time, round=round) for s in species}
 
     def adjust_discretely(self, time, adjustments):
         """ A discrete submodel adjusts the population of a set of species at simulation time `time`
@@ -722,11 +722,11 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self._check_species(time, set(adjustments.keys()))
         self.time = time
         errors = []
-        for specie in adjustments:
+        for species in adjustments:
             try:
-                self._population[specie].discrete_adjustment(self.time, adjustments[specie])
-                self._update_access_times(time, {specie})
-                self.log_event('discrete_adjustment', self._population[specie])
+                self._population[species].discrete_adjustment(self.time, adjustments[species])
+                self._update_access_times(time, {species})
+                self.log_event('discrete_adjustment', self._population[species])
             except NegativePopulationError as e:
                 errors.append(str(e))
         if errors:
@@ -741,7 +741,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
 
         Args:
             time (:obj:`float`): the time at which the population is being adjusted
-            population_slopes (:obj:`dict` of `float`): map: specie_id -> population_slope;
+            population_slopes (:obj:`dict` of `float`): map: species_id -> population_slope;
                 updated population slopes for some, or all, species populations
 
         Raises:
@@ -753,16 +753,16 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self.time = time
 
         errors = []
-        for specie_id, population_slope in population_slopes.items():
+        for species_id, population_slope in population_slopes.items():
             try:
-                self._population[specie_id].continuous_adjustment(time, population_slope)
-                self._update_access_times(time, [specie_id])
-                self.log_event('continuous_adjustment', self._population[specie_id])
+                self._population[species_id].continuous_adjustment(time, population_slope)
+                self._update_access_times(time, [species_id])
+                self.log_event('continuous_adjustment', self._population[species_id])
             except (SpeciesPopulationError, NegativePopulationError) as e:
                 errors.append(str(e))
         if errors:
             # TODO(Arthur): consistently use debug_log
-            debug_log.error("Error: on specie {}: {}".format(specie_id, '\n'.join(errors)), sim_time=self.time)
+            debug_log.error("Error: on species {}: {}".format(species_id, '\n'.join(errors)), sim_time=self.time)
             raise SpeciesPopulationError("adjust_continuously error(s) at time {}:\n{}".format(
                 time, '\n'.join(errors)))
 
@@ -780,7 +780,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             :obj:`float`: the current total mass of the specified species in compartment `compartment_id`, in grams
 
         Raises:
-            :obj:`SpeciesPopulationError`: if a specie's molecular weight was not provided to
+            :obj:`SpeciesPopulationError`: if a species' molecular weight was not provided to
                 `__init__()` in `molecular_weights`
         """
         if species_ids is None:
@@ -813,35 +813,35 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         if species_ids is None:
             species_ids = self._all_species()
         species_with_invalid_mw = set()
-        for specie_id in species_ids:
+        for species_id in species_ids:
             try:
-                mw = self._molecular_weights[specie_id]
+                mw = self._molecular_weights[species_id]
             except KeyError:
-                species_with_invalid_mw.add(specie_id)
+                species_with_invalid_mw.add(species_id)
                 continue
             try:
                 if 0 < mw:
                     continue
-                species_with_invalid_mw.add(specie_id)
+                species_with_invalid_mw.add(species_id)
             except (TypeError, ValueError):
-                species_with_invalid_mw.add(specie_id)
+                species_with_invalid_mw.add(species_id)
         return species_with_invalid_mw
 
-    def log_event(self, message, specie):
-        """ Log an event that modifies a specie's population
+    def log_event(self, message, species):
+        """ Log an event that modifies a species' population
 
-        Log the event's simulation time, event type, specie population, and current population slope
+        Log the event's simulation time, event type, species population, and current population slope
         (if specified).
 
         Args:
             message (:obj:`str`): description of the event's type.
-            specie (:obj:`DynamicSpecie`): the object whose adjustment is being logged
+            species (:obj:`DynamicSpeciesState`): the object whose adjustment is being logged
         """
         try:
-            population_slope = specie.population_slope
+            population_slope = species.population_slope
         except AttributeError:
             population_slope = None
-        values = [message, specie.last_population, population_slope]
+        values = [message, species.last_population, population_slope]
         values = map(lambda x: str(x), values)
         # log Sim_time Adjustment_type New_population New_population_slope
         debug_log.debug('\t'.join(values), local_call_depth=1, sim_time=self.time)
@@ -850,7 +850,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         """ Provide readable `LocalSpeciesPopulation` state
 
         Provide the name of this `LocalSpeciesPopulation`, the current time, and the id, population
-        of each specie stored by this object. Species modeled by continuous time submodels also
+        of each species stored by this object. Species modeled by continuous time submodels also
         have the most recent continuous time adjustment and the current population slope.
 
         Returns:
@@ -859,7 +859,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         state = []
         state.append('name: {}'.format(self.name))
         state.append('time: {}'.format(str(self.time)))
-        state.append(DynamicSpecie.heading())
+        state.append(DynamicSpeciesState.heading())
         for species_id in sorted(self._population.keys()):
             state.append(self._population[species_id].row())
         return '\n'.join(state)
@@ -894,7 +894,7 @@ class MakeTestLSP(object):
                 dict: species_id -> initial_population
             molecular_weights (:obj:`dict` of `float`, optional): map: species_id -> molecular_weight,
                 provided for computing the mass of lists of species in a `LocalSpeciesPopulation`
-            initial_population_slopes (:obj:`dict` of `float`, optional): map: specie_id -> initial_population_slope;
+            initial_population_slopes (:obj:`dict` of `float`, optional): map: species_id -> initial_population_slope;
                 initial population slopes for all species whose populations are estimated by a continuous
                 submodel. Population slopes are ignored for species not specified in initial_population.
             record_operations (:obj:`bool`, optional): whether to record the history of operations
@@ -1024,11 +1024,11 @@ class SpeciesPopSimObject(LocalSpeciesPopulation, ApplicationSimulationObject,
     messages_sent = [message_types.GivePopulation, message_types.GiveProperty]
 
 
-class DynamicSpecie(object):
-    """ Track the population of a single specie in a multi-algorithmic model
+class DynamicSpeciesState(object):
+    """ Track the population of a single species in a multi-algorithmic model
 
-    A specie is a shared object that can be read and written by multiple submodels in a
-    multi-algorithmic model. We assume that a sequence of accesses of a specie instance will
+    A species is a shared object that can be read and written by multiple submodels in a
+    multi-algorithmic model. We assume that a sequence of accesses of a species instance will
     occur in non-decreasing simulation time order. (This assumption holds for conservative discrete
     event simulations and all committed parts of optimistic parallel simulations like Time Warp.)
 
@@ -1037,12 +1037,12 @@ class DynamicSpecie(object):
     Discrete-time algorithms change system state at discrete time instants. Continuous-time
     algorithms employ continuous models of state change, and sample these models at time instants
     determined by the algorithm. At these instants, continuous-time models typically
-    estimate a specie's population and the population's rate of change. We assume this behavior.
+    estimate a species' population and the population's rate of change. We assume this behavior.
 
-    A specie's state in a multi-algorithmic model may be modeled by multiple submodels that model
-    reactions in which the specie participates. These can be multiple discrete-time submodels and
+    A species' state in a multi-algorithmic model may be modeled by multiple submodels that model
+    reactions in which the species participates. These can be multiple discrete-time submodels and
     at most one continuous-time submodel. (If multiple continuous-time submodels were allowed to
-    predict reactions that involve a specie, a mechanism would be needed to reconsile conflicting
+    predict reactions that involve a species, a mechanism would be needed to reconsile conflicting
     `population_slope` values. We have not addressed that issue yet.)
 
     Discrete-time and continuous-time models adjust the state of a species by the methods
@@ -1052,7 +1052,7 @@ class DynamicSpecie(object):
     * `discrete_adjustment(time, population_change)`
     * `continuous_adjustment(time, population_slope)`
 
-    where `population_change` is the increase or decrease in the specie's population, `time` is the
+    where `population_change` is the increase or decrease in the species' population, `time` is the
     time at which that change takes place, and `population_slope` is the predicted future rate of
     change of the population.
 
@@ -1062,9 +1062,9 @@ class DynamicSpecie(object):
     that a population modeled by a continuous model is adjusted sufficiently frequently
     that the most recent adjustment accurately estimates population slope.
 
-    A specie instance stores the most recent value of the specie's population in `last_population`,
-    which is initialized when the instance is created. If a specie is modeled by a
-    continuous-time submodel, it also stores the specie's rate of change in `population_slope` and the time
+    A species instance stores the most recent value of the species' population in `last_population`,
+    which is initialized when the instance is created. If a species is modeled by a
+    continuous-time submodel, it also stores the species' rate of change in `population_slope` and the time
     of the most recent `continuous_adjustment` in `continuous_time`. Interpolation determines the
     population prediction `p` at time `t` as::
 
@@ -1076,20 +1076,20 @@ class DynamicSpecie(object):
     This approach is completely general, and can be applied to any simulation value
     whose dynamics are predicted by a multi-algorithmic model.
 
-    Population values returned by specie's methods use stochastic rounding to provide integer
+    Population values returned by species' methods use stochastic rounding to provide integer
     values and avoid systematic rounding bias. See more detail in `get_population`'s docstring.
 
     Attributes:
-        species_name (:obj:`str`): the specie's name; not logically needed, but helpful for error
+        species_name (:obj:`str`): the species' name; not logically needed, but helpful for error
             reporting, logging, debugging, etc.
         random_state (:obj:`numpy.random.RandomState`): a shared PRNG
         last_population (:obj:`float`): population after the most recent adjustment
         modeled_continuously (:obj:`bool`): whether one of the submodels modeling the species is a
             continuous submodel; must be set at initialization
-        population_slope (:obj:`float`): if a continuous submodel is modeling the specie, the rate of
+        population_slope (:obj:`float`): if a continuous submodel is modeling the species, the rate of
             change to the population provided at initialization or by the most recent adjustment by a
             continuous model
-        continuous_time (:obj:`float`): if a continuous submodel is modeling the specie, the most
+        continuous_time (:obj:`float`): if a continuous submodel is modeling the species, the most
             recent adjustment by the continuous model; initialized to None to indicate that a
             continuous adjustment has not been made yet
         last_adjustment_time (:obj:`float`): the time of the latest adjustment; used to prevent
@@ -1105,24 +1105,24 @@ class DynamicSpecie(object):
 
     def __init__(self, species_name, random_state, initial_population, modeled_continuously=False,
                  record_history=False):
-        """ Initialize a specie object, defaulting to a simulation time start time of 0
+        """ Initialize a species object, defaulting to a simulation time start time of 0
 
         Args:
-            species_name (:obj:`str`): the specie's name; not logically needed, but helpful for error
+            species_name (:obj:`str`): the species' name; not logically needed, but helpful for error
                 reporting, logging, debugging, etc.
             random_state (:obj:`numpy.random.RandomState`): a shared PRNG
-            initial_population (:obj:`int`): non-negative number; initial population of the specie
-            initial_flux (number, optional): initial flux for the specie; required for species whose
+            initial_population (:obj:`int`): non-negative number; initial population of the species
+            initial_flux (number, optional): initial flux for the species; required for species whose
                 population is estimated, at least in part, by a continuous model
             modeled_continuously (:obj:`bool`, optional): whether a continuous submodel models this species;
                 default=`False`
             record_history (:obj:`bool`, optional): whether to record a history of all operations; default=`False`
         """
         self.species_name = species_name
-        assert 0 <= initial_population, f"DynamicSpecie '{species_name}': population should be >= 0"
+        assert 0 <= initial_population, f"DynamicSpeciesState '{species_name}': population should be >= 0"
         # if a population is not modeled continuously then it must be a non-negative integer
         assert modeled_continuously or float(initial_population).is_integer(), \
-            (f"DynamicSpecie '{species_name}': initial discretely modeled population must be a "
+            (f"DynamicSpeciesState '{species_name}': initial discretely modeled population must be a "
              f"non-negative integer, but {initial_population} isn't")
         self.random_state = random_state
         self.last_population = initial_population
@@ -1196,7 +1196,7 @@ class DynamicSpecie(object):
         continuous_adjustment = 3
 
     HistoryRecord = namedtuple('HistoryRecord', 'time, operation, argument')
-    HistoryRecord.__doc__ += ': entry in a DynamicSpecie history'
+    HistoryRecord.__doc__ += ': entry in a DynamicSpeciesState history'
     HistoryRecord.time.__doc__ = 'simulation time of the operation'
     HistoryRecord.operation.__doc__ = 'type of the operation'
     HistoryRecord.argument.__doc__ = "operation's argument: initialize: population; discrete_adjustment: "\
@@ -1215,25 +1215,25 @@ class DynamicSpecie(object):
             self._history.append(self.HistoryRecord(time, operation, argument))
 
     def discrete_adjustment(self, time, population_change):
-        """ Make a discrete adjustment of the specie's population
+        """ Make a discrete adjustment of the species' population
 
         A discrete-time submodel, such as the stochastic simulation algorithm (SSA), must use this
-        method to adjust the specie's population.
+        method to adjust the species' population.
 
         Args:
             time (:obj:`float`): the simulation time at which the predicted change occurs; this time is
                 used by `get_population` to interpolate continuous-time predictions between integrations.
-            population_change (:obj:`float`): the modeled increase or decrease in the specie's population
+            population_change (:obj:`float`): the modeled increase or decrease in the species' population
 
         Returns:
-            :obj:`int`: an integer approximation of the specie's adjusted population
+            :obj:`int`: an integer approximation of the species' adjusted population
 
         Raises:
             :obj:`NegativePopulationError`: if the predicted population at `time` is negative or
                 if decreasing the population by `population_change` would make the population negative
         """
         assert float(population_change).is_integer(), \
-            "DynamicSpecie '{}': population_change must be an integer, but {} isn't".format(
+            "DynamicSpeciesState '{}': population_change must be an integer, but {} isn't".format(
                 self.species_name, population_change)
         self._validate_adjustment_time(time, 'discrete_adjustment')
         current_population = self.get_population(time)
@@ -1252,13 +1252,13 @@ class DynamicSpecie(object):
         population_change = (time - self.continuous_time) * self.continuous_flux
     '''
     def continuous_adjustment(self, time, population_slope):
-        """ A continuous-time submodel adjusts the specie's state
+        """ A continuous-time submodel adjusts the species' state
 
         A continuous-time submodel, such as an ordinary differential equation (ODE) or a dynamic flux
-        balance analysis (FBA) model, uses this method to adjust the specie's state. Each
-        integration of a continuous-time model must predict a specie's population change and the
+        balance analysis (FBA) model, uses this method to adjust the species' state. Each
+        integration of a continuous-time model must predict a species' population change and the
         population's short-term future rate of change, i.e., its `flux`. Further, since an
-        integration of a continuous-time model at the current time must depend on this specie's
+        integration of a continuous-time model at the current time must depend on this species'
         population just before the integration, we assume that `population_change` incorporates
         population changes predicted by the flux provided by the previous `continuous_adjustment`
         call.
@@ -1267,10 +1267,10 @@ class DynamicSpecie(object):
             time (:obj:`float`): the simulation time at which the predicted change occurs; this time is
                 used by `get_population` to interpolate continuous-time predictions between
                 integrations.
-            population_slope (:obj:`float`): the predicted rate of change of the specie at the provided time
+            population_slope (:obj:`float`): the predicted rate of change of the species at the provided time
 
         Returns:
-            :obj:`int`: the specie's adjusted population, rounded to an integer
+            :obj:`int`: the species' adjusted population, rounded to an integer
 
         Raises:
             :obj:`SpeciesPopulationError`: if an initial population slope was not provided, or
@@ -1280,7 +1280,7 @@ class DynamicSpecie(object):
         """
         if not self.modeled_continuously:
             raise SpeciesPopulationError(
-                "continuous_adjustment(): DynamicSpecie not modeled by a continuous submodel; "
+                "continuous_adjustment(): DynamicSpeciesState not modeled by a continuous submodel; "
                 "set modeled_continuously True")
         self._validate_adjustment_time(time, 'continuous_adjustment')
         # self.continuous_time is None until the first continuous_adjustment()
@@ -1289,7 +1289,7 @@ class DynamicSpecie(object):
                 raise NegativePopulationError("continuous_adjustment: "
                     "population_slope: {}, continuous_time: {}".format(
                     self.population_slope, self.continuous_time),
-                    self.specie_name, self.last_population, self.population_slope * (time - self.continuous_time))
+                    self.species_name, self.last_population, self.population_slope * (time - self.continuous_time))
             # add the population change since the last continuous_adjustment
             self.last_population += self.population_slope * (time - self.continuous_time)
         self.continuous_time = time
@@ -1299,10 +1299,10 @@ class DynamicSpecie(object):
         return self.get_population(time)
 
     def get_population(self, time, interpolate=None, round=True):
-        """ Provide the specie's current population
+        """ Provide the species' current population
 
-        If one of the submodel(s) predicting the specie's population is a continuous-time model,
-        then use the specie's last `population_slope` to interpolate the current population, as
+        If one of the submodel(s) predicting the species' population is a continuous-time model,
+        then use the species' last `population_slope` to interpolate the current population, as
         described in the class documentation.
 
         Clearly, species populations in biological systems are non-negative integers. However,
@@ -1310,7 +1310,7 @@ class DynamicSpecie(object):
         therefore predict real, non-integral, populations. But discrete-time models like SSA
         do not naturally handle non-integral copy numbers.
 
-        We resolve this conflict by storing real valued populations within a specie, but
+        We resolve this conflict by storing real valued populations within a species, but
         providing only integral population predictions. To aovid the bias that would arise by
         always using floor() or ceiling() to convert a float to an integer, population predictions
         are stochastically rounded before being returned by `get_population`. *This means
@@ -1324,7 +1324,7 @@ class DynamicSpecie(object):
                 otherwise it's controlled by the 'interpolate' config variable
 
         Returns:
-            :obj:`int`: if `round`, an integer approximation of the specie's population, otherwise
+            :obj:`int`: if `round`, an integer approximation of the species' population, otherwise
                 the floating population
 
         Raises:
@@ -1346,7 +1346,7 @@ class DynamicSpecie(object):
                 if interpolate:
                     interpolation = (time - self.continuous_time) * self.population_slope
                     if self.last_population + interpolation < 0:
-                        raise NegativePopulationError('get_population', self.specie_name,
+                        raise NegativePopulationError('get_population', self.species_name,
                             self.last_population, interpolation, time - self.continuous_time)
             float_copy_number = self.last_population + interpolation
             self._update_last_read_time(time)
@@ -1357,7 +1357,7 @@ class DynamicSpecie(object):
             return float_copy_number
 
     def get_history(self):
-        """ Obtain this `DynamicSpecie`'s history
+        """ Obtain this `DynamicSpeciesState`'s history
 
         Returns:
             :obj:`list`: a list of `HistoryRecord`s, ordered by time
