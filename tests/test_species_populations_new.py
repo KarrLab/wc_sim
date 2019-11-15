@@ -95,7 +95,7 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
 
     def test_other_exceptions(self):
         with self.assertRaisesRegex(SpeciesPopulationError,
-                                    "{LOCAL_POP_STORE} not a valid remote_pop_store name"):
+                                    f"{LOCAL_POP_STORE} not a valid remote_pop_store name"):
             AccessSpeciesPopulations(None, {'a': None, LOCAL_POP_STORE: None})
 
 
@@ -202,7 +202,7 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
         for row in expected_changes.split('\n')[2:]:
             (species, c, e) = row.strip().split()
             for com in 'c e'.split():
-                id = wc_lang.Species.gen_id(species, com)
+                id = wc_lang.Species._gen_id(species, com)
                 expected_final_pops[id] += float(eval(com))
 
         self.verify_simulation(expected_final_pops, sim_end)
@@ -236,22 +236,30 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         self.species_ids = species_ids = []
         for species_type_id in species_type_ids[:2]:
             for compartment_id in compartment_ids[:2]:
-                species_ids.append(wc_lang.Species.gen_id(species_type_id, compartment_id))
+                species_ids.append(wc_lang.Species._gen_id(species_type_id, compartment_id))
         self.init_populations = dict(zip(species_ids, species_nums))
-        self.flux = 1
-        self.init_fluxes = init_fluxes = dict(zip(species_ids, [self.flux]*len(species_ids)))
+        self.init_pop_slope = 1
+        self.init_pop_slopes = init_pop_slopes = dict(zip(species_ids, [self.init_pop_slope]*len(species_ids)))
         self.molecular_weights = dict(zip(species_ids, species_nums))
 
-        self.local_species_pop = LocalSpeciesPopulation('test', self.init_populations,
-                                                        self.molecular_weights, initial_fluxes=init_fluxes,
+        self.local_species_pop = LocalSpeciesPopulation('test',
+                                                        self.init_populations,
+                                                        self.molecular_weights,
+                                                        initial_population_slopes=init_pop_slopes,
                                                         random_state=RandomStateManager.instance())
         self.local_species_pop_no_history = \
-            LocalSpeciesPopulation('test_no_history', self.init_populations, self.molecular_weights,
-                                   initial_fluxes=init_fluxes,
-                                   random_state=RandomStateManager.instance(), retain_history=False)
+            LocalSpeciesPopulation('test_no_history',
+                                   self.init_populations,
+                                   self.molecular_weights,
+                                   initial_population_slopes=init_pop_slopes,
+                                   random_state=RandomStateManager.instance(),
+                                   retain_history=False)
 
-        self.local_species_pop_no_init_flux = LocalSpeciesPopulation(
-            'test', self.init_populations, self.molecular_weights, random_state=RandomStateManager.instance())
+        self.local_species_pop_no_init_pop_change = \
+            LocalSpeciesPopulation('test',
+                                   self.init_populations,
+                                   self.molecular_weights,
+                                   random_state=RandomStateManager.instance())
 
         molecular_weights_w_nans = copy.deepcopy(self.molecular_weights)
         species_w_nan_mw = 'species_w_nan_mw[c1]'
@@ -259,23 +267,28 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         init_populations = copy.deepcopy(self.init_populations)
         init_populations[species_w_nan_mw] = 0.
         self.local_species_pop_w_nan_mws = \
-            LocalSpeciesPopulation('test', init_populations, molecular_weights_w_nans,
-                                   initial_fluxes=init_fluxes, random_state=RandomStateManager.instance())
+            LocalSpeciesPopulation('test',
+                                   init_populations,
+                                   molecular_weights_w_nans,
+                                   initial_population_slopes=init_pop_slopes,
+                                   random_state=RandomStateManager.instance())
         self.population_slope = 1
         self.local_species_pop.adjust_continuously(0, {id: self.population_slope for id in species_ids})
 
-        self.local_species_pop_no_init_pop_slope = LocalSpeciesPopulation(
-            'test', self.init_populations, self.molecular_weights, model_continuously=False)
+        self.local_species_pop_no_init_pop_slope = \
+            LocalSpeciesPopulation('test',
+                                   self.init_populations,
+                                   self.molecular_weights)
 
     def test_init(self):
         self.assertEqual(self.local_species_pop_no_init_pop_slope._all_species(), set(self.species_ids))
-        an_LSP = LocalSpeciesPopulation('test', {}, {}, record_operations=False)
-        an_LSP.init_cell_state_species('s1', 2, model_continuously=False)
+        an_LSP = LocalSpeciesPopulation('test', {}, {}, retain_history=False)
+        an_LSP.init_cell_state_species('s1', 2)
         self.assertEqual(an_LSP.read(0, {'s1'}), {'s1': 2})
 
         with self.assertRaisesRegex(SpeciesPopulationError,
                                     "species_id 's1' already stored by this LocalSpeciesPopulation"):
-            an_LSP.init_cell_state_species('s1', 2, model_continuously=False)
+            an_LSP.init_cell_state_species('s1', 2)
 
         with self.assertRaisesRegex(SpeciesPopulationError, "history not recorded"):
             an_LSP.report_history()
@@ -299,13 +312,13 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
 
     def test_read_one(self):
         test_species = 'species_2[c2]'
-        self.assertEqual(self.local_species_pop_no_init_flux.read_one(1, test_species),
+        self.assertEqual(self.local_species_pop_no_init_pop_change.read_one(1, test_species),
                          self.init_populations[test_species])
         with self.assertRaisesRegex(SpeciesPopulationError,
                                     "request for population of unknown species: 'unknown_species_id'"):
-            self.local_species_pop_no_init_flux.read_one(2, 'unknown_species_id')
+            self.local_species_pop_no_init_pop_change.read_one(2, 'unknown_species_id')
         with self.assertRaisesRegex(SpeciesPopulationError, r"is an earlier access of species"):
-            self.local_species_pop_no_init_flux.read_one(0, test_species)
+            self.local_species_pop_no_init_pop_change.read_one(0, test_species)
 
     def reusable_assertions(self, the_local_species_pop, population_slope):
         # test both discrete and hybrid species
@@ -347,9 +360,10 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         with self.assertRaisesRegex(SpeciesPopulationError, "adjust_continuously error"):
             self.local_species_pop.adjust_continuously(time + 1, {id: 0 for id in self.species_ids})
 
+        self.local_species_pop.adjust_continuously(time, {self.species_ids[0]: -10})
         with self.assertRaises(SpeciesPopulationError) as context:
-            self.local_species_pop.adjust_continuously(time, {self.species_ids[0]: (-10, 2)})
-        self.assertIn("adjust_continuously error(s) at time {time}", str(context.exception))
+            self.local_species_pop.adjust_continuously(time + 2, {self.species_ids[0]: 0})
+        self.assertIn(f"adjust_continuously error(s) at time {time + 2}", str(context.exception))
         self.assertIn("negative population predicted", str(context.exception))
 
     def test_history(self):
@@ -366,7 +380,8 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
             an_LSP_wo_recording_history.history_debug()
 
         an_LSP_recording_history = LocalSpeciesPopulation('test',
-                                                          self.init_populations, self.init_populations,
+                                                          self.init_populations,
+                                                          self.init_populations,
                                                           random_state=RandomStateManager.instance(),
                                                           retain_history=True)
         self.assertTrue(an_LSP_recording_history._recording_history())
@@ -426,7 +441,7 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
 
         unknown_species = 'species_x[c1]'
         with self.assertRaisesRegex(SpeciesPopulationError,
-                                    f"molecular weight not available for '{unknown_species}'"):
+                                    re.escape(f"molecular weight not available for '{unknown_species}'")):
             self.local_species_pop.compartmental_mass('c1', species_ids=[unknown_species])
 
     def test_invalid_weights(self):
@@ -436,7 +451,9 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         species_ids = [str(i) for i in range(num_mws)]
         molecular_weights = dict(zip(species_ids, bad_molecular_weights+good_molecular_weights))
         init_populations = dict(zip(species_ids, [1]*num_mws))
-        local_species_pop = LocalSpeciesPopulation('test_invalid_weights', init_populations, molecular_weights)
+        local_species_pop = LocalSpeciesPopulation('test_invalid_weights',
+                                                   init_populations,
+                                                   molecular_weights)
         ids_w_bad_mws = species_ids[:len(bad_molecular_weights)]
         self.assertEqual(local_species_pop.invalid_weights(), set(ids_w_bad_mws))
         ids_w_bad_or_no_mw = ['x'] + ids_w_bad_mws
@@ -471,8 +488,10 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         init_populations = dict(zip(species_ids, species_nums))
         molecular_weights = dict(zip(species_ids, species_nums))
 
-        local_species_pop = LocalSpeciesPopulation('test', init_populations,
-            molecular_weights, model_continuously=True, record_operations=True)
+        local_species_pop = LocalSpeciesPopulation('test',
+                                                   init_populations,
+                                                   molecular_weights,
+                                                   retain_history=True)
         slope = 0.5
         local_species_pop.adjust_continuously(0, {species_ids[0]: slope})
         adjustment = 2
@@ -565,137 +584,99 @@ class TestDynamicSpeciesState(unittest.TestCase):
     def setUp(self):
         self.random_state = RandomStateManager.instance()
 
-    def test_species(self):
+    def test_dynamic_species_state(self):
 
-        # DynamicSpecies modeled only by discrete submodel(s)
+        # dynamic species modeled only by discrete submodel(s)
         pop = 10
-        s1 = DynamicSpeciesState('species', self.random_state, pop)
+        s1 = DynamicSpeciesState('s1', self.random_state, pop)
         self.assertEqual(s1.get_population(0), pop)
-        pop += 1
-        self.assertEqual(s1.discrete_adjustment(0, 1), pop)
-        self.assertEqual(s1.get_population(1), pop)
-        pop -= 1
-        self.assertEqual(s1.discrete_adjustment(1, -1), pop)
-        self.assertEqual(s1.get_population(2), pop)
+        time = 0
+        adjustment = 1
+        pop += adjustment
+        self.assertEqual(s1.discrete_adjustment(time, adjustment), pop)
+        time += 1
+        self.assertEqual(s1.get_population(time), pop)
+        adjustment = -1
+        pop += adjustment
+        self.assertEqual(s1.discrete_adjustment(time, adjustment), pop)
+        time += 1
+        self.assertEqual(s1.get_population(time), pop)
 
-        # DynamicSpecies modeled by both continuous and discrete
+        # dynamic species modeled by both continuous and discrete
         pop = 2
-        s2 = DynamicSpeciesState('species_3', self.random_state, pop, modeled_continuously=True)
-        pop += 3
-        self.assertEqual(s2.discrete_adjustment(4, 3), pop)
+        s2 = DynamicSpeciesState('s2', self.random_state, pop, modeled_continuously=True)
+        adjustment = 3
+        pop += adjustment
+        # no population slope yet
+        time = 4
+        self.assertEqual(s2.discrete_adjustment(time, adjustment), pop)
+        # set population slope
+        time += 2
+        slope = 0.5
+        self.assertEqual(s2.continuous_adjustment(time, slope), pop)
+        # 1 sec later the pop has risen by the slope of 0.5; get_population() rounds by default
+        time += 1
+        self.assertIn(s2.get_population(time), {pop, pop+1})
+        exact_pop = pop + 0.5
+        # if round=False get_population return non-integer population
+        self.assertEqual(s2.get_population(time, round=False), exact_pop)
+        slope = 1.0
+        time += 1
+        exact_pop = pop + 1
+        self.assertEqual(s2.continuous_adjustment(time, slope), exact_pop)
 
-        # ensure that round=False can return non-integer population
-        s2.continuous_adjustment(6, 0.5)
-        self.assertIn(s2.get_population(7), {pop, pop+1})
-        pop += 0.5
-        self.assertEqual(s2.get_population(7, round=False), pop)
-
+    def test_text_output(self):
         pop = 10
-        s3 = DynamicSpeciesState('species_2', self.random_state, pop)
-        self.assertEqual("species_name: species_2; last_population: {}".format(pop), str(s3))
-        self.assertRegex(s3.row(), 'species_2\t{}.*'.format(pop))
+        s1 = DynamicSpeciesState('species_1', self.random_state, pop)
+        self.assertEqual("species_name: species_1; last_population: {}".format(pop), str(s1))
+        self.assertRegex(s1.row(), 'species_1\t{}.*'.format(pop))
 
-        s4 = DynamicSpeciesState('species', self.random_state, pop, modeled_continuously=True)
-        self.assertEqual("species_name: species; last_population: {}; continuous_time: None; "
-            "population_slope: None".format(pop), str(s4))
-        self.assertRegex(s4.row(), '^species\t{}\..*$'.format(pop))
+        s2 = DynamicSpeciesState('species_2', self.random_state, pop, modeled_continuously=True)
+        self.assertEqual("species_name: species_2; last_population: {}; continuous_time: None; "
+                         "population_slope: None".format(pop), str(s2))
+        self.assertRegex(s2.row(), '^species_2\t{}\..*$'.format(pop))
         time = 3
         slope = 2
-        s4.continuous_adjustment(time, slope)
-        self.assertRegex(s4.row(), '^species\t{}\..*\t{}\..*\t{}\..*$'.format(pop, time, slope))
-
-        now = 4
-        pop += slope * (now - time)
-        self.assertEqual(s4.continuous_adjustment(now, 1), pop)
-
-        with self.assertRaisesRegexp(SpeciesPopulationError,
-            re.escape("continuous_adjustment(): adjustment_time is earlier than latest prior adjustment")):
-            s4.continuous_adjustment(0, 0)
-
-        # ensure that continuous_adjustment() returns an integral population
-        adjusted_pop = s4.continuous_adjustment(0.5, 5, 0)
-        self.assertEqual(int(adjusted_pop), adjusted_pop)
-
-        with self.assertRaisesRegex(SpeciesPopulationError,
-                                    re.escape('continuous_adjustment(): time <= self.continuous_time')):
-            s4.continuous_adjustment(2, 3, 1)
-
-        with self.assertRaisesRegex(SpeciesPopulationError,
-                                    re.escape('get_population(): time needed because '
-                                              'continuous adjustment received at time')):
-            s4.get_population()
-
-        with self.assertRaisesRegex(SpeciesPopulationError,
-                                    re.escape('get_population(): time < self.continuous_time')):
-            s4.get_population(3)
-
-        with self.assertRaisesRegex(SpeciesPopulationError, 'initial flux was not provided'):
-                                    DynamicSpeciesState('s', self.random_state, 10).continuous_adjustment(2, 2, 1)
+        s2.continuous_adjustment(time, slope)
+        self.assertRegex(s2.row(), '^species_2\t{}\..*\t{}\..*\t{}\..*$'.format(pop, time, slope))
 
         self.assertRegex(DynamicSpeciesState.heading(), 'species_name\t.*')
 
-        # raise asserts
-        with self.assertRaisesRegex(AssertionError, r'__init__\(\): .*? population .*? should be >= 0'):
-            DynamicSpeciesState('species', self.random_state, -10)
+    def test_species_with_interpolation_on_or_off(self):
+        pop = 10
+        s0 = DynamicSpeciesState('s0', self.random_state, pop, modeled_continuously=True)
+        time = 0
+        slope = 1
+        s0.continuous_adjustment(time, slope)
+        time = 1
+        interpolated_pop = pop + time * slope
+        self.assertEqual(s0.get_population(time), interpolated_pop)
+        self.assertEqual(s0.get_population(time, interpolate=True), interpolated_pop)
+        non_interpolated_pop = pop
+        self.assertEqual(s0.get_population(time, interpolate=False), non_interpolated_pop)
 
-        with self.assertRaisesRegex(AssertionError,
-                                    "DynamicSpeciesState '.*': initial discretely modeled .* a non-negative "
-                                    "integer, but .* isn't"):
-            DynamicSpeciesState('species', self.random_state, 1.5)
-
-        ds = DynamicSpeciesState('species', self.random_state, 1)
-        with self.assertRaisesRegex(AssertionError,
-                                     "DynamicSpeciesState '.*': population_change must be an integer, but .* isn't"):
-            ds.discrete_adjustment(2, .5)
-
-        s5 = DynamicSpeciesState('s5', self.random_state, 10)
-        with self.assertRaisesRegex(SpeciesPopulationError,
-                                    re.escape("continuous_adjustment(): DynamicSpeciesState not modeled by "
-                                              "a continuous submodel")):
-            s5.continuous_adjustment(0, 0)
-
-    def test_species_with_interpolation_false(self):
-        # change the interpolation
+        # set the config interpolate variable to False
         from wc_sim.species_populations_new import config_multialgorithm
         existing_interpolate = config_multialgorithm['interpolate']
         config_multialgorithm['interpolate'] = False
 
         pop = 1
-        s1 = DynamicSpeciesState('species', self.random_state, pop, modeled_continuously=True)
-        self.assertEqual(s1.get_population(time=1), pop)
-        self.assertEqual(s0.get_population(time=1, interpolate=False), pop)
-        self.assertEqual(s0.get_population(time=1, interpolate=True), pop + 1)
+        s1 = DynamicSpeciesState('s1', self.random_state, pop, modeled_continuously=True)
+        time = 0
+        slope = 1
+        s1.continuous_adjustment(time, slope)
+        time = 1
+        interpolated_pop = pop + time * slope
+        non_interpolated_pop = pop
+        self.assertEqual(s1.get_population(time), non_interpolated_pop)
+        self.assertEqual(s1.get_population(time, interpolate=False), non_interpolated_pop)
+        self.assertEqual(s1.get_population(time, interpolate=True), interpolated_pop)
 
         # change the config interpolate variable back because all imports may already have been cached
         config_multialgorithm['interpolate'] = existing_interpolate
 
-    def test_first_continuous_adjustment(self):
-        # DynamicSpecies modeled by both continuous and discrete
-        pop = 1
-        ds_hybrid = DynamicSpeciesState('ds_hybrid', self.random_state, pop, modeled_continuously=True)
-        self.assertTrue(ds_hybrid.continuous_time is None)
-        time = 0
-        self.assertEqual(ds_hybrid.get_population(time), pop)
-        time = 1
-        # first continuous adjustment
-        ds_hybrid.continuous_adjustment(time, 0.5)
-        self.assertTrue(ds_hybrid.continuous_time is not None)
-        self.assertEqual(ds_hybrid.continuous_time, time)
-        time = 2
-        pops = set()
-        # get_population() does interpolation and rounding
-        for _ in range(100):
-            pops.add(ds_hybrid.get_population(time))
-        self.assertEqual(pops, {1, 2})
-        # another continuous adjustment
-        time = 3
-        ds_hybrid.continuous_adjustment(time, 0)
-        # adds 1 molecule since the last continuous adjustment
-        self.assertEqual(ds_hybrid.get_population(time), pop + 1)
-
     def test_validation(self):
-
-        ### DynamicSpecies modeled only by a discrete submodel ###
+        ### dynamic species modeled only by a discrete submodel ###
         ds_discrete = DynamicSpeciesState('ds_discrete', self.random_state, 0)
         self.assertTrue(ds_discrete.last_adjustment_time == ds_discrete.last_read_time == -float('inf'))
         time = 1
@@ -705,160 +686,135 @@ class TestDynamicSpeciesState(unittest.TestCase):
         ds_discrete.discrete_adjustment(time, 0)
         self.assertEqual(ds_discrete.last_adjustment_time, time)
 
-        # make exceptions
-        with self.assertRaisesRegexp(SpeciesPopulationError,
-            "get_population\(\): read_time is earlier than latest prior adjustment: "):
+        # test exceptions
+        with self.assertRaisesRegex(SpeciesPopulationError,
+                                    "get_population\(\): read_time is earlier than latest "
+                                    "prior adjustment: "):
             ds_discrete.get_population(time-1)
 
         time = 5
         ds_discrete.get_population(time)
-        with self.assertRaisesRegexp(SpeciesPopulationError,
-            "discrete_adjustment\(\): adjustment_time is earlier than latest prior read: "):
+        with self.assertRaisesRegex(SpeciesPopulationError,
+                                    "discrete_adjustment\(\): adjustment_time is earlier than "
+                                    "latest prior read: "):
             ds_discrete.discrete_adjustment(time-1, 0)
 
         time = 6
         ds_discrete.discrete_adjustment(time, 0)
-        with self.assertRaisesRegexp(SpeciesPopulationError,
-            "discrete_adjustment\(\): adjustment_time is earlier than latest prior adjustment: "):
+        with self.assertRaisesRegex(SpeciesPopulationError,
+                                    "discrete_adjustment\(\): adjustment_time is earlier than "
+                                    "latest prior adjustment: "):
             ds_discrete.discrete_adjustment(time-1, 0)
 
-        ### DynamicSpecies modeled by both continuous and discrete ###
+        ### dynamic species modeled by both continuous and discrete ###
         ds_hybrid = DynamicSpeciesState('ds_hybrid', self.random_state, 0, modeled_continuously=True)
         time = 0
         ds_hybrid.continuous_adjustment(time, 0)
         self.assertEqual(ds_hybrid.last_adjustment_time, time)
 
-        # make exceptions
+        # test exceptions
         time = 2
         ds_hybrid.get_population(time)
-        with self.assertRaisesRegexp(SpeciesPopulationError,
-            "continuous_adjustment\(\): adjustment_time is earlier than latest prior read: "):
+        with self.assertRaisesRegex(SpeciesPopulationError,
+                                    "continuous_adjustment\(\): adjustment_time is earlier than "
+                                    "latest prior read: "):
             ds_hybrid.continuous_adjustment(time-1, 0)
 
         time = 4
         ds_hybrid.continuous_adjustment(time, 0)
-        with self.assertRaisesRegexp(SpeciesPopulationError,
-            "continuous_adjustment\(\): adjustment_time is earlier than latest prior adjustment: "):
+        with self.assertRaisesRegex(SpeciesPopulationError,
+                                    "continuous_adjustment\(\): adjustment_time is earlier than "
+                                    "latest prior adjustment: "):
             ds_hybrid.continuous_adjustment(time-1, 0)
 
-        time = 6
-        ds_hybrid.discrete_adjustment(time, 0)
-        with self.assertRaisesRegexp(SpeciesPopulationError,
-            "continuous_adjustment\(\): adjustment_time is earlier than latest prior adjustment: "):
-            ds_hybrid.continuous_adjustment(time-1, 0)
-
-    def test_species_with_and_wo_interpolation(self):
-        # test interpolate control
-        pop = 10
-        s0 = DynamicSpeciesState('species', self.random_state, pop, modeled_continuously=True)
-        s0.continuous_adjustment(0, 1)
-        self.assertEqual(s0.get_population(time=1), pop + 1)
-        self.assertEqual(s0.get_population(time=1, interpolate=False), pop)
-        self.assertEqual(s0.get_population(time=1, interpolate=True), pop + 1)
-
-        s1 = DynamicSpeciesState('species', self.random_state, pop, modeled_continuously=True)
-        self.assertEqual(s1.get_population(time=1), pop)
-        self.assertEqual(s0.get_population(time=1, interpolate=False), pop)
-        self.assertEqual(s0.get_population(time=1, interpolate=True), pop + 1)
-
-    def test_NegativePopulationError(self):
-        s = 'species_3'
-        args = ('m', s, 2, -4.0)
-        n1 = NegativePopulationError(*args)
-        self.assertEqual(n1.species, s)
-        self.assertEqual(n1, NegativePopulationError(*args))
-        n1.last_population += 1
-        self.assertNotEqual(n1, NegativePopulationError(*args))
-        self.assertTrue(n1.__ne__(NegativePopulationError(*args)))
-        self.assertFalse(n1 == 3)
-
-        p = "m(): negative population predicted for 'species_3', with decline from 3 to -1"
-        self.assertEqual(str(n1), p)
-        n1.delta_time = 2
-        self.assertEqual(str(n1), p + " over 2 time units")
-        n1.delta_time = 1
-        self.assertEqual(str(n1), p + " over 1 time unit")
-
-        d = {n1: 1}
-        self.assertTrue(n1 in d)
+        # test failure to set modeled_continuously
+        ds_discrete_2 = DynamicSpeciesState('ds_discrete_2', self.random_state, 0)
+        with self.assertRaisesRegex(SpeciesPopulationError,
+                                    "DynamicSpeciesState for .* needs self.modeled_continuously==True"):
+            ds_discrete_2.continuous_adjustment(time, 0)
 
     def test_raise_NegativePopulationError(self):
-        # todo: fix: messed up
-        s1 = DynamicSpeciesState('species_3', self.random_state, 2, -2.0)
+        # dynamic species modeled by just discrete submodels
+        pop = 2
+        s1 = DynamicSpeciesState('s1', self.random_state, pop)
 
         time = 0
+        adjustment = -3
         with self.assertRaises(NegativePopulationError) as context:
-            s1.discrete_adjustment(time, -3)
+            s1.discrete_adjustment(time, adjustment)
         self.assertEqual(context.exception, NegativePopulationError('discrete_adjustment',
-                                                                    'species_3', 2, -3))
+                                                                    's1', pop, adjustment))
+
+        # dynamic species modeled by continuous and discrete submodels
+        pop = 3
+        s2 = DynamicSpeciesState('s2', self.random_state, pop, modeled_continuously=True)
+        # set population slope
+        time = 0
+        slope = -1
+        s2.continuous_adjustment(time, slope)
+        time_advance = 4
+        time += time_advance
+        predicted_pop = pop + time * slope
+        self.assertEqual(-1, predicted_pop)
+        with self.assertRaises(NegativePopulationError) as context:
+            new_slope = 0
+            s2.continuous_adjustment(time, new_slope)
+        self.assertEqual(context.exception, NegativePopulationError('continuous_adjustment', 's2',
+                                                                    pop, time_advance * slope,
+                                                                    time_advance))
 
         with self.assertRaises(NegativePopulationError) as context:
-            s1.discrete_adjustment(0, 3)
-        self.assertEqual(context.exception, NegativePopulationError('get_population',
-                                                                    'species_3', 2, -6, 3))
+            s2.get_population(time)
+        self.assertEqual(context.exception, NegativePopulationError('get_population', 's2',
+                                                                    pop, time_advance * slope,
+                                                                    time_advance))
 
-        s2 = DynamicSpeciesState('species_3', self.random_state, 3)
-        self.assertEqual(s2.get_population(1), 3)
+    def test_assertions(self):
+        # raise AssertionErrors
+        with self.assertRaisesRegex(AssertionError,
+                                    r'DynamicSpeciesState .*: population should be >= 0'):
+            DynamicSpeciesState('s1', self.random_state, -10)
 
-        with self.assertRaises(NegativePopulationError) as context:
-            s2.discrete_adjustment(1, -4)
-        self.assertEqual(context.exception, NegativePopulationError('continuous_adjustment',
-                                                                    'species_3', 2, -3.0, 1))
+        with self.assertRaisesRegex(AssertionError,
+                                    "DynamicSpeciesState '.*': discrete population .* a non-negative "
+                                    "integer, but .* isn't"):
+            DynamicSpeciesState('species', self.random_state, 1.5)
 
-        with self.assertRaises(NegativePopulationError) as context:
-            s1.get_population(2)
-        self.assertEqual(context.exception, NegativePopulationError('get_population',
-                                                                    'species_3', 2, -4.0, 2))
-
-        pop = 2
-        ds_hybrid_1 = DynamicSpeciesState('ds_hybrid_1', self.random_state, pop, modeled_continuously=True)
-        time_0 = 0
-        ds_hybrid_1.continuous_adjustment(time_0, -2)
-
-        s1 = DynamicSpeciesState('species_3', self.random_state, 3)
-        self.assertEqual(s1.get_population(1), 3)
-
-        with self.assertRaises(NegativePopulationError) as context:
-            s1.discrete_adjustment(-4, 1)
-        self.assertEqual(context.exception, NegativePopulationError('discrete_adjustment',
-                                                                    'species_3', 3, -4))
+        ds = DynamicSpeciesState('species', self.random_state, 1)
+        with self.assertRaisesRegex(AssertionError,
+                                    r"DynamicSpeciesState '.*': population_change must be an integer, "
+                                    r"but .* isn't"):
+            ds.discrete_adjustment(2, .5)
 
     def test_species_stochastic_rounding(self):
-        s1 = DynamicSpeciesState('species', self.random_state, 10.5, modeled_continuously=True)
-
+        s1 = DynamicSpeciesState('s1', self.random_state, 10.5, modeled_continuously=True)
         samples = 1000
         for i in range(samples):
             pop = s1.get_population(0)
             self.assertTrue(pop in [10, 11])
 
-        mean = np.mean([s1.get_population(0) for i in range(samples)])
+        mean = np.mean([s1.get_population(0, round=True) for i in range(samples)])
         min = 10 + binom.ppf(0.01, n=samples, p=0.5) / samples
         max = 10 + binom.ppf(0.99, n=samples, p=0.5) / samples
         self.assertTrue(min <= mean <= max)
 
-        s1 = DynamicSpeciesState('species', self.random_state, 10.5, initial_flux=0)
-        s1.continuous_adjustment(0, 1, 0.25)
-        for i in range(samples):
-            self.assertEqual(s1.get_population(3), 11.0)
-
     def test_history(self):
         pop = 10
-        ds = DynamicSpeciesState('s', self.random_state, pop, modeled_continuously=True, record_history=True)
+        ds = DynamicSpeciesState('s', self.random_state, pop, modeled_continuously=True,
+                                 record_history=True)
         slope = -2
         ds.continuous_adjustment(1, slope)
         discrete_adjustment = 3
         ds.discrete_adjustment(2, discrete_adjustment)
         HistoryRecord = DynamicSpeciesState.HistoryRecord
         Operation = DynamicSpeciesState.Operation
-        expected_history = [
-            HistoryRecord(0, Operation['initialize'], pop),
-            HistoryRecord(1, Operation['continuous_adjustment'], slope),
-            HistoryRecord(2, Operation['discrete_adjustment'], discrete_adjustment)
-        ]
+        expected_history = [HistoryRecord(0, Operation['initialize'], pop),
+                            HistoryRecord(1, Operation['continuous_adjustment'], slope),
+                            HistoryRecord(2, Operation['discrete_adjustment'], discrete_adjustment)]
         self.assertEqual(ds.get_history(), expected_history)
 
         ds = DynamicSpeciesState('s', self.random_state, 0)
-        with self.assertRaisesRegexp(SpeciesPopulationError, 'history not recorded'):
+        with self.assertRaisesRegex(SpeciesPopulationError, 'history not recorded'):
             ds.get_history()
 
 
@@ -936,9 +892,9 @@ class TestSpeciesPopSimObjectWithAnotherSimObject(unittest.TestCase):
         if get_pop_time <= update_time:
             raise SpeciesPopulationError('get_pop_time<=update_time')
         species_pop_sim_obj = SpeciesPopSimObject('test_name',
-                                                  {species_id: init_pop}, {species_id: mol_weight},
+                                                  {species_id: init_pop},
+                                                  {species_id: mol_weight},
                                                   initial_population_slopes={species_id: init_population_slope},
-                                                  initial_fluxes={species_id: init_flux},
                                                   random_state=RandomStateManager.instance())
         mock_obj = MockSimulationTestingObject('mock_name', self,
                                                species_id=species_id, expected_value=expected_value)
@@ -975,14 +931,15 @@ class TestSpeciesPopSimObjectWithAnotherSimObject(unittest.TestCase):
         for s_init_pop in range(3, 8, 2):
             for s_init_population_slope in range(-1, 2):
                 for update_time in range(1, 4):
-                    for updated_population_slope in range(-1, 2):
+                    for updated_pop_slope in range(-1, 2):
                         self.try_update_species_pop_sim_obj(s_id, s_init_pop, 0, s_init_population_slope,
                             message_types.AdjustPopulationByContinuousSubmodel,
                             message_types.AdjustPopulationByContinuousSubmodel(
-                                {s_id:message_types.ContinuousChange(update_adjustment, updated_flux)}),
+                                {s_id:message_types.ContinuousChange(update_adjustment, updated_pop_slope)}),
                             update_time, get_pop_time,
                             s_init_pop + update_adjustment +
-                                (get_pop_time-update_time)*updated_population_slope)
+                                (get_pop_time-update_time)*updated_pop_slope)
+
 
 class InitMsg1(SimulationMessage): pass
 
