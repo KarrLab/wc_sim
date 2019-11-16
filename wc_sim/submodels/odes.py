@@ -257,7 +257,7 @@ class OdeSubmodel(DynamicSubmodel):
         print('population_change_rates:\n',population_change_rates)
         print('self.ode_species_ids', self.ode_species_ids)
         for idx, species_id in enumerate(self.ode_species_ids):
-            self.adjustments[species_id] = (0, population_change_rates[idx])
+            self.adjustments[species_id] = population_change_rates[idx]
         print('self.adjustments')
         pprint(self.adjustments)
         # todo: optimization: have LocalSpeciesPopulation.adjust_continuously() take an array
