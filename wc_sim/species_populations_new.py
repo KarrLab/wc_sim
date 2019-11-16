@@ -315,7 +315,7 @@ class AccessSpeciesPopulations(AccessSpeciesPopulationInterface):   # pragma: no
 
         Args:
             time (:obj:`float`): the time at which the population is being adjusted
-            adjustments (:obj:`dict` of `tuple`): map: species_ids -> (population_adjustment, population_slipe);
+            adjustments (:obj:`dict` of `tuple`): map: species_ids -> population_slope;
                 adjustments to be made to some species populations.
 
         See the description for `adjust_discretely` above.
@@ -556,8 +556,9 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             molecular_weights (:obj:`dict` of `float`): map: species_id -> molecular_weight,
                 provided for computing the mass of lists of species in a `LocalSpeciesPopulation`
             initial_population_slopes (:obj:`dict` of `float`, optional): map: species_id -> initial_slope;
-                initial rate of change for all species whose populations are estimated by a continuous
-                submodel. These are ignored for species not specified in `initial_population`.
+                initial rate of change must be provided for all species whose populations are predicted
+                by a submodel that uses a continuous integration algorithm. These are ignored for
+                species not specified in `initial_population`.
             initial_time (:obj:`float`, optional): the initialization time; defaults to 0
             random_state (:obj:`numpy.random.RandomState`, optional): a PRNG used by all `DynamicSpeciesState`
             retain_history (:obj:`bool`, optional): whether to retain species population history
@@ -611,9 +612,10 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         if species_id in self._population:
             raise SpeciesPopulationError("species_id '{}' already stored by this "
                                          "LocalSpeciesPopulation".format(species_id))
+        modeled_continuously = initial_population_slope is not None
         self._population[species_id] = DynamicSpeciesState(species_id, self.random_state, population,
-                                                           modeled_continuously=initial_population_slope)
-        if initial_population_slope:
+                                                           modeled_continuously=modeled_continuously)
+        if modeled_continuously:
             self._population[species_id].continuous_adjustment(self.time, initial_population_slope)
         self.last_access_time[species_id] = self.time
         self._add_to_history(species_id)
