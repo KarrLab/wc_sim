@@ -16,7 +16,7 @@ from de_sim.simulation_engine import SimulationEngine
 from wc_sim.model_utilities import ModelUtilities
 from wc_sim.multialgorithm_checkpointing import MultialgorithmicCheckpointingSimObj
 from wc_sim.multialgorithm_errors import MultialgorithmError, MultialgorithmWarning
-from wc_sim.species_populations_new import LocalSpeciesPopulation
+from wc_sim.species_populations import LocalSpeciesPopulation
 from wc_sim.submodels.dynamic_submodel import DynamicSubmodel
 from wc_sim.submodels.fba import DfbaSubmodel
 from wc_sim.submodels.odes import OdeSubmodel

@@ -16,4 +16,4 @@ from . import message_types
 from . import model_utilities
 from . import multialgorithm_errors
 from . import multialgorithm_simulation
-from . import species_populations_new
+from . import species_populations

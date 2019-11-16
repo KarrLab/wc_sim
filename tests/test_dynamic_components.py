@@ -28,7 +28,7 @@ from wc_sim.dynamic_components import (SimTokCodes, WcSimToken, DynamicComponent
                                        DynamicCompartment, DynamicStopCondition)
 from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
-from wc_sim.species_populations_new import LocalSpeciesPopulation, MakeTestLSP
+from wc_sim.species_populations import LocalSpeciesPopulation, MakeTestLSP
 from wc_sim.testing.utils import read_model_and_set_all_std_devs_to_0
 from wc_utils.util.rand import RandomStateManager
 from wc_utils.util.units import unit_registry

@@ -19,7 +19,7 @@ from wc_lang import Species, Compartment
 from wc_onto import onto
 from wc_sim.config import core as config_core_multialgorithm
 from wc_sim.multialgorithm_errors import MultialgorithmError, MultialgorithmWarning
-from wc_sim.species_populations_new import LocalSpeciesPopulation
+from wc_sim.species_populations import LocalSpeciesPopulation
 from wc_utils.util.enumerate import CaseInsensitiveEnum
 from wc_utils.util.ontology import are_terms_equivalent
 import obj_tables

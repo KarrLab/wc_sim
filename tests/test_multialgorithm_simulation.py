@@ -28,7 +28,7 @@ from wc_sim.multialgorithm_errors import MultialgorithmError, SpeciesPopulationE
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.run_results import RunResults
 from wc_sim.simulation import Simulation
-from wc_sim.species_populations_new import LocalSpeciesPopulation
+from wc_sim.species_populations import LocalSpeciesPopulation
 from wc_sim.testing.make_models import MakeModel
 from wc_sim.testing.utils import (read_model_and_set_all_std_devs_to_0, check_simul_results,
                                   verify_hand_solved_model, plot_expected_vs_actual)

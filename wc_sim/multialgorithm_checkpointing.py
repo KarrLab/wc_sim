@@ -13,7 +13,7 @@ import pandas
 from de_sim.checkpoint import Checkpoint
 from de_sim.simulation_checkpoint_object import CheckpointSimulationObject, AccessStateObjectInterface
 from wc_sim.multialgorithm_errors import MultialgorithmError
-from wc_sim.species_populations_new import LocalSpeciesPopulation
+from wc_sim.species_populations import LocalSpeciesPopulation
 from wc_sim.submodels.ssa import SsaSubmodel
 from wc_utils.util.misc import obj_to_str
 
