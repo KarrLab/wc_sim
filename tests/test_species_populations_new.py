@@ -759,6 +759,10 @@ class TestDynamicSpeciesState(unittest.TestCase):
                                     r"but .* isn't"):
             ds.discrete_adjustment(2, .5)
 
+        s1 = DynamicSpeciesState('s1', self.random_state, 0, modeled_continuously=True)
+        with self.assertRaisesRegex(AssertionError, r"population_slope .* must be an int or float"):
+            s1.continuous_adjustment(1, 'not a number')
+
     def test_species_stochastic_rounding(self):
         s1 = DynamicSpeciesState('s1', self.random_state, 10.5, modeled_continuously=True)
         samples = 1000
@@ -838,7 +842,8 @@ class MockSimulationTestingObject(MockSimulationObject):
                      message_types.GetCurrentProperty]
 
 
-class InitMsg1(SimulationMessage): pass
+class InitMsg1(SimulationMessage):
+    "Blank docstring"
 
 
 class TestSpeciesPopSimObject(unittest.TestCase):

@@ -1388,7 +1388,8 @@ class DynamicSpeciesState(object):
             time (:obj:`float`): the simulation time at which the predicted change occurs; this time is
                 used by `get_population` to interpolate continuous-time predictions between
                 integrations.
-            population_slope (:obj:`float`): the predicted rate of change of the species at the provided time
+            population_slope (:obj:`float` or :obj:`int`): the predicted rate of change of the
+                species at the provided time
 
         Returns:
             :obj:`int`: the species' adjusted population, rounded to an integer
@@ -1399,6 +1400,9 @@ class DynamicSpeciesState(object):
             :obj:`NegativePopulationError`: if updating the population based on the previous `population_slope`
                 makes the population go negative
         """
+        assert isinstance(population_slope, (float, int)), \
+            (f"continuous_adjustment of species '{self.species_name}': population_slope "
+             f"(type=='{type(population_slope).__name__}') must be an int or float")
         if not self.modeled_continuously:
             raise SpeciesPopulationError(
                 f"continuous_adjustment(): DynamicSpeciesState for '{self.species_name}' needs "
