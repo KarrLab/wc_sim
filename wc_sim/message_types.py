@@ -19,7 +19,7 @@ Event message types, bodies and reply message:
 
     AdjustPopulationByContinuousSubmodel
         a continuous model integrated by a time-step simulation increases or decreases some species
-        copy numbers: data: dict: species_name -> (population_change, population_flux); no reply message
+        copy numbers: data: dict: species_name -> (population_change, population_change_rate); no reply message
 
     GetPopulation
         set of species whose population is needed; data: set: species_name(s)
@@ -50,7 +50,7 @@ class AdjustPopulationByDiscreteSubmodel(SimulationMessage):
     attributes = ["population_change"]
 
 
-ContinuousChange_namedtuple = namedtuple('ContinuousChange_namedtuple', 'change, flux')
+ContinuousChange_namedtuple = namedtuple('ContinuousChange_namedtuple', 'change, change_rate')
 
 
 class ContinuousChange(ContinuousChange_namedtuple):
@@ -73,13 +73,13 @@ class ContinuousChange(ContinuousChange_namedtuple):
                 raise ValueError("ContinuousChange.type_check(): {} is '{}' "
                                  "which cannot be cast to a float".format(f, v))
 
-    def __new__(cls, change, flux):
+    def __new__(cls, change, change_rate):
         """ Initialize a ContinuousChange.
 
         Raises:
             ValueError: if some fields are not numbers.
         """
-        self = super().__new__(cls, change, flux)
+        self = super().__new__(cls, change, change_rate)
         self.type_check()
         return self
 
@@ -93,8 +93,8 @@ class AdjustPopulationByContinuousSubmodel(SimulationMessage):
     Attributes:
         population_change (:obj:`dict` of :obj:`ContinuousChange`):
             map: species_id -> ContinuousChange namedtuple; changes in the population of the
-            identified species, and the predicted future flux of the species (which may be
-            simply the historic flux).
+            identified species, and the predicted future rate of change of the species (which may be
+            simply the historic rate of change).
     """
     attributes = ['population_change']
 

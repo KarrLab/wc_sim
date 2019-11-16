@@ -41,7 +41,7 @@ class TestMakeModels(unittest.TestCase):
         Simple SSA model tests:
             no reactions: simulation terminates immediately
             1 species:
-                one reaction consume specie, at constant rate: consume all reactant, in time given by rate
+                one reaction consume species, at constant rate: consume all reactant, in time given by rate
             2 species:
                 one reaction: convert all reactant into product, in time given by rate
                 a pair of symmetrical reactions with constant rates: maintain steady state, on average
@@ -209,12 +209,12 @@ class TestMakeModels(unittest.TestCase):
         model_type = '1 species, 1 reaction'
         num_species = 1
         vol_mean, vol_std = 1E-16, 1E-17
-        specie_id = 'spec_type_0[compt_1]'
+        species_id = 'spec_type_0[compt_1]'
         model, species_types, comp = self.setup_submodel_params(model_type, num_species, vol_mean, vol_std)
         default_species_copy_number, default_species_std = 1_000_000, 100_000
         species_copy_numbers, species_stds = {}, {}
 
-        # specie not in species_copy_numbers or species_stds
+        # species not in species_copy_numbers or species_stds
         MakeModel.add_test_submodel(model, model_type, 0, comp, species_types,
                                     default_species_copy_number,
                                     default_species_std,
@@ -226,10 +226,10 @@ class TestMakeModels(unittest.TestCase):
         self.assertEqual(conc.mean, expected_mean_conc)
         self.assertEqual(conc.std, expected_std_conc)
 
-        # specie only in species_copy_numbers
+        # species only in species_copy_numbers
         model, species_types, comp = self.setup_submodel_params(model_type, num_species, vol_mean, vol_std)
         species_copy_number = 1_000_000
-        species_copy_numbers, species_stds = {specie_id: species_copy_number}, {}
+        species_copy_numbers, species_stds = {species_id: species_copy_number}, {}
         MakeModel.add_test_submodel(model, model_type, 0, comp, species_types,
                                     default_species_copy_number,
                                     default_species_std,
@@ -241,10 +241,10 @@ class TestMakeModels(unittest.TestCase):
         self.assertEqual(conc.mean, expected_mean_conc)
         self.assertEqual(conc.std, expected_std_conc)
 
-        # specie only in species_stds
+        # species only in species_stds
         model, species_types, comp = self.setup_submodel_params(model_type, num_species, vol_mean, vol_std)
         species_std = 100_000
-        species_copy_numbers, species_stds = {}, {specie_id: species_std}
+        species_copy_numbers, species_stds = {}, {species_id: species_std}
         MakeModel.add_test_submodel(model, model_type, 0, comp, species_types,
                                     default_species_copy_number,
                                     default_species_std,
@@ -256,9 +256,9 @@ class TestMakeModels(unittest.TestCase):
         self.assertEqual(conc.mean, expected_mean_conc)
         self.assertEqual(conc.std, expected_std_conc)
 
-        # specie in species_copy_numbers and species_stds
+        # species in species_copy_numbers and species_stds
         model, species_types, comp = self.setup_submodel_params(model_type, num_species, vol_mean, vol_std)
-        species_copy_numbers, species_stds = {specie_id: species_copy_number}, {specie_id: species_std}
+        species_copy_numbers, species_stds = {species_id: species_copy_number}, {species_id: species_std}
         MakeModel.add_test_submodel(model, model_type, 0, comp, species_types,
                                     default_species_copy_number,
                                     default_species_std,

@@ -16,8 +16,7 @@ from de_sim.simulation_engine import SimulationEngine
 from wc_sim.model_utilities import ModelUtilities
 from wc_sim.multialgorithm_checkpointing import MultialgorithmicCheckpointingSimObj
 from wc_sim.multialgorithm_errors import MultialgorithmError, MultialgorithmWarning
-from wc_sim.species_populations_new import (LocalSpeciesPopulation, AccessSpeciesPopulations,
-                                                       LOCAL_POP_STORE, SpeciesPopSimObject)
+from wc_sim.species_populations_new import LocalSpeciesPopulation
 from wc_sim.submodels.dynamic_submodel import DynamicSubmodel
 from wc_sim.submodels.fba import DfbaSubmodel
 from wc_sim.submodels.odes import OdeSubmodel
@@ -248,22 +247,22 @@ class MultialgorithmSimulation(object):
         """
         molecular_weights = self.molecular_weights_for_species()
 
-        # Species used by continuous time submodels (like DFBA and ODE) need initial fluxes
+        # Species used by continuous time submodels (like DFBA and ODE) need initial population slopes
         # which indicate that the species is modeled by a continuous time submodel.
-        # TODO(Arthur): support non-zero initial fluxes; calculate them with initial runs of dFBA and ODE submodels
-        initial_fluxes = {}
+        # TODO(Arthur): support non-zero initial population slopes; calculate them with initial runs of dFBA and ODE submodels
+        init_pop_slopes = {}
         for submodel in self.model.get_submodels():
             if are_terms_equivalent(submodel.framework, onto['WC:ordinary_differential_equations']) or \
                     are_terms_equivalent(submodel.framework, onto['WC:dynamic_flux_balance_analysis']):
                 # todo: understand why get_children() of submodel needs kind=submodel
                 for species in submodel.get_children(kind='submodel', __type=Species):
-                    initial_fluxes[species.id] = 0.0
+                    init_pop_slopes[species.id] = 0.0
 
         return LocalSpeciesPopulation(
             'LSP_' + self.model.id,
             self.init_populations,
             molecular_weights,
-            initial_fluxes=initial_fluxes,
+            initial_population_slopes=init_pop_slopes,
             random_state=self.random_state,
             retain_history=retain_history)
 

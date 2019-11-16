@@ -23,11 +23,11 @@ class Test(unittest.TestCase):
 
     def test_continuous_change(self):
         change = 1
-        flux = 2
+        change_rate = 2
         try:
-            continuous_change = ContinuousChange(change, flux)
+            continuous_change = ContinuousChange(change, change_rate)
             self.assertEqual(continuous_change.change, change)
-            self.assertEqual(continuous_change.flux, flux)
+            self.assertEqual(continuous_change.change_rate, change_rate)
         except:
             self.fail("Exception not expected")
 
@@ -36,5 +36,5 @@ class Test(unittest.TestCase):
         self.assertIn('which cannot be cast to a float', str(context.exception))
 
         with self.assertRaises(ValueError) as context:
-            ContinuousChange(None, flux)
+            ContinuousChange(None, change_rate)
         self.assertIn('which cannot be cast to a float', str(context.exception))

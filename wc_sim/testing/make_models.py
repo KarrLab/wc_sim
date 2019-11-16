@@ -131,28 +131,28 @@ class MakeModel(object):
         default_std = cls.convert_pop_conc(default_species_std, comp.init_volume.mean)
         species = []
         for i in range(num_species):
-            species = comp.species.create(species_type=species_types[i], model=model)
-            species.id = species.gen_id()
-            species.append(species)
-            objects[Species][species.id] = species
-            if species_copy_numbers is not None and species.id in species_copy_numbers:
-                mean = cls.convert_pop_conc(species_copy_numbers[species.id], comp.init_volume.mean)
+            spec = comp.species.create(species_type=species_types[i], model=model)
+            spec.id = spec.gen_id()
+            species.append(spec)
+            objects[Species][spec.id] = spec
+            if species_copy_numbers is not None and spec.id in species_copy_numbers:
+                mean = cls.convert_pop_conc(species_copy_numbers[spec.id], comp.init_volume.mean)
                 if species_stds:
-                    std = cls.convert_pop_conc(species_stds[species.id], comp.init_volume.mean)
+                    std = cls.convert_pop_conc(species_stds[spec.id], comp.init_volume.mean)
                 else:
                     std = cls.convert_pop_conc(default_species_std, comp.init_volume.mean)
                 conc = DistributionInitConcentration(
-                    species=species, mean=mean, std=std,
+                    species=spec, mean=mean, std=std,
                     units=unit_registry.parse_units('M'),
                     model=model)
             else:
                 conc = DistributionInitConcentration(
-                    species=species, mean=default_concentration, std=default_std,
+                    species=spec, mean=default_concentration, std=default_std,
                     units=unit_registry.parse_units('M'),
                     model=model)
             conc.id = conc.gen_id()
             obs_id = 'obs_{}_{}'.format(submodel_num, i)
-            expr = "1.5 * {}".format(species.id)
+            expr = "1.5 * {}".format(spec.id)
             objects[Observable][obs_id] = obs_plain = \
                 Expression.make_obj(model, Observable, obs_id, expr, objects)
 

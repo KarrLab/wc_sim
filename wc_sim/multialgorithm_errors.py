@@ -57,23 +57,22 @@ class FrozenSimulationError(MultialgorithmError):
 
 
 class NegativePopulationError(Error):
-    """ Exception raised when a negative specie population is predicted
+    """ Exception raised when a negative species population is predicted
 
     The sum of `last_population` and `population_decrease` equals the predicted negative population.
 
     Attributes:
         method (:obj:`str`): name of the method in which the exception occured
-        specie (:obj:`str`): name of the specie whose population is predicted to be negative
-        last_population (:obj:`float`): previous recorded population for the specie
+        species (:obj:`str`): name of the species whose population is predicted to be negative
+        last_population (:obj:`float`): previous recorded population for the species
         population_decrease (:obj:`float`): change to the population which would make it negative
-        delta_time (:obj:`float`, optional): if the specie has been updated by a continuous submodel,
+        delta_time (:obj:`float`, optional): if the species has been updated by a continuous submodel,
             time since the last continuous update
     """
-    # TODO(Arthur): perhaps call super() with message
 
-    def __init__(self, method, specie, last_population, population_decrease, delta_time=None):
+    def __init__(self, method, species, last_population, population_decrease, delta_time=None):
         self.method = method
-        self.specie = specie
+        self.species = species
         self.last_population = last_population
         self.population_decrease = population_decrease
         self.delta_time = delta_time
@@ -88,12 +87,12 @@ class NegativePopulationError(Error):
         return not self.__eq__(other)
 
     def __hash__(self):
-        return hash((self.method, self.specie, self.last_population, self.population_decrease,
+        return hash((self.method, self.species, self.last_population, self.population_decrease,
                      self.delta_time))
 
     def __str__(self):
         rv = "{}(): negative population predicted for '{}', with decline from {:g} to {:g}".format(
-            self.method, self.specie, self.last_population,
+            self.method, self.species, self.last_population,
             self.last_population+self.population_decrease)
         if self.delta_time is None:
             return rv

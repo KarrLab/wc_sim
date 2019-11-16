@@ -74,14 +74,14 @@ class MultialgorithmSimulation(object):   # pragma: no cover; code for use later
 
         # DFBA submodels need initial fluxes
         if are_terms_equivalent(lang_submodel.framework, onto['WC:dynamic_flux_balance_analysis']):
-            initial_fluxes = {species_id: 0 for species_id in self.private_species[lang_submodel.id]}
+            init_pop_slopes = {species_id: 0 for species_id in self.private_species[lang_submodel.id]}
         else:
-            initial_fluxes = None
+            init_pop_slopes = None
         local_species_population = LocalSpeciesPopulation(
             lang_submodel.id.replace('_', '_lsp_'),
             initial_population,
             molecular_weights,
-            initial_fluxes=initial_fluxes)
+            initial_population_slopes=init_pop_slopes)
 
         # make AccessSpeciesPopulations object
         access_species_population = AccessSpeciesPopulations(local_species_population,
