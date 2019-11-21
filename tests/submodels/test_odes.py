@@ -12,6 +12,7 @@ import re
 import scikits
 import unittest
 
+from wc_lang.core import ReactionParticipantAttribute
 from wc_lang.io import Reader
 from wc_sim.submodels.odes import OdeSubmodel
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
@@ -27,7 +28,7 @@ class TestOdeSubmodel(unittest.TestCase):
     # ODE_TEST_CASES = os.path.join(os.path.dirname(__file__), '..', 'fixtures', 'validation', 'testing', 'semantic')
 
     def setUp(self):
-        self.default_species_copy_number = 100_000_000
+        self.default_species_copy_number = 1_000_000_000
         self.mdl_1_spec = \
             MakeModel.make_test_model('2 species, 1 reaction, with rates given by reactant population',
                                       init_vol_stds=[0],
@@ -126,10 +127,18 @@ class TestOdeSubmodel(unittest.TestCase):
             self.assertEqual(pop, self.default_species_copy_number)
 
     def test_run_ode_solver(self):
-        # todo: make a test after continuous_adjustment and adjust_continuously are fixed
-        self.ode_submodel_1.time += 1
+        print()
+        attr = ReactionParticipantAttribute()
+        for rxn in self.mdl_1_spec.reactions:
+            print('rxn:', attr.serialize(rxn.participants))
+            print('rate law:', rxn.rate_laws[0].expression.serialize())
         print(self.ode_submodel_1.local_species_population)
-        self.ode_submodel_1.run_ode_solver()
+        print('\t'.join(OdeSubmodel.run_ode_solver_header))
+        n = 4
+        for i in range(n):
+            self.ode_submodel_1.run_ode_solver()
+        print('end data')
+        print(self.ode_submodel_1.local_species_population)
 
         # make OdeSubmodel.right_hand_side fail
         self.ode_submodel_1.num_species = None

@@ -8,9 +8,11 @@
 
 from pprint import pprint
 from scikits.odes import ode
+from scikits.odes.sundials.cvode import StatusEnum
 from scipy.constants import Avogadro
 import math
 import numpy as np
+import time
 import warnings
 
 from de_sim.simulation_object import SimulationObject
@@ -163,28 +165,28 @@ class OdeSubmodel(DynamicSubmodel):
         return solver
 
     @staticmethod
-    def right_hand_side(time, species_populations, population_change_rates):
+    def right_hand_side(time, new_species_populations, population_change_rates):
         """ Evaluate population change rates for species modeled by ODE; called by ODE solver
 
         Args:
             time (:obj:`float`): simulation time
-            species_populations (:obj:`numpy.ndarray`): populations of all species at time `time`,
+            new_species_populations (:obj:`numpy.ndarray`): populations of all species at time `time`,
                 listed in the same order as `self.ode_species_ids`
-            population_change_rates (:obj:`numpy.ndarray`): the rate of change of species_populations
-                at time `time`; written by this method
+            population_change_rates (:obj:`numpy.ndarray`): the rate of change of
+                `new_species_populations` at time `time`; written by this method
 
         Returns:
             :obj:`int`: return 0 to indicate success, or 1 to indicate failure;
                 but the important side effects are the values in `population_change_rates`
         """
         # this is called by the CVODE ODE solver
-        # todo: need to update a LocalSpeciesPopulation with the values in species_populations
+        # todo: need to update a LocalSpeciesPopulation with the values in new_species_populations
         # or request VERY short time steps with very few calls to right_hand_side
         # alternatives:
         # exact ODE: have LocalSpeciesPopulation store a history back to the latest ODE execution
         # and use the history for other submodels
         # approximate ODE: create a cache LocalSpeciesPopulation for this OdeSubmodel and its rate laws
-        # update it with changes to the population passed by the solver in species_populations
+        # update it with changes to the population passed by the solver in new_species_populations
         # todo: make `self.time_step` dynamic, with longer time steps when the ODE solver uses larger internal steps
         # and shorter ones when it uses shorter internal steps; tune `self.time_step` so the number of
         # internal steps per time step approximates NUM_INTERNAL_STEPS_PER_TIME_STEP
@@ -204,6 +206,15 @@ class OdeSubmodel(DynamicSubmodel):
                     species_rxn_rate += coeff * dyn_rate_law.eval(self.time)
                 population_change_rates[idx] = species_rxn_rate
 
+            time_advance = time - self._last_internal_step
+            summary = ['internal step',
+                       f'{time:.4e}',
+                       f'{time_advance:.4e}',
+                       'N/A',
+                       'N/A']
+            summary.extend([f'{pop:.1f}' for pop in new_species_populations])
+            print('\t'.join(summary))
+            self._last_internal_step = time
             return 0
 
         except Exception as e:
@@ -236,34 +247,60 @@ class OdeSubmodel(DynamicSubmodel):
         for idx, species_id in enumerate(self.ode_species_ids):
             self.populations[idx] = pops_dict[species_id]
 
+    run_ode_solver_header = 'mode time advance rhs_calls elapsed_rt population_0 population_1'.split()
     def run_ode_solver(self):
         """ Run the ODE solver for one WC simulator time step and save the species populations changes """
 
+        self._last_internal_step = self.time
+        start = time.perf_counter()
+        def print_rv(call, return_value):
+            print(f'call: {call}')
+            print(f'return_value.flag: {return_value.flag}; StatusEnum.SUCCESS: {StatusEnum.SUCCESS}')
+            print('return_value.message:', return_value.message)
+
         ### run the ODE solver ###
         end_time = self.time + self.time_step
-        # advance one step
+        # advance one time_step
         solution_times = [self.time, end_time]
         self.num_right_hand_side_calls = 0
         self.current_species_populations()
         solution = self.solver.solve(solution_times, self.populations)
-        if solution.flag:   # pragma: no cover
-            raise MultialgorithmError("OdeSubmodel {}: solver step() error: '{}' for time step [{}, {})".format(
-                self.id, solution.message, self.time, end_time))
+        # print_rv('solve()', solution)
+        if solution.flag != StatusEnum.SUCCESS:   # pragma: no cover
+            raise MultialgorithmError(f"OdeSubmodel {self.id}: solver step() error: '{solution.message}' "
+                                      f"for time step [{self.time}, {end_time})")
 
         ### store results in local_species_population ###
-        population_changes = solution.values.y[1] - self.populations
-        print('population_changes:\n',population_changes)
-        population_change_rates = population_changes / self.time_step
-        print('population_change_rates:\n',population_change_rates)
-        print('self.ode_species_ids', self.ode_species_ids)
+        solution_time = solution.values.t[1]
+        new_population = solution.values.y[1]
+        population_changes = new_population - self.populations
+        time_advance = solution_time - self.time
+        population_change_rates = population_changes / time_advance
+
         for idx, species_id in enumerate(self.ode_species_ids):
             self.adjustments[species_id] = population_change_rates[idx]
-        print('self.adjustments')
-        pprint(self.adjustments)
+        if True:
+            print('time_advance:',time_advance)
+            print('solution.errors.t:', solution.errors.t)
+            print('solution.errors.y:', solution.errors.y)
+            print('population_changes:\n',population_changes)
+            print('population_change_rates:\n',population_change_rates)
+            print('self.ode_species_ids', self.ode_species_ids)
+            print('self.adjustments')
+            pprint(self.adjustments)
         # todo: optimization: have LocalSpeciesPopulation.adjust_continuously() take an array
         self.local_species_population.adjust_continuously(self.time, self.adjustments)
         self.history_num_right_hand_side_calls.append(self.num_right_hand_side_calls)
-        print(f"Num rhs calls\t{self.num_right_hand_side_calls}")
+        end = time.perf_counter()
+        elapsed_rt = end - start
+        summary = ['external step',
+                   f'{self.time:.4e}',
+                   f'{time_advance:.4e}',
+                   f'{self.num_right_hand_side_calls}',
+                   f'{elapsed_rt:.3e}']
+        summary.extend([f'{pop:.1f}' for pop in new_population])
+        print('\t'.join(summary))
+        self.time = solution_time
 
     ### schedule and handle DES events ###
     def send_initial_events(self):
