@@ -289,7 +289,7 @@ class DynamicExpression(DynamicComponent):
             * `eval` the Python expression
 
         Args:
-            time (:obj:`float`): the current simulation time
+            time (:obj:`float`): the simulation time at which the expression should be evaluated
 
         Raises:
             :obj:`MultialgorithmError`: if Python `eval` raises an exception
@@ -568,6 +568,7 @@ class DynamicCompartment(DynamicComponent):
         """
         return self.accounted_volume(time=time) / self.accounted_fraction
 
+    # todo: eliminate =None, as it creates the possibility of eval'ing an expression @ multiple times
     def eval(self, time=None):
         """ Provide the mass of this :obj:`DynamicCompartment`
 
