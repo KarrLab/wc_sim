@@ -10,21 +10,29 @@ import math
 
 
 class Node(object):
+
     def __init__(self, time, data):
         self._time = time
         self._data = data
-        self._temp_data = None
         self._next = None
         self._prev = None
+
     def connect_right(self, right):
         # doubly-link with node on right
         # use 'left' for symmetry
         left = self
         left._next = right
         right._prev = left
+
+    def is_equal(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        return (self._time == other._time and
+                self._data == other._data)
+
     def __str__(self):
         rv = []
-        for attr in ['_time', '_data', '_temp_data']:
+        for attr in ['_time', '_data']:
             rv.append(f"{attr}: {getattr(self, attr)}")
         if self._prev is None:
             rv.append('_prev is None')
@@ -48,6 +56,7 @@ class TimeOrderedList(object):
         self._tail = Node(float("inf"), None)
         self._head.connect_right(self._tail)
         self._count = 0
+
     def _insert_after(self, existing_node, new_node):
         # insert after node `existing_node`
         # patch new_node in
@@ -55,6 +64,7 @@ class TimeOrderedList(object):
         existing_node.connect_right(new_node)
         new_node.connect_right(right_of_new_node)
         self._count += 1
+
     def _delete(self, existing_node):
         if self.is_empty():
             return None
@@ -62,84 +72,87 @@ class TimeOrderedList(object):
         existing_node._prev.connect_right(existing_node._next)
         self._count -= 1
         return existing_node
+
+    def _check_time(self, method, time):
+        # check the time for method
+        if not isinstance(time, (int, float)):
+            raise ValueError(f"time '{time}' isn't a number")
+        if math.isinf(time) or math.isnan(time):
+            raise ValueError(f"cannot {method} at time {time}")
+
     ### external methods ###
     def is_empty(self):
         return self._count == 0
+
     def clear(self):
+        # remove references to the data nodes so they can be gc'ed
         self._head.connect_right(self._tail)
         self._count = 0
+
     def len(self):
         return self._count
+
     def insert(self, time, value):
         # insert value at time
-        if math.isinf(time) or math.isnan(time):
-            raise ValueError(f"cannot insert at time {time}")
+        self._check_time('insert', time)
         left_node = self.find(time)
         if left_node._time == time:
             raise ValueError(f"time {time} already in queue")
         else:
             self._insert_after(left_node, Node(time, value))
+
     def find(self, time):
         # find node with largest time <= time
-        if not isinstance(time, (int, float)):
-            raise ValueError(f"time {time} isn't a number")
-        if time == float("inf"):
-            return self._tail
+        self._check_time('find', time)
         node = self._head
         while node._time <= time:
             node = node._next
         return node._prev
+
     def delete(self, time):
         # delete node at time
+        self._check_time('delete', time)
         left_node = self.find(time)
         if left_node._time == time:
             return self._delete(left_node)
         else:
             raise ValueError(f"no node with time {time} in queue")
+
     def read(self, time):
         # get value at time, interpolating if needed
-        if math.isinf(time) or math.isnan(time):
-            raise ValueError(f"cannot read at time {time}")
+        self._check_time('read', time)
         left_node = self.find(time)
         if left_node._time == time:
-            return left_node.data
+            return left_node._data
         # interpolate if possible
-        if self.len() == 1:
-            # with only one data point cannot interpolate
-            return left_node.data
-        elif left_node._next._time == float("inf"):
-            # get slope between left_node._prev and left_node
-            slope = (left_node.data - left_node._prev.data) / (left_node._time - left_node._prev._time)
+        if left_node._next._time == float("inf"):
+            # cannot interpolate with no data at time greater than time - assume slope == 0
+            return left_node._data
+        elif left_node._time == -float("inf"):
+            # no data available at time <= `time`
+            return float('NaN')
         else:
             # get slope between left_node and left_node._next
-            slope = (left_node._next.data - left_node.data) / (left_node._next._time - left_node._time)
+            slope = (left_node._next._data - left_node._data) / (left_node._next._time - left_node._time)
         # interpolate
-        return slope * (time - left_node._time)
-    def gc(self, time):
-        # delete all nodes with time < time
+        return left_node._data + slope * (time - left_node._time)
+
+    def gc(self, time, num_to_leave=2):
+        # delete all nodes with time < time, leaving at least num_to_leave
+        # to enable interpolation, keep 2 <= num_to_leave
+        # todo: make fast by searching from right end & removing all nodes to left of first
+        # node to keep by splicing them out
         node = self._head._next
-        while node._time < time:
+        while node._time < time and num_to_leave < self.len():
             next_node = node._next
             self._delete(node)
             node = next_node
-    def temp_insert(self, time, value):
-        # temporarily insert value at time -- allows time collisions
-        if math.isinf(time) or math.isnan(time):
-            raise ValueError(f"cannot temporarily insert at time {time}")
-        left_node = self.find(time)
-        if left_node._time == time:
-            left_node._temp_data = value
-        else:
-            self._insert_after(left_node, Node(time, value))
-    def temp_delete(self, time):
-        # delete temporarily inserted value at time
-        if math.isinf(time) or math.isnan(time):
-            raise ValueError(f"cannot delete temporary insert at time {time}")
-        left_node = self.find(time)
-        if left_node._time != time:
-            raise ValueError(f"cannot find temporarily inserted value at time {time}")
-        else:
-            if left_node._temp_data is None:
-                return self._delete(left_node)
-            else:
-                left_node._temp_data = None
+
+    def __str__(self):
+        rv = []
+        rv.append(f'{self.len()} nodes:')
+        node = self._head._next
+        while node._time < float('inf'):
+            rv.append(f'{node._time}: {node._data}')
+            node = node._next
+        return '\n'.join(rv)
