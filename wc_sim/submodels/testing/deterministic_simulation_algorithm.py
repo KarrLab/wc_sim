@@ -63,6 +63,7 @@ class DeterministicSimulationAlgorithmSubmodel(DynamicSubmodel):
 
         This method overrides a :obj:`DynamicSubmodel` method.
         """
+        # todo: don't schedule reactions that can't execute - requires predictions of the future populations
         for reaction in self.reactions:
             rate = self.calc_reaction_rate(reaction)
             dt = 1.0/(2 * rate)
@@ -102,6 +103,7 @@ class DeterministicSimulationAlgorithmSubmodel(DynamicSubmodel):
         Args:
             reaction (:obj:`Reaction`): the reaction being scheduled
         """
+        # todo: don't schedule reactions that can't execute - requires predictions of the future populations
         rate = self.calc_reaction_rate(reaction)
         dt = 1.0/rate
         reaction_index = self.reaction_table[reaction.id]
