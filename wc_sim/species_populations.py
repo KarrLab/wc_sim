@@ -628,14 +628,16 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         """
         return set(self._population.keys())
 
-    def _check_species(self, time, species=None):
+    def _check_species(self, time, species=None, check_early_accesses=True):
         """ Check whether the species are a set, or not known by this LocalSpeciesPopulation
 
-        Also checks whether the species are being accessed in time order.
+        Also checks whether the species are being accessed in time order if `check_early_accesses`
+        is set.
 
         Args:
             time (:obj:`float`): the time at which the population might be accessed
             species (:obj:`set`, optional): set of species_ids; if not supplied, read all species
+            check_early_accesses (:obj:`bool`, optional): whether to check for early accesses
 
         Raises:
             :obj:`SpeciesPopulationError`: if species is not a set
@@ -651,10 +653,12 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
                 # raise exception if some species are non-existent
                 raise SpeciesPopulationError("request for population of unknown species: {}".format(
                     ', '.join(map(lambda x: "'{}'".format(str(x)), unknown_species))))
-            early_accesses = list(filter(lambda s: time < self.last_access_time[s], species))
-            if early_accesses:
-                raise SpeciesPopulationError("access at time {} is an earlier access of species {} than at {}".format(
-                    time, early_accesses, [self.last_access_time[s] for s in early_accesses]))
+            if check_early_accesses:
+                early_accesses = list(filter(lambda s: time < self.last_access_time[s], species))
+                if early_accesses:
+                    raise SpeciesPopulationError("access at time {} is an earlier access of species "
+                                                 "{} than at {}".format(time, early_accesses,
+                                                 [self.last_access_time[s] for s in early_accesses]))
 
     def _update_access_times(self, time, species=None):
         """ Update the access time to `time` for all species_ids in `species`
@@ -669,7 +673,9 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             self.last_access_time[species_id] = time
 
     def read_one(self, time, species_id):
-        """ Obtain the predicted population of species`species_id` at simulation time `time`
+        """ Obtain the predicted population of species `species_id` at simulation time `time`
+
+        If a temporary population value is available, return it.
 
         Args:
             time (:obj:`float`): the time at which the population should be estimated
@@ -682,10 +688,14 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             :obj:`SpeciesPopulationError`: if the population of an unknown species was requested
         """
         species_id_in_set = {species_id}
+        self._check_species(None, species_id_in_set, check_early_accesses=False)
+        dynamic_species_state = self._population[species_id]
+        if not dynamic_species_state.get_temp_population_value() is None:
+            return dynamic_species_state.get_temp_population_value()
         self._check_species(time, species_id_in_set)
         self.time = time
         self._update_access_times(time, species_id_in_set)
-        return self._population[species_id].get_population(time)
+        return dynamic_species_state.get_population(time)
 
     def read(self, time, species=None, round=True):
         """ Read the predicted population of a list of species at simulation time `time`
@@ -708,6 +718,41 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self.time = time
         self._update_access_times(time, species)
         return {s: self._population[s].get_population(time, round=round) for s in species}
+
+    def set_temp_populations(self, populations):
+        """ Set temporary population values for a set of species
+
+        Args:
+            populations (:obj:`dict` of `float`): map: species_id -> temporary_population_value
+
+        Raises:
+            :obj:`SpeciesPopulationError`: if any of the species_ids in `populations` are unknown,
+                or if any population value would become negative
+        """
+        species_ids = set(populations)
+        self._check_species(None, species_ids, check_early_accesses=False)
+        errors = []
+        for species_id, population in populations.items():
+            if population < 0:
+                errors.append(f"cannot use negative population {population} for species {species_id}")
+        if errors:
+            raise SpeciesPopulationError("set_temp_populations error(s):\n{}".format('\n'.join(errors)))
+        for species_id, population in populations.items():
+            self._population[species_id].set_temp_population_value(population)
+
+    def clear_temp_populations(self, species_ids):
+        """ Clear temporary population values for a set of species
+
+        Args:
+            species_ids (:obj:`iterator`): an iterator over some species ids
+
+        Raises:
+            :obj:`SpeciesPopulationError`: if any of the species ids in `species_ids` are unknown
+        """
+        species_ids = set(species_ids)
+        self._check_species(None, species_ids, check_early_accesses=False)
+        for species_id in species_ids:
+            self._population[species_id].clear_temp_population_value()
 
     def adjust_discretely(self, time, adjustments):
         """ A submodel adjusts the population of a set of species at simulation time `time`
@@ -1225,11 +1270,12 @@ class DynamicSpeciesState(object):
         last_read_time (:obj:`float`): the time of the latest read; used to prevent prior adjustments
         _record_history (:obj:`bool`): whether to record history of operations
         _history (:obj:`list`): history of operations
+        _temp_population_value (:obj:`float`): a temporary population for a temporary computation
     """
     # use __slots__ to save space
     __slots__ = ['species_name', 'random_state', 'last_population', 'modeled_continuously',
                  'population_slope', 'continuous_time', 'last_adjustment_time', 'last_read_time',
-                 '_record_history', '_history']
+                 '_record_history', '_history', '_temp_population_value']
 
     def __init__(self, species_name, random_state, initial_population, modeled_continuously=False,
                  record_history=False):
@@ -1264,6 +1310,7 @@ class DynamicSpeciesState(object):
         if record_history:
             self._history = []
             self._record_operation_in_hist(0, 'initialize', initial_population)
+        self._temp_population_value = None
 
     def _update_last_adjustment_time(self, adjustment_time):
         """ Advance the last adjustment time to `adjustment_time`
@@ -1422,6 +1469,36 @@ class DynamicSpeciesState(object):
         self._update_last_adjustment_time(time)
         self._record_operation_in_hist(time, 'continuous_adjustment', population_slope)
         return self.get_population(time)
+
+    def set_temp_population_value(self, population):
+        """ Set a temporary population
+
+        Save a temporary population for a temporary, exploratory computation, like the right-hand-side
+        function used to solve ODEs.
+        The time associated with a temporary population value is not provided or needed.
+        These values aren't saved in the history.
+
+        Args:
+            population (:obj:`float`): the temporary population
+        """
+        self._temp_population_value = population
+
+    def get_temp_population_value(self):
+        """ Get the temporary population
+
+        Provide a temporary population that has been stored for temporary, exploratory computations,
+        like the right-hand-side function used to solve ODEs.
+
+        Returns:
+            :obj:`obj`: if the temporary population is set, the species' population as a :obj:`float`,
+                otherwise :obj:`None`
+        """
+        return self._temp_population_value
+
+    def clear_temp_population_value(self):
+        """ Clear a temporary population value
+        """
+        self._temp_population_value = None
 
     def get_population(self, time, interpolate=None, round=True):
         """ Provide the species' population at time `time`

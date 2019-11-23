@@ -380,6 +380,25 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         self.assertIn(f"adjust_continuously error(s) at time {time + 2}", str(context.exception))
         self.assertIn("negative population predicted", str(context.exception))
 
+    def test_temp_lsp_populations(self):
+        s_0 = self.species_ids[0]
+        time = 1
+        pop_s_0 = self.local_species_pop.read_one(time, s_0)
+        temp_pop_s_0 = 18
+        self.local_species_pop.set_temp_populations({s_0: temp_pop_s_0})
+        self.assertEqual(self.local_species_pop.read_one(time, s_0), temp_pop_s_0)
+        self.local_species_pop.clear_temp_populations({s_0})
+        self.assertEqual(self.local_species_pop.read_one(time, s_0), pop_s_0)
+
+        with self.assertRaises(SpeciesPopulationError):
+            self.local_species_pop.set_temp_populations({'not a species id': temp_pop_s_0})
+
+        with self.assertRaisesRegex(SpeciesPopulationError, 'cannot use negative population'):
+            self.local_species_pop.set_temp_populations({s_0: -4})
+
+        with self.assertRaises(SpeciesPopulationError):
+            self.local_species_pop.clear_temp_populations(['not a species id'])
+
     def test_history(self):
         an_LSP_wo_recording_history = LocalSpeciesPopulation('test',
                                                              self.init_populations,
@@ -793,6 +812,15 @@ class TestDynamicSpeciesState(unittest.TestCase):
         ds = DynamicSpeciesState('s', self.random_state, 0)
         with self.assertRaisesRegex(SpeciesPopulationError, 'history not recorded'):
             ds.get_history()
+
+    def test_temp_populations(self):
+        ds = DynamicSpeciesState('s', None, 0)
+        self.assertEqual(ds.get_temp_population_value(), None)
+        population = 3
+        ds.set_temp_population_value(population)
+        self.assertEqual(ds.get_temp_population_value(), population)
+        ds.clear_temp_population_value()
+        self.assertEqual(ds.get_temp_population_value(), None)
 
 
 """ Run a simulation with another simulation object to test SpeciesPopSimObject.
