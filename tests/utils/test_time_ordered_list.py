@@ -12,7 +12,7 @@ import timeit
 import unicodedata
 import unittest
 
-from wc_sim.utils.time_ordered_list import Node, TimeOrderedList
+from wc_sim.utils.time_ordered_list import DoublyLinkedNode, TimeOrderedList
 
 
 class Test(unittest.TestCase):
@@ -25,20 +25,20 @@ class Test(unittest.TestCase):
             test_case.assertEqual(left._next, right)
             test_case.assertEqual(left, right._prev)
 
-        n = Node(3, 'x')
+        n = DoublyLinkedNode(3, 'x')
         self.assertIn('_time', str(n))
         self.assertIn('_data', str(n))
         self.assertIn('is None', str(n))
-        o = Node(4, 'y')
+        o = DoublyLinkedNode(4, 'y')
 
-        # test connect_right
-        n.connect_right(o)
+        # test link_on_left
+        n.link_on_left(o)
         is_connected(self, n, o)
         self.assertIn('is not None', str(n))
         self.assertIn('is not None', str(o))
 
         # test is_equal
-        p = Node(4, 'y')
+        p = DoublyLinkedNode(4, 'y')
         self.assertTrue(p.is_equal(p))
         self.assertTrue(p.is_equal(o))
         self.assertTrue(o.is_equal(p))
@@ -66,7 +66,7 @@ class Test(unittest.TestCase):
 
         # test _insert_after
         value = 'x'
-        n = Node(1, value)
+        n = DoublyLinkedNode(1, value)
         tol._insert_after(tol._head, n)
         self.assertEqual(tol.len(), 1)
         invariants(self, tol)
@@ -145,29 +145,46 @@ class Test(unittest.TestCase):
         len = tol.len()
         for time in times:
             n = tol.delete(time)
-            self.assertTrue(isinstance(n, Node))
+            self.assertTrue(isinstance(n, DoublyLinkedNode))
             self.assertEqual(tol.len(), len - 1)
             len -= 1
         with self.assertRaisesRegex(ValueError, "no node with time .* in queue"):
             tol.delete(times[0])
         
-        # test gc
+        # test gc_old_data
+        # test empty list
         tol = TimeOrderedList()
+        self.assertEqual(tol.gc_old_data(1), 0)
+        invariants(self, tol)
+
         maximum = 10
         for t in reversed(range(maximum)):
             tol.insert(t, t)
         invariants(self, tol)
+
+        # try to keep more than available
+        self.assertEqual(tol.gc_old_data(1, min_to_keep=maximum + 1), 0)
         self.assertEqual(tol.len(), maximum)
-        tol.gc(4.001)
         invariants(self, tol)
-        self.assertEqual(tol.len(), 5)
-        tol.gc(8)
+
+        # delete some
+        time_cutoff = 4
+        self.assertEqual(tol.gc_old_data(time_cutoff), time_cutoff)
         invariants(self, tol)
-        self.assertEqual(tol.len(), 2)
-        num_to_leave = 1
-        tol.gc(11, num_to_leave=num_to_leave)
+        self.assertEqual(tol.len(), maximum - time_cutoff)
+
+        # delete none because time cutoff is too early
+        self.assertEqual(tol.gc_old_data(time_cutoff), 0)
         invariants(self, tol)
-        self.assertEqual(tol.len(), num_to_leave)
+
+        # limit deletions with min_to_keep
+        self.assertEqual(tol.gc_old_data(maximum, min_to_keep=tol.len()-1), 1)
+        invariants(self, tol)
+
+        # delete everything
+        self.assertEqual(tol.gc_old_data(maximum, min_to_keep=0), 5)
+        self.assertEqual(tol.len(), 0)
+        invariants(self, tol)
 
         # test read
         tol = TimeOrderedList()
