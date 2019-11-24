@@ -12,10 +12,10 @@ import timeit
 import unicodedata
 import unittest
 
-from wc_sim.utils.time_ordered_list import DoublyLinkedNode, TimeOrderedList
+from wc_sim.utils.time_ordered_list import DoublyLinkedNode, TimeOrderedList, LinearInterpolationList
 
 
-class Test(unittest.TestCase):
+class TestDoublyLinkedNode(unittest.TestCase):
 
     def test_node(self):
 
@@ -47,18 +47,22 @@ class Test(unittest.TestCase):
         self.assertFalse(p.is_equal(o))
         self.assertFalse(p.is_equal('hi'))
 
+
+def invariants(test_case, time_ordered_list):
+    # head tail invariant
+    test_case.assertEqual(time_ordered_list._head._next._prev, time_ordered_list._head)
+    test_case.assertEqual(time_ordered_list._tail._prev._next, time_ordered_list._tail)
+
+    # ordered invariant
+    node = time_ordered_list._head
+    while node._next is not None:
+        test_case.assertTrue(node._time < node._next._time)
+        node = node._next
+
+
+class TestTimeOrderedList(unittest.TestCase):
+
     def test_time_ordered_list(self):
-
-        def invariants(test_case, time_ordered_list):
-            # head tail invariant
-            test_case.assertEqual(time_ordered_list._head._next._prev, time_ordered_list._head)
-            test_case.assertEqual(time_ordered_list._tail._prev._next, time_ordered_list._tail)
-
-            # ordered invariant
-            node = time_ordered_list._head
-            while node._next is not None:
-                self.assertTrue(node._time < node._next._time)
-                node = node._next
 
         ### test internal methods ###
         tol = TimeOrderedList()
@@ -186,22 +190,6 @@ class Test(unittest.TestCase):
         self.assertEqual(tol.len(), 0)
         invariants(self, tol)
 
-        # test read
-        tol = TimeOrderedList()
-        first_2_values = 5
-        last_value = 10
-        time_n_values = [(1, first_2_values), (2, first_2_values), (3, last_value), ]
-        for time, value in time_n_values:
-            tol.insert(time, value)
-        invariants(self, tol)
-        for time, value in time_n_values:
-            self.assertEqual(tol.read(time), value)
-        self.assertTrue(math.isnan(tol.read(0.5)))
-        self.assertEqual(tol.read(1.01), first_2_values)
-        self.assertEqual(tol.read(1.5), first_2_values)
-        self.assertEqual(tol.read(2.5), 0.5*(first_2_values + last_value))
-        self.assertEqual(tol.read(3.5), last_value)
-
     def test_time_ordered_list_performance(self):
         # measure the performance of TimeOrderedList.find()
         print()
@@ -229,3 +217,24 @@ class Test(unittest.TestCase):
         all_num_items = [10 ** factor_of_ten for factor_of_ten in range(factors_of_ten)]
         for num_items in all_num_items:
             measure_time_ordered_list_performance(num_items)
+
+
+class TestLinearInterpolationList(unittest.TestCase):
+
+    def test_read(self):
+
+        # test read
+        tol = LinearInterpolationList()
+        first_2_values = 5
+        last_value = 10
+        time_n_values = [(1, first_2_values), (2, first_2_values), (3, last_value), ]
+        for time, value in time_n_values:
+            tol.insert(time, value)
+        invariants(self, tol)
+        for time, value in time_n_values:
+            self.assertEqual(tol.read(time), value)
+        self.assertTrue(math.isnan(tol.read(0.5)))
+        self.assertEqual(tol.read(1.01), first_2_values)
+        self.assertEqual(tol.read(1.5), first_2_values)
+        self.assertEqual(tol.read(2.5), 0.5*(first_2_values + last_value))
+        self.assertEqual(tol.read(3.5), last_value)

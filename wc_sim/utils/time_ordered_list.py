@@ -214,35 +214,6 @@ class TimeOrderedList(object):
         else:
             raise ValueError(f"no node with time {time} in queue")
 
-    # todo: move this to a subclass
-    def read(self, time):
-        """ Get the data at time `time`, interpolating if needed
-
-        Linear interpolation is done when the time is between data points.
-
-        Args:
-            time (:obj:`Rational`): time value
-
-        Returns:
-            :obj:`type`: the estimated data at `time`, or `NaN` if it cannot be estimated
-        """
-        self._check_time('read', time)
-        left_node = self.find(time)
-        if left_node._time == time:
-            return left_node._data
-        # interpolate if possible
-        if left_node._next._time == float("inf"):
-            # cannot interpolate with no data at time greater than time - assume slope == 0
-            return left_node._data
-        elif left_node._time == -float("inf"):
-            # no data available at time <= `time`
-            return float('NaN')
-        else:
-            # get slope between left_node and left_node._next
-            slope = (left_node._next._data - left_node._data) / (left_node._next._time - left_node._time)
-        # interpolate
-        return left_node._data + slope * (time - left_node._time)
-
     def gc_old_data(self, time, min_to_keep=2):
         """ Garbage collect old nodes and data
 
@@ -292,3 +263,248 @@ class TimeOrderedList(object):
             rv.append(f'{node._time}: {node._data}')
             node = node._next
         return '\n'.join(rv)
+
+
+class LinearInterpolationList(TimeOrderedList):
+    """ Time ordered list with linear interpolation of data values in nodes
+    """
+
+    def read(self, time):
+        """ Get the data at time `time`, interpolating if needed
+
+        Linear interpolation is done when the time is between data points.
+
+        Args:
+            time (:obj:`Rational`): time value
+
+        Returns:
+            :obj:`type`: the estimated data at `time`, or `NaN` if it cannot be estimated
+        """
+        self._check_time('read', time)
+        left_node = self.find(time)
+        if left_node._time == time:
+            return left_node._data
+        # interpolate if possible
+        if left_node._next._time == float("inf"):
+            # cannot interpolate with no data at times greater than `time` - assume slope == 0
+            return left_node._data
+        elif left_node._time == -float("inf"):
+            # no data available at time <= `time`
+            return float('NaN')
+        else:
+            # get slope between left_node and left_node._next
+            slope = (left_node._next._data - left_node._data) / (left_node._next._time - left_node._time)
+        # interpolate
+        return left_node._data + slope * (time - left_node._time)
+
+
+class MultiAlgorithmSpeciesPopNode(object):
+    """ Data node in a `MultiAlgorithmSpeciesPopHistory`
+
+    Attributes:
+        pop_before (:obj:`float`): species population infinitesimally before the time of this node
+        pop_after (:obj:`float`): species population infinitesimally after the time of this node
+    """
+
+    def __init__(self,  **kwargs):
+        """
+        Args:
+            **kwargs (:obj:`dict`, optional): keywords for initialization
+                allowed keywords:
+                    `pop_before` - if supplied, will be assigned to `self.pop_before`
+                    `pop_after` - if supplied, will be assigned to `self.pop_after`
+                    `pop` - if supplied, will be assigned to `self.pop_before` and `self.pop_after`
+                        if they're not otherwise initialized
+        """
+        kwargs_mapping = (('pop', 'pop_before'),
+                          ('pop', 'pop_after'),
+                          ('pop_before', 'pop_before'),
+                          ('pop_after', 'pop_after'),
+                         )
+        self.pop_before = None
+        self.pop_after = None
+        for keyword, attr_name in kwargs_mapping:
+            if keyword in kwargs:
+                setattr(self, attr_name, kwargs[keyword])
+
+
+class MultiAlgorithmSpeciesPopHistory(TimeOrderedList):
+    """ Time ordered list with linear interpolation of data values in nodes
+
+    Manage a species population history with step function changes from discrete time
+    integration algorithms like SSA, and slope changes from continuous time integration
+    algorithms like ODE and dFBA.
+
+    To enable interpolation of population, a `MultiAlgorithmSpeciesPopHistory` must be initialized
+    with 1 data node, and never contain fewer than 2 data nodes after a 2nd one is inserted.
+    """
+
+    @property
+    def _earliest_time(self):
+        """ The time of the earliest data in the history
+        """
+        return self._head._next._time
+
+    @property
+    def _latest_time(self):
+        """ The time of the latest data in the history
+        """
+        return self._tail._prev._time
+
+    def _check_time_strict(self, time):
+        """ Check that `time` is a good time
+
+        Args:
+            time (:obj:`Rational`): time value
+
+        Raises:
+            :obj:`ValueError`: if `time` is earlier than the earliest data in the history, or
+                later than the latest data in the history
+        """
+        if time < self._earliest_time:
+            raise ValueError(f"time {time} earlier than earliest data {self._earliest_time} in history")
+        if self._latest_time < time:
+            raise ValueError(f"time {time} later than the latest data {self._latest_time} in history")
+
+    def _slope_between_node_pair(self, left_node):
+        """ Get the population slope between `left_node` and the node to its right
+
+        Args:
+            left_node (:obj:`DoublyLinkedNode`): node in the history
+
+        Returns:
+            :obj:`float`: the rate of population change between `left_node` and the node to its right
+        """
+        # todo: perhaps raise an error if pops aren't defined or times are infinite
+        right_node = left_node._next
+        return (right_node._data.pop_before - left_node._data.pop_after) / \
+               (right_node._time - left_node._time)
+
+    def slope(self, time, left_node=None):
+        """ Get the population slope at time `time`
+
+        Args:
+            time (:obj:`Rational`): time value
+            left_node (:obj:`DoublyLinkedNode`, optional): node to use to avoid cost of `find`
+
+        Returns:
+            :obj:`float`: the estimated population slope at `time`
+
+        Raises:
+            :obj:`ValueError`: if `time` is earlier than the earliest data in the history, or
+                later than the latest data
+        """
+        self._check_time('slope', time)
+        if self._latest_time < time:
+            # slope unknown for time later than latest data in history
+            return 0
+        self._check_time_strict('slope', time)
+        if left_node is None:
+            left_node = self.find(time)
+        if left_node._time == time:
+            if left_node._time == self._earliest_time and left_node._time == self._latest_time:
+                # only 1 node in history; cannot compute slope
+                return 0
+            if left_node._time == self._earliest_time:
+                # at least 1 node in history after left_node; return slope between left and next node
+                return self._slope_between_node_pair(left_node)
+            if left_node._time == self._latest_time:
+                # at least 1 node in history before left_node; return slope between prev node and left node
+                return self._slope_between_node_pair(left_node._prev)
+            # history contains at least 1 node before left_node and 1 node after left_node
+            # symmetrically, return slope between prev node and next node
+            prev_node = left_node._prev
+            next_node = left_node._next
+            return (next_node._data.pop_before - prev_node._data.pop_after) / \
+                   (next_node._time - next_node._time)
+
+        else:
+            # at least 1 node in history after left_node; return slope between left and next node
+            return self._slope_between_node_pair(left_node)
+
+    def read(self, time, left_node=None):
+        """ Get the data at time `time`, interpolating if needed
+
+        By convention, if time `time` coincides with a discrete population change, then `read`
+            returns `pop_before`, the species population infinitesimally before the time
+        Linear interpolation is done when adjacent data points are available.
+
+        Args:
+            time (:obj:`Rational`): time value
+            left_node (:obj:`DoublyLinkedNode`, optional): node to use to avoid cost of `find`
+
+        Returns:
+            :obj:`tuple`: the estimated population and slope at `time`
+        """
+        self._check_time('read', time)
+        self._check_time_strict('read', time)
+        if left_node is None:
+            left_node = self.find(time)
+        # interpolate
+        slope = self.slope(time, left_node=left_node)
+        if left_node._time == time:
+            return (left_node._data.pop_before, slope)
+        return (slope * (time - left_node._time) + left_node._data.pop_after, slope)
+
+    def insert_discrete_change(self, time, population_change):
+        """ Insert a discrete population change at time `time`
+
+        Args:
+            time (:obj:`Rational`): time value
+            population_change (:obj:`float`): the population change at time `time`
+        """
+        self._check_time('insert_discrete_change', time)
+        left_node = self.find(time)
+        if left_node._time != time:
+            # if no change exists at time, so add one
+            pop, _ = self.read(time, left_node=left_node)
+            # change in population is additive
+            pop_after = pop + population_change
+            kwargs = dict(pop_before=pop,
+                          pop_after=pop_after)
+            data_node = MultiAlgorithmSpeciesPopNode(**kwargs)
+            self._insert_after(left_node, DoublyLinkedNode(time, data_node))
+        else:
+            # else update the existing change at time
+            data_node = left_node.data
+            # change in population is additive
+            data_node.pop_after = data_node.pop_after + population_change
+        # propagate the change
+        self.propagate_change(time)
+
+    def insert_continuous_change(self, start_time, end_time, end_population):
+        """ Insert a continuous population change that ends at time `end_time`
+
+        Args:
+            start_time (:obj:`Rational`): time when the continuous population change started
+            end_time (:obj:`Rational`): time when the continuous population change ended
+            end_population (:obj:`float`): the species population at time `end_time`
+        """
+        # todo: rewrite
+        self._check_time('insert_discrete_change', time)
+        left_node = self.find(time)
+        if left_node._time != time:
+            # if no change exists at time, add one
+            pop, pop_slope = self.read(time, left_node=left_node)
+            # rate of change of population slope is additive
+            new_pop_slope = pop_slope + population_slope
+            kwargs = dict(pop_before=pop,
+                        pop_after=pop,
+                        pop_slope=new_pop_slope)
+            data = MultiAlgorithmSpeciesPopNode(**kwargs)
+            self._insert_after(left_node, DoublyLinkedNode(time, data))
+        else:
+            # else update the existing change at time
+            data = left_node.data
+            # rate of change of population slope is additive
+            data.pop_slope = data.pop_slope + population_slope
+        # propagate the change
+        self.propagate_change(time, duration=duration)
+
+    def propagate_change(self, time):
+        """ Propagate a change made at time `time` to the end of this history
+
+        Args:
+            time (:obj:`Rational`): time value
+        """
+        # todo: write
