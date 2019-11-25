@@ -28,8 +28,8 @@ from wc_sim import distributed_properties
 from wc_sim import message_types
 from wc_sim.multialgorithm_errors import NegativePopulationError, SpeciesPopulationError
 from wc_sim.species_populations import (LOCAL_POP_STORE, DynamicSpeciesState, SpeciesPopSimObject,
-                                        SpeciesPopulationCache, LocalSpeciesPopulation, MakeTestLSP,
-                                        AccessSpeciesPopulations)
+                                        SpeciesPopulationCache, LocalSpeciesPopulation, TempPopulationsLSP,
+                                        MakeTestLSP, AccessSpeciesPopulations)
 from wc_utils.util.rand import RandomStateManager
 import wc_lang
 
@@ -514,6 +514,28 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
                                       molecular_weights=make_test_lsp.molecular_weights)
         self.assertEqual(make_test_lsp_4.initial_population, make_test_lsp.initial_population)
         self.assertEqual(make_test_lsp_4.molecular_weights, make_test_lsp.molecular_weights)
+
+
+class TestTempPopulationsLSP(unittest.TestCase):
+
+    def setUp(self):
+        self.pop = 10
+        kwargs = dict(num_species=4, all_pops=self.pop, all_mol_weights=0)
+        make_test_lsp = MakeTestLSP(**kwargs)
+        self.test_lsp = make_test_lsp.local_species_pop
+        self.species_ids = make_test_lsp.species_ids
+
+    def test(self):
+        num_species = 2
+        species_ids = self.species_ids[:num_species]
+        temp_pop = 123
+        temp_pops = dict(zip(species_ids, [temp_pop]*num_species))
+        with TempPopulationsLSP(self.test_lsp, temp_pops):
+            for i in range(num_species):
+                self.assertEqual(self.test_lsp.read_one(1, species_ids[i]), temp_pop)
+
+        for i in range(num_species):
+            self.assertEqual(self.test_lsp.read_one(1, species_ids[i]), self.pop)
 
 
 class TestSpeciesPopulationCache(unittest.TestCase):

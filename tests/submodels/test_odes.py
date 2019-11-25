@@ -14,12 +14,14 @@ import unittest
 
 from wc_lang.core import ReactionParticipantAttribute
 from wc_lang.io import Reader
-from wc_sim.submodels.odes import OdeSubmodel
-from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
-from wc_sim.message_types import RunOde
-from wc_sim.testing.make_models import MakeModel
-from wc_sim.multialgorithm_errors import MultialgorithmError
+from wc_onto import onto
 from wc_sim.dynamic_components import DynamicRateLaw
+from wc_sim.message_types import RunOde
+from wc_sim.multialgorithm_errors import MultialgorithmError
+from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
+from wc_sim.submodels.odes import OdeSubmodel
+from wc_sim.testing.make_models import MakeModel
+from wc_sim.testing.utils import read_model_and_set_all_std_devs_to_0
 
 
 class TestOdeSubmodel(unittest.TestCase):
@@ -28,7 +30,7 @@ class TestOdeSubmodel(unittest.TestCase):
     # ODE_TEST_CASES = os.path.join(os.path.dirname(__file__), '..', 'fixtures', 'validation', 'testing', 'semantic')
 
     def setUp(self):
-        self.default_species_copy_number = 1_000_000_000
+        self.default_species_copy_number = 1000000000.123
         self.mdl_1_spec = \
             MakeModel.make_test_model('2 species, 1 reaction, with rates given by reactant population',
                                       init_vol_stds=[0],
@@ -44,7 +46,7 @@ class TestOdeSubmodel(unittest.TestCase):
         self.case_00001_model = Reader().run(self.sbml_case_00001_file, strict=False)
         '''
 
-    def make_ode_submodel(self, model, time_step=1.0):
+    def make_ode_submodel(self, model, time_step=1.0, submodel_name='submodel_1'):
         """ Make a MultialgorithmSimulation from a wc lang model """
         # assume a single submodel
         # todo: test concurrent OdeSubmodels, perhaps
@@ -53,7 +55,7 @@ class TestOdeSubmodel(unittest.TestCase):
         multialgorithm_simulation = MultialgorithmSimulation(model, args)
         simulation_engine, dynamic_model = multialgorithm_simulation.build_simulation()
         simulation_engine.initialize()
-        submodel_1 = dynamic_model.dynamic_submodels['submodel_1']
+        submodel_1 = dynamic_model.dynamic_submodels[submodel_name]
         return submodel_1
 
     ### test low level methods ###
@@ -82,7 +84,6 @@ class TestOdeSubmodel(unittest.TestCase):
 
     ### without running the simulator, test solving ###
     def test_set_up_ode_submodel(self):
-        self.assertEqual(self.ode_submodel_1, OdeSubmodel.instance)
         self.ode_submodel_1.set_up_ode_submodel()
 
         rate_of_change_expressions = self.ode_submodel_1.rate_of_change_expressions
@@ -104,27 +105,58 @@ class TestOdeSubmodel(unittest.TestCase):
         self.assertEqual(0, self.ode_submodel_1.right_hand_side(0, [num_reactants, 0], pop_change_rates))
         pop_change_rate_spec_1 = pop_change_rates[1]
         self.assertTrue(0 < pop_change_rate_spec_1)
+        self.ode_submodel_1.testing = False
+        self.assertEqual(0, self.ode_submodel_1.right_hand_side(0, [num_reactants, 0], pop_change_rates))
 
         # test exceptions
         short_list = [1]
-        with self.assertRaises(MultialgorithmError):
+        with self.assertRaisesRegex(MultialgorithmError, 'OdeSubmodel .*: solver.right_hand_side\(\) failed'):
             self.ode_submodel_1.right_hand_side(0, [num_reactants, 0], short_list)
-        self.ode_submodel_1.testing = False
-        self.assertEqual(1, self.ode_submodel_1.right_hand_side(0, [num_reactants, 0], short_list))
 
-        '''
-        # todo: use if species_populations are copied to the LocalSpeciesPopulation
         # rates decline as reactant converted to product
         for i in range(1, 10):
             self.ode_submodel_1.right_hand_side(0, [num_reactants - i, i], pop_change_rates)
             self.assertTrue(pop_change_rates[1] < pop_change_rate_spec_1)
             pop_change_rate_spec_1 = pop_change_rates[1]
-        '''
+
+    def test_compute_population_change_rates(self):
+        # test rxn: A[c] ==> B[c] @ 0.04 * B[c]
+        # slope of species populations depends linearly on [B[c]]
+        # doubling species populations doubles population slopes
+        one_rxn_exponential_file = os.path.join(os.path.dirname(__file__), '..', 'fixtures',
+                                                 'dynamic_tests', f'one_rxn_exponential.xlsx')
+        one_rxn_exponential_model = read_model_and_set_all_std_devs_to_0(one_rxn_exponential_file)
+        one_rxn_exponential_model.submodels[0].framework = onto['WC:ordinary_differential_equations']
+        ode_submodel = self.make_ode_submodel(one_rxn_exponential_model, submodel_name='submodel')
+        ode_submodel.current_species_populations()
+        new_species_populations = ode_submodel.populations.copy()
+        population_change_rates_1 = np.zeros(ode_submodel.num_species)
+        time = None
+        ode_submodel.compute_population_change_rates(time, new_species_populations,
+                                                            population_change_rates_1)
+        new_species_populations = 2 * new_species_populations
+        population_change_rates_2 = np.zeros(ode_submodel.num_species)
+        ode_submodel.compute_population_change_rates(time, new_species_populations,
+                                                            population_change_rates_2)
+        np.testing.assert_allclose(2 * population_change_rates_1, population_change_rates_2)
+
+        # test rxn: [compt_1]: spec_type_0 => spec_type_1 @ k * spec_type_0 / Avogadro / volume_compt_1
+        # doubling population also doubles volume, leaving the slopes of species populations unchanged
+        population_change_rates_1 = np.zeros(self.ode_submodel_1.num_species)
+        new_species_populations = np.full(self.ode_submodel_1.num_species,
+                                          self.default_species_copy_number)
+        self.ode_submodel_1.compute_population_change_rates(time, new_species_populations,
+                                                            population_change_rates_1)
+        new_species_populations.fill(2 * self.default_species_copy_number)
+        population_change_rates_2 = np.zeros(self.ode_submodel_1.num_species)
+        self.ode_submodel_1.compute_population_change_rates(time, new_species_populations,
+                                                            population_change_rates_2)
+        np.testing.assert_allclose(population_change_rates_1, population_change_rates_2)
 
     def test_current_species_populations(self):
         self.ode_submodel_1.current_species_populations()
         for pop in self.ode_submodel_1.populations:
-            self.assertEqual(pop, self.default_species_copy_number)
+            self.assertAlmostEqual(pop, self.default_species_copy_number, delta=0.5)
 
     def test_run_ode_solver(self):
         print()
@@ -134,7 +166,15 @@ class TestOdeSubmodel(unittest.TestCase):
             print('rate law:', rxn.rate_laws[0].expression.serialize())
         print(self.ode_submodel_1.local_species_population)
         print('\t'.join(OdeSubmodel.run_ode_solver_header))
-        n = 4
+        summary = ['external step',
+                   f'{0:.4e}',
+                   f'{0:.4e}',
+                   f'N/A',
+                   f'N/A',
+                   f'{self.default_species_copy_number:.1f}',
+                   f'{self.default_species_copy_number:.1f}']
+        print('\t'.join(summary))
+        n = 1
         for i in range(n):
             self.ode_submodel_1.run_ode_solver()
         print('end data')

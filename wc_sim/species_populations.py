@@ -1028,6 +1028,30 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         return '\n'.join(state)
 
 
+class TempPopulationsLSP(object):
+    """ A context manager for using temporary population values in a LocalSpeciesPopulation
+    """
+    def __init__(self, local_species_population, temporary_populations):
+        """ Sett populations temporarily, as specified in `temporary_populations`
+
+        Args:
+            local_species_population (:obj:`LocalSpeciesPopulation`): an existing `LocalSpeciesPopulation`
+            temporary_populations (:obj:`dict` of `float`): map: species_id -> temporary_population_value;
+                temporary populations for some species in `local_species_population`
+        """
+        self.local_species_population = local_species_population
+        local_species_population.set_temp_populations(temporary_populations)
+        self.species_ids = set(temporary_populations)
+
+    def __enter__(self):
+        return self.local_species_population
+
+    def __exit__(self, type, value, traceback):
+        """ Clear the temporary population values
+        """
+        self.local_species_population.clear_temp_populations(self.species_ids)
+
+
 class MakeTestLSP(object):
     """ Make a LocalSpeciesPopulation for testing
 
