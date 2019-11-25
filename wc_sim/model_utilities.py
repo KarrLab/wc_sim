@@ -124,7 +124,7 @@ class ModelUtilities(object):
             conc = max(0., random_state.normal(mean, std))
 
             if not isinstance(dist_conc.units, unit_registry.Unit):
-                raise ValueError('Unsupported units "{}"'.format(dist_conc.units))
+                raise ValueError('Unsupported unit type "{}"'.format(type(dist_conc.units)))
             units = unit_registry.parse_expression(str(dist_conc.units))
 
             try:

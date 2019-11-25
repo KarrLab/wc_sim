@@ -80,7 +80,7 @@ class TestModelUtilities(unittest.TestCase):
             species_types[id] = model.species_types.create(id=id, structure=structure)
             cus_species_types[id] = cu
 
-        for other in ['no_units', 'no_concentration', 'no_such_concentration_unit']:
+        for other in ['no_units', 'no_concentration', 'no_std']:
             species_types[other] = model.species_types.create(id=other, structure=structure)
 
         species = {}
@@ -89,7 +89,7 @@ class TestModelUtilities(unittest.TestCase):
                                            compartment=compartment_c)
             species[key].id = species[key].gen_id()
 
-        conc_value = 2.
+        conc_value = 2_000.
         std_value = 0.
         for key, sp in species.items():
             if key in cus_species_types:
@@ -97,6 +97,9 @@ class TestModelUtilities(unittest.TestCase):
                                                       units=cus_species_types[key])
             elif key == 'no_units':
                 wc_lang.DistributionInitConcentration(species=sp, mean=conc_value, std=std_value)
+            elif key == 'no_std':
+                wc_lang.DistributionInitConcentration(species=sp, mean=conc_value, std=float('NaN'),
+                                                      units=cus_species_types['molecule'])
             elif key == 'no_concentration':
                 continue
 
@@ -123,6 +126,10 @@ class TestModelUtilities(unittest.TestCase):
         copy_number = conc_to_molecules(species['no_concentration'],
                                         species['no_concentration'].compartment.init_volume.mean, random_state)
         self.assertEqual(copy_number, 0)
+        conc = species['no_std'].distribution_init_concentration
+        copy_number = conc_to_molecules(species['no_std'], species['no_std'].compartment.init_volume.mean, random_state)
+        self.assertNotEqual(copy_number, conc_value)
+
         with self.assertRaises(KeyError):
             conc_to_molecules(species['mol dm^-2'], species['no_concentration'].compartment.init_volume.mean,
                               random_state)
@@ -130,16 +137,15 @@ class TestModelUtilities(unittest.TestCase):
         species_tmp = wc_lang.Species(species_type=species_type,
                                       compartment=compartment_c)
         species_tmp.id = species_tmp.gen_id()
-        wc_lang.DistributionInitConcentration(species=species_tmp, mean=conc_value, std=std_value, 
-            units='molecule')
-        with self.assertRaises(ValueError):
-            ModelUtilities.sample_copy_num_from_concentration(species_tmp, species_tmp.compartment.init_volume.mean,
-                random_state)
-        
+        wc_lang.DistributionInitConcentration(species=species_tmp, mean=conc_value, std=std_value,
+                                              units='not type(unit_registry.Unit)')
+        with self.assertRaisesRegex(ValueError, 'Unsupported unit type'):
+            conc_to_molecules(species_tmp, species_tmp.compartment.init_volume.mean, random_state)
+
         species_tmp2 = wc_lang.Species(species_type=species_type,
                                        compartment=compartment_c)
         species_tmp2.id = species_tmp2.gen_id()
-        wc_lang.DistributionInitConcentration(species=species_tmp2, mean=conc_value, std=std_value, units=0)
-        with self.assertRaises(ValueError):
-            ModelUtilities.sample_copy_num_from_concentration(species_tmp2, species_tmp2.compartment.init_volume.mean,
-                random_state)
+        wc_lang.DistributionInitConcentration(species=species_tmp2, mean=conc_value, std=std_value,
+                                              units=wc_lang.InitVolume.units.choices[0])
+        with self.assertRaisesRegex(ValueError, 'Unsupported unit'):
+            conc_to_molecules(species_tmp2, species_tmp2.compartment.init_volume.mean, random_state)
