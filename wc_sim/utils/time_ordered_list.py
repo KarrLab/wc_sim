@@ -469,6 +469,7 @@ class MultiAlgorithmSpeciesPopHistory(TimeOrderedList):
             data_node = left_node.data
             # change in population is additive
             data_node.pop_after = data_node.pop_after + population_change
+
         # propagate the change
         self.propagate_change(time)
 
@@ -479,25 +480,26 @@ class MultiAlgorithmSpeciesPopHistory(TimeOrderedList):
             start_time (:obj:`Rational`): time when the continuous population change started
             end_time (:obj:`Rational`): time when the continuous population change ended
             end_population (:obj:`float`): the species population at time `end_time`
+
+        Raises:
+            :obj:`ValueError`: if `end_time` <= `start_time`
         """
-        # todo: rewrite
-        self._check_time('insert_discrete_change', time)
-        left_node = self.find(time)
-        if left_node._time != time:
-            # if no change exists at time, add one
-            pop, pop_slope = self.read(time, left_node=left_node)
-            # rate of change of population slope is additive
-            new_pop_slope = pop_slope + population_slope
-            kwargs = dict(pop_before=pop,
-                        pop_after=pop,
-                        pop_slope=new_pop_slope)
-            data = MultiAlgorithmSpeciesPopNode(**kwargs)
-            self._insert_after(left_node, DoublyLinkedNode(time, data))
-        else:
-            # else update the existing change at time
-            data = left_node.data
-            # rate of change of population slope is additive
-            data.pop_slope = data.pop_slope + population_slope
+        self._check_time('insert_continuous_change: start_time', start_time)
+        self._check_time('insert_continuous_change: end_time', end_time)
+        if end_time <= start_time:
+            raise ValueError(f"end_time {end_time} <= start_time {start_time}")
+
+        # slope of change = (end_population - pop @ end_time) / (end_time - start_time)
+        pop_at_end_time, _ = self.read(end_time)
+        slope_of_change = (end_population - pop_at_end_time) / (end_time - start_time)
+        if slope_of_change == 0:
+            return
+
+        # the slope of change is recorded by changing populations in [start_time, end_time]:
+        # 1) a node at `start_time` records the current population there
+        # 2) all nodes in (start_time, end_time) have their populations changed to reflect the slope
+        # 3) a node at `end_time` has pop_before = end_population
+
         # propagate the change
         self.propagate_change(time, duration=duration)
 
@@ -506,5 +508,14 @@ class MultiAlgorithmSpeciesPopHistory(TimeOrderedList):
 
         Args:
             time (:obj:`Rational`): time value
+        """
+        # todo: write
+
+    def average_pop(self, start_time, end_time):
+        """ Determine the average population from `start_time` to `end_time`
+
+        Args:
+            start_time (:obj:`Rational`): start time of the average
+            end_time (:obj:`Rational`): end time of the average
         """
         # todo: write
