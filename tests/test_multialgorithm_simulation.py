@@ -30,8 +30,7 @@ from wc_sim.run_results import RunResults
 from wc_sim.simulation import Simulation
 from wc_sim.species_populations import LocalSpeciesPopulation
 from wc_sim.testing.make_models import MakeModel
-from wc_sim.testing.utils import (read_model_and_set_all_std_devs_to_0, check_simul_results,
-                                  verify_hand_solved_model, plot_expected_vs_actual)
+from wc_sim.testing.utils import check_simul_results, verify_independently_solved_model
 from wc_utils.util.dict import DictUtil
 from wc_utils.util.rand import RandomStateManager
 
@@ -232,11 +231,13 @@ class TestMultialgorithmSimulationDynamically(unittest.TestCase):
     """
     Approach:
         Test dynamics:
-            mass
-            volume
-            accounted mass
-            accounted volume
-            density, which should be constant
+            Species trajectories
+            Property trajectories:
+                mass
+                volume
+                accounted mass
+                accounted volume
+                density, which should be constant
         Two tests:
             Deterministic: with initial distributions that have standard deviation = 0
             Stochastic: with 0<stds for initial distributions
@@ -251,12 +252,44 @@ class TestMultialgorithmSimulationDynamically(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tmp_dir)
 
-    def test_hand_solved_models(self):
-        models = 'static one_reaction_linear one_rxn_exponential one_exchange_rxn_compt_growth stop_conditions'.split()
+    def test_convert_to_sbml(self):
+        from wc_lang.sbml import io as sbml_io
+        from wc_lang.io import Reader, Writer
+        from wc_sim.testing.utils import read_model_for_test
+        all_models = ['static', 'one_reaction_linear', 'one_rxn_exponential', 'one_exchange_rxn_compt_growth',
+                  'stop_conditions']
+        for model_name in all_models:
+            print(f'converting {model_name}')
+            dirname = os.path.join(os.path.dirname(__file__), 'fixtures', 'dynamic_tests')
+            model_filename = os.path.join(dirname, f'{model_name}.xlsx')
+            integration_framework = 'ordinary_differential_equations'
+            model = read_model_for_test(model_filename, integration_framework=f'WC:{integration_framework}')
+
+            # write wc_lang file
+            sbml_dirname = os.path.join(dirname, f'{model_name}_sbml')
+            if not os.path.isdir(sbml_dirname):
+                os.makedirs(sbml_dirname)
+
+            lang_filename = os.path.join(sbml_dirname, f'{model_name}.xlsx')
+            print(f'writing {lang_filename}')
+            Writer().run(lang_filename, model)
+            model_from_file = Reader().run(lang_filename)[Model][0]
+            assert model_from_file.validate() is None
+
+            # write SBML file
+            try:
+                sbml_io.SbmlWriter().run(model_from_file, sbml_dirname)
+            except Exception as e:
+                print(e)
+
+    def test_independently_solved_models(self):
+        all_models = ['static', 'one_reaction_linear', 'one_rxn_exponential', 'one_exchange_rxn_compt_growth',
+                  'stop_conditions']
+        models = ['one_reaction_linear']
         for model_name in models:
             print(f'testing {model_name}')
             model_filename = os.path.join(os.path.dirname(__file__), 'fixtures', 'dynamic_tests', f'{model_name}.xlsx')
-            verify_hand_solved_model(self, model_filename, self.results_dir)
+            verify_independently_solved_model(self, model_filename, self.results_dir)
 
     def test_one_reaction_constant_species_pop(self):
         # test statics

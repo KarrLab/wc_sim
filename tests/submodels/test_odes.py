@@ -97,7 +97,7 @@ class TestOdeSubmodel(unittest.TestCase):
         self.assertEqual(type(rate_law), DynamicRateLaw)
 
     def test_create_ode_solver(self):
-        self.assertTrue(isinstance(self.ode_submodel_1.create_ode_solver(), ode))
+        self.assertTrue(isinstance(self.ode_submodel_1.create_ode_solver(**{}), ode))
 
     def test_right_hand_side(self):
         pop_change_rates = [0, 0]

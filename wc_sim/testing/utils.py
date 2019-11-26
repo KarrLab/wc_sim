@@ -255,99 +255,101 @@ def define_trajectory_classes(model):
     return(trajectory_classes)
 
 
-def verify_hand_solved_model(test_case, model_filename, results_dir):
-    # empty results_dir
-    for file in os.listdir(results_dir):
-        file_path = os.path.join(results_dir, file)
-        if os.path.isfile(file_path):
-            os.unlink(file_path)
+def verify_independently_solved_model(test_case, model_filename, results_dir):
 
     # read model while ignoring missing models, with std dev = 0
-    integration_framework='ordinary_differential_equations'
-    model = read_model_for_test(model_filename, integration_framework=f'WC:{integration_framework}')
+    for integration_framework in ['deterministic_simulation_algorithm', 'ordinary_differential_equations']:
+        # empty results_dir
+        for file in os.listdir(results_dir):
+            file_path = os.path.join(results_dir, file)
+            if os.path.isfile(file_path):
+                os.unlink(file_path)
 
-    # simulate model
-    end_time = model.parameters.get_one(id='end_time').value
-    checkpoint_period = model.parameters.get_one(id='checkpoint_period').value
-    args = dict(results_dir=results_dir,
-                checkpoint_period=checkpoint_period)
-    simulation = Simulation(model)
-    _, results_dir = simulation.run(end_time=end_time, **args)
+        model = read_model_for_test(model_filename, integration_framework=f'WC:{integration_framework}')
 
-    # test dynamics
-    # read expected trajectories
-    trajectories = define_trajectory_classes(model)
-    SpeciesTrajectory = trajectories['SpeciesTrajectory']
-    AggregateTrajectory = trajectories['AggregateTrajectory']
-    trajectory_model_classes = list(trajectories.values())
-    expected_trajectories = \
-        obj_tables.io.Reader().run(model_filename, models=trajectory_model_classes,
-                                   ignore_extra_models=True, ignore_attribute_order=True)
+        # simulate model
+        end_time = model.parameters.get_one(id='end_time').value
+        checkpoint_period = model.parameters.get_one(id='checkpoint_period').value
+        args = dict(results_dir=results_dir,
+                    checkpoint_period=checkpoint_period,
+                    time_step=0.1)
+        simulation = Simulation(model)
+        _, results_dir = simulation.run(end_time=end_time, **args)
 
-    # get species trajectories from model workbook
-    expected_species_trajectories = {}
-    species_ids = [species.id for species in model.get_species()]
-    for species_id in species_ids:
-        expected_species_trajectories[species_id] = []
-    for species_id in species_ids:
+        # test dynamics
+        # read expected trajectories
+        trajectories = define_trajectory_classes(model)
+        SpeciesTrajectory = trajectories['SpeciesTrajectory']
+        AggregateTrajectory = trajectories['AggregateTrajectory']
+        trajectory_model_classes = list(trajectories.values())
+        expected_trajectories = \
+            obj_tables.io.Reader().run(model_filename, models=trajectory_model_classes,
+                                       ignore_extra_models=True, ignore_attribute_order=True)
+
+        # get species trajectories from model workbook
+        expected_species_trajectories = {}
+        species_ids = [species.id for species in model.get_species()]
+        for species_id in species_ids:
+            expected_species_trajectories[species_id] = []
+        for species_id in species_ids:
+            for expected_species_trajectory in expected_trajectories[SpeciesTrajectory]:
+                expected_pop = getattr(expected_species_trajectory, species_id_to_pop_attr(species_id))
+                expected_species_trajectories[species_id].append(expected_pop)
+        expected_trajectory_times = []
         for expected_species_trajectory in expected_trajectories[SpeciesTrajectory]:
-            expected_pop = getattr(expected_species_trajectory, species_id_to_pop_attr(species_id))
-            expected_species_trajectories[species_id].append(expected_pop)
-    expected_trajectory_times = []
-    for expected_species_trajectory in expected_trajectories[SpeciesTrajectory]:
-        expected_trajectory_times.append(expected_species_trajectory.time)
+            expected_trajectory_times.append(expected_species_trajectory.time)
 
-    # plot trajectories
-    plots_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'tests', 'results'))
-    os.makedirs(plots_dir, exist_ok=True)
-    plots = plot_expected_vs_actual(simulation.dynamic_model,
-                                    integration_framework,
-                                    results_dir,
-                                    trajectory_times=expected_trajectory_times,
-                                    plots_dir=plots_dir,
-                                    expected_species_trajectories=expected_species_trajectories)
+        # plot trajectories
+        plots_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'tests', 'results'))
+        os.makedirs(plots_dir, exist_ok=True)
+        plots = plot_expected_vs_simulated(simulation.dynamic_model,
+                                        integration_framework,
+                                        results_dir,
+                                        trajectory_times=expected_trajectory_times,
+                                        plots_dir=plots_dir,
+                                        expected_species_trajectories=expected_species_trajectories)
 
-    # get aggregate trajectories from model workbook
-    expected_aggregate_trajectories = {}
-    for dyn_compartment_id in simulation.dynamic_model.dynamic_compartments:
-        expected_aggregate_trajectories[dyn_compartment_id] = defaultdict(list)
-    expected_trajectory_times = []
-    for attr in AggregateTrajectory.Meta.local_attributes.values():
-        attr_name = attr.name
-        if attr_name != 'time':
-            if attr_name.startswith('compartment'):
-                compartment_id = attr_name.split(' ')[1]
+        # get aggregate trajectories from model workbook
+        expected_aggregate_trajectories = {}
+        for dyn_compartment_id in simulation.dynamic_model.dynamic_compartments:
+            expected_aggregate_trajectories[dyn_compartment_id] = defaultdict(list)
+        expected_trajectory_times = []
+        for attr in AggregateTrajectory.Meta.local_attributes.values():
+            attr_name = attr.name
+            if attr_name != 'time':
+                if attr_name.startswith('compartment'):
+                    compartment_id = attr_name.split(' ')[1]
+                    for expected_aggregate_trajectory in expected_trajectories[AggregateTrajectory]:
+                        aggregate_prop = ' '.join(attr_name.split(' ')[2:])
+                        expected_aggregate_trajectories[compartment_id][aggregate_prop].append(
+                            getattr(expected_aggregate_trajectory, attr.name))
+            else:
                 for expected_aggregate_trajectory in expected_trajectories[AggregateTrajectory]:
-                    aggregate_prop = ' '.join(attr_name.split(' ')[2:])
-                    expected_aggregate_trajectories[compartment_id][aggregate_prop].append(
-                        getattr(expected_aggregate_trajectory, attr.name))
-        else:
-            for expected_aggregate_trajectory in expected_trajectories[AggregateTrajectory]:
-                expected_trajectory_times.append(expected_aggregate_trajectory.time)
+                    expected_trajectory_times.append(expected_aggregate_trajectory.time)
 
-    # plot trajectories
-    plots = plot_expected_vs_actual(simulation.dynamic_model,
-                                    integration_framework,
-                                    results_dir,
-                                    trajectory_times=expected_trajectory_times,
-                                    plots_dir=plots_dir,
-                                    expected_property_trajectories=expected_aggregate_trajectories)
-    print(f"trajectories plotted in '{plots}'")
+        # plot trajectories
+        plots = plot_expected_vs_simulated(simulation.dynamic_model,
+                                        integration_framework,
+                                        results_dir,
+                                        trajectory_times=expected_trajectory_times,
+                                        plots_dir=plots_dir,
+                                        expected_property_trajectories=expected_aggregate_trajectories)
+        print(f"trajectories plotted in '{plots}'")
 
-    # compare expected & actual trajectories
-    check_simul_results(test_case, simulation.dynamic_model, results_dir,
-                             expected_times=expected_trajectory_times,
-                             expected_species_trajectories=expected_species_trajectories,
-                             expected_property_trajectories=expected_aggregate_trajectories)
+        # compare expected & simulated trajectories
+        check_simul_results(test_case, simulation.dynamic_model, results_dir,
+                                 expected_times=expected_trajectory_times,
+                                 expected_species_trajectories=expected_species_trajectories,
+                                 expected_property_trajectories=expected_aggregate_trajectories)
 
-def plot_expected_vs_actual(dynamic_model,
+def plot_expected_vs_simulated(dynamic_model,
                             integration_algorithm,
                             results_dir,
                             trajectory_times,
                             plots_dir=None,
                             expected_species_trajectories=None,
                             expected_property_trajectories=None):
-    """ Plot expected vs. actual trajectories
+    """ Plot expected vs. simulated trajectories
 
     Args:
         dynamic_model (:obj:`DynamicModel`): the simulation's :obj:`DynamicModel`
@@ -381,13 +383,13 @@ def plot_expected_vs_actual(dynamic_model,
 
     # plotting options
     pyplot.rc('font', size=6)
-    # linestyles, designed so that actual and expected curves which are equal will both be visible
+    # linestyles, designed so that simulated and expected curves which are equal will both be visible
     loosely_dashed = (0, (4, 6))
     dashdotted = (0, (2, 3, 3, 2))
-    actual_plot_kwargs = dict(color='blue', label='actual', linestyle=loosely_dashed)
+    actual_plot_kwargs = dict(color='blue', label='simulated', linestyle=loosely_dashed)
     expected_plot_kwargs = dict(color='red', label='expected', linestyle=dashdotted)
 
-    # plot expected vs. actual trajectories of species
+    # plot expected vs. simulated trajectories of species
     if trajectory_times and expected_species_trajectories:
         # calculate num subplots
         num_subplots = 0
@@ -421,7 +423,7 @@ def plot_expected_vs_actual(dynamic_model,
             fig.savefig(filename)
             pyplot.close(fig)
 
-    # plot expected vs. actual trajectories of properties of compartments
+    # plot expected vs. simulated trajectories of properties of compartments
     units_for_properties = {
         'volume': 'l',
         'mass': 'g',
