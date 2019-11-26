@@ -24,29 +24,37 @@ import obj_tables
 import wc_lang
 
 
-def read_model_and_set_all_std_devs_to_0(model_filename):
-    """ Read a model and set all standard deviations to 0
+def read_model_for_test(model_filename, set_std_devs_to_0=True, integration_framework=None):
+    """ Read a model and prepare it for tests
 
     Args:
         model_filename (:obj:`str`): `wc_lang` model file
+        set_std_devs_to_0 (:obj:`bool`, optional): if set, set all standard deviations in distributions
+            to 0
+        integration_framework (:obj:`str`): if provided, set all submodels to this integration framework
 
     Returns:
         :obj:`Model`: a whole-cell model
     """
     # read model while ignoring missing models
-    data = Reader().run(model_filename, ignore_extra_models=True)
-    # set all standard deviations to 0
-    models_with_std_devs = (wc_lang.InitVolume,
-                            wc_lang.Ph,
-                            wc_lang.DistributionInitConcentration,
-                            wc_lang.Parameter,
-                            wc_lang.Observation,
-                            wc_lang.Conclusion)
-    for model, instances in data.items():
-        if model in models_with_std_devs:
-            for instance in instances:
-                instance.std = 0
-    return data[Model][0]
+    all_models = Reader().run(model_filename, ignore_extra_models=True)
+    if set_std_devs_to_0:
+        # set all standard deviations to 0
+        models_with_std_devs = (wc_lang.InitVolume,
+                                wc_lang.Ph,
+                                wc_lang.DistributionInitConcentration,
+                                wc_lang.Parameter,
+                                wc_lang.Observation,
+                                wc_lang.Conclusion)
+        for model, instances in all_models.items():
+            if model in models_with_std_devs:
+                for instance in instances:
+                    instance.std = 0
+    test_wc_model = all_models[Model][0]
+    if integration_framework:
+        for submodel in test_wc_model.submodels:
+            submodel.framework = onto[integration_framework]
+    return test_wc_model
 
 
 def check_simul_results(test_case, dynamic_model, results_dir, expected_initial_values=None,
@@ -255,7 +263,9 @@ def verify_hand_solved_model(test_case, model_filename, results_dir):
             os.unlink(file_path)
 
     # read model while ignoring missing models, with std dev = 0
-    model = read_model_and_set_all_std_devs_to_0(model_filename)
+    integration_framework='ordinary_differential_equations'
+    model = read_model_for_test(model_filename, integration_framework=f'WC:{integration_framework}')
+
     # simulate model
     end_time = model.parameters.get_one(id='end_time').value
     checkpoint_period = model.parameters.get_one(id='checkpoint_period').value
@@ -291,6 +301,7 @@ def verify_hand_solved_model(test_case, model_filename, results_dir):
     plots_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'tests', 'results'))
     os.makedirs(plots_dir, exist_ok=True)
     plots = plot_expected_vs_actual(simulation.dynamic_model,
+                                    integration_framework,
                                     results_dir,
                                     trajectory_times=expected_trajectory_times,
                                     plots_dir=plots_dir,
@@ -316,6 +327,7 @@ def verify_hand_solved_model(test_case, model_filename, results_dir):
 
     # plot trajectories
     plots = plot_expected_vs_actual(simulation.dynamic_model,
+                                    integration_framework,
                                     results_dir,
                                     trajectory_times=expected_trajectory_times,
                                     plots_dir=plots_dir,
@@ -329,6 +341,7 @@ def verify_hand_solved_model(test_case, model_filename, results_dir):
                              expected_property_trajectories=expected_aggregate_trajectories)
 
 def plot_expected_vs_actual(dynamic_model,
+                            integration_algorithm,
                             results_dir,
                             trajectory_times,
                             plots_dir=None,
@@ -338,6 +351,7 @@ def plot_expected_vs_actual(dynamic_model,
 
     Args:
         dynamic_model (:obj:`DynamicModel`): the simulation's :obj:`DynamicModel`
+        integration_algorithm (:obj:`str`): the integration algorithm
         results_dir (:obj:`str`): simulation results directory
         trajectory_times (:obj:`iterator`): time sequence for all trajectories
         plots_dir (:obj:`str`, optional): directory for plot files
@@ -382,11 +396,11 @@ def plot_expected_vs_actual(dynamic_model,
             if not np.isnan(expected_trajectory).all():
                 num_subplots += 1
         if not num_subplots:
-            print(f"no expected data provided for plot of {model_id} species trajectories")
+            print(f"no expected data for plot of {model_id} species trajectories using {integration_algorithm}")
         else:
             nrows, ncols = nrows_ncols(num_subplots)
             fig = pyplot.figure()
-            fig.suptitle(f'Species copy numbers of model {model_id}')
+            fig.suptitle(f'Species copy numbers of model {model_id} using {integration_algorithm}')
             index = 0
             for species_id, expected_trajectory in expected_species_trajectories.items():
                 if np.isnan(expected_trajectory).all():
@@ -402,7 +416,7 @@ def plot_expected_vs_actual(dynamic_model,
                 y_label = f'{species_id} (copy number)'
                 axes.set_ylabel(y_label)
                 axes.legend()
-            figure_name = f'{model_id}_species_trajectories'
+            figure_name = f'{model_id}_using_{integration_algorithm}_species_trajectories'
             filename = os.path.join(plots_dir, figure_name + '.pdf')
             fig.savefig(filename)
             pyplot.close(fig)
@@ -426,11 +440,11 @@ def plot_expected_vs_actual(dynamic_model,
             properties.update(property_array_dict.keys())
 
         if not len(properties):
-            print(f"no properties provided for plot of {model_id} properties trajectories")
+            print(f"no properties for plot of {model_id} using {integration_algorithm} properties trajectories")
         else:
             nrows, ncols = nrows_ncols(len(properties))
             fig = pyplot.figure()
-            fig.suptitle(f'Properties of model {model_id}')
+            fig.suptitle(f'Properties of model {model_id} using {integration_algorithm}')
             index = 0
             for property in properties:
                 for compartment_id in expected_property_trajectories:
@@ -449,7 +463,7 @@ def plot_expected_vs_actual(dynamic_model,
                     y_label = f"{property} in {compartment_id} ({get_units(property)})"
                     axes.set_ylabel(y_label)
                     axes.legend()
-                figure_name = f'{model_id}_properties'
+                figure_name = f'{model_id}_using_{integration_algorithm}_properties'
                 filename = os.path.join(plots_dir, figure_name + '.pdf')
                 fig.savefig(filename)
                 pyplot.close(fig)

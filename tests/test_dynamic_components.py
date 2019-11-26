@@ -29,7 +29,7 @@ from wc_sim.dynamic_components import (SimTokCodes, WcSimToken, DynamicComponent
 from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.species_populations import LocalSpeciesPopulation, MakeTestLSP
-from wc_sim.testing.utils import read_model_and_set_all_std_devs_to_0
+from wc_sim.testing.utils import read_model_for_test
 from wc_utils.util.rand import RandomStateManager
 from wc_utils.util.units import unit_registry
 import obj_tables
@@ -561,7 +561,7 @@ class TestDynamicModel(unittest.TestCase):
         # calculations made in the model's spreadsheet
 
         # read model while ignoring missing models
-        model = read_model_and_set_all_std_devs_to_0(self.MODEL_FILENAME)
+        model = read_model_for_test(self.MODEL_FILENAME)
         # create dynamic model
         multialgorithm_simulation = MultialgorithmSimulation(model, None)
         multialgorithm_simulation.initialize_components()

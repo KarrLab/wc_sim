@@ -15,8 +15,7 @@ import unittest
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.simulation import Simulation
 from wc_sim.testing.make_models import MakeModel
-from wc_sim.testing.utils import (read_model_and_set_all_std_devs_to_0, check_simul_results,
-                                  plot_expected_vs_actual)
+from wc_sim.testing.utils import check_simul_results, plot_expected_vs_actual
 
 
 class TestTestingUtils(unittest.TestCase):
@@ -99,6 +98,7 @@ class TestTestingUtils(unittest.TestCase):
         plots_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'tests', 'results'))
         os.makedirs(plots_dir, exist_ok=True)
         plot_expected_vs_actual(dynamic_model,
+                                'ordinary_differential_equations',
                                 results_dir,
                                 trajectory_times=[0, 1, 2],
                                 plots_dir=plots_dir,
@@ -108,6 +108,7 @@ class TestTestingUtils(unittest.TestCase):
                                     {'compt_1':
                                         {'mass':[1.000e-13, 1.000e-13, 9.999e-14]}})
         plot_expected_vs_actual(dynamic_model,
+                                'ordinary_differential_equations',
                                 results_dir,
                                 trajectory_times=[0, 1, 2],
                                 plots_dir=plots_dir,
@@ -115,12 +116,14 @@ class TestTestingUtils(unittest.TestCase):
                                     {'compt_1':
                                         {'mass':[1.000e-13, 1.000e-13, 9.999e-14]}})
         plot_expected_vs_actual(dynamic_model,
+                                'ordinary_differential_equations',
                                 results_dir,
                                 trajectory_times=[0, 1, 2],
                                 plots_dir=plots_dir,
                                 expected_species_trajectories=\
                                     {'spec_type_0[compt_1]':[10000., 10000., 9998.]})
         plot_expected_vs_actual(dynamic_model,
+                                'ordinary_differential_equations',
                                 results_dir,
                                 trajectory_times=[0, 1, 2],
                                 plots_dir=plots_dir,

@@ -21,7 +21,7 @@ from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.submodels.odes import OdeSubmodel
 from wc_sim.testing.make_models import MakeModel
-from wc_sim.testing.utils import read_model_and_set_all_std_devs_to_0
+from wc_sim.testing.utils import read_model_for_test
 
 
 class TestOdeSubmodel(unittest.TestCase):
@@ -125,9 +125,9 @@ class TestOdeSubmodel(unittest.TestCase):
         # doubling species populations doubles population slopes
         one_rxn_exponential_file = os.path.join(os.path.dirname(__file__), '..', 'fixtures',
                                                  'dynamic_tests', f'one_rxn_exponential.xlsx')
-        one_rxn_exponential_model = read_model_and_set_all_std_devs_to_0(one_rxn_exponential_file)
-        one_rxn_exponential_model.submodels[0].framework = onto['WC:ordinary_differential_equations']
-        ode_submodel = self.make_ode_submodel(one_rxn_exponential_model, submodel_name='submodel')
+        one_rxn_exp_mdl = read_model_for_test(one_rxn_exponential_file,
+                                              integration_framework='WC:ordinary_differential_equations')
+        ode_submodel = self.make_ode_submodel(one_rxn_exp_mdl, submodel_name='submodel')
         ode_submodel.current_species_populations()
         new_species_populations = ode_submodel.populations.copy()
         population_change_rates_1 = np.zeros(ode_submodel.num_species)
