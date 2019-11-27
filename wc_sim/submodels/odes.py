@@ -41,7 +41,10 @@ class OdeSubmodel(DynamicSubmodel):
         ode_species_ids (:obj:`list`): ids of the species used by this ODE solver
         ode_species_ids_set (:obj:`set`): ids of the species used by this ODE solver
         num_species (:obj:`int`): number of species used by this ODE solver
-        populations (:obj:`numpy.ndarray`): pre-allocated numpy arrays for storing species populations
+        populations (:obj:`numpy.ndarray`): pre-allocated numpy array for storing species populations
+        non_negative_populations (:obj:`numpy.ndarray`): pre-allocated numpy array for non-negative
+            species populations
+        zero_populations (:obj:`numpy.ndarray`): pre-allocated numpy array
         rate_of_change_expressions (:obj:`list` of :obj:`list` of :obj:`tuple`): for each species,
             a list of its (coefficient, rate law) pairs
         adjustments (:obj:`dict`): pre-allocated adjustments for passing changes to LocalSpeciesPopulation
@@ -132,6 +135,8 @@ class OdeSubmodel(DynamicSubmodel):
         # pre-allocate numpy arrays for populations
         self.num_species = len(self.ode_species_ids)
         self.populations = np.zeros(self.num_species)
+        self.non_negative_populations = np.zeros(self.num_species)
+        self.zero_populations = np.zeros(self.num_species)
 
     def get_solver_lock(self):
         cls = self.__class__
@@ -218,7 +223,12 @@ class OdeSubmodel(DynamicSubmodel):
 
         # Use TempPopulationsLSP to temporarily set the populations of species used by this ODE
         # to the values provided by the ODE solver
-        temporary_populations = dict(zip(self.ode_species_ids, new_species_populations))
+
+        # Replace negative population values with 0 in rate calculation, as recommended by the
+        # section "Advice on controlling unphysical negative values" in
+        # Hindmarsh, Serban and Reynolds, User Documentation for cvode v5.0.0, 2019
+        self.non_negative_populations = np.maximum(self.zero_populations, new_species_populations)
+        temporary_populations = dict(zip(self.ode_species_ids, self.non_negative_populations))
         with TempPopulationsLSP(self.local_species_population, temporary_populations):
             for idx in range(self.num_species):
                 species_rate_of_change = 0.0

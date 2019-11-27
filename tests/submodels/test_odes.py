@@ -140,6 +140,13 @@ class TestOdeSubmodel(unittest.TestCase):
                                                             population_change_rates_2)
         np.testing.assert_allclose(2 * population_change_rates_1, population_change_rates_2)
 
+        # compute_population_change_rates replaces negative species populations with 0s in the rate computation
+        # this produces change rates of 0
+        new_species_populations.fill(-1)
+        ode_submodel.compute_population_change_rates(time, new_species_populations,
+                                                            population_change_rates_2)
+        np.testing.assert_array_equal(population_change_rates_2, np.zeros(ode_submodel.num_species))
+
         # test rxn: [compt_1]: spec_type_0 => spec_type_1 @ k * spec_type_0 / Avogadro / volume_compt_1
         # doubling population also doubles volume, leaving the slopes of species populations unchanged
         population_change_rates_1 = np.zeros(self.ode_submodel_1.num_species)
