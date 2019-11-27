@@ -86,10 +86,10 @@ def check_simul_results(test_case, dynamic_model, results_dir, expected_initial_
         for compartment_id in expected_initial_values:
             dynamic_compartment = dynamic_model.dynamic_compartments[compartment_id]
             for initial_attribute, expected_value in expected_initial_values[compartment_id].items():
-                actual_value = getattr(dynamic_compartment, initial_attribute)
-                test_case.assertTrue(math.isclose(actual_value, expected_value, rel_tol=rel_tol),
+                simulated_value = getattr(dynamic_compartment, initial_attribute)
+                test_case.assertTrue(math.isclose(simulated_value, expected_value, rel_tol=rel_tol),
                                      msg=f"In model {dynamic_model.id}, {initial_attribute} is "
-                                     f"{actual_value}, not within {rel_tol} of {expected_value}")
+                                     f"{simulated_value}, not within {rel_tol} of {expected_value}")
 
     # get results
     if expected_species_trajectories or expected_property_trajectories:
@@ -112,8 +112,8 @@ def check_simul_results(test_case, dynamic_model, results_dir, expected_initial_
         for species_id, expected_trajectory in expected_species_trajectories.items():
             if np.isnan(expected_trajectory).all():
                 continue
-            actual_trajectory = populations_df[species_id]
-            np.testing.assert_allclose(actual_trajectory, expected_trajectory, equal_nan=False,
+            simulated_trajectory = populations_df[species_id]
+            np.testing.assert_allclose(simulated_trajectory, expected_trajectory, equal_nan=False,
                                        rtol=rel_tol,
                                        err_msg=f"In model {dynamic_model.id}, trajectory for {species_id} "
                                            f"not almost equal to expected trajectory:")
@@ -129,14 +129,14 @@ def check_simul_results(test_case, dynamic_model, results_dir, expected_initial_
             for property in properties:
                 if compartment_id not in aggregate_states_df:
                     continue
-                actual_trajectory = aggregate_states_df[compartment_id][property]
+                simulated_trajectory = aggregate_states_df[compartment_id][property]
                 expected_trajectory = expected_property_trajectories[compartment_id][property]
                 if np.isnan(expected_trajectory).all():
                     continue
                 # todo: investigate possible numpy bug: without list(), this fails with
                 # "TypeError: ufunc 'isfinite' not supported for the input types, ..." but ndarray works elsewhere
                 # todo: when fixed, remove list(), and below too
-                np.testing.assert_allclose(list(actual_trajectory.to_numpy()), expected_trajectory,
+                np.testing.assert_allclose(list(simulated_trajectory.to_numpy()), expected_trajectory,
                                            equal_nan=False, rtol=rel_tol,
                                            err_msg=f"In model {dynamic_model.id}, trajectory of {property} "
                                                f"of compartment {compartment_id} "
@@ -259,6 +259,7 @@ def verify_independently_solved_model(test_case, model_filename, results_dir):
 
     # read model while ignoring missing models, with std dev = 0
     for integration_framework in ['deterministic_simulation_algorithm', 'ordinary_differential_equations']:
+        print('integration_framework', integration_framework)
         # empty results_dir
         for file in os.listdir(results_dir):
             file_path = os.path.join(results_dir, file)
@@ -272,7 +273,7 @@ def verify_independently_solved_model(test_case, model_filename, results_dir):
         checkpoint_period = model.parameters.get_one(id='checkpoint_period').value
         args = dict(results_dir=results_dir,
                     checkpoint_period=checkpoint_period,
-                    time_step=0.1)
+                    time_step=1)
         simulation = Simulation(model)
         _, results_dir = simulation.run(end_time=end_time, **args)
 
@@ -286,7 +287,7 @@ def verify_independently_solved_model(test_case, model_filename, results_dir):
             obj_tables.io.Reader().run(model_filename, models=trajectory_model_classes,
                                        ignore_extra_models=True, ignore_attribute_order=True)
 
-        # get species trajectories from model workbook
+        # get expected species trajectories from model workbook
         expected_species_trajectories = {}
         species_ids = [species.id for species in model.get_species()]
         for species_id in species_ids:
@@ -303,11 +304,11 @@ def verify_independently_solved_model(test_case, model_filename, results_dir):
         plots_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'tests', 'results'))
         os.makedirs(plots_dir, exist_ok=True)
         plots = plot_expected_vs_simulated(simulation.dynamic_model,
-                                        integration_framework,
-                                        results_dir,
-                                        trajectory_times=expected_trajectory_times,
-                                        plots_dir=plots_dir,
-                                        expected_species_trajectories=expected_species_trajectories)
+                                           integration_framework,
+                                           results_dir,
+                                           trajectory_times=expected_trajectory_times,
+                                           plots_dir=plots_dir,
+                                           expected_species_trajectories=expected_species_trajectories)
 
         # get aggregate trajectories from model workbook
         expected_aggregate_trajectories = {}
@@ -342,6 +343,7 @@ def verify_independently_solved_model(test_case, model_filename, results_dir):
                                  expected_species_trajectories=expected_species_trajectories,
                                  expected_property_trajectories=expected_aggregate_trajectories)
 
+
 def plot_expected_vs_simulated(dynamic_model,
                             integration_algorithm,
                             results_dir,
@@ -370,6 +372,8 @@ def plot_expected_vs_simulated(dynamic_model,
     model_id = dynamic_model.id
     run_results = RunResults(results_dir)
     populations_df = run_results.get('populations')
+    print('populations_df')
+    print(populations_df)
     aggregate_states_df = run_results.get('aggregate_states')
 
     if not plots_dir:
@@ -386,7 +390,7 @@ def plot_expected_vs_simulated(dynamic_model,
     # linestyles, designed so that simulated and expected curves which are equal will both be visible
     loosely_dashed = (0, (4, 6))
     dashdotted = (0, (2, 3, 3, 2))
-    actual_plot_kwargs = dict(color='blue', label='simulated', linestyle=loosely_dashed)
+    simulated_plot_kwargs = dict(color='blue', label='simulated', linestyle=loosely_dashed)
     expected_plot_kwargs = dict(color='red', label='expected', linestyle=dashdotted)
 
     # plot expected vs. simulated trajectories of species
@@ -407,12 +411,12 @@ def plot_expected_vs_simulated(dynamic_model,
             for species_id, expected_trajectory in expected_species_trajectories.items():
                 if np.isnan(expected_trajectory).all():
                     continue
-                # plot expected_trajectory vs. actual_trajectory
-                actual_trajectory = populations_df[species_id]
+                # plot expected_trajectory vs. simulated_trajectory
+                simulated_trajectory = populations_df[species_id]
                 index += 1
                 axes = fig.add_subplot(nrows, ncols, index)
                 axes.ticklabel_format(axis='y', style='scientific', scilimits=(0, 0))
-                axes.plot(trajectory_times, actual_trajectory, **actual_plot_kwargs)
+                axes.plot(trajectory_times, simulated_trajectory, **simulated_plot_kwargs)
                 axes.plot(trajectory_times, expected_trajectory, **expected_plot_kwargs)
                 axes.set_xlabel('Time (s)')
                 y_label = f'{species_id} (copy number)'
@@ -453,13 +457,13 @@ def plot_expected_vs_simulated(dynamic_model,
                     dynamic_compartment = dynamic_model.dynamic_compartments[compartment_id]
                     if compartment_id not in aggregate_states_df:
                         continue
-                    # plot expected_trajectory vs. actual_trajectory
-                    actual_trajectory = aggregate_states_df[compartment_id][property]
+                    # plot expected_trajectory vs. simulated_trajectory
+                    simulated_trajectory = aggregate_states_df[compartment_id][property]
                     expected_trajectory = expected_property_trajectories[compartment_id][property]
                     index += 1
                     axes = fig.add_subplot(nrows, ncols, index)
                     axes.ticklabel_format(axis='y', style='scientific', scilimits=(0, 0))
-                    axes.plot(trajectory_times, actual_trajectory, **actual_plot_kwargs)
+                    axes.plot(trajectory_times, simulated_trajectory, **simulated_plot_kwargs)
                     axes.plot(trajectory_times, expected_trajectory, **expected_plot_kwargs)
                     axes.set_xlabel('Time (s)')
                     y_label = f"{property} in {compartment_id} ({get_units(property)})"

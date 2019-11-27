@@ -47,7 +47,7 @@ class AccessState(AccessStateObjectInterface):
                 states, and `observables` contains all of its observables
         """
         state = {
-            'population': self.local_species_population.read(time),
+            'population': self.local_species_population.read(time, round=False),
             'aggregate_state': self.dynamic_model.get_aggregate_state(),
             'observables': self.dynamic_model.eval_dynamic_observables(time),
             'functions': self.dynamic_model.eval_dynamic_functions(time),

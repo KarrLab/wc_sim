@@ -131,7 +131,6 @@ class MultialgorithmSimulation(object):
 
         # a model without submodels cannot be simulated
         if not self.model.get_submodels():
-            print(self.model.get_submodels())
             raise MultialgorithmError(f"model {self.model.id} cannot be simulated because it contains"
                                       f" no submodels")
 

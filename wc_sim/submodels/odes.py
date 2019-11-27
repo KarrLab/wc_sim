@@ -295,7 +295,6 @@ class OdeSubmodel(DynamicSubmodel):
                        f'{elapsed_rt:.3e}']
             summary.extend([f'{pop:.1f}' for pop in new_population])
             print('\t'.join(summary))
-        self.time = solution_time
 
     def get_info(self):
         """ Get info from CVODE
@@ -320,5 +319,6 @@ class OdeSubmodel(DynamicSubmodel):
         Args:
             event (:obj:`Event`): a simulation event
         """
+        print(f"running ode at {self.time}")
         self.run_ode_solver()
         self.schedule_next_ode_analysis()
