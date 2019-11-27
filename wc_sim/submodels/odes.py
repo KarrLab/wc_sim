@@ -307,7 +307,7 @@ class OdeSubmodel(DynamicSubmodel):
     ### schedule and handle DES events ###
     def send_initial_events(self):
         """ Send this ODE submodel's initial event """
-        self.schedule_next_ode_analysis()
+        self.send_event(0, self, message_types.RunOde())
 
     def schedule_next_ode_analysis(self):
         """ Schedule the next analysis by this ODE submodel """

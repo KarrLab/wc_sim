@@ -26,12 +26,15 @@ from de_sim.testing.mock_simulation_object import MockSimulationObject
 from wc_lang.io import Reader
 from wc_sim import distributed_properties
 from wc_sim import message_types
+from wc_sim.config import core as config_core_multialgorithm
 from wc_sim.multialgorithm_errors import NegativePopulationError, SpeciesPopulationError
 from wc_sim.species_populations import (LOCAL_POP_STORE, DynamicSpeciesState, SpeciesPopSimObject,
                                         SpeciesPopulationCache, LocalSpeciesPopulation, TempPopulationsLSP,
                                         MakeTestLSP, AccessSpeciesPopulations)
 from wc_utils.util.rand import RandomStateManager
 import wc_lang
+
+config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 
 def store_i(i):
     return "store_{}".format(i)
@@ -782,6 +785,20 @@ class TestDynamicSpeciesState(unittest.TestCase):
         self.assertEqual(context.exception, NegativePopulationError('get_population', 's2',
                                                                     pop, time_advance * slope,
                                                                     time_advance))
+
+        MINIMUM_ALLOWED_POPULATION = config_multialgorithm['minimum_allowed_population']
+        pop = 3
+        s3 = DynamicSpeciesState('s3', self.random_state, pop, modeled_continuously=True)
+        # set population slope
+        time = 0
+        slope = -1
+        s3.continuous_adjustment(time, slope)
+        # advance to time when population == MINIMUM_ALLOWED_POPULATION
+        time_advance = (MINIMUM_ALLOWED_POPULATION - pop) / slope
+        self.assertAlmostEqual(s3.get_population(time_advance, round=False), MINIMUM_ALLOWED_POPULATION)
+        # advance to time when population < MINIMUM_ALLOWED_POPULATION
+        with self.assertRaises(NegativePopulationError):
+            s3.get_population(time_advance + 1e-3)
 
     def test_assertions(self):
         # raise AssertionErrors

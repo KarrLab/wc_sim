@@ -32,6 +32,8 @@ from wc_sim import distributed_properties
 from wc_utils.util.dict import DictUtil
 from wc_utils.util.rand import RandomStateManager
 
+config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
+
 
 class AccessSpeciesPopulationInterface(metaclass=abc.ABCMeta):   # pragma: no cover; methods in ABCs aren't run
     """ An abstract base class defining the interface between a submodel and its species population store(s)
@@ -1296,6 +1298,8 @@ class DynamicSpeciesState(object):
         _history (:obj:`list`): history of operations
         _temp_population_value (:obj:`float`): a temporary population for a temporary computation
     """
+    MINIMUM_ALLOWED_POPULATION = config_multialgorithm['minimum_allowed_population']
+
     # use __slots__ to save space
     __slots__ = ['species_name', 'random_state', 'last_population', 'modeled_continuously',
                  'population_slope', 'continuous_time', 'last_adjustment_time', 'last_read_time',
@@ -1435,7 +1439,7 @@ class DynamicSpeciesState(object):
                 self.species_name, population_change)
         self._validate_adjustment_time(time, 'discrete_adjustment')
         current_population = self.get_population(time)
-        if current_population + population_change < 0:
+        if current_population + population_change < self.MINIMUM_ALLOWED_POPULATION:
             raise NegativePopulationError('discrete_adjustment', self.species_name,
                                           self.last_population, population_change)
         self.last_population += population_change
@@ -1481,7 +1485,8 @@ class DynamicSpeciesState(object):
         self._validate_adjustment_time(time, 'continuous_adjustment')
         # self.continuous_time is None until the first continuous_adjustment()
         if self.continuous_time is not None:
-            if self.last_population + self.population_slope * (time - self.continuous_time) < 0:
+            if self.last_population + \
+                self.population_slope * (time - self.continuous_time) < self.MINIMUM_ALLOWED_POPULATION:
                 raise NegativePopulationError('continuous_adjustment', self.species_name,
                                               self.last_population,
                                               self.population_slope * (time - self.continuous_time),
@@ -1572,7 +1577,7 @@ class DynamicSpeciesState(object):
                     interpolate = config_multialgorithm['interpolate']
                 if interpolate:
                     interpolation = (time - self.continuous_time) * self.population_slope
-                    if self.last_population + interpolation < 0:
+                    if self.last_population + interpolation < self.MINIMUM_ALLOWED_POPULATION:
                         raise NegativePopulationError('get_population', self.species_name,
                             self.last_population, interpolation, time - self.continuous_time)
             float_copy_number = self.last_population + interpolation
