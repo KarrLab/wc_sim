@@ -57,7 +57,8 @@ def read_model_for_test(model_filename, set_std_devs_to_0=True, integration_fram
     return test_wc_model
 
 
-def check_simul_results(test_case, dynamic_model, results_dir, expected_initial_values=None,
+def check_simul_results(test_case, dynamic_model, results_dir, integration_framework=None,
+                        expected_initial_values=None,
                         expected_times=None, expected_species_trajectories=None,
                         expected_property_trajectories=None, rel_tol=1e-7):
     """ Evaluate whether a simulation predicted the expected results
@@ -65,8 +66,10 @@ def check_simul_results(test_case, dynamic_model, results_dir, expected_initial_
     The expected trajectories must contain expected values at the times of the simulation's checkpoints.
 
     Args:
+        test_case (:obj:`unittest.TestCase`): the `test_case`
         dynamic_model (:obj:`DynamicModel`): the simulation's :obj:`DynamicModel`
         results_dir (:obj:`str`): simulation results directory
+        integration_framework (:obj:`str`, optional): the integration framework used to simulate the model
         expected_initial_values (:obj:`dict`, optional): expected initial values for each compartment
             in the test; indexed by compartment id, and attribute names for :obj:`DynamicCompartment`\ s
         expected_times (:obj:`iterator`, optional): expected time sequence for all trajectories
@@ -81,15 +84,32 @@ def check_simul_results(test_case, dynamic_model, results_dir, expected_initial_
             default `rel_tol` is `1e-7`; absolute tolerance is set to 0
     """
 
+    # tolerances
+    rtol = rel_tol
+    atol = 0
+    if integration_framework:
+        tolerances = {
+            'deterministic_simulation_algorithm': {
+                'rtol': 1e-7,
+                'atol': 0
+            },
+            'ordinary_differential_equations': {
+                'rtol': 1e-3,
+                'atol': 1
+            }
+        }
+        rtol = tolerances[integration_framework]['rtol']
+        atol = tolerances[integration_framework]['atol']
+
     # test initial values
     if expected_initial_values:
         for compartment_id in expected_initial_values:
             dynamic_compartment = dynamic_model.dynamic_compartments[compartment_id]
             for initial_attribute, expected_value in expected_initial_values[compartment_id].items():
                 simulated_value = getattr(dynamic_compartment, initial_attribute)
-                test_case.assertTrue(math.isclose(simulated_value, expected_value, rel_tol=rel_tol),
+                test_case.assertTrue(math.isclose(simulated_value, expected_value, rel_tol=rtol),
                                      msg=f"In model {dynamic_model.id}, {initial_attribute} is "
-                                     f"{simulated_value}, not within {rel_tol} of {expected_value}")
+                                     f"{simulated_value}, not within {rtol} of {expected_value}")
 
     # get results
     if expected_species_trajectories or expected_property_trajectories:
@@ -114,7 +134,8 @@ def check_simul_results(test_case, dynamic_model, results_dir, expected_initial_
                 continue
             simulated_trajectory = populations_df[species_id]
             np.testing.assert_allclose(simulated_trajectory, expected_trajectory, equal_nan=False,
-                                       rtol=rel_tol,
+                                       rtol=rtol,
+                                       atol=atol,
                                        err_msg=f"In model {dynamic_model.id}, trajectory for {species_id} "
                                            f"not almost equal to expected trajectory:")
 
@@ -137,7 +158,9 @@ def check_simul_results(test_case, dynamic_model, results_dir, expected_initial_
                 # "TypeError: ufunc 'isfinite' not supported for the input types, ..." but ndarray works elsewhere
                 # todo: when fixed, remove list(), and below too
                 np.testing.assert_allclose(list(simulated_trajectory.to_numpy()), expected_trajectory,
-                                           equal_nan=False, rtol=rel_tol,
+                                           equal_nan=False,
+                                           rtol=rtol,
+                                           atol=atol,
                                            err_msg=f"In model {dynamic_model.id}, trajectory of {property} "
                                                f"of compartment {compartment_id} "
                                                f"not almost equal to expected trajectory:")
@@ -159,7 +182,8 @@ def check_simul_results(test_case, dynamic_model, results_dir, expected_initial_
                     np.testing.assert_allclose(list(density_trajectory),
                                                list(constant_density),
                                                equal_nan=False,
-                                               rtol=rel_tol,
+                                               rtol=rtol,
+                                               atol=atol,
                                                err_msg=err_msg)
 
 
@@ -259,7 +283,6 @@ def verify_independently_solved_model(test_case, model_filename, results_dir):
 
     # read model while ignoring missing models, with std dev = 0
     for integration_framework in ['deterministic_simulation_algorithm', 'ordinary_differential_equations']:
-        print('integration_framework', integration_framework)
         # empty results_dir
         for file in os.listdir(results_dir):
             file_path = os.path.join(results_dir, file)
@@ -273,7 +296,7 @@ def verify_independently_solved_model(test_case, model_filename, results_dir):
         checkpoint_period = model.parameters.get_one(id='checkpoint_period').value
         args = dict(results_dir=results_dir,
                     checkpoint_period=checkpoint_period,
-                    time_step=1)
+                    time_step=0.1)
         simulation = Simulation(model)
         _, results_dir = simulation.run(end_time=end_time, **args)
 
@@ -335,14 +358,15 @@ def verify_independently_solved_model(test_case, model_filename, results_dir):
                                         trajectory_times=expected_trajectory_times,
                                         plots_dir=plots_dir,
                                         expected_property_trajectories=expected_aggregate_trajectories)
-        print(f"trajectories plotted in '{plots}'")
 
-        continue
         # compare expected & simulated trajectories
-        check_simul_results(test_case, simulation.dynamic_model, results_dir,
-                                 expected_times=expected_trajectory_times,
-                                 expected_species_trajectories=expected_species_trajectories,
-                                 expected_property_trajectories=expected_aggregate_trajectories)
+        check_simul_results(test_case,
+                            simulation.dynamic_model,
+                            results_dir,
+                            integration_framework,
+                            expected_times=expected_trajectory_times,
+                            expected_species_trajectories=expected_species_trajectories,
+                            expected_property_trajectories=expected_aggregate_trajectories)
 
 
 def plot_expected_vs_simulated(dynamic_model,
@@ -373,8 +397,6 @@ def plot_expected_vs_simulated(dynamic_model,
     model_id = dynamic_model.id
     run_results = RunResults(results_dir)
     populations_df = run_results.get('populations')
-    print('populations_df')
-    print(populations_df)
     aggregate_states_df = run_results.get('aggregate_states')
 
     if not plots_dir:

@@ -319,6 +319,5 @@ class OdeSubmodel(DynamicSubmodel):
         Args:
             event (:obj:`Event`): a simulation event
         """
-        print(f"running ode at {self.time}")
         self.run_ode_solver()
         self.schedule_next_ode_analysis()

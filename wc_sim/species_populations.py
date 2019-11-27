@@ -1168,8 +1168,6 @@ class SpeciesPopSimObject(LocalSpeciesPopulation, ApplicationSimulationObject,
                 non-existent species.
         """
         population_change = event.message.population_change
-        print('handle_adjust_continuously_event: event.message:', event.message)
-        print('handle_adjust_continuously_event: population_change:', population_change)
         self.adjust_continuously(self.time, population_change)
 
     def handle_get_population_event(self, event):
