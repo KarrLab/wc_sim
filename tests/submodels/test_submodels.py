@@ -268,12 +268,12 @@ class TestDeterministicSimulationAlgorithmSubmodel(unittest.TestCase):
         events = simulation_engine.event_queue.render(sim_obj=dsa_submodel, as_list=True)
         reaction_indices = set()
         send_time_idx, _, sender_idx, receiver_idx, event_type_idx, reaction_idx = list(range(6))
-        for event in events[1:]:
-            self.assertEqual(event[send_time_idx], 0.)
-            self.assertEqual(event[sender_idx], dsa_submodel_name)
-            self.assertEqual(event[receiver_idx], dsa_submodel_name)
-            self.assertEqual(event[event_type_idx], ExecuteDsaReaction.__name__)
-            reaction_indices.add(event[reaction_idx])
+        for event_record in events[1:]:
+            self.assertEqual(event_record[send_time_idx], (0.0,))
+            self.assertEqual(event_record[sender_idx], dsa_submodel_name)
+            self.assertEqual(event_record[receiver_idx], dsa_submodel_name)
+            self.assertEqual(event_record[event_type_idx], ExecuteDsaReaction.__name__)
+            reaction_indices.add(event_record[reaction_idx])
         self.assertEqual(reaction_indices, set([str(i) for i in range(len(dsa_submodel.reactions))]))
 
         # test handle_ExecuteDsaReaction_msg(): execute next reaction
