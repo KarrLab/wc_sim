@@ -23,7 +23,7 @@ def mk_floats(row):
 
 # get data
 def get_data():
-    datafile = os.path.join(os.path.dirname(__file__), '..', 'data', 'run_ode_solver_w_internal.tsv')
+    datafile = os.path.join(os.path.dirname(__file__), '..', 'data', '2019-11-22_run_ode_solver_w_internal.tsv')
     with open(datafile, 'r') as fh:
         while(True):
             line = fh.readline()   # discard header lines
@@ -63,9 +63,14 @@ def plot(data):
         times = step_data['time']
         pop = step_data[species]
         axes.plot(times, pop, **plot_kwargs[mode])
-        axes.set_xlabel('Time (s)')
-        axes.set_ylabel(f'{species} (copy number)')
-        axes.legend()
+        if mode == 'internal step':
+            i = 1
+            for time, p in zip(times, pop):
+                axes.annotate(str(i), (time, p))
+                i += 1
+    axes.set_xlabel('Time (s)')
+    axes.set_ylabel(f'{species} (copy number)')
+    axes.legend()
 
     plots_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'plots')
     figure_name = f'ode_modes_species_trajectories'

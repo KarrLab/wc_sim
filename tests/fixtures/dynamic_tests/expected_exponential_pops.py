@@ -40,7 +40,6 @@ def pop_trajectory(initial_population,
             print(f'{next_checkpoint}\t{p}')
             next_checkpoint += interval_length
         total_time += interval
-        # print(f"{total_time:.5f}")
         p += 1
 
 # pop_trajectory(100)
