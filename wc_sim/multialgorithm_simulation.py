@@ -278,6 +278,7 @@ class MultialgorithmSimulation(object):
         multialgorithm_checkpointing_sim_obj = MultialgorithmicCheckpointingSimObj(
             CHECKPOINTING_SIM_OBJ, checkpoint_period, checkpoints_dir,
             self.local_species_population, self.dynamic_model, self)
+        # todo: simultaneous submodel priority: set_class_priority
 
         # add the multialgorithm checkpointing object to the simulation
         self.simulation.add_object(multialgorithm_checkpointing_sim_obj)
@@ -293,6 +294,16 @@ class MultialgorithmSimulation(object):
             :obj:`MultialgorithmError`: if a submodel cannot be created
         """
 
+        # todo: simultaneous submodel priority: set_class_priority of the simulation_submodels
+        '''
+            from de_sim.simulation_object import SimObjClassPriority
+            Simultaneous submodel priority
+                SSA: FIRST
+                DSA: SECOND
+                dFBA: THIRD
+                ODE: FOURTH
+                Checkpointing: LOW
+        '''
         # make the simulation's submodels
         simulation_submodels = {}
         for lang_submodel in self.model.get_submodels():

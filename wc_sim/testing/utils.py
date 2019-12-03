@@ -94,12 +94,14 @@ def check_simul_results(test_case, dynamic_model, results_dir, integration_frame
                 'atol': 0
             },
             'ordinary_differential_equations': {
-                'rtol': 1e-3,
-                'atol': 1
+                'rtol': 5e-3,
+                'atol': 10
             }
         }
         rtol = tolerances[integration_framework]['rtol']
         atol = tolerances[integration_framework]['atol']
+
+    model_and_integration = f"In model {dynamic_model.id}, integrated by {integration_framework},"
 
     # test initial values
     if expected_initial_values:
@@ -108,8 +110,8 @@ def check_simul_results(test_case, dynamic_model, results_dir, integration_frame
             for initial_attribute, expected_value in expected_initial_values[compartment_id].items():
                 simulated_value = getattr(dynamic_compartment, initial_attribute)
                 test_case.assertTrue(math.isclose(simulated_value, expected_value, rel_tol=rtol),
-                                     msg=f"In model {dynamic_model.id}, {initial_attribute} is "
-                                     f"{simulated_value}, not within {rtol} of {expected_value}")
+                                     msg=f"{model_and_integration} {initial_attribute} "
+                                     f"{simulated_value}, is not within {rtol} of {expected_value}")
 
     # get results
     if expected_species_trajectories or expected_property_trajectories:
@@ -120,12 +122,11 @@ def check_simul_results(test_case, dynamic_model, results_dir, integration_frame
     # test expected_times
     if expected_times and not np.isnan(expected_times).all():
         np.testing.assert_array_equal(populations_df.index, expected_times,
-                                      err_msg=f"In model {dynamic_model.id}, time sequence for populations "
+                                      err_msg=f"{model_and_integration} time sequence for populations "
                                       f"differs from expected time sequence:")
         np.testing.assert_array_equal(aggregate_states_df.index, expected_times,
-                                      err_msg=f"In model {dynamic_model.id}, time sequence for aggregate "
+                                      err_msg=f"{model_and_integration} time sequence for aggregate "
                                       f"states differs from expected time sequence:")
-
 
     # test expected trajectories of species
     if expected_species_trajectories:
@@ -136,7 +137,7 @@ def check_simul_results(test_case, dynamic_model, results_dir, integration_frame
             np.testing.assert_allclose(simulated_trajectory, expected_trajectory, equal_nan=False,
                                        rtol=rtol,
                                        atol=atol,
-                                       err_msg=f"In model {dynamic_model.id}, trajectory for {species_id} "
+                                       err_msg=f"{model_and_integration} trajectory for {species_id} "
                                            f"not almost equal to expected trajectory:")
 
     # test expected trajectories of properties of compartments
@@ -161,7 +162,7 @@ def check_simul_results(test_case, dynamic_model, results_dir, integration_frame
                                            equal_nan=False,
                                            rtol=rtol,
                                            atol=atol,
-                                           err_msg=f"In model {dynamic_model.id}, trajectory of {property} "
+                                           err_msg=f"{model_and_integration} trajectory of {property} "
                                                f"of compartment {compartment_id} "
                                                f"not almost equal to expected trajectory:")
         # confirm that compartment densities are constants
@@ -176,7 +177,7 @@ def check_simul_results(test_case, dynamic_model, results_dir, integration_frame
                     volume_trajectory = aggregate_states_df[compartment_id][volume_property].to_numpy()
                     density_trajectory = mass_trajectory / volume_trajectory
                     constant_density = np.full_like(density_trajectory, density_trajectory[0])
-                    err_msg = (f"In model {dynamic_model.id}, density trajectory for "
+                    err_msg = (f"{model_and_integration} density trajectory for "
                         f"'{mass_property}' / '{volume_property}' of compartment {compartment_id} "
                         f"is not constant:")
                     np.testing.assert_allclose(list(density_trajectory),
@@ -283,6 +284,7 @@ def verify_independently_solved_model(test_case, model_filename, results_dir):
 
     # read model while ignoring missing models, with std dev = 0
     for integration_framework in ['deterministic_simulation_algorithm', 'ordinary_differential_equations']:
+        print(integration_framework)
         # empty results_dir
         for file in os.listdir(results_dir):
             file_path = os.path.join(results_dir, file)
@@ -296,7 +298,7 @@ def verify_independently_solved_model(test_case, model_filename, results_dir):
         checkpoint_period = model.parameters.get_one(id='checkpoint_period').value
         args = dict(results_dir=results_dir,
                     checkpoint_period=checkpoint_period,
-                    time_step=0.1)
+                    time_step=1.)
         simulation = Simulation(model)
         _, results_dir = simulation.run(end_time=end_time, **args)
 
@@ -368,7 +370,6 @@ def verify_independently_solved_model(test_case, model_filename, results_dir):
                             expected_species_trajectories=expected_species_trajectories,
                             expected_property_trajectories=expected_aggregate_trajectories)
 
-
 def plot_expected_vs_simulated(dynamic_model,
                             integration_algorithm,
                             results_dir,
@@ -413,8 +414,11 @@ def plot_expected_vs_simulated(dynamic_model,
     # linestyles, designed so that simulated and expected curves which are equal will both be visible
     loosely_dashed = (0, (4, 6))
     dashdotted = (0, (2, 3, 3, 2))
-    simulated_plot_kwargs = dict(color='blue', label='simulated', linestyle=loosely_dashed)
-    expected_plot_kwargs = dict(color='red', label='expected', linestyle=dashdotted)
+    linewidth = 0.8
+    simulated_plot_kwargs = dict(color='blue', label='simulated', linestyle=loosely_dashed,
+                                 linewidth=linewidth)
+    expected_plot_kwargs = dict(color='red', label='expected', linestyle=dashdotted,
+                                linewidth=linewidth)
 
     # plot expected vs. simulated trajectories of species
     if trajectory_times and expected_species_trajectories:
@@ -439,6 +443,9 @@ def plot_expected_vs_simulated(dynamic_model,
                 index += 1
                 axes = fig.add_subplot(nrows, ncols, index)
                 axes.ticklabel_format(axis='y', style='scientific', scilimits=(0, 0))
+                print('trajectory_times', trajectory_times[-10:])
+                print('simulated_trajectory', 'len', len(list(simulated_trajectory)), list(simulated_trajectory)[-10:])
+                print('expected_trajectory', expected_trajectory[-10:])
                 axes.plot(trajectory_times, simulated_trajectory, **simulated_plot_kwargs)
                 axes.plot(trajectory_times, expected_trajectory, **expected_plot_kwargs)
                 axes.set_xlabel('Time (s)')
@@ -489,7 +496,7 @@ def plot_expected_vs_simulated(dynamic_model,
                     axes.plot(trajectory_times, simulated_trajectory, **simulated_plot_kwargs)
                     axes.plot(trajectory_times, expected_trajectory, **expected_plot_kwargs)
                     axes.set_xlabel('Time (s)')
-                    y_label = f"{property} in {compartment_id} ({get_units(property)})"
+                    y_label = f"{property} - {compartment_id} ({get_units(property)})"
                     axes.set_ylabel(y_label)
                     axes.legend()
                 figure_name = f'{model_id}_using_{integration_algorithm}_properties'

@@ -11,26 +11,24 @@
 # TODO(Arthur): for reproducibility, use lists instead of sets
 # TODO(Arthur): analyze accuracy with and without interpolation
 
+from collections import defaultdict, namedtuple
+from enum import Enum
+from scipy.constants import Avogadro
 import abc
+import math
 import numpy
 import sys
-from collections import defaultdict
-from scipy.constants import Avogadro
-import math
-from collections import namedtuple
-from enum import Enum
 
-import wc_lang
 from de_sim.simulation_object import (SimulationObject, ApplicationSimulationObject,
-                                           AppSimObjAndABCMeta, ApplicationSimulationObjMeta)
-from wc_sim import message_types
+                                      AppSimObjAndABCMeta, ApplicationSimulationObjMeta)
+from wc_sim import distributed_properties, message_types
 from wc_sim.config import core as config_core_multialgorithm
 from wc_sim.debug_logs import logs as debug_logs
 from wc_sim.model_utilities import ModelUtilities
 from wc_sim.multialgorithm_errors import NegativePopulationError, SpeciesPopulationError
-from wc_sim import distributed_properties
 from wc_utils.util.dict import DictUtil
 from wc_utils.util.rand import RandomStateManager
+import wc_lang
 
 config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 
