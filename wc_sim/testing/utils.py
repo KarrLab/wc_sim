@@ -284,13 +284,13 @@ def verify_independently_solved_model(test_case, model_filename, results_dir):
 
     # read model while ignoring missing models, with std dev = 0
     for integration_framework in ['deterministic_simulation_algorithm', 'ordinary_differential_equations']:
-        print(integration_framework)
         # empty results_dir
         for file in os.listdir(results_dir):
             file_path = os.path.join(results_dir, file)
             if os.path.isfile(file_path):
                 os.unlink(file_path)
 
+        print(f'testing {model_filename} with {integration_framework}')
         model = read_model_for_test(model_filename, integration_framework=f'WC:{integration_framework}')
 
         # simulate model
@@ -443,9 +443,6 @@ def plot_expected_vs_simulated(dynamic_model,
                 index += 1
                 axes = fig.add_subplot(nrows, ncols, index)
                 axes.ticklabel_format(axis='y', style='scientific', scilimits=(0, 0))
-                print('trajectory_times', trajectory_times[-10:])
-                print('simulated_trajectory', 'len', len(list(simulated_trajectory)), list(simulated_trajectory)[-10:])
-                print('expected_trajectory', expected_trajectory[-10:])
                 axes.plot(trajectory_times, simulated_trajectory, **simulated_plot_kwargs)
                 axes.plot(trajectory_times, expected_trajectory, **expected_plot_kwargs)
                 axes.set_xlabel('Time (s)')

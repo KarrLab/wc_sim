@@ -303,9 +303,7 @@ class TestMultialgorithmSimulationDynamically(unittest.TestCase):
 
     def test_independently_solved_models(self):
         models = ['static', 'one_reaction_linear', 'one_rxn_exponential', 'one_exchange_rxn_compt_growth', 'stop_conditions']
-        models = ['stop_conditions']
         for model_name in models:
-            print(f'testing {model_name}')
             model_filename = os.path.join(os.path.dirname(__file__), 'fixtures', 'dynamic_tests', f'{model_name}.xlsx')
             verify_independently_solved_model(self, model_filename, self.results_dir)
 
