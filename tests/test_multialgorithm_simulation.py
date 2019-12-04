@@ -24,11 +24,16 @@ from wc_lang.transform import PrepForWcSimTransform
 from wc_sim.dynamic_components import DynamicModel
 from wc_sim.multialgorithm_checkpointing import (MultialgorithmicCheckpointingSimObj,
                                                  MultialgorithmCheckpoint)
+from wc_sim.multialgorithm_checkpointing import MultialgorithmicCheckpointingSimObj
 from wc_sim.multialgorithm_errors import MultialgorithmError, SpeciesPopulationError
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.run_results import RunResults
 from wc_sim.simulation import Simulation
 from wc_sim.species_populations import LocalSpeciesPopulation
+from wc_sim.submodels.fba import DfbaSubmodel
+from wc_sim.submodels.odes import OdeSubmodel
+from wc_sim.submodels.ssa import SsaSubmodel
+from wc_sim.submodels.testing.deterministic_simulation_algorithm import DsaSubmodel
 from wc_sim.testing.make_models import MakeModel
 from wc_sim.testing.utils import check_simul_results, verify_independently_solved_model
 from wc_utils.util.dict import DictUtil
@@ -169,6 +174,20 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
         adjustments = {species_id: 0. for species_id in used_by_discrete_submodels + not_in_a_reaction}
         with self.assertRaises(SpeciesPopulationError):
             local_species_population.adjust_continuously(2, adjustments)
+
+    def test_set_simultaneous_execution_priorities(self):
+        simulation_object_classes = [SsaSubmodel,
+                                     DsaSubmodel,
+                                     DfbaSubmodel,
+                                     OdeSubmodel,
+                                     MultialgorithmicCheckpointingSimObj]
+        self.multialgorithm_simulation.set_simultaneous_execution_priorities()
+        # ensure that simulation_object_classes are arranged in decreasing priority
+        for i in range(len(simulation_object_classes) - 1):
+            simulation_object_class = simulation_object_classes[i]
+            next_simulation_object_class = simulation_object_classes[i+1]
+            self.assertLess(simulation_object_class.metadata.class_priority,
+                            next_simulation_object_class.metadata.class_priority)
 
     def test_initialize_components(self):
         self.multialgorithm_simulation.initialize_components()

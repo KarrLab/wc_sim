@@ -9,6 +9,7 @@
 import numpy.random
 import warnings
 
+from de_sim.simulation_object import SimObjClassPriority
 from wc_lang import Model, Compartment, Species
 from wc_sim.config import core as config_core_multialgorithm
 from wc_sim.dynamic_components import DynamicModel, DynamicCompartment
@@ -21,7 +22,7 @@ from wc_sim.submodels.dynamic_submodel import DynamicSubmodel
 from wc_sim.submodels.fba import DfbaSubmodel
 from wc_sim.submodels.odes import OdeSubmodel
 from wc_sim.submodels.ssa import SsaSubmodel
-from wc_sim.submodels.testing.deterministic_simulation_algorithm import DeterministicSimulationAlgorithmSubmodel
+from wc_sim.submodels.testing.deterministic_simulation_algorithm import DsaSubmodel
 from wc_utils.util.list import det_dedupe
 from wc_utils.util.misc import obj_to_str
 from wc_utils.util.ontology import are_terms_equivalent
@@ -141,6 +142,7 @@ class MultialgorithmSimulation(object):
             :obj:`tuple` of (`SimulationEngine`, `DynamicModel`): an initialized simulation and its
                 dynamic model
         """
+        self.set_simultaneous_execution_priorities()
         self.initialize_components()
         self.initialize_infrastructure()
         return (self.simulation, self.dynamic_model)
@@ -265,6 +267,16 @@ class MultialgorithmSimulation(object):
             random_state=self.random_state,
             retain_history=retain_history)
 
+    def set_simultaneous_execution_priorities(self):
+        """ Assign simultaneous execution priorities for all simulation objects and submodels
+        """
+        # simulation objects and submodels executing at the same simulation time will run in this order:
+        SimObjClassPriority.assign_decreasing_priority([SsaSubmodel,
+                                                        DsaSubmodel,
+                                                        DfbaSubmodel,
+                                                        OdeSubmodel,
+                                                        MultialgorithmicCheckpointingSimObj])
+
     def create_multialgorithm_checkpointing(self, checkpoints_dir, checkpoint_period):
         """ Create a multialgorithm checkpointing object for this simulation
 
@@ -278,7 +290,6 @@ class MultialgorithmSimulation(object):
         multialgorithm_checkpointing_sim_obj = MultialgorithmicCheckpointingSimObj(
             CHECKPOINTING_SIM_OBJ, checkpoint_period, checkpoints_dir,
             self.local_species_population, self.dynamic_model, self)
-        # todo: simultaneous submodel priority: set_class_priority
 
         # add the multialgorithm checkpointing object to the simulation
         self.simulation.add_object(multialgorithm_checkpointing_sim_obj)
@@ -293,17 +304,6 @@ class MultialgorithmSimulation(object):
         Raises:
             :obj:`MultialgorithmError`: if a submodel cannot be created
         """
-
-        # todo: simultaneous submodel priority: set_class_priority of the simulation_submodels
-        '''
-            from de_sim.simulation_object import SimObjClassPriority
-            Simultaneous submodel priority
-                SSA: FIRST
-                DSA: SECOND
-                dFBA: THIRD
-                ODE: FOURTH
-                Checkpointing: LOW
-        '''
         # make the simulation's submodels
         simulation_submodels = {}
         for lang_submodel in self.model.get_submodels():
@@ -349,7 +349,7 @@ class MultialgorithmSimulation(object):
 
             elif are_terms_equivalent(lang_submodel.framework, onto['WC:deterministic_simulation_algorithm']):
                 # a deterministic simulation algorithm, used for testing
-                simulation_submodel = DeterministicSimulationAlgorithmSubmodel(
+                simulation_submodel = DsaSubmodel(
                     lang_submodel.id,
                     self.dynamic_model,
                     list(lang_submodel.reactions),
@@ -374,7 +374,6 @@ class MultialgorithmSimulation(object):
         Returns:
             :obj:`str`: a readable representation of this `MultialgorithmSimulation`
         """
-
         return obj_to_str(self, ['args', 'simulation', 'dynamic_compartments', 'dynamic_model',
                                  'init_populations', 'local_species_population', 'model',
                                   'checkpointing_sim_obj', 'simulation_submodels'])

@@ -24,8 +24,7 @@ from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.simulation import Simulation
 from wc_sim.submodels.dynamic_submodel import DynamicSubmodel
-from wc_sim.submodels.testing.deterministic_simulation_algorithm import (DeterministicSimulationAlgorithmSubmodel,
-                                                                         ExecuteDsaReaction)
+from wc_sim.submodels.testing.deterministic_simulation_algorithm import DsaSubmodel, ExecuteDsaReaction
 from wc_sim.submodels.testing.skeleton_submodel import SkeletonSubmodel
 from wc_sim.testing.make_models import MakeModel
 from wc_utils.util.ontology import are_terms_equivalent
@@ -41,7 +40,7 @@ def prepare_model(model):
 
 
 # TODO(Arthur): make more reliable and comprehensive tests using approach in
-# TestDeterministicSimulationAlgorithmSubmodel instead of make_dynamic_submodel_params
+# TestDsaSubmodel instead of make_dynamic_submodel_params
 def make_dynamic_submodel_params(model, lang_submodel):
     multialgorithm_simulation = MultialgorithmSimulation(model, None)
     multialgorithm_simulation.initialize_components()
@@ -226,7 +225,7 @@ class TestSkeletonSubmodel(unittest.TestCase):
             pop_before = pop_after
 
 
-class TestDeterministicSimulationAlgorithmSubmodel(unittest.TestCase):
+class TestDsaSubmodel(unittest.TestCase):
 
     def setUp(self):
         warnings.simplefilter("ignore")
@@ -255,7 +254,7 @@ class TestDeterministicSimulationAlgorithmSubmodel(unittest.TestCase):
         simulation_engine.initialize()
         dsa_submodel_name = 'submodel_2'
         dsa_submodel = multialgorithm_simulation.dynamic_model.dynamic_submodels[dsa_submodel_name]
-        self.assertTrue(isinstance(dsa_submodel, DeterministicSimulationAlgorithmSubmodel))
+        self.assertTrue(isinstance(dsa_submodel, DsaSubmodel))
 
         # test init: is reaction_table correct?
         self.assertEqual(len(dsa_submodel.reaction_table), len(dsa_submodel.reactions))

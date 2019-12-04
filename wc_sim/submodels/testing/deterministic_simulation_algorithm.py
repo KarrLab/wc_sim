@@ -12,19 +12,19 @@ from wc_sim.submodels.dynamic_submodel import DynamicSubmodel
 
 
 class ExecuteDsaReaction(SimulationMessage):
-    """ A simulation message sent by a :obj:`DeterministicSimulationAlgorithmSubmodel` instance to itself
+    """ A simulation message sent by a :obj:`DsaSubmodel` instance to itself
 
     Provides data needed to execute a Deterministic Simulation Algorithm reaction.
 
     Attributes:
         reaction_index (:obj:`int`): index of the selected reaction in
-            `DeterministicSimulationAlgorithmSubmodel.reactions`.
+            `DsaSubmodel.reactions`.
     """
     attributes = ['reaction_index']
 
 
-class DeterministicSimulationAlgorithmSubmodel(DynamicSubmodel):
-    """ Init a :obj:`DeterministicSimulationAlgorithmSubmodel`
+class DsaSubmodel(DynamicSubmodel):
+    """ Init a :obj:`DsaSubmodel`
 
     The Deterministic Simulation Algorithm (DSA) is a deterministic version of the Stochastic Simulation
     Algorithm. Each reaction executes deterministically at the rate determined by its rate law,
@@ -36,7 +36,7 @@ class DeterministicSimulationAlgorithmSubmodel(DynamicSubmodel):
         reaction_table (:obj:`dict`): map from reaction id to reaction index in `self.reactions`
     """
 
-    # the message type sent by DeterministicSimulationAlgorithmSubmodel
+    # the message type sent by DsaSubmodel
     SENT_MESSAGE_TYPES = [ExecuteDsaReaction]
 
     # register the message types sent
