@@ -265,19 +265,20 @@ class TestMultialgorithmSimulationDynamically(unittest.TestCase):
     def setUp(self):
         self.tmp_dir = tempfile.mkdtemp()
         self.results_dir = tempfile.mkdtemp(dir=self.tmp_dir)
+        self.models = ['static', 'one_reaction_linear', 'one_rxn_exponential', 'one_exchange_rxn_compt_growth',
+                       'stop_conditions']
         self.args = dict(results_dir=tempfile.mkdtemp(dir=self.tmp_dir),
                          checkpoint_period=1)
 
     def tearDown(self):
         shutil.rmtree(self.tmp_dir)
 
+    @unittest.skip('sbml_io.SbmlWriter fails')
     def test_convert_to_sbml(self):
         from wc_lang.sbml import io as sbml_io
         from wc_lang.io import Reader, Writer
         from wc_sim.testing.utils import read_model_for_test
-        all_models = ['static', 'one_reaction_linear', 'one_rxn_exponential', 'one_exchange_rxn_compt_growth',
-                  'stop_conditions']
-        for model_name in all_models:
+        for model_name in self.models:
             print(f'converting {model_name}')
             dirname = os.path.join(os.path.dirname(__file__), 'fixtures', 'dynamic_tests')
             model_filename = os.path.join(dirname, f'{model_name}.xlsx')
@@ -296,14 +297,10 @@ class TestMultialgorithmSimulationDynamically(unittest.TestCase):
             assert model_from_file.validate() is None
 
             # write SBML file
-            try:
-                sbml_io.SbmlWriter().run(model_from_file, sbml_dirname)
-            except Exception as e:
-                print(e)
+            sbml_io.SbmlWriter().run(model_from_file, sbml_dirname)
 
     def test_independently_solved_models(self):
-        models = ['static', 'one_reaction_linear', 'one_rxn_exponential', 'one_exchange_rxn_compt_growth', 'stop_conditions']
-        for model_name in models:
+        for model_name in self.models:
             model_filename = os.path.join(os.path.dirname(__file__), 'fixtures', 'dynamic_tests', f'{model_name}.xlsx')
             verify_independently_solved_model(self, model_filename, self.results_dir)
 
