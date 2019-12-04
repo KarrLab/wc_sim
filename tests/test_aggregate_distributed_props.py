@@ -250,7 +250,7 @@ class TestAggregateDistributedProps(unittest.TestCase):
 
         # send initial events
         self.simulator.initialize()
-        self.simulator.simulate((NUM_PERIODS-1)*PERIOD, 0)
+        self.simulator.simulate((NUM_PERIODS-1)*PERIOD)
 
     def test_aggregate_distributed_props_errors1(self):
         '''
