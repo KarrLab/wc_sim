@@ -20,7 +20,6 @@ from wc_sim import message_types
 from wc_sim.config import core as config_core_multialgorithm
 
 config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
-epsilon = config_multialgorithm['epsilon']
 
 
 def sum_values_fn(values, **kwargs):
@@ -136,7 +135,7 @@ class PropertyRequestor(ApplicationSimulationObject):
         self.test_case = test_case
 
     def send_initial_events(self):
-        self.send_event(self.period-epsilon,
+        self.send_event(self.period,
                         self,
                         GoGetProperty(self.property_name, self.period))
 
@@ -152,10 +151,10 @@ class PropertyRequestor(ApplicationSimulationObject):
     def handle_go_get_property_event(self, event):
         self.num_periods += 1
         measure_property_time = (self.num_periods+1)*self.period
-        self.send_event_absolute(measure_property_time-epsilon,
+        self.send_event_absolute(measure_property_time,
                                  self,
                                  GoGetProperty(event.message.property_name, measure_property_time))
-        self.send_event(epsilon,
+        self.send_event(0,
                         self.aggregate_distributed_props,
                         message_types.GetHistoricalProperty(
                             event.message.property_name,
@@ -251,7 +250,7 @@ class TestAggregateDistributedProps(unittest.TestCase):
 
         # send initial events
         self.simulator.initialize()
-        self.simulator.simulate((NUM_PERIODS-1)*PERIOD, epsilon)
+        self.simulator.simulate((NUM_PERIODS-1)*PERIOD, 0)
 
     def test_aggregate_distributed_props_errors1(self):
         '''

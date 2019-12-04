@@ -358,19 +358,16 @@ class AccessSpeciesPopulations(AccessSpeciesPopulationInterface):   # pragma: no
         # 2: instead of sending GetPopulation messages to retrieve populations may be unchanged,
         #   make write-through caches which push population updates from reaction executions
         # 3: draw reaction partition boundaries over species (edges) that rarely update
-        # TODO(Arthur): IMPORTANT: consider whether a better mechanism is available for ordering
-        #   concurrent events than time shifting by miniscule amounts, as done with epsilon here
         if delay <= 0:
             raise SpeciesPopulationError("prefetch: {} provided, but delay must "
                                          "be non-negative.".format(delay))
         stores = []
-        epsilon = config_multialgorithm['epsilon']
         for store, species_ids in self.locate_species(species_ids).items():
             if store != LOCAL_POP_STORE:
                 stores.append(store)
                 # advance the receipt of GetPopulation so the SpeciesPopSimObject executes it before
                 # the submodel needs the value
-                self.submodel.send_event(delay - epsilon*0.5,
+                self.submodel.send_event(delay,
                                          self.remote_pop_stores[store],
                                          message_types.GetPopulation(set(species_ids)))
         return stores
@@ -397,9 +394,6 @@ class AccessSpeciesPopulations(AccessSpeciesPopulationInterface):   # pragma: no
 
 
 # TODO(Arthur): cover after MVP wc_sim done
-epsilon = config_multialgorithm['epsilon']  # pragma: no cover
-
-
 class SpeciesPopulationCache(object):       # pragma: no cover
     """ Cache the population of species whose primary stores are remote population stores
 
@@ -466,7 +460,7 @@ class SpeciesPopulationCache(object):       # pragma: no cover
         if species_id not in self._cache:
             raise SpeciesPopulationError("SpeciesPopulationCache.read_one: species'{}' not "
                                          "in cache.".format(species_id))
-        if self._cache[species_id][0] + epsilon < time:
+        if self._cache[species_id][0] < time:
             raise SpeciesPopulationError("SpeciesPopulationCache.read_one: cache age of {} too big "
                                          "for read at time {} of species'{}'.".format(
                                              time-self._cache[species_id][0], time, species_id))
@@ -492,7 +486,7 @@ class SpeciesPopulationCache(object):       # pragma: no cover
         if missing:
             raise SpeciesPopulationError("SpeciesPopulationCache.read: species {} not in cache.".format(
                 str(missing)))
-        mistimed = list(filter(lambda s_id: self._cache[s_id][0] + epsilon < time, species_ids))
+        mistimed = list(filter(lambda s_id: self._cache[s_id][0] < time, species_ids))
         if mistimed:
             raise SpeciesPopulationError("SpeciesPopulationCache.read: species {} not reading "
                                          "recently cached value(s).".format(str(mistimed)))

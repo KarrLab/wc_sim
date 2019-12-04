@@ -217,9 +217,8 @@ class DistributedProperty(object):  # pragma: no cover; # TODO(Arthur): cover af
             raise ValueError("request time ({}) later than simulation time of requests({})".format(
                 time, request_time))
         self.value_history[time] = defaultdict(dict)
-        epsilon = config_multialgorithm['epsilon']
         for contributor in self.contributors:
-            the_aggregate_distributed_props.send_event(self.period-epsilon, contributor,
+            the_aggregate_distributed_props.send_event(self.period, contributor,
                                                        message_types.GetHistoricalProperty(self.name, time))
 
     def record_value(self, contributor, time, value):
