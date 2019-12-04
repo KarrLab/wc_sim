@@ -290,7 +290,7 @@ def verify_independently_solved_model(test_case, model_filename, results_dir):
             if os.path.isfile(file_path):
                 os.unlink(file_path)
 
-        print(f'testing {model_filename} with {integration_framework}')
+        print(f'testing {os.path.basename(model_filename)} with {integration_framework}')
         model = read_model_for_test(model_filename, integration_framework=f'WC:{integration_framework}')
 
         # simulate model
