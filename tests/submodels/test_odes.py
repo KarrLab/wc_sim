@@ -27,7 +27,7 @@ from wc_sim.testing.utils import read_model_for_test
 class TestOdeSubmodel(unittest.TestCase):
 
     # todo: install
-    # ODE_TEST_CASES = os.path.join(os.path.dirname(__file__), '..', 'fixtures', 'validation', 'testing', 'semantic')
+    # ODE_TEST_CASES = os.path.join(os.path.dirname(__file__), '..', 'fixtures', 'verification', 'testing', 'semantic')
 
     def setUp(self):
         self.default_species_copy_number = 1000000000.123

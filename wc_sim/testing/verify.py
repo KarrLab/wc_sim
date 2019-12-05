@@ -36,7 +36,7 @@ config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multi
 
 # TODO: doc strings
 class Error(Exception):
-    """ Base class for exceptions involving `wc_sim` validation
+    """ Base class for exceptions involving `wc_sim` verification
 
     Attributes:
         message (:obj:`str`): the exception's message
@@ -45,8 +45,8 @@ class Error(Exception):
         super().__init__(message)
 
 
-class ValidationError(Error):
-    """ Exception raised for errors in `wc_sim.validate`
+class VerificationError(Error):
+    """ Exception raised for errors in `wc_sim.verify`
 
     Attributes:
         message (:obj:`str`): the exception's message
@@ -55,12 +55,12 @@ class ValidationError(Error):
         super().__init__(message)
 
 
-class WcSimValidationWarning(UserWarning):
-    """ `wc_sim` Validation warning """
+class WcSimVerificationWarning(UserWarning):
+    """ `wc_sim` Verification warning """
     pass
 
 
-class ValidationTestCaseType(Enum):
+class VerificationTestCaseType(Enum):
     """ Types of test cases """
     CONTINUOUS_DETERMINISTIC = 1    # algorithms like ODE
     DISCRETE_STOCHASTIC = 2         # algorithms like SSA
@@ -71,14 +71,14 @@ TEST_CASE_TYPE_TO_DIR = {
     'DISCRETE_STOCHASTIC': 'stochastic'}
 
 
-class ValidationTestReader(object):
-    """ Read a model validation test case """
+class VerificationTestReader(object):
+    """ Read a model verification test case """
     SBML_FILE_SUFFIX = '.xml'
     def __init__(self, test_case_type, test_case_dir, test_case_num):
-        if test_case_type not in ValidationTestCaseType.__members__:
-            raise ValidationError("Unknown ValidationTestCaseType: '{}'".format(test_case_type))
+        if test_case_type not in VerificationTestCaseType.__members__:
+            raise VerificationError("Unknown VerificationTestCaseType: '{}'".format(test_case_type))
         else:
-            self.test_case_type = ValidationTestCaseType[test_case_type]
+            self.test_case_type = VerificationTestCaseType[test_case_type]
         self.test_case_dir = test_case_dir
         self.test_case_num = test_case_num
 
@@ -98,7 +98,7 @@ class ValidationTestReader(object):
         except Exception as e:
             errors.append("could not read settings file '{}': {}".format(settings_file, e))
         if errors:
-            raise ValidationError('; '.join(errors))
+            raise VerificationError('; '.join(errors))
 
         # convert settings values
         # convert all numerics to floats
@@ -124,25 +124,25 @@ class ValidationTestReader(object):
         # expected predictions should contain data for all time steps
         times = np.linspace(self.settings['start'], self.settings['duration'], num=self.settings['steps']+1)
         if not np.allclose(times, expected_predictions_df.time):
-            raise ValidationError("times in settings '{}' differ from times in expected predictions '{}'".format(
+            raise VerificationError("times in settings '{}' differ from times in expected predictions '{}'".format(
                 self.settings_file, expected_predictions_file))
 
-        if self.test_case_type == ValidationTestCaseType.CONTINUOUS_DETERMINISTIC:
+        if self.test_case_type == VerificationTestCaseType.CONTINUOUS_DETERMINISTIC:
             # expected predictions should contain the mean and sd of each variable in 'amount'
             expected_columns = set(self.settings['amount'])
             actual_columns = set(expected_predictions_df.columns.values)
             if expected_columns - actual_columns:
-                raise ValidationError("some amounts missing from expected predictions '{}': {}".format(
+                raise VerificationError("some amounts missing from expected predictions '{}': {}".format(
                     expected_predictions_file, expected_columns - actual_columns))
 
-        if self.test_case_type == ValidationTestCaseType.DISCRETE_STOCHASTIC:
+        if self.test_case_type == VerificationTestCaseType.DISCRETE_STOCHASTIC:
             # expected predictions should contain the mean and sd of each variable in 'amount'
             expected_columns = set()
             for amount in self.settings['amount']:
                 expected_columns.add(amount+'-mean')
                 expected_columns.add(amount+'-sd')
             if expected_columns - set(expected_predictions_df.columns.values):
-                raise ValidationError("mean or sd of some amounts missing from expected predictions '{}': {}".format(
+                raise VerificationError("mean or sd of some amounts missing from expected predictions '{}': {}".format(
                     expected_predictions_file, expected_columns - set(expected_predictions_df.columns.values)))
 
         return expected_predictions_df
@@ -152,7 +152,7 @@ class ValidationTestReader(object):
         self.model_filename = model_filename = os.path.join(
             self.test_case_dir, self.test_case_num+'-wc_lang.xlsx')
         if model_filename.endswith(self.SBML_FILE_SUFFIX):   # pragma: no cover
-            raise ValidationError("Reading SBML files not supported: model filename '{}'".format(model_filename))
+            raise VerificationError("Reading SBML files not supported: model filename '{}'".format(model_filename))
         return Reader().run(self.model_filename, strict=False)
 
     def run(self):
@@ -171,12 +171,12 @@ class ResultsComparator(object):
         atol='absolute'
     )
 
-    def __init__(self, validation_test_reader, simulation_run_results):
-        self.validation_test_reader = validation_test_reader
+    def __init__(self, verification_test_reader, simulation_run_results):
+        self.verification_test_reader = verification_test_reader
         self.strip_compartments(simulation_run_results)
         self.simulation_run_results = simulation_run_results
         # obtain default tolerances in np.allclose()
-        self.default_tolerances = ValidationUtilities.get_default_args(np.allclose)
+        self.default_tolerances = VerificationUtilities.get_default_args(np.allclose)
 
     @staticmethod
     def get_species(species_type):
@@ -191,8 +191,8 @@ class ResultsComparator(object):
 
     @classmethod
     def strip_compartments(cls, simulation_run_results):
-        # if they're present, strip compartments from simulation run results; assumes all validation tests happen in one compartment
-        # note that original run results are changed; assumes that is OK because they're used just for validation
+        # if they're present, strip compartments from simulation run results; assumes all verification tests happen in one compartment
+        # note that original run results are changed; assumes that is OK because they're used just for verification
         if isinstance(simulation_run_results, RunResults):
             populations_df = simulation_run_results.get('populations')
             col_names = list(populations_df.columns)
@@ -201,13 +201,13 @@ class ResultsComparator(object):
             for run_result in simulation_run_results:
                 cls.strip_compartments(run_result)
         else:
-            raise ValidationError("wrong type for simulation_run_results '{}'".format(
+            raise VerificationError("wrong type for simulation_run_results '{}'".format(
                 type(simulation_run_results)))
 
     def prepare_tolerances(self):
         """ Prepare tolerance dictionary
 
-        Use values from `validation_test_reader.settings` if available, otherwise from `numpy.allclose()`s defaults
+        Use values from `verification_test_reader.settings` if available, otherwise from `numpy.allclose()`s defaults
 
         Returns:
             :obj:`dict`: kwargs for `rtol` and `atol` tolerances for use by `numpy.allclose()`
@@ -215,9 +215,9 @@ class ResultsComparator(object):
         kwargs = {}
         for np_name, testing_name in self.TOLERANCE_MAP.items():
             kwargs[np_name] = self.default_tolerances[np_name]
-            if testing_name in self.validation_test_reader.settings:
+            if testing_name in self.verification_test_reader.settings:
                 try:
-                    tolerance = float(self.validation_test_reader.settings[testing_name])
+                    tolerance = float(self.verification_test_reader.settings[testing_name])
                     kwargs[np_name] = tolerance
                 except:
                     pass
@@ -237,17 +237,17 @@ class ResultsComparator(object):
                 within tolerances, otherwise :obj:`list`: of species with differing values
         """
         differing_values = []
-        if self.validation_test_reader.test_case_type == ValidationTestCaseType.CONTINUOUS_DETERMINISTIC:
+        if self.verification_test_reader.test_case_type == VerificationTestCaseType.CONTINUOUS_DETERMINISTIC:
             kwargs = self.prepare_tolerances()
             concentrations_df = self.simulation_run_results.get('concentrations')
             # for each prediction, determine whether its trajectory is close enough to the expected predictions
-            for species_type in self.validation_test_reader.settings['amount']:
-                if not np.allclose(self.validation_test_reader.expected_predictions_df[species_type].values,
+            for species_type in self.verification_test_reader.settings['amount']:
+                if not np.allclose(self.verification_test_reader.expected_predictions_df[species_type].values,
                     concentrations_df[species_type].values, **kwargs):
                     differing_values.append(species_type)
             return differing_values or False
 
-        if self.validation_test_reader.test_case_type == ValidationTestCaseType.DISCRETE_STOCHASTIC:
+        if self.verification_test_reader.test_case_type == VerificationTestCaseType.DISCRETE_STOCHASTIC:
             """ Test mean and sd population over multiple runs
 
             Follow algorithm in
@@ -256,23 +256,23 @@ class ResultsComparator(object):
             """
             # TODO: warn if values lack precision; want int64 integers and float64 floats
             # see https://docs.scipy.org/doc/numpy-1.15.0/reference/arrays.scalars.html
-            # use warnings.warn("", WcSimValidationWarning)
+            # use warnings.warn("", WcSimVerificationWarning)
 
             ### test means ###
-            mean_range = self.validation_test_reader.settings['meanRange']
+            mean_range = self.verification_test_reader.settings['meanRange']
             self.n_runs = n_runs = len(self.simulation_run_results)
 
             self.simulation_pop_means = {}
-            for species_type in self.validation_test_reader.settings['amount']:
+            for species_type in self.verification_test_reader.settings['amount']:
                 # extract nx1 correct mean and sd np arrays
-                correct_df = self.validation_test_reader.expected_predictions_df
+                correct_df = self.verification_test_reader.expected_predictions_df
                 e_mean = correct_df.loc[:, species_type+'-mean'].values
                 e_sd = correct_df.loc[:, species_type+'-sd'].values
                 # errors if e_sd or e_mean < 0
                 if np.any(e_mean < 0):
-                    raise ValidationError("e_mean contains negative value(s)")
+                    raise VerificationError("e_mean contains negative value(s)")
                 if np.any(e_sd < 0):
-                    raise ValidationError("e_sd contains negative value(s)")
+                    raise VerificationError("e_sd contains negative value(s)")
 
                 # avoid division by 0 and sd=0; replace 0s in e_sd with inf
                 # TODO: instead of this, remove 0s in e_sd and corresponding pop_mean & e_mean rows;
@@ -325,25 +325,25 @@ class SsaEnsemble(object):
         return run_results_array.mean(axis=1), run_results_array.std(axis=1)
 
 
-class CaseValidator(object):
-    """ Validate a test case """
+class CaseVerifier(object):
+    """ Verify a test case """
     def __init__(self, test_cases_root_dir, test_case_type, test_case_num,
-        default_num_stochastic_runs=config_multialgorithm['num_ssa_validation_sim_runs'],
+        default_num_stochastic_runs=config_multialgorithm['num_ssa_verification_sim_runs'],
         time_step_factor=None):
         # read model, config and expected predictions
         self.test_case_dir = os.path.join(test_cases_root_dir, TEST_CASE_TYPE_TO_DIR[test_case_type],
             test_case_num)
-        self.validation_test_reader = ValidationTestReader(test_case_type, self.test_case_dir, test_case_num)
-        self.validation_test_reader.run()
+        self.verification_test_reader = VerificationTestReader(test_case_type, self.test_case_dir, test_case_num)
+        self.verification_test_reader.run()
         self.default_num_stochastic_runs = default_num_stochastic_runs
         self.time_step_factor = time_step_factor
 
-    def validate_model(self, num_discrete_stochastic_runs=None, discard_run_results=True, plot_file=None):
-        """ Validate a model
+    def verify_model(self, num_discrete_stochastic_runs=None, discard_run_results=True, plot_file=None):
+        """ Verify a model
         """
         # check settings
         required_settings = ['duration', 'steps']
-        settings = self.validation_test_reader.settings
+        settings = self.verification_test_reader.settings
         errors = []
         for setting in required_settings:
             if setting not in settings:
@@ -351,9 +351,9 @@ class CaseValidator(object):
             elif not isinstance(settings[setting], float):
                 errors.append("required setting '{}' not a float".format(setting))
         if errors:
-            raise ValidationError('; '.join(errors))
+            raise VerificationError('; '.join(errors))
         if 'start' in settings and settings['start'] != 0:
-            raise ValidationError("non-zero start setting ({}) not supported".format(settings['start']))
+            raise VerificationError("non-zero start setting ({}) not supported".format(settings['start']))
 
         # prepare for simulation
         self.tmp_results_dir = tmp_results_dir = tempfile.mkdtemp()
@@ -368,16 +368,16 @@ class CaseValidator(object):
             factor = self.time_step_factor
         simul_kwargs['time_step'] = factor * settings['duration']/settings['steps']
 
-        if self.validation_test_reader.test_case_type == ValidationTestCaseType.CONTINUOUS_DETERMINISTIC:
-            simulation = Simulation(self.validation_test_reader.model)
+        if self.verification_test_reader.test_case_type == VerificationTestCaseType.CONTINUOUS_DETERMINISTIC:
+            simulation = Simulation(self.verification_test_reader.model)
             _, results_dir = simulation.run(**simul_kwargs)
             self.simulation_run_results = RunResults(results_dir)
 
-        if self.validation_test_reader.test_case_type == ValidationTestCaseType.DISCRETE_STOCHASTIC:
+        if self.verification_test_reader.test_case_type == VerificationTestCaseType.DISCRETE_STOCHASTIC:
             '''
             TODO: retry on failure
                 if failure, retry "evaluate whether mean of simulation trajectories match expected trajectory"
-                    # simulations generating the correct trajectories will fail validation (100*(p-value threshold)) percent of the time
+                    # simulations generating the correct trajectories will fail verification (100*(p-value threshold)) percent of the time
                 if failure again, report failure    # assuming p-value << 1, two failures indicates likely errors
             '''
             # TODO: convert to probabilistic test with multiple runs and p-value
@@ -388,15 +388,15 @@ class CaseValidator(object):
                 num_runs = self.default_num_stochastic_runs
             self.num_runs = num_runs
             self.simulation_run_results = \
-                SsaEnsemble.run(self.validation_test_reader.model, simul_kwargs, tmp_results_dir, num_runs)
+                SsaEnsemble.run(self.verification_test_reader.model, simul_kwargs, tmp_results_dir, num_runs)
 
         ## 2. compare results
-        self.results_comparator = ResultsComparator(self.validation_test_reader, self.simulation_run_results)
+        self.results_comparator = ResultsComparator(self.verification_test_reader, self.simulation_run_results)
         self.comparison_result = self.results_comparator.differs()
 
         ## 3 plot comparison of actual and expected trajectories
         if plot_file:
-            self.plot_model_validation(plot_file)
+            self.plot_model_verification(plot_file)
         # TODO: optionally, save results
         # TODO: output difference between actual and expected trajectory
 
@@ -408,7 +408,7 @@ class CaseValidator(object):
     def get_model_summary(self):
         """Summarize the test model
         """
-        mdl = self.validation_test_reader.model
+        mdl = self.verification_test_reader.model
         summary = ['Model Summary:']
         summary.append("model {}:\n    {}".format(mdl.id, mdl.name))
         for cmpt in mdl.compartments:
@@ -433,20 +433,20 @@ class CaseValidator(object):
         if self.comparison_result:
             summary.append("Failing species types: {}".format(', '.join(self.comparison_result)))
         else:
-            summary.append('All species types validate')
+            summary.append('All species types verify')
         if hasattr(self, 'num_runs'):
             summary.append("Num simul runs: {}".format(self.num_runs))
-        summary.append("Test case type: {}".format(self.validation_test_reader.test_case_type.name))
-        summary.append("Test case number: {}".format(self.validation_test_reader.test_case_num))
+        summary.append("Test case type: {}".format(self.verification_test_reader.test_case_type.name))
+        summary.append("Test case number: {}".format(self.verification_test_reader.test_case_num))
         summary.append("Time step factor: {}".format(self.time_step_factor))
         return summary
 
-    def plot_model_validation(self, plot_file, max_runs_to_plot=100, presentation_qual=True):
-        """Plot a model validation run
+    def plot_model_verification(self, plot_file, max_runs_to_plot=100, presentation_qual=True):
+        """Plot a model verification run
         """
         # TODO: configure max_runs_to_plot in config file
         # TODO: use matplotlib 3; use the more flexible OO API instead of pyplot
-        num_species_types = len(self.validation_test_reader.settings['amount'])
+        num_species_types = len(self.verification_test_reader.settings['amount'])
         if num_species_types == 1:
             n_rows = 1
             n_cols = 1
@@ -462,14 +462,14 @@ class CaseValidator(object):
             return
         legend_fontsize = 9 if presentation_qual else 5
         plot_num = 1
-        if self.validation_test_reader.test_case_type == ValidationTestCaseType.CONTINUOUS_DETERMINISTIC:
+        if self.verification_test_reader.test_case_type == VerificationTestCaseType.CONTINUOUS_DETERMINISTIC:
             times = self.simulation_run_results.get('concentrations').index
-            for species_type in self.validation_test_reader.settings['amount']:
+            for species_type in self.verification_test_reader.settings['amount']:
                 plt.subplot(n_rows, n_cols, plot_num)
 
                 # plot expected predictions
                 expected_kwargs = dict(color='red', linewidth=1.2)
-                expected_mean_df = self.validation_test_reader.expected_predictions_df.loc[:, species_type]
+                expected_mean_df = self.verification_test_reader.expected_predictions_df.loc[:, species_type]
                 correct_mean, = plt.plot(times, expected_mean_df.values, **expected_kwargs)
 
                 # plot simulation pops
@@ -484,10 +484,10 @@ class CaseValidator(object):
                     loc='lower left', fontsize=legend_fontsize)
                 plot_num += 1
 
-        if self.validation_test_reader.test_case_type == ValidationTestCaseType.DISCRETE_STOCHASTIC:
+        if self.verification_test_reader.test_case_type == VerificationTestCaseType.DISCRETE_STOCHASTIC:
             times = self.simulation_run_results[0].get('populations').index
 
-            for species_type in self.validation_test_reader.settings['amount']:
+            for species_type in self.verification_test_reader.settings['amount']:
                 plt.subplot(n_rows, n_cols, plot_num)
 
                 # plot simulation pops
@@ -498,11 +498,11 @@ class CaseValidator(object):
 
                 # plot expected predictions
                 expected_kwargs = dict(color='red', linewidth=1)
-                expected_mean_df = self.validation_test_reader.expected_predictions_df.loc[:, species_type+'-mean']
+                expected_mean_df = self.verification_test_reader.expected_predictions_df.loc[:, species_type+'-mean']
                 correct_mean, = plt.plot(times, expected_mean_df.values, **expected_kwargs)
                 # mean +/- 3 sd
                 expected_kwargs['linestyle'] = 'dashed'
-                expected_sd_df = self.validation_test_reader.expected_predictions_df.loc[:, species_type+'-sd']
+                expected_sd_df = self.verification_test_reader.expected_predictions_df.loc[:, species_type+'-sd']
                 # TODO: take range -3, +3 should be taken from settings data
                 correct_mean_plus_3sd, = plt.plot(times, expected_mean_df.values + 3 * expected_sd_df / math.sqrt(self.results_comparator.n_runs),
                     **expected_kwargs)
@@ -540,12 +540,12 @@ class CaseValidator(object):
             plt.figtext(0.8, y_pos, '\n'.join(test_case_summary), fontsize=4)
 
         if presentation_qual:
-            test_reader = self.validation_test_reader
+            test_reader = self.verification_test_reader
             suptitle = "{} case {}, '{}': {}".format(
                 test_reader.test_case_type.name.replace('_', ' ').title(),
                 test_reader.test_case_num,
-                self.validation_test_reader.model.name,
-                'failed' if self.comparison_result else 'validated'
+                self.verification_test_reader.model.name,
+                'failed' if self.comparison_result else 'verifyd'
                 )
             plt.suptitle(suptitle, fontsize=10)
             # plt.title('')
@@ -556,30 +556,30 @@ class CaseValidator(object):
         return "Wrote: {}".format(plot_file)
 
 
-class ValidationResultType(Enum):
-    """ Types of validation results """
+class VerificationResultType(Enum):
+    """ Types of verification results """
     CASE_UNREADABLE = 'could not read case'
-    FAILED_VALIDATION_RUN = 'validation run failed'
-    SLOW_VALIDATION_RUN = 'validation run timed out'
-    CASE_DID_NOT_VALIDATE = 'case did not validate'
-    CASE_VALIDATED = 'case validated'
+    FAILED_VERIFICATION_RUN = 'verification run failed'
+    SLOW_VERIFICATION_RUN = 'verification run timed out'
+    CASE_DID_NOT_VERIFY = 'case did not verify'
+    CASE_VERIFIED = 'case verifyd'
 
 
-ValidationRunResult = namedtuple('ValidationRunResult', 'cases_dir, case_type_sub_dir, case_num, result_type, error')
+VerificationRunResult = namedtuple('VerificationRunResult', 'cases_dir, case_type_sub_dir, case_num, result_type, error')
 # make dynamic_expression optional: see https://stackoverflow.com/a/18348004
-ValidationRunResult.__new__.__defaults__ = (None, )
+VerificationRunResult.__new__.__defaults__ = (None, )
 # TODO: add doc strings, like
-# ValidationRunResult.__doc__ += ': directory storing all test cases'
+# VerificationRunResult.__doc__ += ': directory storing all test cases'
 
-class ValidationSuite(object):
-    """Run suite of validation tests of `wc_sim`'s dynamic behavior """
+class VerificationSuite(object):
+    """Run suite of verification tests of `wc_sim`'s dynamic behavior """
 
     def __init__(self, cases_dir, plot_dir=None):
         if not os.path.isdir(cases_dir):
-            raise ValidationError("cannot open cases_dir: '{}'".format(cases_dir))
+            raise VerificationError("cannot open cases_dir: '{}'".format(cases_dir))
         self.cases_dir = cases_dir
         if plot_dir and not os.path.isdir(plot_dir):
-            raise ValidationError("cannot open plot_dir: '{}'".format(plot_dir))
+            raise VerificationError("cannot open plot_dir: '{}'".format(plot_dir))
         self.plot_dir = plot_dir
         self._reset_results()
 
@@ -593,12 +593,12 @@ class ValidationSuite(object):
         """Record a result_type
         """
         # TODO: if an error occurs record more, like the results dir
-        if type(result_type) != ValidationResultType:
-            raise ValidationError("result_type must be a ValidationResultType, not a '{}'".format(type(result_type).__name__))
+        if type(result_type) != VerificationResultType:
+            raise VerificationError("result_type must be a VerificationResultType, not a '{}'".format(type(result_type).__name__))
         if error:
-            self.results.append(ValidationRunResult(self.cases_dir, case_type_sub_dir, case_num, result_type, error))
+            self.results.append(VerificationRunResult(self.cases_dir, case_type_sub_dir, case_num, result_type, error))
         else:
-            self.results.append(ValidationRunResult(self.cases_dir, case_type_sub_dir, case_num, result_type))
+            self.results.append(VerificationRunResult(self.cases_dir, case_type_sub_dir, case_num, result_type))
 
     def _run_test(self, case_type_name, case_num, num_stochastic_runs=20, time_step_factor=None,
         verbose=False):
@@ -607,71 +607,71 @@ class ValidationSuite(object):
         if verbose:
             start_time = time.process_time()
         try:
-            case_validator = CaseValidator(self.cases_dir, case_type_name, case_num,
+            case_verifier = CaseVerifier(self.cases_dir, case_type_name, case_num,
                 time_step_factor=time_step_factor)
             if verbose:
-                print(MakeModel.model_to_str(case_validator.validation_test_reader.model))
+                print(MakeModel.model_to_str(case_verifier.verification_test_reader.model))
         except:
             tb = traceback.format_exc()
-            self._record_result(case_type_name, case_num, ValidationResultType.CASE_UNREADABLE, tb)
+            self._record_result(case_type_name, case_num, VerificationResultType.CASE_UNREADABLE, tb)
             return
         try:
             kwargs = {}
             if self.plot_dir:
-                plot_file = os.path.join(self.plot_dir, "{}_{}_validation_test.pdf".format(case_type_name, case_num))
+                plot_file = os.path.join(self.plot_dir, "{}_{}_verification_test.pdf".format(case_type_name, case_num))
                 kwargs['plot_file'] = plot_file
             if num_stochastic_runs:
                 kwargs['num_discrete_stochastic_runs'] = num_stochastic_runs
-            # TODO: timeout excessively long validation runs
+            # TODO: timeout excessively long verification runs
             if verbose:
-                notice = "Validating {} case {}".format(case_type_name, case_num)
+                notice = "Verifying {} case {}".format(case_type_name, case_num)
                 if num_stochastic_runs is not None:
                     notice += " with {} runs".format(num_stochastic_runs)
                 print(notice)
-            validation_result = case_validator.validate_model(**kwargs)
+            verification_result = case_verifier.verify_model(**kwargs)
             if verbose:
                 run_time = time.process_time() - start_time
                 print("run time: {:8.3f}".format(run_time))
 
         except:
             tb = traceback.format_exc()
-            self._record_result(case_type_name, case_num, ValidationResultType.FAILED_VALIDATION_RUN, tb)
+            self._record_result(case_type_name, case_num, VerificationResultType.FAILED_VERIFICATION_RUN, tb)
             return
-        if validation_result:
-            self._record_result(case_type_name, case_num, ValidationResultType.CASE_DID_NOT_VALIDATE, validation_result)
+        if verification_result:
+            self._record_result(case_type_name, case_num, VerificationResultType.CASE_DID_NOT_VERIFY, verification_result)
         else:
-            self._record_result(case_type_name, case_num, ValidationResultType.CASE_VALIDATED)
+            self._record_result(case_type_name, case_num, VerificationResultType.CASE_VERIFIED)
 
     def run(self, test_case_type_name=None, cases=None, num_stochastic_runs=None, time_step_factor=None,
         verbose=False):
         """Run all requested test cases
         """
         if isinstance(cases, str):
-            raise ValidationError("cases should be an iterator over case nums, not a string")
+            raise VerificationError("cases should be an iterator over case nums, not a string")
         if cases and not test_case_type_name:
-            raise ValidationError('if cases provided then test_case_type_name must be provided too')
+            raise VerificationError('if cases provided then test_case_type_name must be provided too')
         if test_case_type_name:
-            if test_case_type_name not in ValidationTestCaseType.__members__:
-                raise ValidationError("Unknown ValidationTestCaseType: '{}'".format(test_case_type_name))
+            if test_case_type_name not in VerificationTestCaseType.__members__:
+                raise VerificationError("Unknown VerificationTestCaseType: '{}'".format(test_case_type_name))
             if cases is None:
                 cases = os.listdir(os.path.join(self.cases_dir, TEST_CASE_TYPE_TO_DIR[test_case_type_name]))
             for case_num in cases:
                 self._run_test(test_case_type_name, case_num, num_stochastic_runs=num_stochastic_runs,
                     time_step_factor=time_step_factor, verbose=verbose)
         else:
-            for validation_test_case_type in ValidationTestCaseType:
-                for case_num in os.listdir(os.path.join(self.cases_dir, TEST_CASE_TYPE_TO_DIR[validation_test_case_type.name])):
-                    self._run_test(validation_test_case_type.name, case_num,
+            for verification_test_case_type in VerificationTestCaseType:
+                for case_num in os.listdir(os.path.join(self.cases_dir, TEST_CASE_TYPE_TO_DIR[verification_test_case_type.name])):
+                    self._run_test(verification_test_case_type.name, case_num,
                         num_stochastic_runs=num_stochastic_runs, time_step_factor=time_step_factor,
                         verbose=verbose)
         return self.results
 
 
-class HybridModelValidation(object):
+class HybridModelVerification(object):
     """
     approach
         input model or pair of equivalent models, a correct model that can be run w SSA, and a hybrid model that also uses ODE
-        use the correct model to create a correct SSA validation case:
+        use the correct model to create a correct SSA verification case:
             make settings file
             correct means & SDs (consider only 1 initial concentration):
                 run model Monte Carlo using only SSA
@@ -683,34 +683,34 @@ class HybridModelValidation(object):
                     for these deterministic species, create settings and <model_name_deterministic>-results.csv
                     create a test case for species modeled by SSA or SSA & ODE by removing the deterministic species
             ** run the hybrid model: high flux reactions by ODE, and low flux by SSA
-                validate deterministic species against their correct results
-                validate hybrid and SSA-only species against their correct results
+                verify deterministic species against their correct results
+                verify hybrid and SSA-only species against their correct results
             
         if time permits, try various settings of checkpoint interval, time step factor, etc.
     """
     '''
-    validation case dirs needed:
+    verification case dirs needed:
         1) correct SSA: model and settings for running the correct SSA, which will GENERATE its local *.results.csv
         2) hybrid-semantic: model and settings for running the hybrid model, and comparing its ODE predictions
         3) hybrid-stochastic: model and settings for running the hybrid model, and comparing its hybrid&SSA predictions
     '''
-    def __init__(self, validation_dir, case_name, ssa_model_file, ssa_settings, hybrid_model_file, hybrid_settings):
-        self.validation_dir = validation_dir
+    def __init__(self, verification_dir, case_name, ssa_model_file, ssa_settings, hybrid_model_file, hybrid_settings):
+        self.verification_dir = verification_dir
         self.case_name = case_name
 
         '''
         # TODO: add later
-        self.continuous_typed_case_validator = self.TypedCaseValidator(self.validation_dir, case_name,
+        self.continuous_typed_case_verifier = self.TypedCaseVerifier(self.verification_dir, case_name,
             hybrid_model_file, hybrid_settings, 'semantic')
         '''
-        self.discrete_typed_case_validator = self.TypedCaseValidator(self.validation_dir, case_name,
+        self.discrete_typed_case_verifier = self.TypedCaseVerifier(self.verification_dir, case_name,
             hybrid_model_file, hybrid_settings, 'DISCRETE_STOCHASTIC')
-        self.correct_typed_case_validator = self.TypedCaseValidator(self.validation_dir, case_name,
+        self.correct_typed_case_verifier = self.TypedCaseVerifier(self.verification_dir, case_name,
             ssa_model_file, ssa_settings, 'DISCRETE_STOCHASTIC', correct=True)
         self.tmp_results_dir = tempfile.mkdtemp()
 
-    class TypedCaseValidator(object):
-        # represent a validation case in a HybridModelValidation, one of correct, deterministic (ODE) or discrete (SSA) 
+    class TypedCaseVerifier(object):
+        # represent a verification case in a HybridModelVerification, one of correct, deterministic (ODE) or discrete (SSA) 
         def __init__(self, root_dir, case_name, model_file, settings, case_type, correct=False):
             if case_type not in TEST_CASE_TYPE_TO_DIR:
                 raise MultialgorithmError("bad case_type: '{}'".format(case_type))
@@ -731,14 +731,14 @@ class HybridModelValidation(object):
             # create settings file
             self.write_settings_file(settings)
             # read settings
-            self.validation_test_reader = ValidationTestReader(case_type, self.case_dir, case_name)
-            self.validation_test_reader.settings = self.validation_test_reader.read_settings()
+            self.verification_test_reader = VerificationTestReader(case_type, self.case_dir, case_name)
+            self.verification_test_reader.settings = self.verification_test_reader.read_settings()
             # create results csv from run results
-            # run validation
-            if case_type == ValidationTestCaseType.DISCRETE_STOCHASTIC:
+            # run verification
+            if case_type == VerificationTestCaseType.DISCRETE_STOCHASTIC:
                 pass
 
-            if case_type == ValidationTestCaseType.CONTINUOUS_DETERMINISTIC:
+            if case_type == VerificationTestCaseType.CONTINUOUS_DETERMINISTIC:
                 pass
 
         def get_typed_case_dir(self):
@@ -748,7 +748,7 @@ class HybridModelValidation(object):
             return self.model
 
         def get_settings(self):
-            return self.validation_test_reader.settings
+            return self.verification_test_reader.settings
 
         def get_simul_kwargs(self):
             simul_kwargs = dict(end_time=self.get_settings()['duration'],
@@ -779,7 +779,7 @@ class HybridModelValidation(object):
         """
         
         # allocate results mean & SD
-        settings = self.correct_typed_case_validator.get_settings()
+        settings = self.correct_typed_case_verifier.get_settings()
         pop_means = {}
         pop_sds = {}
         for species_type in settings['amount']:
@@ -802,17 +802,17 @@ class HybridModelValidation(object):
                     correct_results_df[column] = pop_sds[species_type]
 
         # output as csv
-        results_filename = os.path.join(self.correct_typed_case_validator.get_typed_case_dir(),
+        results_filename = os.path.join(self.correct_typed_case_verifier.get_typed_case_dir(),
             "{}-results.csv".format(self.case_name))
         correct_results_df.to_csv(results_filename)
         return results_filename
 
     def get_correct_results(self, num_runs, verbose=True):
         # get correct results from ssa model
-        model = self.correct_typed_case_validator.get_model()
+        model = self.correct_typed_case_verifier.get_model()
         correct_run_results = \
             SsaEnsemble.run(model,
-                self.correct_typed_case_validator.get_simul_kwargs(), self.tmp_results_dir, num_runs)
+                self.correct_typed_case_verifier.get_simul_kwargs(), self.tmp_results_dir, num_runs)
         if verbose:
             print("made {} runs of {}".format(len(correct_run_results), model.id))
         ResultsComparator.strip_compartments(correct_run_results)
@@ -826,22 +826,22 @@ class HybridModelValidation(object):
             self.convert_correct_results(correct_results)
 
         ''' 
-        set up validation
+        set up verification
             set up SSA run (break SSA execution above into reusable method)
             execute correct SSA run to generate SSA ensemble
             Convert set of simulation results into a stochastic results
             # convert ODE only species in stochastic results into hybrid-semantic results
             convert SSA species in stochastic results into hybrid-stochastic results
             copy models and settings into 'hybrid-semantic' and 'hybrid-stochastic' dirs
-        run validation
+        run verification
             generate ensemble of hybrid model runs
-            validate
+            verify
             # filter results to ODE and hybrid/SSA
-            # validate each
+            # verify each
         ''' 
 
 
-class ValidationUtilities(object):
+class VerificationUtilities(object):
 
     @staticmethod
     def get_default_args(func):
