@@ -1,0 +1,6 @@
+start: 0
+duration: 2.88E+04
+steps: 2.88E+02
+amount: RNA, protein
+output: RNA-mean, RNA-sd, protein-mean, protein-sd
+meanRange: (-3, 3)

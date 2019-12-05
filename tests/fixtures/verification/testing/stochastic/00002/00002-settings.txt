@@ -1,0 +1,3 @@
+key1: value1 is long
+key2: value2
+key1: repeated
