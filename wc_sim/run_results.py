@@ -10,11 +10,12 @@ import numpy
 import os
 import pandas
 import pickle
+from scipy.constants import Avogadro
 
-from wc_utils.util.misc import as_dict
 from de_sim.checkpoint import Checkpoint
 from de_sim.sim_metadata import SimulationMetadata
 from wc_sim.multialgorithm_errors import MultialgorithmError
+from wc_utils.util.misc import as_dict
 # todo: have hdf use disk more efficiently; for unknown reasons, in one example hdf uses 4.4M to
 # store the data in 52 pickle files of 8K each
 # todo: speedup convert_checkpoints() which runs slowly
@@ -37,10 +38,13 @@ class RunResults(object):
         'random_states',        # states of the simulation's random number geerators over the simulation
         'metadata',             # the simulation's global metadata
     }
-    # components computed from the stored components; a map from component name to the method that computes it
+
+    # components computed from stored components; map from component name to the method that computes it
     COMPUTED_COMPONENTS = {
-        'concentrations': 'get_concentrations',     # concentrations of species at all checkpoint times
+        'volumes': 'get_volumes',   # volumes of all compartments at all checkpoint times
+        'masses': 'get_masses',     # masses of all compartments at all checkpoint times
     }
+
     HDF5_FILENAME = 'run_results.h5'
 
     def __init__(self, results_dir):
@@ -53,15 +57,13 @@ class RunResults(object):
         self.results_dir = results_dir
         self.run_results = {}
 
-        # if the HDF file containing the run results exists, open it
-        if os.path.isfile(self._hdf_file()):
-            self._load_hdf_file()
-
-        # else create the HDF file from the stored metadata and sequence of checkpoints
-        else:
+        # if an HDF file containing the run results does not exist, then
+        # create it from the stored metadata and sequence of checkpoints
+        if not os.path.isfile(self._hdf_file()):
 
             # create the HDF file containing the run results
-            population_df, observables_df, functions_df, aggregate_states_df, random_states_s = self.convert_checkpoints()
+            population_df, observables_df, functions_df, aggregate_states_df, random_states_s = \
+                self.convert_checkpoints()
 
             # populations
             population_df.to_hdf(self._hdf_file(), 'populations')
@@ -82,7 +84,8 @@ class RunResults(object):
             metadata_s = self.convert_metadata()
             metadata_s.to_hdf(self._hdf_file(), 'metadata')
 
-            self._load_hdf_file()
+        # load the data in the HDF file containing the run results
+        self._load_hdf_file()
 
     @classmethod
     def prepare_computed_components(cls):
@@ -92,12 +95,12 @@ class RunResults(object):
             :obj:`MultialgorithmError`: if a value in `self.COMPUTED_COMPONENTS` is not a method
                 in `RunResults`
         """
-        for component, function in cls.COMPUTED_COMPONENTS.items():
-            if hasattr(cls, function):
-                cls.COMPUTED_COMPONENTS[component] = getattr(cls, function)
+        for component, method in cls.COMPUTED_COMPONENTS.items():
+            if hasattr(cls, method):
+                cls.COMPUTED_COMPONENTS[component] = getattr(cls, method)
             else:
-                raise MultialgorithmError("'{}' in COMPUTED_COMPONENTS is not a function in {}".format(
-                    function, cls.__class__.__name__))
+                raise MultialgorithmError("'{}' in COMPUTED_COMPONENTS is not a method in {}".format(
+                    method, cls.__name__))
 
     def _hdf_file(self):
         """ Provide the pathname of the HDF5 file storing the combined results
@@ -134,67 +137,87 @@ class RunResults(object):
             return RunResults.COMPUTED_COMPONENTS[component](self)
         return self.run_results[component]
 
-    def get_concentrations(self):
-        """ Get concentrations
+    def get_concentrations(self, compartment_id):
+        """ Get concentrations of the species in a compartment at checkpoint times
+
+        Args:
+            compartment_id (:obj:`str`): the compartment containing species for which concentrations
+                will be returned
 
         Returns:
-            :obj:`pandas.DataFrame`: the concentrations of this `RunResults`' species
+            :obj:`pandas.DataFrame`: the concentrations of the species in a compartment at checkpoint times
+
+        Raises:
+            :obj:`MultialgorithmError`: if no species are in the compartment
         """
-        # todo: return concentrations in all compartments
-        # todo: test this by using volumes != 1
-        print("self.get('aggregate_states')\n",self.get('aggregate_states'))
-        #print("self.get_volumes()", self.get_volumes())
-        volumes = self.get('aggregate_states').loc[:, ('c', 'volume')]
-        # get vol for each species
-        return self.get('populations').iloc[:,:].div(volumes, axis=0) / Avogadro
+        populations = self.get('populations')
+        compartment_vols = self.get_volumes(compartment_id)
+        # filter to populations for species in compartment_id
+        filter = f'\[{compartment_id}\]$'
+        filtered_populations = populations.filter(regex=filter)
+        if filtered_populations.empty:  # pragma: no cover
+            raise MultialgorithmError(f"No species found in compartment '{compartment_id}'")
+        pop_div_vol = populations.div(compartment_vols, axis='index')
+        concentrations = populations.div(compartment_vols, axis='index') / Avogadro
+        return(concentrations)
 
     def get_times(self):
-        """ Get checkpoint times
+        """ Get simulation times of results data
 
         Returns:
-            :obj:`numpy.array`: data times
+            :obj:`numpy.ndarray`: simulation times of results data
         """
-        return self.get('populations').index
+        return self.get('populations').index.values
 
-    def get_volumes(self, compartment_id=None):
-        """ Get compartment volume(s) at checkpoint times
+    # todo: available properties
+    # todo: use instead of indexing where RunResults are used
+    def _get_properties(self, compartment_id, property=None):
+        """ Get a compartment's aggregate state properties or property at checkpoint times
 
         Args:
-            compartment_id (:obj:`str`): the id of a compartment's volumes to return; if not
-                provided return volumes for all compartments
+            compartment_id (:obj:`str`): the compartment's properties or property to return
+            property (:obj:`str`, optional): if provided, the property to return; otherwise,
+                return all properties
 
         Returns:
-            :obj:`pandas.DataFrame`: the volumes of compartment(s) at all checkpoint times
-        """
-        return self._get_property('volume', compartment_id=compartment_id)
-
-    def get_masses(self, compartment_id=None):
-        """ Get compartment mass(es) at checkpoint times
-
-        Args:
-            compartment_id (:obj:`str`): the id of a compartment's mass to return; if not
-                provided return masses for all compartments
-
-        Returns:
-            :obj:`pandas.DataFrame`: the mass(es) of compartment(s) at all checkpoint times
-        """
-        return self._get_property('mass', compartment_id=compartment_id)
-
-    def _get_property(self, property, compartment_id=None):
-        """ Get property values at checkpoint times
-
-        Args:
-            property (:obj:`str`): the property to return
-            compartment_id (:obj:`str`): the id of a compartment's property to return; if not
-                provid the property for all compartments
-
-        Returns:
-            :obj:`pandas.DataFrame`: the properties of compartment(s) at all checkpoint times
+            :obj:`pandas.DataFrame`: a compartment's properties or property at all checkpoint times
         """
         aggregate_states_df = self.get('aggregate_states')
-        if compartment_id is None:
-            return aggregate_states_df[property]
-        return aggregate_states_df[property, compartment_id]
+        if property is not None:
+            return aggregate_states_df[compartment_id][property]
+        return aggregate_states_df[compartment_id]
+
+    def get_volumes(self, compartment_id=None):
+        """ Get the compartment volumes at checkpoint times
+
+        Args:
+            compartment_id (:obj:`str`, optional): if provided, return the compartment's volumes;
+                otherwise, return the volumes of all compartments
+
+        Returns:
+            :obj:`pandas.DataFrame`: the volumes of a compartment or all compartments at all checkpoint times
+        """
+        if compartment_id is not None:
+            return self._get_properties(compartment_id, 'volume')
+        aggregate_states = self.get('aggregate_states')
+        volumes = aggregate_states.loc[:, aggregate_states.columns.get_level_values(1) == 'volume']
+        return volumes
+
+    def get_masses(self, compartment_id=None):
+        """ Get the compartment masses at checkpoint times
+
+        Args:
+            compartment_id (:obj:`str`, optional): if provided, return the compartment's masses;
+                otherwise, return the masses of all compartments
+
+        Returns:
+            :obj:`pandas.DataFrame`: the masses of a compartment or all compartments at all checkpoint times
+        """
+        if compartment_id is not None:
+            return self._get_properties(compartment_id, 'mass')
+        aggregate_states = self.get('aggregate_states')
+        masses = aggregate_states.loc[:, aggregate_states.columns.get_level_values(1) == 'mass']
+        return masses
 
     def convert_metadata(self):
         """ Convert the saved simulation metadata into a pandas series
@@ -205,7 +228,6 @@ class RunResults(object):
         simulation_metadata = SimulationMetadata.read_metadata(self.results_dir)
         return pandas.Series(as_dict(simulation_metadata))
 
-    # todo: provide get functionality that hides the internal structure of state components
     @staticmethod
     def get_state_components(state):
         return (state['population'], state['observables'], state['functions'], state['aggregate_state'])
@@ -254,7 +276,6 @@ class RunResults(object):
             for function_id, function in functions.items():
                 functions_df.loc[time, function_id] = function
 
-            # todo: could add cell aggregate properties to aggregate_states_df
             compartment_states = aggregate_state['compartments']
             for compartment_id, agg_states in compartment_states.items():
                 for property, value in agg_states.items():
@@ -263,3 +284,5 @@ class RunResults(object):
             random_states_s[time] = pickle.dumps(checkpoint.random_state)
 
         return (population_df, observables_df, functions_df, aggregate_states_df, random_states_s)
+
+RunResults.prepare_computed_components()
