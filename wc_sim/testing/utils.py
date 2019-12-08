@@ -151,7 +151,7 @@ def check_simul_results(test_case, dynamic_model, results_dir, integration_frame
             for property in properties:
                 if compartment_id not in aggregate_states_df:
                     continue
-                simulated_trajectory = aggregate_states_df[compartment_id][property]
+                simulated_trajectory = run_results.get_properties(compartment_id, property)
                 expected_trajectory = expected_property_trajectories[compartment_id][property]
                 if np.isnan(expected_trajectory).all():
                     continue
@@ -173,8 +173,8 @@ def check_simul_results(test_case, dynamic_model, results_dir, integration_frame
                 for compartment_id in expected_property_trajectories:
                     if compartment_id not in aggregate_states_df:
                         continue
-                    mass_trajectory = aggregate_states_df[compartment_id][mass_property].to_numpy()
-                    volume_trajectory = aggregate_states_df[compartment_id][volume_property].to_numpy()
+                    mass_trajectory = run_results.get_properties(compartment_id, mass_property).to_numpy()
+                    volume_trajectory = run_results.get_properties(compartment_id, volume_property).to_numpy()
                     density_trajectory = mass_trajectory / volume_trajectory
                     constant_density = np.full_like(density_trajectory, density_trajectory[0])
                     err_msg = (f"{model_and_integration} density trajectory for "
@@ -485,7 +485,7 @@ def plot_expected_vs_simulated(dynamic_model,
                     if compartment_id not in aggregate_states_df:
                         continue
                     # plot expected_trajectory vs. simulated_trajectory
-                    simulated_trajectory = aggregate_states_df[compartment_id][property]
+                    simulated_trajectory = run_results.get_properties(compartment_id, property)
                     expected_trajectory = expected_property_trajectories[compartment_id][property]
                     index += 1
                     axes = fig.add_subplot(nrows, ncols, index)

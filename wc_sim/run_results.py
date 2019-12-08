@@ -16,9 +16,6 @@ from de_sim.checkpoint import Checkpoint
 from de_sim.sim_metadata import SimulationMetadata
 from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_utils.util.misc import as_dict
-# todo: have hdf use disk more efficiently; for unknown reasons, in one example hdf uses 4.4M to
-# store the data in 52 pickle files of 8K each
-# todo: speedup convert_checkpoints() which runs slowly
 
 
 class RunResults(object):
@@ -169,9 +166,16 @@ class RunResults(object):
         """
         return self.get('populations').index.values
 
-    # todo: available properties
-    # todo: use instead of indexing where RunResults are used
-    def _get_properties(self, compartment_id, property=None):
+    def aggregate_state_properties(self):
+        """ Get the aggregate state properties
+
+        Returns:
+            :obj:`list`: the names of the aggregate state properties in a `RunResults`
+        """
+        aggregate_states_df = self.get('aggregate_states')
+        return list(aggregate_states_df.columns.get_level_values('property').values)
+
+    def get_properties(self, compartment_id, property=None):
         """ Get a compartment's aggregate state properties or property at checkpoint times
 
         Args:
@@ -198,9 +202,9 @@ class RunResults(object):
             :obj:`pandas.DataFrame`: the volumes of a compartment or all compartments at all checkpoint times
         """
         if compartment_id is not None:
-            return self._get_properties(compartment_id, 'volume')
+            return self.get_properties(compartment_id, 'volume')
         aggregate_states = self.get('aggregate_states')
-        volumes = aggregate_states.loc[:, aggregate_states.columns.get_level_values(1) == 'volume']
+        volumes = aggregate_states.loc[:, aggregate_states.columns.get_level_values('property') == 'volume']
         return volumes
 
     def get_masses(self, compartment_id=None):
@@ -214,9 +218,9 @@ class RunResults(object):
             :obj:`pandas.DataFrame`: the masses of a compartment or all compartments at all checkpoint times
         """
         if compartment_id is not None:
-            return self._get_properties(compartment_id, 'mass')
+            return self.get_properties(compartment_id, 'mass')
         aggregate_states = self.get('aggregate_states')
-        masses = aggregate_states.loc[:, aggregate_states.columns.get_level_values(1) == 'mass']
+        masses = aggregate_states.loc[:, aggregate_states.columns.get_level_values('property') == 'mass']
         return masses
 
     def convert_metadata(self):
@@ -232,7 +236,6 @@ class RunResults(object):
     def get_state_components(state):
         return (state['population'], state['observables'], state['functions'], state['aggregate_state'])
 
-    # todo: check ideas for convert_checkpoints() in wc_sim_fall_18/wc_sim/multialgorithm/run_results.py
     def convert_checkpoints(self):
         """ Convert the data in saved checkpoints into pandas dataframes for loading into hdf
 

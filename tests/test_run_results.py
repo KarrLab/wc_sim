@@ -51,18 +51,16 @@ class TestRunResults(unittest.TestCase):
                                                         results_dir=tempfile.mkdtemp(dir=cls.temp_dir),
                                                         checkpoint_period=cls.checkpoint_period)
 
-        # todo: test with model that has multiple compartments
-
     @classmethod
     def tearDownClass(cls):
         shutil.rmtree(cls.temp_dir)
 
     def setUp(self):
         self.temp_dir = tempfile.mkdtemp()
-mass        new_tmp_dir = os.path.join(tempfile.mkdtemp(dir=self.temp_dir), 'empty_dir')
+        new_tmp_dir = os.path.join(tempfile.mkdtemp(dir=self.temp_dir), 'empty_dir')
         self.results_dir_1_cmpt = shutil.copytree(self.results_dir_1_cmpt, new_tmp_dir)
         self.run_results_1_cmpt = RunResults(self.results_dir_1_cmpt)
-mass        new_tmp_dir = os.path.join(tempfile.mkdtemp(dir=self.temp_dir), 'empty_dir')
+        new_tmp_dir = os.path.join(tempfile.mkdtemp(dir=self.temp_dir), 'empty_dir')
         self.results_dir_dyn_aggr = shutil.copytree(self.results_dir_dyn_aggr, new_tmp_dir)
         self.run_results_dyn_aggr = RunResults(self.results_dir_dyn_aggr)
 
@@ -136,29 +134,34 @@ mass        new_tmp_dir = os.path.join(tempfile.mkdtemp(dir=self.temp_dir), 'emp
         expected_times = numpy.append(expected_times, float(self.max_time))
         numpy.testing.assert_array_equal(self.run_results_1_cmpt.get_times(), expected_times)
 
-    def test__get_properties(self):
-        numpy.testing.assert_array_equal(self.run_results_1_cmpt._get_properties('compt_1', 'mass'),
-                                         self.run_results_1_cmpt._get_properties('compt_1')['mass'])
+    def test_aggregate_state_properties(self):
+        expected_properties = ['mass', 'volume', 'accounted mass', 'accounted volume']
+        self.assertEqual(self.run_results_1_cmpt.aggregate_state_properties(), expected_properties)
+        self.assertEqual(self.run_results_dyn_aggr.aggregate_state_properties(), expected_properties)
+
+    def test_get_properties(self):
+        numpy.testing.assert_array_equal(self.run_results_1_cmpt.get_properties('compt_1', 'mass'),
+                                         self.run_results_1_cmpt.get_properties('compt_1')['mass'])
 
     def test_get_volumes(self):
         numpy.testing.assert_array_equal(self.run_results_1_cmpt.get_volumes('compt_1'),
-                                         self.run_results_1_cmpt._get_properties('compt_1')['volume'])
+                                         self.run_results_1_cmpt.get_properties('compt_1')['volume'])
+        numpy.testing.assert_array_equal(self.run_results_dyn_aggr.get_volumes('c'),
+                                         self.run_results_dyn_aggr.get_properties('c')['volume'])
 
         # when a model has 1 compartment, obtain same result requesting it
         # or all compartments and then squeezing the df into a Series
         numpy.testing.assert_array_equal(self.run_results_1_cmpt.get_volumes('compt_1'),
                                          self.run_results_1_cmpt.get_volumes().squeeze())
 
-        # todo: test with multiple compartments
-
     def test_get_masses(self):
         numpy.testing.assert_array_equal(self.run_results_1_cmpt.get_masses('compt_1'),
-                                         self.run_results_1_cmpt._get_properties('compt_1')['mass'])
+                                         self.run_results_1_cmpt.get_properties('compt_1')['mass'])
+        numpy.testing.assert_array_equal(self.run_results_dyn_aggr.get_masses('c'),
+                                         self.run_results_dyn_aggr.get_properties('c')['mass'])
 
         numpy.testing.assert_array_equal(self.run_results_1_cmpt.get_masses('compt_1'),
                                          self.run_results_1_cmpt.get_masses().squeeze())
-
-        # todo: test with multiple compartments
 
     def test_performance(self):
 
@@ -180,7 +183,7 @@ mass        new_tmp_dir = os.path.join(tempfile.mkdtemp(dir=self.temp_dir), 'emp
         mean_time = total_time / iterations
         print(f"mean time of {iterations} runs of 'RunResults(results_dir)': {mean_time:.2g} (s)")
         shutil.rmtree(new_tmp_dir)
-        iterations = 100
+        iterations = 20
         run_results = RunResults(self.results_dir_1_cmpt)
         total_time = timeit.timeit('run_results._load_hdf_file()', globals=locals(), number=iterations)
         mean_time = total_time / iterations
