@@ -113,6 +113,19 @@ class RunResults(object):
         for component in self.COMPONENTS:
             self.run_results[component] = pandas.read_hdf(self._hdf_file(), component)
 
+    def _check_component(self, component):
+        """ Raise an exception if the component is empty
+
+        Args:
+            component (:obj:`str`): the name of the component to check
+
+        Raises:
+            :obj:`MultialgorithmError`: if `component` is empty
+        """
+        data = self.get(component)
+        if data.empty:
+            raise MultialgorithmError(f"'{component}' component is empty")
+
     def get(self, component):
         """ Provide the specified `component`
 
@@ -148,6 +161,7 @@ class RunResults(object):
             :obj:`MultialgorithmError`: if no species are in the compartment
         """
         populations = self.get('populations')
+        self._check_component('populations')
         compartment_vols = self.get_volumes(compartment_id)
         # filter to populations for species in compartment_id
         filter = f'\[{compartment_id}\]$'
@@ -164,14 +178,16 @@ class RunResults(object):
         Returns:
             :obj:`numpy.ndarray`: simulation times of results data
         """
+        self._check_component('populations')
         return self.get('populations').index.values
 
     def aggregate_state_properties(self):
-        """ Get the aggregate state properties
+        """ Get the names of the aggregate state properties
 
         Returns:
             :obj:`list`: the names of the aggregate state properties in a `RunResults`
         """
+        self._check_component('aggregate_states')
         aggregate_states_df = self.get('aggregate_states')
         return list(aggregate_states_df.columns.get_level_values('property').values)
 
@@ -187,6 +203,7 @@ class RunResults(object):
             :obj:`pandas.DataFrame`: a compartment's properties or property at all checkpoint times
         """
         aggregate_states_df = self.get('aggregate_states')
+        self._check_component('aggregate_states')
         if property is not None:
             return aggregate_states_df[compartment_id][property]
         return aggregate_states_df[compartment_id]
@@ -204,6 +221,7 @@ class RunResults(object):
         if compartment_id is not None:
             return self.get_properties(compartment_id, 'volume')
         aggregate_states = self.get('aggregate_states')
+        self._check_component('aggregate_states')
         volumes = aggregate_states.loc[:, aggregate_states.columns.get_level_values('property') == 'volume']
         return volumes
 
@@ -220,6 +238,7 @@ class RunResults(object):
         if compartment_id is not None:
             return self.get_properties(compartment_id, 'mass')
         aggregate_states = self.get('aggregate_states')
+        self._check_component('aggregate_states')
         masses = aggregate_states.loc[:, aggregate_states.columns.get_level_values('property') == 'mass']
         return masses
 

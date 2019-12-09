@@ -67,6 +67,13 @@ class TestRunResults(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.temp_dir)
 
+    def test__check_component(self):
+        for component in RunResults.COMPONENTS:
+            self.assertEqual(self.run_results_1_cmpt._check_component(component), None)
+        self.run_results_1_cmpt.run_results['populations'] = pandas.DataFrame()
+        with self.assertRaisesRegex(MultialgorithmError, "component is empty"):
+            self.run_results_1_cmpt._check_component('populations')
+
     def test_get(self):
         run_results_2 = RunResults(self.results_dir_1_cmpt)
         for component in RunResults.COMPONENTS:
