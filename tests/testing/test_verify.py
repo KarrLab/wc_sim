@@ -7,6 +7,7 @@
 
 from collections import namedtuple
 from inspect import currentframe, getframeinfo
+from scipy.constants import Avogadro
 import cProfile
 import datetime
 import math
@@ -22,11 +23,11 @@ from wc_sim.run_results import RunResults
 from wc_sim.testing.verify import (VerificationError, VerificationTestCaseType, VerificationTestReader,
                                    ResultsComparator, ResultsComparator, CaseVerifier, VerificationResultType,
                                    VerificationSuite, VerificationUtilities, HybridModelVerification,
-                                  VerificationRunResult, TEST_CASE_TYPE_TO_DIR, TEST_CASE_COMPARTMENT)
+                                   VerificationRunResult, TEST_CASE_TYPE_TO_DIR, TEST_CASE_COMPARTMENT)
 import obj_tables
 import wc_sim.submodels.odes as odes
 
-TEST_CASES = os.path.join(os.path.dirname(__file__), 'fixtures', 'verification', 'testing')
+TEST_CASES = os.path.join(os.path.dirname(__file__), '..', 'fixtures', 'verification', 'testing')
 
 def make_test_case_dir(test_case_num, test_case_type='DISCRETE_STOCHASTIC'):
     return os.path.join(TEST_CASES, TEST_CASE_TYPE_TO_DIR[test_case_type], test_case_num)
@@ -109,34 +110,53 @@ class TestResultsComparator(unittest.TestCase):
         self.simulation_run_results = self.make_run_results_from_expected_results(self.test_case_type,
             self.test_case_num)
 
-    def make_run_results_filename(self):
-        return os.path.join(tempfile.mkdtemp(dir=self.tmp_dir), 'run_results.h5')
+    def make_run_results_hdf_filename(self):
+        return os.path.join(tempfile.mkdtemp(dir=self.tmp_dir), RunResults.HDF5_FILENAME)
 
     def tearDown(self):
         shutil.rmtree(self.tmp_dir)
 
-    def make_run_results(self, pops_df, add_compartments=False):
+    def make_run_results(self, species_amount_df, add_compartments=False):
+        # species amounts are Moles for continuous (aka 'semantic') tests and copy numbers for stochastic tests
         # make a RunResults obj with given population
         if add_compartments:
             # add compartments to species
-            cols = list(pops_df.columns)
-            pops_df.columns = cols[:1] + list(map(ResultsComparator.get_species, cols[1:]))
+            cols = list(species_amount_df.columns)
+            species_amount_df.columns = cols[:1] + list(map(ResultsComparator.get_species, cols[1:]))
+
+        # volumes in the continuous test cases are static at 1 liter
+        VOLUMES = 1
+        # for continuous tests, convert Moles to populations that will be stored in run results; ignore incorrect
+        # statement in *.m files that says "species' initial quantities are given in terms of substance units"
+        if self.test_case_type == 'CONTINUOUS_DETERMINISTIC':
+            pops_df = species_amount_df * VOLUMES * Avogadro
+        elif self.test_case_type == 'DISCRETE_STOCHASTIC':
+            pops_df = species_amount_df
 
         # create an hdf
-        run_results_filename = self.make_run_results_filename()
-        pops_df.to_hdf(run_results_filename, 'populations')
+        run_results_hdf_filename = self.make_run_results_hdf_filename()
+        pops_df.to_hdf(run_results_hdf_filename, 'populations')
+
+        # create the compartment volumes, needed for continuous models
+        columns = pandas.MultiIndex.from_tuples(((TEST_CASE_COMPARTMENT, 'volume'), ),
+                                                names=['compartment', 'property'])
+        # volumes in the continuous test cases are static at 1 liter
+        data = [VOLUMES] * len(pops_df.index)
+        aggregate_states_df =  pandas.DataFrame(data=data, index=pops_df.index, columns=columns,
+                                                dtype=np.float64, copy=True)
+        aggregate_states_df.to_hdf(run_results_hdf_filename, 'aggregate_states')
 
         # add the other RunResults components as empty dfs
         empty_df = pandas.DataFrame(index=[], columns=[])
         for component in RunResults.COMPONENTS:
-            if component != 'populations':
-                empty_df.to_hdf(run_results_filename, component)
+            if component not in ['populations', 'aggregate_states']:
+                empty_df.to_hdf(run_results_hdf_filename, component)
 
         # make & return a RunResults
-        return RunResults(os.path.dirname(run_results_filename))
+        return RunResults(os.path.dirname(run_results_hdf_filename))
 
     def make_run_results_from_expected_results(self, test_case_type, test_case_num):
-        """ Create a RunResults object with the same population as a test case """
+        """ Create a RunResults object with the same populations and volumes as a test case """
         results_file = os.path.join(TEST_CASES, TEST_CASE_TYPE_TO_DIR[test_case_type], test_case_num,
             test_case_num+'-results.csv')
         results_df = pandas.read_csv(results_file)
@@ -148,11 +168,12 @@ class TestResultsComparator(unittest.TestCase):
         results_comparator = ResultsComparator(verification_test_reader, self.simulation_run_results)
         self.assertEqual(False, results_comparator.differs())
 
-        # modify the run results for first specie at time 0
-        amount_1 = verification_test_reader.settings['amount'][0]
-        self.simulation_run_results.get('populations').loc[0, amount_1] += 1
+        # to fail a comparison, modify the run results for first species at time 0
+        species_type_1 = verification_test_reader.settings['amount'][0]
+        species_1 = ResultsComparator.get_species(species_type_1)
+        self.simulation_run_results.get('populations').loc[0, species_1] *= 2
         self.assertTrue(results_comparator.differs())
-        self.assertIn(amount_1, results_comparator.differs())
+        self.assertIn(species_type_1, results_comparator.differs())
 
         '''
         # todo: test functionality of tolerances
@@ -167,29 +188,6 @@ class TestResultsComparator(unittest.TestCase):
         # b = (a - atol)/(1 + rtol)     ==> equals
         # b += epsilon                  ==> differs
         '''
-
-    def test_strip_compartments(self):
-        pop_df = pandas.DataFrame(np.ones((2, 3)), index=[0, 10], columns='time X Y'.split())
-        run_results = self.make_run_results(pop_df, add_compartments=True)
-        pop_columns = list(run_results.get('populations').columns[1:])
-        self.assertTrue(all(['[' in s for s in pop_columns]))
-        ResultsComparator.strip_compartments(run_results)
-        pop_columns = list(run_results.get('populations').columns[1:])
-        self.assertFalse(all(['[' in s for s in pop_columns]))
-        ResultsComparator.strip_compartments(run_results)
-        pop_columns = list(run_results.get('populations').columns[1:])
-        self.assertFalse(all(['[' in s for s in pop_columns]))
-
-        rrs = []
-        for i in range(2):
-            rrs.append(self.make_run_results(pop_df))
-        ResultsComparator.strip_compartments(rrs)
-        for rr in rrs:
-            pop_columns = list(rr.get('populations').columns[1:])
-            self.assertFalse(all(['[' in s for s in pop_columns]))
-
-        with self.assertRaisesRegexp(VerificationError, "wrong type for simulation_run_results.*"):
-            ResultsComparator.strip_compartments(1.0)
 
     def stash_pd_value(self, df, loc, new_val):
         self.stashed_pd_value = df.loc[loc[0], loc[1]]
@@ -392,7 +390,7 @@ class TestVerificationSuite(unittest.TestCase):
         self.assertEqual(self.verification_suite.results, [])
         sub_dir = os.path.join(self.tmp_dir, 'test_case_sub_dir')
 
-        result = VerificationRunResult(TEST_CASES, sub_dir, '00001', VerificationResultType.CASE_VALIDATED)
+        result = VerificationRunResult(TEST_CASES, sub_dir, '00001', VerificationResultType.CASE_VERIFIED)
         self.verification_suite._record_result(*result[1:])
         self.assertEqual(len(self.verification_suite.results), 1)
         self.assertEqual(self.verification_suite.results[-1], result)
@@ -410,14 +408,14 @@ class TestVerificationSuite(unittest.TestCase):
         self.verification_suite._run_test('DISCRETE_STOCHASTIC', test_case_num)
         results = self.verification_suite.get_results()
         print(results[-1].error)
-        self.assertEqual(results.pop().result_type, VerificationResultType.CASE_VALIDATED)
+        self.assertEqual(results.pop().result_type, VerificationResultType.CASE_VERIFIED)
         plot_file_name_prefix = 'DISCRETE_STOCHASTIC' + '_' + test_case_num
         self.assertIn(plot_file_name_prefix, os.listdir(self.tmp_dir).pop())
 
         # test without plotting
         verification_suite = VerificationSuite(TEST_CASES)
         verification_suite._run_test('DISCRETE_STOCHASTIC', test_case_num, num_stochastic_runs=100)
-        self.assertEqual(verification_suite.results.pop().result_type, VerificationResultType.CASE_VALIDATED)
+        self.assertEqual(verification_suite.results.pop().result_type, VerificationResultType.CASE_VERIFIED)
 
         # case unreadable
         verification_suite = VerificationSuite(TEST_CASES)
@@ -430,19 +428,19 @@ class TestVerificationSuite(unittest.TestCase):
         # delete plot_dir to create failure
         shutil.rmtree(plot_dir)
         verification_suite._run_test('DISCRETE_STOCHASTIC', test_case_num, num_stochastic_runs=5)
-        self.assertEqual(verification_suite.results.pop().result_type, VerificationResultType.FAILED_VALIDATION_RUN)
+        self.assertEqual(verification_suite.results.pop().result_type, VerificationResultType.FAILED_VERIFICATION_RUN)
 
         # run does not verify
         verification_suite = VerificationSuite(TEST_CASES)
         verification_suite._run_test('DISCRETE_STOCHASTIC', '00006', num_stochastic_runs=5)
-        self.assertEqual(verification_suite.results.pop().result_type, VerificationResultType.CASE_DID_NOT_VALIDATE)
+        self.assertEqual(verification_suite.results.pop().result_type, VerificationResultType.CASE_DID_NOT_VERIFY)
 
     def test_run(self):
         results = self.verification_suite.run('DISCRETE_STOCHASTIC', ['00001'], num_stochastic_runs=5)
-        self.assertEqual(results.pop().result_type, VerificationResultType.CASE_VALIDATED)
+        self.assertEqual(results.pop().result_type, VerificationResultType.CASE_VERIFIED)
 
         results = self.verification_suite.run('DISCRETE_STOCHASTIC', ['00001', '00006'], num_stochastic_runs=5)
-        expected_types = [VerificationResultType.CASE_VALIDATED, VerificationResultType.CASE_DID_NOT_VALIDATE]
+        expected_types = [VerificationResultType.CASE_VERIFIED, VerificationResultType.CASE_DID_NOT_VERIFY]
         result_types = [result_tuple.result_type for result_tuple in results[-2:]]
         self.assertEqual(expected_types, result_types)
 
@@ -493,7 +491,7 @@ class RunVerificationSuite(unittest.TestCase):
             # ('00021', 0.2*TIME_STEP_FACTOR),  # fails, perhaps because compartment volume = 0.3 rather than 1 liter
             ('00022', TIME_STEP_FACTOR)
         ]
-        root_test_dir = os.path.join(os.path.dirname(__file__), 'fixtures', 'verification', 'cases')
+        root_test_dir = os.path.join(os.path.dirname(__file__), '..', 'fixtures', 'verification', 'cases')
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
         self.plot_dir = os.path.join(os.path.dirname(__file__), 'tmp', 'verification', timestamp)
         os.makedirs(self.plot_dir)
@@ -512,7 +510,6 @@ class RunVerificationSuite(unittest.TestCase):
 
         failures = []
         successes = []
-        # print(self.verification_suite.get_results())
         for result in self.verification_suite.get_results():
             if result.error:
                 # print(result.error.replace('\\n', '\n'))
@@ -537,7 +534,7 @@ class RunVerificationSuite(unittest.TestCase):
 
         orders_verifyd = set()
         for result, ssa_test_case in zip(results, self.ssa_test_cases):
-            if result.result_type == VerificationResultType.CASE_VALIDATED:
+            if result.result_type == VerificationResultType.CASE_VERIFIED:
                 orders_verifyd.update(ssa_test_case.MA_order)
         self.assertEqual(orders_verifyd, {0, 1, 2})
 
@@ -579,7 +576,7 @@ class TestVerificationUtilities(unittest.TestCase):
 @unittest.skip('incomplete')
 class TestHybridModelVerification(unittest.TestCase):
 
-    HYBRID_DIR = os.path.join(os.path.dirname(__file__), 'fixtures', 'verification', 'testing', 'hybrid')
+    HYBRID_DIR = os.path.join(os.path.dirname(__file__), '..', 'fixtures', 'verification', 'testing', 'hybrid')
 
     def setUp(self):
         self.hybrid_model_verifications = {}

@@ -9,7 +9,7 @@ from collections import namedtuple
 from enum import Enum
 from inspect import currentframe, getframeinfo
 from matplotlib.backends.backend_pdf import PdfPages
-from pprint import pprint
+from pprint import pprint, pformat
 import inspect
 import math
 import matplotlib.pyplot as plt
@@ -23,7 +23,7 @@ import time
 import traceback
 import warnings
 
-from wc_lang.core import ReactionParticipantAttribute
+from wc_lang.core import ReactionParticipantAttribute, Model
 from wc_lang.io import Reader
 from wc_sim.config import core as config_core_multialgorithm
 from wc_sim.multialgorithm_errors import MultialgorithmError
@@ -153,12 +153,19 @@ class VerificationTestReader(object):
             self.test_case_dir, self.test_case_num+'-wc_lang.xlsx')
         if model_filename.endswith(self.SBML_FILE_SUFFIX):   # pragma: no cover
             raise VerificationError("Reading SBML files not supported: model filename '{}'".format(model_filename))
-        return Reader().run(self.model_filename, strict=False)
+        return Reader().run(self.model_filename, validate=True)[Model][0]
 
     def run(self):
         self.settings = self.read_settings()
         self.expected_predictions_df = self.read_expected_predictions()
         self.model = self.read_model()
+
+    def __str__(self):
+        rv = []
+        rv.append(pformat(self.settings))
+        rv.append(pformat(self.expected_predictions_df))
+        rv.append(pformat(self.model))
+        return '\n'.join(rv)
 
 
 # the compartment for test cases
@@ -173,7 +180,6 @@ class ResultsComparator(object):
 
     def __init__(self, verification_test_reader, simulation_run_results):
         self.verification_test_reader = verification_test_reader
-        self.strip_compartments(simulation_run_results)
         self.simulation_run_results = simulation_run_results
         # obtain default tolerances in np.allclose()
         self.default_tolerances = VerificationUtilities.get_default_args(np.allclose)
@@ -189,25 +195,11 @@ class ResultsComparator(object):
             return string.split('[')[0]
         return string
 
-    @classmethod
-    def strip_compartments(cls, simulation_run_results):
-        # if they're present, strip compartments from simulation run results; assumes all verification tests happen in one compartment
-        # note that original run results are changed; assumes that is OK because they're used just for verification
-        if isinstance(simulation_run_results, RunResults):
-            populations_df = simulation_run_results.get('populations')
-            col_names = list(populations_df.columns)
-            populations_df.columns = list(map(cls.get_species_type, col_names))
-        elif isinstance(simulation_run_results, list):
-            for run_result in simulation_run_results:
-                cls.strip_compartments(run_result)
-        else:
-            raise VerificationError("wrong type for simulation_run_results '{}'".format(
-                type(simulation_run_results)))
-
     def prepare_tolerances(self):
         """ Prepare tolerance dictionary
 
-        Use values from `verification_test_reader.settings` if available, otherwise from `numpy.allclose()`s defaults
+        Use values from `verification_test_reader.settings` if available, otherwise from
+        `numpy.allclose()`s defaults.
 
         Returns:
             :obj:`dict`: kwargs for `rtol` and `atol` tolerances for use by `numpy.allclose()`
@@ -234,16 +226,17 @@ class ResultsComparator(object):
 
         Returns:
             :obj:`obj`: `False` if populations in the expected result and simulation run are equal
-                within tolerances, otherwise :obj:`list`: of species with differing values
+                within tolerances, otherwise :obj:`list`: of species types with differing values
         """
         differing_values = []
         if self.verification_test_reader.test_case_type == VerificationTestCaseType.CONTINUOUS_DETERMINISTIC:
             kwargs = self.prepare_tolerances()
-            concentrations_df = self.simulation_run_results.get('concentrations')
-            # for each prediction, determine whether its trajectory is close enough to the expected predictions
+            concentrations_df = self.simulation_run_results.get_concentrations(TEST_CASE_COMPARTMENT)
+            # for each prediction, determine if its trajectory is close enough to the expected predictions
             for species_type in self.verification_test_reader.settings['amount']:
+                species = ResultsComparator.get_species(species_type)
                 if not np.allclose(self.verification_test_reader.expected_predictions_df[species_type].values,
-                    concentrations_df[species_type].values, **kwargs):
+                    concentrations_df[species].values, **kwargs):
                     differing_values.append(species_type)
             return differing_values or False
 
@@ -320,7 +313,8 @@ class SsaEnsemble(object):
         run_results_array = np.empty((n_times, n_runs))
         for idx, run_result in enumerate(simulation_run_results):
             run_pop_df = run_result.get('populations')
-            run_results_array[:, idx] = run_pop_df.loc[:, species_type].values
+            species = ResultsComparator.get_species(species_type)
+            run_results_array[:, idx] = run_pop_df.loc[:, species].values
         # take mean & sd at each time
         return run_results_array.mean(axis=1), run_results_array.std(axis=1)
 
@@ -463,7 +457,7 @@ class CaseVerifier(object):
         legend_fontsize = 9 if presentation_qual else 5
         plot_num = 1
         if self.verification_test_reader.test_case_type == VerificationTestCaseType.CONTINUOUS_DETERMINISTIC:
-            times = self.simulation_run_results.get('concentrations').index
+            times = self.simulation_run_results.get_times()
             for species_type in self.verification_test_reader.settings['amount']:
                 plt.subplot(n_rows, n_cols, plot_num)
 
@@ -474,7 +468,9 @@ class CaseVerifier(object):
 
                 # plot simulation pops
                 # plot second, so appears on top, and narrower width so expected shows
-                pop_time_series = self.simulation_run_results.get('concentrations').loc[:, species_type]
+                species = ResultsComparator.get_species(species_type)
+                concentrations = self.simulation_run_results.get_concentrations(TEST_CASE_COMPARTMENT)
+                pop_time_series = concentrations.loc[:, species]
                 simul_pops, = plt.plot(times, pop_time_series, 'b-', linewidth=0.8)
 
                 plt.ylabel('{} (M)'.format(species_type), fontsize=10)
@@ -485,15 +481,16 @@ class CaseVerifier(object):
                 plot_num += 1
 
         if self.verification_test_reader.test_case_type == VerificationTestCaseType.DISCRETE_STOCHASTIC:
-            times = self.simulation_run_results[0].get('populations').index
+            times = self.simulation_run_results.get_times()
 
             for species_type in self.verification_test_reader.settings['amount']:
                 plt.subplot(n_rows, n_cols, plot_num)
 
                 # plot simulation pops
                 # TODO: try making individual runs visible by slightly varying color and/or width
+                species = ResultsComparator.get_species(species_type)
                 for rr in self.simulation_run_results[:max_runs_to_plot]:
-                    pop_time_series = rr.get('populations').loc[:, species_type]
+                    pop_time_series = rr.get('populations').loc[:, species]
                     simul_pops, = plt.plot(times, pop_time_series, 'b-', linewidth=0.1)
 
                 # plot expected predictions
@@ -612,6 +609,7 @@ class VerificationSuite(object):
             if verbose:
                 print(MakeModel.model_to_str(case_verifier.verification_test_reader.model))
         except:
+            print(f"cases_dir: {self.cases_dir}\ncase_type_name: {case_type_name}\ncase_num: {case_num}\n")
             tb = traceback.format_exc()
             self._record_result(case_type_name, case_num, VerificationResultType.CASE_UNREADABLE, tb)
             return
@@ -815,7 +813,6 @@ class HybridModelVerification(object):
                 self.correct_typed_case_verifier.get_simul_kwargs(), self.tmp_results_dir, num_runs)
         if verbose:
             print("made {} runs of {}".format(len(correct_run_results), model.id))
-        ResultsComparator.strip_compartments(correct_run_results)
         return correct_run_results
 
     def run(self, num_runs=200, make_correct_predictions=False):
