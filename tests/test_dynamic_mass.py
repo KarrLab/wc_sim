@@ -183,7 +183,7 @@ class TwoSpeciesTestCase(unittest.TestCase):
         with env:
             simulation = Simulation(model)
         _, results_dirname = simulation.run(end_time=end_time,
-                                            time_step=1.,
+                                            ode_time_step=1.,
                                             checkpoint_period=1.,
                                             results_dir=self.tempdir)
 
@@ -466,7 +466,7 @@ class MetabolismAndGeneExpressionTestCase(unittest.TestCase):
 
         simulation = Simulation(model)
         _, results_dirname = simulation.run(end_time=8 * 3600,
-                                            time_step=1.,
+                                            ode_time_step=1.,
                                             checkpoint_period=100.,
                                             results_dir=self.tempdir)
 

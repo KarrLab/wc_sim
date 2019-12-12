@@ -6,6 +6,7 @@
 :License: MIT
 """
 
+from pprint import pprint
 import numpy.random
 import warnings
 
@@ -164,6 +165,8 @@ class MultialgorithmSimulation(object):
         for comp in self.dynamic_model.dynamic_compartments.values():
             comp.dynamic_model = self.dynamic_model
         self.dynamic_model.set_stop_condition(self.simulation)
+        # print('self.args')
+        # pprint(self.args)
         if 'results_dir' in self.args and self.args['results_dir']:
             self.checkpointing_sim_obj = self.create_multialgorithm_checkpointing(
                 self.args['results_dir'],
@@ -290,6 +293,7 @@ class MultialgorithmSimulation(object):
         multialgorithm_checkpointing_sim_obj = MultialgorithmicCheckpointingSimObj(
             CHECKPOINTING_SIM_OBJ, checkpoint_period, checkpoints_dir,
             self.local_species_population, self.dynamic_model, self)
+        # print(f'multialgorithm_checkpointing_sim_obj: {multialgorithm_checkpointing_sim_obj}')
 
         # add the multialgorithm checkpointing object to the simulation
         self.simulation.add_object(multialgorithm_checkpointing_sim_obj)
@@ -344,7 +348,7 @@ class MultialgorithmSimulation(object):
                     lang_submodel.get_children(kind='submodel', __type=Species),
                     self.get_dynamic_compartments(lang_submodel),
                     self.local_species_population,
-                    self.args['time_step']
+                    self.args['ode_time_step']
                 )
 
             elif are_terms_equivalent(lang_submodel.framework, onto['WC:deterministic_simulation_algorithm']):

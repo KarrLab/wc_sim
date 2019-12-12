@@ -36,7 +36,7 @@ class OdeSubmodel(DynamicSubmodel):
     """ Use a system of ordinary differential equations to predict the dynamics of chemical species in a container
 
     Attributes:
-        time_step (:obj:`float`): the time between ODE solutions
+        ode_time_step (:obj:`float`): the time between ODE solutions
         solver (:obj:`scikits.odes.ode.ode`): the Odes ode solver
         ode_species_ids (:obj:`list`): ids of the species used by this ODE solver
         ode_species_ids_set (:obj:`set`): ids of the species used by this ODE solver
@@ -67,7 +67,7 @@ class OdeSubmodel(DynamicSubmodel):
     using_solver = False
 
     def __init__(self, id, dynamic_model, reactions, species, dynamic_compartments,
-                 local_species_population, time_step, testing=False):
+                 local_species_population, ode_time_step, testing=False):
         """ Initialize an ODE submodel instance
 
         Args:
@@ -81,14 +81,14 @@ class OdeSubmodel(DynamicSubmodel):
                 adjacent compartments used by its transfer reactions
             local_species_population (:obj:`LocalSpeciesPopulation`): the store that maintains this
                 ODE submodel's species population
-            time_step (:obj:`float`): initial time interval between ODE analyses
+            ode_time_step (:obj:`float`): initial time interval between ODE analyses
             testing (:obj:`bool`, optional): if set, produce test output
         """
         super().__init__(id, dynamic_model, reactions, species, dynamic_compartments,
                          local_species_population)
-        if time_step <= 0:
-            raise MultialgorithmError(f"OdeSubmodel {self.id}: time_step must be positive, but is {time_step}")
-        self.time_step = time_step
+        if ode_time_step <= 0:
+            raise MultialgorithmError(f"OdeSubmodel {self.id}: ode_time_step must be positive, but is {ode_time_step}")
+        self.ode_time_step = ode_time_step
         self.set_up_ode_submodel()
         self.set_up_optimizations()
         options = {'atol': self.ABS_ODE_SOLVER_TOLERANCE}
@@ -255,8 +255,8 @@ class OdeSubmodel(DynamicSubmodel):
             start = time.perf_counter()
 
         ### run the ODE solver ###
-        end_time = self.time + self.time_step
-        # advance one time_step
+        end_time = self.time + self.ode_time_step
+        # advance one ode_time_step
         solution_times = [self.time, end_time]
         self.num_right_hand_side_calls = 0
         self.current_species_populations()
@@ -311,7 +311,7 @@ class OdeSubmodel(DynamicSubmodel):
 
     def schedule_next_ode_analysis(self):
         """ Schedule the next analysis by this ODE submodel """
-        self.send_event(self.time_step, self, message_types.RunOde())
+        self.send_event(self.ode_time_step, self, message_types.RunOde())
 
     def handle_RunOde_msg(self, event):
         """ Handle an event containing a RunOde message

@@ -24,7 +24,6 @@ from wc_lang.transform import PrepForWcSimTransform
 from wc_sim.dynamic_components import DynamicModel
 from wc_sim.multialgorithm_checkpointing import (MultialgorithmicCheckpointingSimObj,
                                                  MultialgorithmCheckpoint)
-from wc_sim.multialgorithm_checkpointing import MultialgorithmicCheckpointingSimObj
 from wc_sim.multialgorithm_errors import MultialgorithmError, SpeciesPopulationError
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.run_results import RunResults

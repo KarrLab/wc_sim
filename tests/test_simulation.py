@@ -165,7 +165,7 @@ class TestProcessAndValidateArgs(unittest.TestCase):
             results_dir=self.results_dir,
             checkpoint_period=10,
             end_time=100,
-            time_step=5
+            ode_time_step=5
         )
 
     def tearDown(self):
@@ -177,17 +177,17 @@ class TestProcessAndValidateArgs(unittest.TestCase):
             self.simulation._create_metadata()
 
         self.simulation.sim_config = sim_config.SimulationConfig(time_max=self.args['end_time'],
-                                                                 time_step=self.args['time_step'])
+                                                                 ode_time_step=self.args['ode_time_step'])
         simulation_metadata = self.simulation._create_metadata()
         for attr in SimulationMetadata.ATTRIBUTES:
             self.assertTrue(getattr(simulation_metadata, attr) is not None)
 
     def test_create_metadata_2(self):
-        # no time_step
+        # no ode_time_step
         self.simulation.sim_config = sim_config.SimulationConfig(time_max=self.args['end_time'])
-        del self.args['time_step']
+        del self.args['ode_time_step']
         simulation_metadata = self.simulation._create_metadata()
-        self.assertEqual(simulation_metadata.simulation.time_step, 1)
+        self.assertEqual(simulation_metadata.simulation.ode_time_step, 1)
 
     def test_ckpt_dir_processing_1(self):
         # checkpoints_dir gets created because it does not exist
@@ -241,7 +241,7 @@ class TestProcessAndValidateArgs(unittest.TestCase):
         errors = dict(
             end_time=[-3, 0],
             checkpoint_period=[-2, 0, self.args['end_time'] + 1],
-            time_step=[-2, 0, self.args['end_time'] + 1],
+            ode_time_step=[-2, 0, self.args['end_time'] + 1],
         )
         for arg, error_vals in errors.items():
             for error_val in error_vals:
@@ -260,7 +260,7 @@ class TestProcessAndValidateArgs(unittest.TestCase):
             self.simulation.process_and_validate_args(self.args)
 
     def test_process_and_validate_args7(self):
-        del self.args['time_step']
+        del self.args['ode_time_step']
         no_exception = False
         try:
             self.simulation.process_and_validate_args(self.args)

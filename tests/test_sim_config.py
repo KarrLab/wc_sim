@@ -28,7 +28,7 @@ class TestSimulationConfig(unittest.TestCase):
 
         # create configuration
         time_max = 100
-        time_step = 2
+        ode_time_step = 2
         changes = [
             sim_config.Change([
                 ['reactions', {'id': 'rxn-1'}],
@@ -58,12 +58,12 @@ class TestSimulationConfig(unittest.TestCase):
             ], 4), start_time=0, end_time=10),
         ]
         random_seed = 3
-        cfg = sim_config.SimulationConfig(time_max=time_max, time_step=time_step, changes=changes,
+        cfg = sim_config.SimulationConfig(time_max=time_max, ode_time_step=ode_time_step, changes=changes,
                                           perturbations=perturbations, random_seed=random_seed)
 
         # check correctly stored configuration
         self.assertEqual(time_max + 0.0, cfg.time_max)
-        self.assertEqual(time_step + 0.0, cfg.time_step)
+        self.assertEqual(ode_time_step + 0.0, cfg.ode_time_step)
         self.assertEqual(random_seed, cfg.random_seed)
 
     def test_simulation_configuration_validation(self):
@@ -83,19 +83,19 @@ class TestSimulationConfig(unittest.TestCase):
             sim_config.SimulationConfig(time_max=-1.0)
 
         # time step not number
-        sim_config.SimulationConfig(time_step=0.1)
+        sim_config.SimulationConfig(ode_time_step=0.1)
         with self.assertRaises(sim_config.SimulationConfigError):
-            sim_config.SimulationConfig(time_step=None)
+            sim_config.SimulationConfig(ode_time_step=None)
 
         # negative time step
-        sim_config.SimulationConfig(time_step=0.1)
+        sim_config.SimulationConfig(ode_time_step=0.1)
         with self.assertRaises(sim_config.SimulationConfigError):
-            sim_config.SimulationConfig(time_step=-0.1)
+            sim_config.SimulationConfig(ode_time_step=-0.1)
 
         # time max not multiple of step
-        sim_config.SimulationConfig(time_max=1.0, time_step=0.1)
+        sim_config.SimulationConfig(time_max=1.0, ode_time_step=0.1)
         with self.assertRaises(sim_config.SimulationConfigError):
-            sim_config.SimulationConfig(time_max=1.0, time_step=3.0)
+            sim_config.SimulationConfig(time_max=1.0, ode_time_step=3.0)
 
         # random seed not an integer
         sim_config.SimulationConfig(random_seed=1)
@@ -105,7 +105,7 @@ class TestSimulationConfig(unittest.TestCase):
             sim_config.SimulationConfig(random_seed=1.5)
 
     def test_apply_changes(self):
-        cfg = sim_config.SimulationConfig(time_max=100, time_step=2)
+        cfg = sim_config.SimulationConfig(time_max=100, ode_time_step=2)
         cfg.changes.append(sim_config.Change([
             ['reactions', {'id': 'rxn_1'}],
             ['rate_laws', {'direction': wc_lang.RateLawDirection.forward}],
@@ -162,11 +162,11 @@ class TestSimulationConfig(unittest.TestCase):
     @unittest.skip('Not yet implemented')
     def test_apply_perturbations(self):
         # todo: implement
-        cfg = sim_config.SimulationConfig(time_max=100, time_step=2)
+        cfg = sim_config.SimulationConfig(time_max=100, ode_time_step=2)
         cfg.apply_perturbations(None)
 
     def test_get_num_time_steps(self):
-        cfg = sim_config.SimulationConfig(time_max=100, time_step=2)
+        cfg = sim_config.SimulationConfig(time_max=100, ode_time_step=2)
         self.assertEqual(cfg.get_num_time_steps(), 50)
 
 
@@ -177,7 +177,7 @@ class TestSedMlImportExport(unittest.TestCase):
 
         # create configuration
         time_max = 100.0
-        time_step = 2.0
+        ode_time_step = 2.0
         changes = [
             sim_config.Change([
                 ['reactions', {'id': 'rxn-1'}],
@@ -209,7 +209,7 @@ class TestSedMlImportExport(unittest.TestCase):
             ), start_time=0, end_time=10),
         ]
         random_seed = 3
-        cfg = sim_config.SimulationConfig(time_max=time_max, time_step=time_step, changes=changes,
+        cfg = sim_config.SimulationConfig(time_max=time_max, ode_time_step=ode_time_step, changes=changes,
                                           perturbations=perturbations, random_seed=random_seed)
 
         # generate temporary file
@@ -223,7 +223,7 @@ class TestSedMlImportExport(unittest.TestCase):
 
         # check sim_config correctly imported/exported
         self.assertEqual(time_max, cfg2.time_max)
-        self.assertEqual(time_step, cfg2.time_step)
+        self.assertEqual(ode_time_step, cfg2.ode_time_step)
         self.assertEqual(random_seed, cfg2.random_seed)
 
         self.assertEqual(len(changes), len(cfg2.changes))

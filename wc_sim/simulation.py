@@ -122,7 +122,7 @@ class Simulation(object):
     def process_and_validate_args(self, args):
         """ Process and validate simulation arguments
 
-        Supported arguments are results_dir, checkpoint_period, time_step, and end_time. end_time is
+        Supported arguments are results_dir, checkpoint_period, ode_time_step, and end_time. end_time is
         required, while the others are optional.
 
         Args:
@@ -166,20 +166,20 @@ class Simulation(object):
                 raise MultialgorithmError('end_time ({}) must be a multiple of checkpoint_period ({})'.format(
                     args['end_time'], args['checkpoint_period']))
 
-        if 'time_step' in args:
-            if args['time_step'] <= 0.0 or args['end_time'] < args['time_step']:
+        if 'ode_time_step' in args:
+            if args['ode_time_step'] <= 0.0 or args['end_time'] < args['ode_time_step']:
                 raise MultialgorithmError("Timestep for time-stepped submodels ({}) must be positive and less than or "
-                    "equal to end time".format(args['time_step']))
+                    "equal to end time".format(args['ode_time_step']))
 
-    def run(self, end_time, results_dir=None, checkpoint_period=None, time_step=1, seed=None,
-        verbose=True):
+    def run(self, end_time, results_dir=None, checkpoint_period=None, ode_time_step=1, seed=None,
+            verbose=True):
         """ Run one simulation
 
         Args:
             end_time (:obj:`float`): the end time of the simulation (sec)
             results_dir (:obj:`str`, optional): path to a directory in which results are stored
             checkpoint_period (:obj:`float`, optional): the period between simulation state checkpoints (sec)
-            time_step (:obj:`float`, optional): time step length of time-stepped submodels (sec)
+            ode_time_step (:obj:`float`, optional): time step length of time-stepped submodels (sec)
             seed (:obj:`object`, optional): a seed for the simulation's `numpy.random.RandomState`;
                 if provided, `seed` will reseed the simulator's PRNG
             verbose (:obj:`bool`, optional): whether to print success output
@@ -192,21 +192,21 @@ class Simulation(object):
         if seed is not None:
             RandomStateManager.initialize(seed=seed)
 
-        self.sim_config = sim_config.SimulationConfig(time_max=end_time, time_step=time_step)
+        self.sim_config = sim_config.SimulationConfig(time_max=end_time, ode_time_step=ode_time_step)
         self._prepare()
 
         # create a multi-algorithmic simulator
-        simulation_args = dict(
-            metadata=self.simulation_metadata,
-            end_time=end_time,
-            time_step=time_step
-        )
+        simulation_args = dict(metadata=self.simulation_metadata,
+                               end_time=end_time,
+                               ode_time_step=ode_time_step)
+        # print('simulation_args 1', simulation_args)
         if results_dir:
             simulation_args['results_dir'] = results_dir
             simulation_args['checkpoint_period'] = checkpoint_period
 
         self.process_and_validate_args(simulation_args)
 
+        # print('simulation_args 2', simulation_args)
         multialgorithm_simulation = MultialgorithmSimulation(self.model, simulation_args)
         self.simulation_engine, self.dynamic_model = multialgorithm_simulation.build_simulation()
         self.simulation_engine.initialize()

@@ -46,12 +46,12 @@ class TestOdeSubmodel(unittest.TestCase):
         self.case_00001_model = Reader().run(self.sbml_case_00001_file, strict=False)
         '''
 
-    def make_ode_submodel(self, model, time_step=1.0, submodel_name='submodel_1'):
+    def make_ode_submodel(self, model, ode_time_step=1.0, submodel_name='submodel_1'):
         """ Make a MultialgorithmSimulation from a wc lang model """
         # assume a single submodel
         # todo: test concurrent OdeSubmodels, perhaps
-        self.time_step = time_step
-        args = dict(time_step=self.time_step)
+        self.ode_time_step = ode_time_step
+        args = dict(ode_time_step=self.ode_time_step)
         multialgorithm_simulation = MultialgorithmSimulation(model, args)
         simulation_engine, dynamic_model = multialgorithm_simulation.build_simulation()
         simulation_engine.initialize()
@@ -60,13 +60,13 @@ class TestOdeSubmodel(unittest.TestCase):
 
     ### test low level methods ###
     def test_ode_submodel_init(self):
-        self.assertEqual(self.ode_submodel_1.time_step, self.time_step)
+        self.assertEqual(self.ode_submodel_1.ode_time_step, self.ode_time_step)
 
         # test exception
-        bad_time_step = -2
+        bad_ode_time_step = -2
         with self.assertRaisesRegexp(MultialgorithmError,
-            'time_step must be positive, but is {}'.format(bad_time_step)):
-            self.make_ode_submodel(self.mdl_1_spec, time_step=bad_time_step)
+            'ode_time_step must be positive, but is {}'.format(bad_ode_time_step)):
+            self.make_ode_submodel(self.mdl_1_spec, ode_time_step=bad_ode_time_step)
 
     def test_set_up_optimizations(self):
         ode_submodel = self.ode_submodel_1
@@ -209,7 +209,7 @@ class TestOdeSubmodel(unittest.TestCase):
     @unittest.skip("not good test")
     def test_schedule_next_ode_analysis(self):
         custom_time_step = 4
-        custom_ode_submodel = self.make_ode_submodel(self.mdl_1_spec, time_step=custom_time_step)
+        custom_ode_submodel = self.make_ode_submodel(self.mdl_1_spec, ode_time_step=custom_time_step)
         # no events are scheduled
         self.assertTrue(custom_ode_submodel.simulator.event_queue.empty())
 

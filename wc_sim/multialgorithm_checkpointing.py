@@ -80,7 +80,7 @@ class MultialgorithmicCheckpointingSimObj(CheckpointSimulationObject):
         access_state_object (:obj:`AccessState`): an object that provides checkpoints
     """
     def __init__(self, name, checkpoint_period, checkpoint_dir, local_species_population,
-        dynamic_model, multialgorithm_simulation):
+                 dynamic_model, multialgorithm_simulation):
         """ Create a MultialgorithmicCheckpointingSimObj
 
         Args:
@@ -92,9 +92,13 @@ class MultialgorithmicCheckpointingSimObj(CheckpointSimulationObject):
             multialgorithm_simulation (:obj:`MultialgorithmSimulation`): the `MultialgorithmSimulation`
         """
 
+        # print('in MultialgorithmicCheckpointingSimObj: name, checkpoint_period, checkpoint_dir, ')
+        # print(name, checkpoint_period, checkpoint_dir, )
         self.access_state_object = AccessState(local_species_population, dynamic_model,
-            multialgorithm_simulation)
+                                               multialgorithm_simulation)
         super().__init__(name, checkpoint_period, checkpoint_dir, self.access_state_object)
+        # print('in MultialgorithmicCheckpointingSimObj: checkpoint_period, ')
+        # print(self.period)
 
     def __str__(self):
         """ Provide a readable representation of this `MultialgorithmicCheckpointingSimObj`
@@ -103,5 +107,4 @@ class MultialgorithmicCheckpointingSimObj(CheckpointSimulationObject):
             :obj:`str`: a readable representation of this `MultialgorithmicCheckpointingSimObj`
         """
 
-        return obj_to_str(self, ['name', 'checkpoint_period', 'checkpoint_dir',
-            'local_species_population', 'dynamic_model'])
+        return obj_to_str(self, ['name', 'period', 'checkpoint_dir'])

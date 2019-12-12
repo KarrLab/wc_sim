@@ -35,23 +35,23 @@ class SimulationConfig(object):
     Attributes:
         time_init (:obj:`float`): initial simulation time (s)
         time_max (:obj:`float`): simulation length (s)
-        time_step (:obj:`float`): simulation timestep (s)
+        ode_time_step (:obj:`float`): simulation timestep (s)
         changes (:obj:`list`): list of desired model changes (e.g. modified parameter values, 
             additional species/reactions, removed species/reactions)
         perturbations (:obj:`list`): list of desired simulated perturbations (e.g. set state to a
             value at a specified time or time range)
         random_seed (:obj:`int`): random number generator seed
     """
-    ATTRIBUTES = ['time_init', 'time_max', 'time_step', 'changes', 'perturbations', 'random_seed']
+    ATTRIBUTES = ['time_init', 'time_max', 'ode_time_step', 'changes', 'perturbations', 'random_seed']
 
-    def __init__(self, time_init=0, time_max=3600, time_step=1, changes=None, perturbations=None,
+    def __init__(self, time_init=0, time_max=3600, ode_time_step=1, changes=None, perturbations=None,
         random_seed=None):
         """ Construct simulation configuration
 
         Args:
             time_init (:obj:`float`, optional): initial simulation time (s)
             time_max (:obj:`float`, optional): simulation length (s)
-            time_step (:obj:`float`, optional): simulation timestep (s)
+            ode_time_step (:obj:`float`, optional): simulation timestep (s)
             changes (:obj:`list`, optional): list of desired model changes (e.g. modified parameter
                 values, additional species/reactions, removed species/reactions)
             perturbations (:obj:`list`, optional): list of desired simulated perturbations (e.g. set
@@ -75,18 +75,18 @@ class SimulationConfig(object):
         if time_max <= time_init:
             raise SimulationConfigError('time_max must be greater than time_init')
 
-        # time_step
+        # ode_time_step
         try:
-            time_step = float(time_step)
+            ode_time_step = float(ode_time_step)
         except (TypeError, ValueError):
-            raise SimulationConfigError('time_step must be a float')
+            raise SimulationConfigError('ode_time_step must be a float')
 
-        if time_step <= 0:
-            raise SimulationConfigError('time_step must be positive')
+        if ode_time_step <= 0:
+            raise SimulationConfigError('ode_time_step must be positive')
 
-        if (time_max - time_init) / time_step % 1 != 0:
-            raise SimulationConfigError('(time_max - time_init) ({} - {}) must be a multiple of time_step ({})'.format(
-                time_max, time_init, time_step))
+        if (time_max - time_init) / ode_time_step % 1 != 0:
+            raise SimulationConfigError('(time_max - time_init) ({} - {}) must be a multiple of ode_time_step ({})'.format(
+                time_max, time_init, ode_time_step))
 
         # random_seed
         if random_seed is not None:
@@ -103,7 +103,7 @@ class SimulationConfig(object):
         """ record values """
         self.time_init = time_init
         self.time_max = time_max
-        self.time_step = time_step
+        self.ode_time_step = ode_time_step
         if changes is None:
             changes = []
         self.changes = changes
@@ -139,7 +139,7 @@ class SimulationConfig(object):
         Returns:
             :obj:`int`: number of simulation timesteps
         """
-        return int((self.time_max - self.time_init) / self.time_step)
+        return int((self.time_max - self.time_init) / self.ode_time_step)
 
     def __eq__(self, other):
         """ Compare two `SimulationConfig` objects
@@ -153,7 +153,7 @@ class SimulationConfig(object):
         if other.__class__ is not self.__class__:
             return False
 
-        for attr in ['time_init', 'time_max', 'time_step', 'random_seed']:
+        for attr in ['time_init', 'time_max', 'ode_time_step', 'random_seed']:
             if getattr(other, attr) != getattr(self, attr):
                 return False
 
@@ -383,7 +383,7 @@ class SedMl(object):
         sim = cfg_ml.getSimulation(0)
         time_init = sim.getOutputStartTime()
         time_max = sim.getOutputEndTime()
-        time_step = (time_max - time_init) / sim.getNumberOfPoints()
+        ode_time_step = (time_max - time_init) / sim.getNumberOfPoints()
 
         # algorithm parameters
         alg = sim.getAlgorithm()
@@ -400,7 +400,7 @@ class SedMl(object):
                 opt_config['random_seed'] = int(opt_config['random_seed'])
 
         """ build simulation configuration object """
-        cfg = SimulationConfig(time_init=time_init, time_max=time_max, time_step=time_step,
+        cfg = SimulationConfig(time_init=time_init, time_max=time_max, ode_time_step=ode_time_step,
                                changes=changes, perturbations=perturbations,
                                **opt_config)
         return cfg
@@ -448,7 +448,7 @@ class SedMl(object):
         sim.setInitialTime(cfg.time_init)
         sim.setOutputStartTime(cfg.time_init)
         sim.setOutputEndTime(cfg.time_max)
-        sim.setNumberOfPoints(int((cfg.time_max - cfg.time_init) / cfg.time_step))
+        sim.setNumberOfPoints(int((cfg.time_max - cfg.time_init) / cfg.ode_time_step))
 
         # simulation algorithm
         alg = sim.createAlgorithm()

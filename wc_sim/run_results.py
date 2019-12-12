@@ -264,6 +264,8 @@ class RunResults(object):
         """
         # create pandas objects for species populations, aggregate states and simulation random states
         checkpoints = Checkpoint.list_checkpoints(self.results_dir)
+        # print('self.results_dir', self.results_dir)
+        # print(f'checkpoints in RR: {checkpoints}')
         first_checkpoint = Checkpoint.get_checkpoint(self.results_dir, time=0)
         species_pop, observables, functions, aggregate_state = self.get_state_components(first_checkpoint.state)
 
