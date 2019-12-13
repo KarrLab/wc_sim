@@ -165,8 +165,6 @@ class MultialgorithmSimulation(object):
         for comp in self.dynamic_model.dynamic_compartments.values():
             comp.dynamic_model = self.dynamic_model
         self.dynamic_model.set_stop_condition(self.simulation)
-        # print('self.args')
-        # pprint(self.args)
         if 'results_dir' in self.args and self.args['results_dir']:
             self.checkpointing_sim_obj = self.create_multialgorithm_checkpointing(
                 self.args['results_dir'],

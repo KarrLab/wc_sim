@@ -128,7 +128,8 @@ class VerificationTestReader(object):
                 self.settings_file, expected_predictions_file))
 
         if self.test_case_type == VerificationTestCaseType.CONTINUOUS_DETERMINISTIC:
-            # expected predictions should contain the mean and sd of each variable in 'amount'
+            # expected predictions should contain time and the amount or concentration of each species
+            # todo: use entire SBML test suite and get expected predictions as amount or concentration
             expected_columns = set(self.settings['amount'])
             actual_columns = set(expected_predictions_df.columns.values)
             if expected_columns - actual_columns:
@@ -231,6 +232,7 @@ class ResultsComparator(object):
         differing_values = []
         if self.verification_test_reader.test_case_type == VerificationTestCaseType.CONTINUOUS_DETERMINISTIC:
             kwargs = self.prepare_tolerances()
+            # todo: fix: if expected values in settings are in 'amounts' then SB moles, not concentrations
             concentrations_df = self.simulation_run_results.get_concentrations(TEST_CASE_COMPARTMENT)
             # for each prediction, determine if its trajectory is close enough to the expected predictions
             for species_type in self.verification_test_reader.settings['amount']:
@@ -352,15 +354,17 @@ class CaseVerifier(object):
         # prepare for simulation
         self.tmp_results_dir = tmp_results_dir = tempfile.mkdtemp()
         simul_kwargs = dict(end_time=settings['duration'],
-            checkpoint_period=settings['duration']/settings['steps'],
-            results_dir=tmp_results_dir,
-            verbose= False)
+                            checkpoint_period=settings['duration']/settings['steps'],
+                            results_dir=tmp_results_dir,
+                            verbose= False)
 
         ## 1. run simulation
         factor = 1
         if self.time_step_factor is not None:
             factor = self.time_step_factor
-        simul_kwargs['time_step'] = factor * settings['duration']/settings['steps']
+        simul_kwargs['ode_time_step'] = factor * settings['duration']/settings['steps']
+        print('simul_kwargs')
+        pprint(simul_kwargs)
 
         if self.verification_test_reader.test_case_type == VerificationTestCaseType.CONTINUOUS_DETERMINISTIC:
             simulation = Simulation(self.verification_test_reader.model)
@@ -400,34 +404,34 @@ class CaseVerifier(object):
         return self.comparison_result
 
     def get_model_summary(self):
-        """Summarize the test model
+        """ Obtain a text summary of the test model
         """
         mdl = self.verification_test_reader.model
         summary = ['Model Summary:']
-        summary.append("model {}:\n    {}".format(mdl.id, mdl.name))
+        summary.append("model '{}':".format(mdl.id))
         for cmpt in mdl.compartments:
-            summary.append("compartment {}: {}, init. vol. {}, type {}".format(cmpt.id, cmpt.name,
-                cmpt.initial_volume, cmpt.biological_type))
+            summary.append("compartment {}:\nmean init. vol. {}, bio. type '{}'".format(cmpt.id,
+                cmpt.init_volume.mean, cmpt.biological_type.name))
         reaction_participant_attribute = ReactionParticipantAttribute()
         for sm in mdl.submodels:
-            summary.append("submodel {}: in {}".format(sm.id, sm.compartment.id))
+            summary.append("submodel {}:".format(sm.id))
             for rxn in sm.reactions:
-                summary.append("reaction and rate law {}: {}, {}".format(rxn.id,
+                summary.append("rxn & rl '{}': {}, {}".format(rxn.id,
                     reaction_participant_attribute.serialize(rxn.participants),
-                    rxn.rate_laws[0].equation.serialize()))
+                    rxn.rate_laws[0].expression.serialize()))
         for param in mdl.get_parameters():
             summary.append("param: {}={} ({})".format(param.id, param.value, param.units))
         return summary
 
     def get_test_case_summary(self):
-        """Summarize the test case
+        """ Summarize the test case
         """
         # TODO: include # events, run time, perhaps details on error of failed tests
         summary = ['Test Case Summary']
         if self.comparison_result:
-            summary.append("Failing species types: {}".format(', '.join(self.comparison_result)))
+            summary.append("Failing species: {}".format(', '.join(self.comparison_result)))
         else:
-            summary.append('All species types verify')
+            summary.append('All species verify')
         if hasattr(self, 'num_runs'):
             summary.append("Num simul runs: {}".format(self.num_runs))
         summary.append("Test case type: {}".format(self.verification_test_reader.test_case_type.name))
@@ -435,7 +439,7 @@ class CaseVerifier(object):
         summary.append("Time step factor: {}".format(self.time_step_factor))
         return summary
 
-    def plot_model_verification(self, plot_file, max_runs_to_plot=100, presentation_qual=True):
+    def plot_model_verification(self, plot_file, max_runs_to_plot=100, presentation_qual=False):
         """Plot a model verification run
         """
         # TODO: configure max_runs_to_plot in config file
@@ -481,7 +485,7 @@ class CaseVerifier(object):
                 plot_num += 1
 
         if self.verification_test_reader.test_case_type == VerificationTestCaseType.DISCRETE_STOCHASTIC:
-            times = self.simulation_run_results.get_times()
+            times = self.simulation_run_results[0].get_times()
 
             for species_type in self.verification_test_reader.settings['amount']:
                 plt.subplot(n_rows, n_cols, plot_num)
@@ -525,16 +529,16 @@ class CaseVerifier(object):
 
         summary = self.get_model_summary()
         middle = len(summary)//2
-        x_pos = 0.1
+        x_pos = 0.05
         y_pos = 0.9
         for lb, ub in [(0, middle), (middle, len(summary))]:
             if not presentation_qual:
-                text = plt.figtext(x_pos, y_pos, '\n'.join(summary[lb:ub]), fontsize=4)
+                text = plt.figtext(x_pos, y_pos, '\n'.join(summary[lb:ub]), fontsize=5)
             # TODO: position text automatically
-            x_pos += 0.35
+            x_pos += 0.3
         test_case_summary = self.get_test_case_summary()
         if not presentation_qual:
-            plt.figtext(0.8, y_pos, '\n'.join(test_case_summary), fontsize=4)
+            plt.figtext(0.8, y_pos, '\n'.join(test_case_summary), fontsize=5)
 
         if presentation_qual:
             test_reader = self.verification_test_reader
@@ -542,11 +546,12 @@ class CaseVerifier(object):
                 test_reader.test_case_type.name.replace('_', ' ').title(),
                 test_reader.test_case_num,
                 self.verification_test_reader.model.name,
-                'failed' if self.comparison_result else 'verifyd'
+                'failed' if self.comparison_result else 'verified'
                 )
             plt.suptitle(suptitle, fontsize=10)
-            # plt.title('')
-        plt.tight_layout(rect=[0, 0.03, 1, 0.97])
+            plt.tight_layout(rect=[0, 0.03, 1, 0.97])
+        else:
+            plt.tight_layout(rect=[0, 0.03, 1, 0.8])
         fig = plt.gcf()
         fig.savefig(plot_file)
         plt.close(fig)
@@ -559,7 +564,7 @@ class VerificationResultType(Enum):
     FAILED_VERIFICATION_RUN = 'verification run failed'
     SLOW_VERIFICATION_RUN = 'verification run timed out'
     CASE_DID_NOT_VERIFY = 'case did not verify'
-    CASE_VERIFIED = 'case verifyd'
+    CASE_VERIFIED = 'case verified'
 
 
 VerificationRunResult = namedtuple('VerificationRunResult', 'cases_dir, case_type_sub_dir, case_num, result_type, error')
@@ -569,7 +574,7 @@ VerificationRunResult.__new__.__defaults__ = (None, )
 # VerificationRunResult.__doc__ += ': directory storing all test cases'
 
 class VerificationSuite(object):
-    """Run suite of verification tests of `wc_sim`'s dynamic behavior """
+    """ A suite of verification tests of `wc_sim`'s dynamic behavior """
 
     def __init__(self, cases_dir, plot_dir=None):
         if not os.path.isdir(cases_dir):
@@ -591,36 +596,37 @@ class VerificationSuite(object):
         """
         # TODO: if an error occurs record more, like the results dir
         if type(result_type) != VerificationResultType:
-            raise VerificationError("result_type must be a VerificationResultType, not a '{}'".format(type(result_type).__name__))
+            raise VerificationError("result_type must be a VerificationResultType, not a '{}'".format(
+                                    type(result_type).__name__))
         if error:
-            self.results.append(VerificationRunResult(self.cases_dir, case_type_sub_dir, case_num, result_type, error))
+            self.results.append(VerificationRunResult(self.cases_dir, case_type_sub_dir, case_num,
+                                                      result_type, error))
         else:
-            self.results.append(VerificationRunResult(self.cases_dir, case_type_sub_dir, case_num, result_type))
+            self.results.append(VerificationRunResult(self.cases_dir, case_type_sub_dir, case_num,
+                                                      result_type))
 
     def _run_test(self, case_type_name, case_num, num_stochastic_runs=20, time_step_factor=None,
-        verbose=False):
+                  verbose=True):
         """Run one test case and report the result
         """
+        print(f"cases_dir: {self.cases_dir}\ncase_type_name: {case_type_name}\ncase_num: {case_num}\n")
         if verbose:
             start_time = time.process_time()
         try:
             case_verifier = CaseVerifier(self.cases_dir, case_type_name, case_num,
-                time_step_factor=time_step_factor)
-            if verbose:
-                print(MakeModel.model_to_str(case_verifier.verification_test_reader.model))
+                                         time_step_factor=time_step_factor)
         except:
-            print(f"cases_dir: {self.cases_dir}\ncase_type_name: {case_type_name}\ncase_num: {case_num}\n")
             tb = traceback.format_exc()
             self._record_result(case_type_name, case_num, VerificationResultType.CASE_UNREADABLE, tb)
             return
         try:
             kwargs = {}
             if self.plot_dir:
-                plot_file = os.path.join(self.plot_dir, "{}_{}_verification_test.pdf".format(case_type_name, case_num))
+                plot_file = os.path.join(self.plot_dir,
+                                         "{}_{}_verification_test.pdf".format(case_type_name, case_num))
                 kwargs['plot_file'] = plot_file
             if num_stochastic_runs:
                 kwargs['num_discrete_stochastic_runs'] = num_stochastic_runs
-            # TODO: timeout excessively long verification runs
             if verbose:
                 notice = "Verifying {} case {}".format(case_type_name, case_num)
                 if num_stochastic_runs is not None:
@@ -631,17 +637,19 @@ class VerificationSuite(object):
                 run_time = time.process_time() - start_time
                 print("run time: {:8.3f}".format(run_time))
 
-        except:
+        except Exception as e:
+            raise e
             tb = traceback.format_exc()
             self._record_result(case_type_name, case_num, VerificationResultType.FAILED_VERIFICATION_RUN, tb)
             return
         if verification_result:
-            self._record_result(case_type_name, case_num, VerificationResultType.CASE_DID_NOT_VERIFY, verification_result)
+            self._record_result(case_type_name, case_num, VerificationResultType.CASE_DID_NOT_VERIFY,
+                                verification_result)
         else:
             self._record_result(case_type_name, case_num, VerificationResultType.CASE_VERIFIED)
 
     def run(self, test_case_type_name=None, cases=None, num_stochastic_runs=None, time_step_factor=None,
-        verbose=False):
+            verbose=False):
         """Run all requested test cases
         """
         if isinstance(cases, str):
@@ -658,7 +666,8 @@ class VerificationSuite(object):
                     time_step_factor=time_step_factor, verbose=verbose)
         else:
             for verification_test_case_type in VerificationTestCaseType:
-                for case_num in os.listdir(os.path.join(self.cases_dir, TEST_CASE_TYPE_TO_DIR[verification_test_case_type.name])):
+                for case_num in os.listdir(os.path.join(self.cases_dir,
+                                           TEST_CASE_TYPE_TO_DIR[verification_test_case_type.name])):
                     self._run_test(verification_test_case_type.name, case_num,
                         num_stochastic_runs=num_stochastic_runs, time_step_factor=time_step_factor,
                         verbose=verbose)
@@ -683,7 +692,7 @@ class HybridModelVerification(object):
             ** run the hybrid model: high flux reactions by ODE, and low flux by SSA
                 verify deterministic species against their correct results
                 verify hybrid and SSA-only species against their correct results
-            
+
         if time permits, try various settings of checkpoint interval, time step factor, etc.
     """
     '''
@@ -708,7 +717,7 @@ class HybridModelVerification(object):
         self.tmp_results_dir = tempfile.mkdtemp()
 
     class TypedCaseVerifier(object):
-        # represent a verification case in a HybridModelVerification, one of correct, deterministic (ODE) or discrete (SSA) 
+        # represent a verification case in a HybridModelVerification, one of correct, deterministic (ODE) or discrete (SSA)
         def __init__(self, root_dir, case_name, model_file, settings, case_type, correct=False):
             if case_type not in TEST_CASE_TYPE_TO_DIR:
                 raise MultialgorithmError("bad case_type: '{}'".format(case_type))
@@ -767,7 +776,7 @@ class HybridModelVerification(object):
 
         def __str__(self):
             pass
-   
+
     # building blocks
     def convert_correct_results(self, run_results):
         """ Convert set of simulation results into a stochastic results csv
@@ -775,7 +784,7 @@ class HybridModelVerification(object):
         Args:
             run_results (:obj:`list` of `RunResult`):
         """
-        
+
         # allocate results mean & SD
         settings = self.correct_typed_case_verifier.get_settings()
         pop_means = {}
@@ -822,7 +831,7 @@ class HybridModelVerification(object):
             correct_results = self.get_correct_results(num_runs)
             self.convert_correct_results(correct_results)
 
-        ''' 
+        '''
         set up verification
             set up SSA run (break SSA execution above into reusable method)
             execute correct SSA run to generate SSA ensemble
@@ -835,7 +844,7 @@ class HybridModelVerification(object):
             verify
             # filter results to ODE and hybrid/SSA
             # verify each
-        ''' 
+        '''
 
 
 class VerificationUtilities(object):

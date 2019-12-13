@@ -199,14 +199,12 @@ class Simulation(object):
         simulation_args = dict(metadata=self.simulation_metadata,
                                end_time=end_time,
                                ode_time_step=ode_time_step)
-        # print('simulation_args 1', simulation_args)
         if results_dir:
             simulation_args['results_dir'] = results_dir
             simulation_args['checkpoint_period'] = checkpoint_period
 
         self.process_and_validate_args(simulation_args)
 
-        # print('simulation_args 2', simulation_args)
         multialgorithm_simulation = MultialgorithmSimulation(self.model, simulation_args)
         self.simulation_engine, self.dynamic_model = multialgorithm_simulation.build_simulation()
         self.simulation_engine.initialize()

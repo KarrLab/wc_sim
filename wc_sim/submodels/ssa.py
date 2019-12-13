@@ -19,7 +19,7 @@ from de_sim.event import Event
 from wc_sim import message_types
 from wc_sim.config import core as config_core_multialgorithm
 from wc_sim.submodels.dynamic_submodel import DynamicSubmodel
-from wc_sim.multialgorithm_errors import MultialgorithmError
+from wc_sim.multialgorithm_errors import MultialgorithmError, FrozenSimulationError
 
 config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 
@@ -147,7 +147,7 @@ class SsaSubmodel(DynamicSubmodel):
             reaction (propensities, total_propensities)
 
         Raises:
-            :obj:`MultialgorithmError`: if the simulation has 1 submodel and the total propensities are 0
+            :obj:`FrozenSimulationError`: if the simulation has 1 submodel and the total propensities are 0
         """
 
         # TODO(Arthur): optimization: only calculate new reaction rates only for species whose counts have changed
@@ -161,9 +161,31 @@ class SsaSubmodel(DynamicSubmodel):
         enabled_reactions = self.identify_enabled_reactions()
         proportional_propensities = enabled_reactions * proportional_propensities
         total_proportional_propensities = np.sum(proportional_propensities)
+        assert not math.isnan(total_proportional_propensities), "total propensities is 'NaN'"   # pragma, no cover
+        # TODO(Arthur): generalize: replace 2nd part of 'and' with 'no other submodels can change pop of any rxn reactants'
         if total_proportional_propensities == 0 and self.get_num_submodels() == 1:
-            raise MultialgorithmError("A simulation with 1 SSA submodel and total propensities = 0 cannot progress")
+            raise FrozenSimulationError(f"Simulation of 1 SSA submodel {self.id} with total propensities "
+                                        f"= 0 cannot progress")
         return (proportional_propensities, total_proportional_propensities)
+
+    def get_reaction_propensities(self):
+        """ Get reaction propensities and handle boundary conditions
+
+        Returns:
+            (propensities, total_propensities)
+        """
+        try:
+            propensities, total_propensities = self.determine_reaction_propensities()
+        except FrozenSimulationError:
+            # schedule event for time = infinity so that other activities like checkpointing continue
+            # for the remainder of the simulation
+            self.send_event(float('inf'), self, message_types.SsaWait())
+            return (None, None)
+
+        if total_propensities == 0:
+            self.schedule_SsaWait()
+
+        return (propensities, total_propensities)
 
     def schedule_SsaWait(self):
         """ Schedule an SsaWait.
@@ -203,13 +225,10 @@ class SsaSubmodel(DynamicSubmodel):
         5. schedule the next reaction
 
         Returns:
-            :obj:`float`: the delay until the next SSA reaction, or `None` if a wait is scheduled
+            :obj:`float`: the delay until the next SSA reaction, or `None` if no reaction is scheduled
         """
-        (propensities, total_propensities) = self.determine_reaction_propensities()
-        assert not math.isnan(total_propensities), "total propensities is 'NaN'"
-
-        if total_propensities == 0:
-            self.schedule_SsaWait()
+        (propensities, total_propensities) = self.get_reaction_propensities()
+        if total_propensities is None or total_propensities == 0:
             return
 
         # Select time to next reaction from exponential distribution
@@ -287,10 +306,9 @@ class SsaSubmodel(DynamicSubmodel):
             self.execute_SSA_reaction(reaction_index)
 
         else:
-            (propensities, total_propensities) = self.determine_reaction_propensities()
-            if total_propensities == 0:
+            propensities, total_propensities = self.get_reaction_propensities()
+            if total_propensities is None or total_propensities == 0:
                 self.log_with_time("submodel: {}: no reaction to execute".format(self.id))
-                self.schedule_SsaWait()
                 return
 
             else:
