@@ -420,6 +420,8 @@ class DynamicCompartment(DynamicComponent):
         id (:obj:`str`): id of this :obj:`DynamicCompartment`, copied from the `wc_lang` `Compartment`
         biological_type (:obj:`pronto.term.Term`): biological type of this :obj:`DynamicCompartment`,
             copied from the `Compartment`
+        physical_type (:obj:`pronto.term.Term`): physical type of this :obj:`DynamicCompartment`,
+            copied from the `Compartment`
         random_state (:obj:`numpy.random.RandomState`): a random state
         init_volume (:obj:`float`): initial volume, sampled from the distribution specified in the
             `wc_lang` model
@@ -455,6 +457,7 @@ class DynamicCompartment(DynamicComponent):
 
         self.id = wc_lang_compartment.id
         self.biological_type = wc_lang_compartment.biological_type
+        self.physical_type = wc_lang_compartment.physical_type
         self.species_ids = species_ids
 
         # obtain initial compartment volume by sampling its specified distribution
@@ -475,14 +478,15 @@ class DynamicCompartment(DynamicComponent):
             raise MultialgorithmError("DynamicCompartment {}: init_volume ({}) must be a positive "
                                       "number.".format(self.id, self.init_volume))
 
-        init_density = wc_lang_compartment.init_density.value
-        if math.isnan(init_density):
-            raise MultialgorithmError("DynamicCompartment {}: init_density is NaN, but must be a positive "
-                                      "number.".format(self.id))
-        if init_density <= 0:
-            raise MultialgorithmError("DynamicCompartment {}: init_density ({}) must be a positive "
-                                      "number.".format(self.id, init_density))
-        self.init_density = init_density
+        if not self._is_abstract():
+            init_density = wc_lang_compartment.init_density.value
+            if math.isnan(init_density):
+                raise MultialgorithmError(f"DynamicCompartment {self.id}: init_density is NaN, but must "
+                                          f"be a positive number.")
+            if init_density <= 0:
+                raise MultialgorithmError(f"DynamicCompartment {self.id}: init_density ({init_density}) "
+                                          f"must be a positive number.")
+            self.init_density = init_density
 
     def initialize_mass_and_density(self, species_population):
         """ Initialize the species populations and the mass accounted for by species.
@@ -498,24 +502,43 @@ class DynamicCompartment(DynamicComponent):
         """
         self.species_population = species_population
         self.init_accounted_mass = self.accounted_mass(time=0)
-        self.init_mass = self.init_density * self.init_volume
-        self.init_accounted_density = self.init_accounted_mass / self.init_volume
-        # calculate fraction of initial mass or density represented by species
-        self.accounted_fraction = self.init_accounted_density / self.init_density
-        # also, accounted_fraction = self.init_accounted_mass / self.init_mass
+        if self._is_abstract():
+            self.init_mass = self.init_accounted_mass
+        else:
+            self.init_mass = self.init_density * self.init_volume
+            self.init_accounted_density = self.init_accounted_mass / self.init_volume
+            # calculate fraction of initial mass or density represented by species
+            self.accounted_fraction = self.init_accounted_density / self.init_density
+            # also, accounted_fraction = self.init_accounted_mass / self.init_mass
 
-        # usually epsilon < accounted_fraction <= 1, where epsilon depends on how thoroughly
-        # processes in the compartment are characterized
-        if 0 == self.accounted_fraction:
-            raise MultialgorithmError("DynamicCompartment '{}': initial accounted ratio is 0".format(
-                                      self.id))
-        elif 1.0 < self.accounted_fraction <= self.MAX_ALLOWED_INIT_ACCOUNTED_FRACTION:
-            warnings.warn("DynamicCompartment '{}': initial accounted ratio ({:.3E}) greater than 1.0".format(
-                self.id, self.accounted_fraction), MultialgorithmWarning)
-        if self.MAX_ALLOWED_INIT_ACCOUNTED_FRACTION < self.accounted_fraction:
-            raise MultialgorithmError("DynamicCompartment {}: initial accounted ratio ({:.3E}) greater "
-                                      "than self.MAX_ALLOWED_INIT_ACCOUNTED_FRACTION ({}).".format(self.id,
-                                      self.accounted_fraction, self.MAX_ALLOWED_INIT_ACCOUNTED_FRACTION))
+            # usually epsilon < accounted_fraction <= 1, where epsilon depends on how thoroughly
+            # processes in the compartment are characterized
+            if 0 == self.accounted_fraction:
+                raise MultialgorithmError("DynamicCompartment '{}': initial accounted ratio is 0".format(
+                                          self.id))
+            elif 1.0 < self.accounted_fraction <= self.MAX_ALLOWED_INIT_ACCOUNTED_FRACTION:
+                warnings.warn("DynamicCompartment '{}': initial accounted ratio ({:.3E}) greater than 1.0".format(
+                    self.id, self.accounted_fraction), MultialgorithmWarning)
+            if self.MAX_ALLOWED_INIT_ACCOUNTED_FRACTION < self.accounted_fraction:
+                raise MultialgorithmError("DynamicCompartment {}: initial accounted ratio ({:.3E}) greater "
+                                          "than self.MAX_ALLOWED_INIT_ACCOUNTED_FRACTION ({}).".format(self.id,
+                                          self.accounted_fraction, self.MAX_ALLOWED_INIT_ACCOUNTED_FRACTION))
+
+    def _is_abstract(self):
+        """ Indicate whether this is an abstract compartment
+
+        An abstract compartment has a `physical_type` of `abstract_compartment` as defined in the WC ontology.
+        Its contents do not represent physical matter, so no relationship exists among its mass, volume and
+        density. Its volume is constant and its density is ignored and need not be defined. Abstract
+        compartments are useful for modeling dynamics that are not based on physical chemistry, and for
+        testing models and software.
+        These :obj:`DynamicCompartment` attributes are not initialized in abstract compartments:
+        `init_density`, `init_accounted_density` and `accounted_fraction`.
+
+        Returns:
+            :obj:`bool`: whether this is an abstract compartment
+        """
+        return are_terms_equivalent(self.physical_type, onto['WC:abstract_compartment'])
 
     def accounted_mass(self, time=None):
         """ Provide the total current mass of all species in this :obj:`DynamicCompartment`
@@ -538,7 +561,10 @@ class DynamicCompartment(DynamicComponent):
         Returns:
             :obj:`float`: the current volume of all species (l)
         """
-        return self.accounted_mass(time=time) / self.init_density
+        if self._is_abstract():
+            return self.volume()
+        else:
+            return self.accounted_mass(time=time) / self.init_density
 
     def mass(self, time=None):
         """ Provide the total current mass of this :obj:`DynamicCompartment`
@@ -552,7 +578,10 @@ class DynamicCompartment(DynamicComponent):
         Returns:
             :obj:`float`: this compartment's total current mass (g)
         """
-        return self.accounted_mass(time=time) / self.accounted_fraction
+        if self._is_abstract():
+            return self.accounted_mass(time=time)
+        else:
+            return self.accounted_mass(time=time) / self.accounted_fraction
 
     def volume(self, time=None):
         """ Provide the current volume of this :obj:`DynamicCompartment`
@@ -566,9 +595,12 @@ class DynamicCompartment(DynamicComponent):
         Returns:
             :obj:`float`: this compartment's current volume (l)
         """
-        return self.accounted_volume(time=time) / self.accounted_fraction
+        if self._is_abstract():
+            return self.init_volume
+        else:
+            return self.accounted_volume(time=time) / self.accounted_fraction
 
-    # todo: eliminate =None, as it creates the possibility of eval'ing an expression @ multiple times
+    # todo: make time required, to avoid the possibility of eval'ing an expression @ multiple times
     def eval(self, time=None):
         """ Provide the mass of this :obj:`DynamicCompartment`
 
@@ -603,7 +635,7 @@ class DynamicCompartment(DynamicComponent):
         return self.volume(time=time) / self.init_volume
 
     def _initialized(self):
-        """ Report whether this :obj:`DynamicCompartment` has been initialized
+        """ Indicate whether this :obj:`DynamicCompartment` has been initialized
 
         Returns:
             :obj:`bool`: whether this compartment has been initialized by `initialize_mass_and_density()`
@@ -625,13 +657,17 @@ class DynamicCompartment(DynamicComponent):
 
         # todo: be careful with units; if initial values are specified in other units, are they converted?
         values.append("Initial volume (l): {:.3E}".format(self.init_volume))
-        values.append("Specified density (g l^-1): {}".format(self.init_density))
+        values.append("Physical type: {}".format(self.physical_type.name))
+        values.append("Biological type: {}".format(self.biological_type.name))
+        if not self._is_abstract():
+            values.append("Specified density (g l^-1): {}".format(self.init_density))
         if self._initialized():
             values.append("Initial mass in species (g): {:.3E}".format(self.init_accounted_mass))
             values.append("Initial total mass (g): {:.3E}".format(self.init_mass))
-            values.append(f"Fraction of mass accounted for by species (dimensionless): {self.accounted_fraction:.3E}")
+            if not self._is_abstract():
+                values.append(f"Fraction of mass accounted for by species (dimensionless): "
+                              f"{self.accounted_fraction:.3E}")
 
-            # todo: include simulation time
             values.append("Current mass in species (g): {:.3E}".format(self.accounted_mass()))
             values.append("Current total mass (g): {:.3E}".format(self.mass()))
             values.append("Fold change total mass: {:.3E}".format(self.fold_change_total_mass()))
@@ -704,7 +740,6 @@ class DynamicModel(object):
                 DynamicParameter(self, self.species_population, parameter, parameter.value)
 
         # create dynamic species
-        # todo: relate these to the species used by local species population
         self.dynamic_species = {}
         for species in model.get_species():
             self.dynamic_species[species.id] = \

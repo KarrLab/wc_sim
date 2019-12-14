@@ -23,6 +23,7 @@ from wc_lang import (Model, Compartment, Species, Parameter,
                      Observable, ObservableExpression, StopCondition,
                      Function, FunctionExpression, InitVolume)
 from wc_lang.io import Reader
+from wc_onto import onto
 from wc_sim.dynamic_components import (SimTokCodes, WcSimToken, DynamicComponent, DynamicExpression,
                                        DynamicModel, DynamicSpecies, DynamicFunction, DynamicParameter,
                                        DynamicCompartment, DynamicStopCondition)
@@ -374,7 +375,7 @@ class TestDynamics(unittest.TestCase):
 
 
 class TestUninitializedDynamicCompartment(unittest.TestCase):
-    """ Test DynamicCompartment without a species population
+    """ Test DynamicCompartments that do not have a species population
     """
 
     def setUp(self):
@@ -386,10 +387,16 @@ class TestUninitializedDynamicCompartment(unittest.TestCase):
                                        init_volume=InitVolume(mean=self.mean_init_volume,
                                        std=self.mean_init_volume / 40.))
         self.compartment.init_density = Parameter(id='density_{}'.format(comp_id), value=1100.,
-            units=unit_registry.parse_units('g l^-1'))
+                                                  units=unit_registry.parse_units('g l^-1'))
 
         self.random_state = RandomStateManager.instance()
         self.dynamic_compartment = DynamicCompartment(None, self.random_state, self.compartment)
+
+        self.abstract_compartment = Compartment(id=comp_id, name='name',
+                                                init_volume=InitVolume(mean=self.mean_init_volume, std=0),
+                                                physical_type=onto['WC:abstract_compartment'])
+        self.abstract_dynamic_compartment = DynamicCompartment(None, self.random_state,
+                                                               self.abstract_compartment)
 
     def test_dynamic_compartment(self):
         volumes = []
@@ -399,8 +406,11 @@ class TestUninitializedDynamicCompartment(unittest.TestCase):
             volumes.append(dynamic_compartment.init_volume)
         self.assertLess(numpy.abs((numpy.mean(volumes) - self.mean_init_volume) / self.mean_init_volume), 0.1)
 
-    def test_dynamic_compartment_exceptions(self):
+    def test_abstract_dynamic_compartment(self):
+        self.assertTrue(self.abstract_dynamic_compartment._is_abstract())
+        self.assertFalse(hasattr(self.abstract_dynamic_compartment, 'init_density'))
 
+    def test_dynamic_compartment_exceptions(self):
         compartment = Compartment(id='id', name='name', init_volume=InitVolume(mean=0))
         with self.assertRaises(MultialgorithmError):
             DynamicCompartment(None, self.random_state, compartment)
@@ -422,7 +432,7 @@ class TestUninitializedDynamicCompartment(unittest.TestCase):
 
 
 class TestInitializedDynamicCompartment(unittest.TestCase):
-    """ Test DynamicCompartment with a species population
+    """ Test DynamicCompartments with species populations
     """
 
     def setUp(self):
@@ -439,17 +449,22 @@ class TestInitializedDynamicCompartment(unittest.TestCase):
         self.local_species_pop = LocalSpeciesPopulation('test', self.init_populations, self.molecular_weights,
                                                         random_state=RandomStateManager.instance())
 
-        # make a Compartment & use it to make a DynamicCompartment
+        # make Compartments & use them to make a DynamicCompartments
         self.mean_init_volume = 1E-17
         self.compartment = Compartment(id=comp_id, name='name',
                                        init_volume=InitVolume(mean=self.mean_init_volume,
                                        std=self.mean_init_volume / 40.))
         self.compartment.init_density = Parameter(id='density_{}'.format(comp_id), value=1100.,
-            units=unit_registry.parse_units('g l^-1'))
-
+                                                  units=unit_registry.parse_units('g l^-1'))
         self.random_state = RandomStateManager.instance()
         self.dynamic_compartment = DynamicCompartment(None, self.random_state, self.compartment,
-            self.species_ids)
+                                                      self.species_ids)
+
+        self.abstract_compartment = Compartment(id=comp_id, name='name',
+                                                init_volume=InitVolume(mean=self.mean_init_volume, std=0),
+                                                physical_type=onto['WC:abstract_compartment'])
+        self.abstract_dynamic_compartment = DynamicCompartment(None, self.random_state,
+                                                               self.abstract_compartment)
 
     def specify_init_accounted_fraction(self, desired_init_accounted_fraction):
         # make a DynamicCompartment with accounted_fraction ~= desired_init_accounted_fraction
@@ -464,14 +479,24 @@ class TestInitializedDynamicCompartment(unittest.TestCase):
         self.dynamic_compartment.initialize_mass_and_density(self.local_species_pop)
         estimated_accounted_mass = self.num_species * self.all_pops * self.all_m_weights / Avogadro
         self.assertAlmostEqual(self.dynamic_compartment.init_accounted_mass, estimated_accounted_mass,
-            places=IEEE_64_BIT_FLOATING_POINT_PLACES)
+                               places=IEEE_64_BIT_FLOATING_POINT_PLACES)
         self.assertTrue(0 < self.dynamic_compartment.init_mass)
         self.assertAlmostEqual(self.dynamic_compartment.accounted_fraction,
-            self.dynamic_compartment.init_accounted_mass / self.dynamic_compartment.init_mass,
-            places=IEEE_64_BIT_FLOATING_POINT_PLACES)
+                               self.dynamic_compartment.init_accounted_mass / \
+                                self.dynamic_compartment.init_mass,
+                               places=IEEE_64_BIT_FLOATING_POINT_PLACES)
+
+        # test abstract compartment
+        self.abstract_dynamic_compartment.initialize_mass_and_density(self.local_species_pop)
+        self.assertAlmostEqual(self.abstract_dynamic_compartment.init_accounted_mass,
+                               estimated_accounted_mass,
+                               places=IEEE_64_BIT_FLOATING_POINT_PLACES)
+        self.assertEqual(self.abstract_dynamic_compartment.init_accounted_mass,
+                         self.abstract_dynamic_compartment.init_mass)
+        self.assertFalse(hasattr(self.abstract_dynamic_compartment, 'init_accounted_density'))
 
         empty_local_species_pop = LocalSpeciesPopulation('test', {}, {},
-            random_state=RandomStateManager.instance())
+                                                         random_state=RandomStateManager.instance())
         dynamic_compartment = DynamicCompartment(None, self.random_state, self.compartment)
         with self.assertRaisesRegex(MultialgorithmError, "initial accounted ratio is 0"):
             dynamic_compartment.initialize_mass_and_density(empty_local_species_pop)
@@ -500,6 +525,17 @@ class TestInitializedDynamicCompartment(unittest.TestCase):
         self.assertAlmostEqual(self.dynamic_compartment.eval(), self.dynamic_compartment.init_mass,
             places=IEEE_64_BIT_FLOATING_POINT_PLACES)
 
+        # test abstract compartment
+        self.abstract_dynamic_compartment.initialize_mass_and_density(self.local_species_pop)
+        self.assertEqual(self.abstract_dynamic_compartment.accounted_mass(time=0),
+                         self.abstract_dynamic_compartment.init_mass)
+        self.assertEqual(self.abstract_dynamic_compartment.accounted_volume(time=0),
+                         self.abstract_dynamic_compartment.init_volume)
+        self.assertEqual(self.abstract_dynamic_compartment.mass(time=0),
+                         self.abstract_dynamic_compartment.init_mass)
+        self.assertEqual(self.abstract_dynamic_compartment.volume(time=0),
+                         self.abstract_dynamic_compartment.init_volume)
+
     def test_str(self):
         dynamic_compartment = DynamicCompartment(None, self.random_state, self.compartment)
         self.assertIn("has not been initialized", str(dynamic_compartment))
@@ -508,6 +544,10 @@ class TestInitializedDynamicCompartment(unittest.TestCase):
         dynamic_compartment.initialize_mass_and_density(self.local_species_pop)
         self.assertIn("has been initialized", str(dynamic_compartment))
         self.assertIn('Fold change total mass: 1.0', str(dynamic_compartment))
+
+        # test abstract compartment
+        self.abstract_dynamic_compartment.initialize_mass_and_density(self.local_species_pop)
+        self.assertNotIn('Fraction of mass accounted for', str(self.abstract_dynamic_compartment))
 
 
 class TestDynamicModel(unittest.TestCase):
@@ -534,7 +574,8 @@ class TestDynamicModel(unittest.TestCase):
         model = TestDynamicModel.models[model_filename]
         expected_actual_masses = {}
         for compartment in model.get_compartments():
-            expected_actual_masses[compartment.id] = compartment.init_volume.mean * compartment.init_density.value
+            expected_actual_masses[compartment.id] = \
+                compartment.init_volume.mean * compartment.init_density.value
         return expected_actual_masses
 
     def compare_aggregate_states(self, expected_aggregate_state, computed_aggregate_state, frac_diff=1e-1):
