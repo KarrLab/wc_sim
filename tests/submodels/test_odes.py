@@ -208,8 +208,8 @@ class TestOdeSubmodel(unittest.TestCase):
     # test event scheduling and handling
     @unittest.skip("not good test")
     def test_schedule_next_ode_analysis(self):
-        custom_time_step = 4
-        custom_ode_submodel = self.make_ode_submodel(self.mdl_1_spec, ode_time_step=custom_time_step)
+        custom_ode_time_step = 4
+        custom_ode_submodel = self.make_ode_submodel(self.mdl_1_spec, ode_time_step=custom_ode_time_step)
         # no events are scheduled
         self.assertTrue(custom_ode_submodel.simulator.event_queue.empty())
 
@@ -227,6 +227,6 @@ class TestOdeSubmodel(unittest.TestCase):
         custom_ode_submodel.send_initial_events()
         check_next_event(0)
 
-        # next RunOde event should be at custom_time_step
+        # next RunOde event should be at custom_ode_time_step
         custom_ode_submodel.schedule_next_ode_analysis()
-        check_next_event(custom_time_step)
+        check_next_event(custom_ode_time_step)

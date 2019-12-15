@@ -478,12 +478,12 @@ class RunVerificationSuite(unittest.TestCase):
             SsaTestCase('00001', '001-01', (1, ), NUM_SIMULATION_RUNS),
             SsaTestCase('00003', '001-03', (1, ), NUM_SIMULATION_RUNS),
             SsaTestCase('00004', '001-04', (1, ), NUM_SIMULATION_RUNS),
-            # x SsaTestCase('00007', '001-07', (1, ), NUM_SIMULATION_RUNS),
-            # x SsaTestCase('00012', '001-12', (1, ), NUM_SIMULATION_RUNS),
-            # SsaTestCase('00020', '002-01', (0, 1), 4000),
-            # SsaTestCase('00021', '002-02', (0, 1), NUM_SIMULATION_RUNS),
-            # SsaTestCase('00030', '003-01', (1, 2), NUM_SIMULATION_RUNS),
-            # SsaTestCase('00037', '004-01', (0, 1), NUM_SIMULATION_RUNS)
+            SsaTestCase('00007', '001-07', (1, ), NUM_SIMULATION_RUNS),
+            SsaTestCase('00012', '001-12', (1, ), NUM_SIMULATION_RUNS),
+            SsaTestCase('00020', '002-01', (0, 1), 100),
+            SsaTestCase('00021', '002-02', (0, 1), NUM_SIMULATION_RUNS),
+            SsaTestCase('00030', '003-01', (1, 2), NUM_SIMULATION_RUNS),
+            SsaTestCase('00037', '004-01', (0, 1), NUM_SIMULATION_RUNS)
         ]
         # todo: get rid of TIME_STEP_FACTOR
         TIME_STEP_FACTOR = 1
@@ -539,13 +539,11 @@ class RunVerificationSuite(unittest.TestCase):
         # todo: move to verification main program
         results, _, _ = self.run_verification_cases('DISCRETE_STOCHASTIC', self.ssa_test_cases)
 
-        '''
         orders_verified = set()
         for result, ssa_test_case in zip(results, self.ssa_test_cases):
             if result.result_type == VerificationResultType.CASE_VERIFIED:
                 orders_verified.update(ssa_test_case.MA_order)
         self.assertEqual(orders_verified, {0, 1, 2})
-        '''
 
     def test_verification_deterministic(self):
         self.run_verification_cases('CONTINUOUS_DETERMINISTIC', self.ode_test_cases)

@@ -9,7 +9,7 @@ levels:          2.1, 2.2, 2.3, 2.4, 3.1
 generatedBy:     Analytic
 packagesPresent: 
 
-This model is the same as case 00021, but with a local parameter that changes the value of 'Alpha'.
+This model is the same as case 00020, but with a different value for 'Alpha'.
 
 The model contains:
 * 1 species (X)

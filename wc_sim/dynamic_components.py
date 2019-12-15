@@ -720,6 +720,9 @@ class DynamicModel(object):
             species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
             dynamic_compartments (:obj:`dict`): the simulation's :obj:`DynamicCompartment`\ s, one
                 for each compartment in `model`
+
+        Raises:
+            :obj:`MultialgorithmError`: if the model has no cellular compartments
         """
         self.id = model.id
         self.dynamic_compartments = dynamic_compartments
@@ -731,6 +734,8 @@ class DynamicModel(object):
         for dynamic_compartment in dynamic_compartments.values():
             if dynamic_compartment.biological_type == onto['WC:cellular_compartment']:
                 self.cellular_dyn_compartments.append(dynamic_compartment)
+        if not self.cellular_dyn_compartments:
+            raise MultialgorithmError(f"model '{model.id}' must have at least 1 cellular compartment")
 
         # === create dynamic objects that are not expressions ===
         # create dynamic parameters
