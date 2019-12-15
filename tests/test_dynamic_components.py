@@ -567,7 +567,7 @@ class TestDynamicModel(unittest.TestCase):
         multialgorithm_simulation = MultialgorithmSimulation(self.model, None)
         multialgorithm_simulation.initialize_components()
         self.dynamic_model = DynamicModel(self.model, multialgorithm_simulation.local_species_population,
-            multialgorithm_simulation.temp_dynamic_compartments)
+                                          multialgorithm_simulation.temp_dynamic_compartments)
 
     def compute_expected_actual_masses(self, model_filename):
         # provide the expected actual masses for the compartments in model_filename, keyed by compartment id
@@ -596,6 +596,15 @@ class TestDynamicModel(unittest.TestCase):
         self.assertEqual(len(self.dynamic_model.cellular_dyn_compartments), 1)
         self.assertEqual(self.dynamic_model.cellular_dyn_compartments[0].id, 'c')
         self.assertEqual(self.dynamic_model.get_num_submodels(), 2)
+
+        model = TestDynamicModel.models[self.MODEL_FILENAME]
+        for compartment in self.model.get_compartments():
+            compartment.biological_type = onto['WC:extracellular_compartment']
+        multialgorithm_simulation = MultialgorithmSimulation(model, None)
+        multialgorithm_simulation.initialize_components()
+        with self.assertRaisesRegex(MultialgorithmError, 'must have at least 1 cellular compartment'):
+            DynamicModel(model, multialgorithm_simulation.local_species_population,
+                         multialgorithm_simulation.temp_dynamic_compartments)
 
     def test_dynamic_components(self):
         # test agregate properties like mass and volume against independent calculations of their values
