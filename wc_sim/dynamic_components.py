@@ -734,7 +734,7 @@ class DynamicModel(object):
         for dynamic_compartment in dynamic_compartments.values():
             if dynamic_compartment.biological_type == onto['WC:cellular_compartment']:
                 self.cellular_dyn_compartments.append(dynamic_compartment)
-        if not self.cellular_dyn_compartments:
+        if dynamic_compartments and not self.cellular_dyn_compartments:
             raise MultialgorithmError(f"model '{model.id}' must have at least 1 cellular compartment")
 
         # === create dynamic objects that are not expressions ===

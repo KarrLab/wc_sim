@@ -162,10 +162,10 @@ class SsaSubmodel(DynamicSubmodel):
         proportional_propensities = enabled_reactions * proportional_propensities
         total_proportional_propensities = np.sum(proportional_propensities)
         assert not math.isnan(total_proportional_propensities), "total propensities is 'NaN'"   # pragma, no cover
-        # TODO(Arthur): generalize: replace 2nd part of 'and' with 'no other submodels can change pop of any rxn reactants'
+        # TODO(Arthur): generalize: if other submodels can't change terms in the rate laws used by this SSA
         if total_proportional_propensities == 0 and self.get_num_submodels() == 1:
-            raise FrozenSimulationError(f"Simulation of 1 SSA submodel {self.id} with total propensities "
-                                        f"= 0 cannot progress")
+            raise FrozenSimulationError(f"Simulation with 1 SSA submodel - '{self.id}' - with total "
+                                        f"propensities == 0 won't change species populations")
         return (proportional_propensities, total_proportional_propensities)
 
     def get_reaction_propensities(self):

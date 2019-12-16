@@ -6,12 +6,14 @@
 :License: MIT
 """
 
+import unittest
+
 from wc_lang import Species
 from wc_lang.transform import PrepForWcSimTransform
-from wc_sim.testing.make_models import MakeModel
+from wc_sim.multialgorithm_errors import FrozenSimulationError
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.submodels.ssa import SsaSubmodel
-import unittest
+from wc_sim.testing.make_models import MakeModel
 
 
 class TestSsaSubmodel(unittest.TestCase):
@@ -71,3 +73,13 @@ class TestSsaSubmodel(unittest.TestCase):
         expected_population = dict(zip(species, [spec_type_0_cn-1, 2*spec_type_0_cn+1]))
         population = ssa_submodel.local_species_population.read(0, set(species))
         self.assertEqual(population, expected_population)
+
+        # test determine_reaction_propensities() exception
+        model = MakeModel.make_test_model('2 species, 1 reaction', default_species_std=0)
+        # set rxn rate constant to 0 so that reaction propensities are 0
+        rl_constant = model.parameters.get_or_create(id='k_cat_1_1_for')
+        rl_constant.value = 0
+        ssa_submodel = self.make_ssa_submodel(model)
+        with self.assertRaisesRegex(FrozenSimulationError,
+                                    "propensities == 0 won't change species populations"):
+            ssa_submodel.determine_reaction_propensities()

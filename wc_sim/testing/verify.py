@@ -363,8 +363,6 @@ class CaseVerifier(object):
         if self.time_step_factor is not None:
             factor = self.time_step_factor
         simul_kwargs['ode_time_step'] = factor * settings['duration']/settings['steps']
-        print('simul_kwargs')
-        pprint(simul_kwargs)
 
         if self.verification_test_reader.test_case_type == VerificationTestCaseType.CONTINUOUS_DETERMINISTIC:
             simulation = Simulation(self.verification_test_reader.model)
@@ -609,7 +607,6 @@ class VerificationSuite(object):
                   verbose=True):
         """Run one test case and report the result
         """
-        print(f"cases_dir: {self.cases_dir}\ncase_type_name: {case_type_name}\ncase_num: {case_num}\n")
         if verbose:
             start_time = time.process_time()
         try:

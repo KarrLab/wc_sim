@@ -501,7 +501,7 @@ class RunVerificationSuite(unittest.TestCase):
                                               'verification', 'cases'))
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
         self.plot_dir = os.path.join(os.path.dirname(__file__), 'tmp', 'verification', timestamp)
-        os.makedirs(self.plot_dir)
+        os.makedirs(self.plot_dir, exist_ok=True)
         self.verification_suite = VerificationSuite(self.root_test_dir, self.plot_dir)
 
     def run_verification_cases(self, case_type, verification_cases, testing=False, time_step_factor=None):

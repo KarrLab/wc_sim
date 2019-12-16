@@ -257,7 +257,7 @@ class TestDynamics(unittest.TestCase):
             Species: {}
         }
 
-        self.model = model = Model()
+        self.model = model = Model(id='TestDynamics')
         species_types = {}
         st_ids = ['a', 'b']
         for id in st_ids:

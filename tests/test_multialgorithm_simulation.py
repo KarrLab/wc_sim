@@ -454,23 +454,6 @@ class TestRunSSASimulation(unittest.TestCase):
             expected_mean_copy_numbers={'spec_type_0[compt_1]': 2000,  'spec_type_1[compt_1]': 1000},
             delta=50)
 
-    def test_runtime_errors(self):
-        init_spec_type_0_pop = 2000
-        # this model consumes all the reactants, driving propensities to 0:
-        with self.assertRaisesRegex(MultialgorithmError,
-                                    "simulation with 1 SSA submodel and total propensities = 0 cannot progress"):
-            self.perform_ssa_test_run('2 species, 1 reaction, with rates given by reactant population',
-                                      run_time=5000,
-                                      initial_species_copy_numbers={
-                                          'spec_type_0[compt_1]': init_spec_type_0_pop,
-                                          'spec_type_1[compt_1]': 0},
-                                      initial_species_stds={
-                                          'spec_type_0[compt_1]': 0,
-                                          'spec_type_1[compt_1]': 0},
-                                      expected_mean_copy_numbers={},
-                                      delta=0,
-                                      init_vols=1E-22)
-
     @unittest.skip('debug')
     def test_run_multiple_ssa_submodels(self):
         # 1 submodel per compartment, no transfer reactions
