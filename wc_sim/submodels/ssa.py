@@ -90,7 +90,7 @@ class SsaSubmodel(DynamicSubmodel):
         for sim_msg_type in MESSAGE_TYPES_BY_PRIORITY]
 
     def __init__(self, id, dynamic_model, reactions, species, dynamic_compartments,
-        local_species_population, default_center_of_mass=None):
+                 local_species_population, default_center_of_mass=None):
         """ Initialize an SSA submodel object.
 
         Args:
@@ -111,6 +111,7 @@ class SsaSubmodel(DynamicSubmodel):
             :obj:`MultialgorithmError`: if the initial SSA wait exponential moving average is not positive
         """
         super().__init__(id, dynamic_model, reactions, species, dynamic_compartments, local_species_population)
+        print(f'time: {self.time}, id: {id}, reactions {[r.id for r in reactions]}')
 
         self.num_SsaWaits=0
         if default_center_of_mass is None:
@@ -120,9 +121,9 @@ class SsaSubmodel(DynamicSubmodel):
         if config_multialgorithm['initial_ssa_wait_ema'] <= 0:
             raise MultialgorithmError("'initial_ssa_wait_ema' must be positive to avoid infinite sequence of "
             "SsaWait messages, but it is {}".format(config_multialgorithm['initial_ssa_wait_ema']))
-        self.ema_of_inter_event_time = ExponentialMovingAverage(
-            config_multialgorithm['initial_ssa_wait_ema'],
-            center_of_mass=default_center_of_mass)
+        self.ema_of_inter_event_time = \
+            ExponentialMovingAverage(config_multialgorithm['initial_ssa_wait_ema'],
+                                     center_of_mass=default_center_of_mass)
         self.random_state = RandomStateManager.instance()
 
         self.log_with_time("init: id: {}".format(id))
@@ -177,6 +178,7 @@ class SsaSubmodel(DynamicSubmodel):
         try:
             propensities, total_propensities = self.determine_reaction_propensities()
         except FrozenSimulationError:
+            # TODO(Arthur): remove this send_event(), which isn't needed
             # schedule event for time = infinity so that other activities like checkpointing continue
             # for the remainder of the simulation
             self.send_event(float('inf'), self, message_types.SsaWait())
@@ -228,6 +230,7 @@ class SsaSubmodel(DynamicSubmodel):
             :obj:`float`: the delay until the next SSA reaction, or `None` if no reaction is scheduled
         """
         (propensities, total_propensities) = self.get_reaction_propensities()
+        print(f'time: {self.time}, id: {self.id}, propensities: {propensities}, total_propensities: {total_propensities}')
         if total_propensities is None or total_propensities == 0:
             return
 
@@ -264,6 +267,7 @@ class SsaSubmodel(DynamicSubmodel):
         """
         self.log_with_time("submodel: {} "
             "executing reaction {}".format(self.id, self.reactions[reaction_index].id))
+        print(f'time: {self.time}, id: {self.id}, executing: {self.reactions[reaction_index].id}')
         self.execute_reaction(self.reactions[reaction_index])
 
     def handle_SsaWait_msg(self, event):

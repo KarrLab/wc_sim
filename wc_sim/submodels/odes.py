@@ -122,9 +122,20 @@ class OdeSubmodel(DynamicSubmodel):
                 tmp_coeffs_and_rate_laws[species_id].append((species_coefficient.coefficient,
                                                              dynamic_rate_law))
 
+        # todo: replace rate_of_change_expressions with a stoichiometric matrix S
+        # then, in compute_population_change_rates() compute a vector of reaction rates R and get
+        # rates of change of species from R * S
         self.rate_of_change_expressions = []
         for species_id in self.ode_species_ids:
             self.rate_of_change_expressions.append(tmp_coeffs_and_rate_laws[species_id])
+        '''
+        print('for each species, a list of its (coefficient, rate law) pairs')
+        for n, s_list in enumerate(self.rate_of_change_expressions):
+            p = []
+            for coeff, rl in s_list:
+                p.append(f'{coeff} * {rl.id}')
+            print(f'species: {n}', ' + '.join(p))
+        '''
 
     def set_up_optimizations(self):
         """ To improve performance, pre-compute and pre-allocate some data structures """
@@ -194,13 +205,14 @@ class OdeSubmodel(DynamicSubmodel):
             self.num_right_hand_side_calls += 1
             if self.testing:
                 # testing
-                time_advance = time - self._last_internal_step
+                time_change = time - self._last_internal_step
                 summary = ['internal step',
                            f'{time:.4e}',
-                           f'{time_advance:.4e}',
+                           f'{time_change:.4e}',
                            'N/A',
                            'N/A']
-                summary.extend([f'{pop:.1f}' for pop in new_species_populations])
+                summary.extend([f'{pop:.5e}' for pop in new_species_populations])
+                summary.extend([f'{pop_change_rate:.5e}' for pop_change_rate in population_change_rates])
                 print('\t'.join(summary))
                 self._last_internal_step = time
             return 0
@@ -232,8 +244,12 @@ class OdeSubmodel(DynamicSubmodel):
         with TempPopulationsLSP(self.local_species_population, temporary_populations):
             for idx in range(self.num_species):
                 species_rate_of_change = 0.0
+                s_terms = []
                 for coeff, dynamic_rate_law in self.rate_of_change_expressions[idx]:
-                    species_rate_of_change += coeff * dynamic_rate_law.eval(time)
+                    rate = dynamic_rate_law.eval(time)
+                    s_terms.append(f'{coeff} * {rate:.3e}')
+                    species_rate_of_change += coeff * rate
+                # print(f'species: {idx}', ' + '.join(s_terms))
                 population_change_rates[idx] = species_rate_of_change
 
     def current_species_populations(self):
@@ -245,7 +261,7 @@ class OdeSubmodel(DynamicSubmodel):
         for idx, species_id in enumerate(self.ode_species_ids):
             self.populations[idx] = pops_dict[species_id]
 
-    run_ode_solver_header = 'mode time advance rhs_calls elapsed_rt population_0 population_1'.split()
+    run_ode_solver_header = 'mode time time_change rhs_calls elapsed_rt population_0 population_1'.split()
     def run_ode_solver(self):
         """ Run the ODE solver for one WC simulator time step and save the species populations changes """
 
@@ -276,10 +292,12 @@ class OdeSubmodel(DynamicSubmodel):
             self.adjustments[species_id] = population_change_rates[idx]
         if self.testing:
             print('time_advance:',time_advance)
-            print('solution.errors.t:', solution.errors.t)
-            print('solution.errors.y:', solution.errors.y)
-            print('population_changes:\n',population_changes)
-            print('population_change_rates:\n',population_change_rates)
+            if solution.errors.t:
+                print('solution.errors.t:', solution.errors.t)
+            if solution.errors.y:
+                print('solution.errors.y:', solution.errors.y)
+            print('population_changes:',population_changes)
+            print('population_change_rates:',population_change_rates)
             print('self.ode_species_ids', self.ode_species_ids)
             print('self.adjustments')
             pprint(self.adjustments)
@@ -292,8 +310,9 @@ class OdeSubmodel(DynamicSubmodel):
                        f'{self.time:.4e}',
                        f'{time_advance:.4e}',
                        f'{self.num_right_hand_side_calls}',
-                       f'{elapsed_rt:.3e}']
-            summary.extend([f'{pop:.1f}' for pop in new_population])
+                       f'{elapsed_rt:.2e}']
+            summary.extend([f'{pop:.2e}' for pop in new_population])
+            summary.extend([f'{pop_change_rate:.2e}' for pop_change_rate in population_change_rates])
             print('\t'.join(summary))
 
     def get_info(self):

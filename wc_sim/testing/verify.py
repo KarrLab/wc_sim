@@ -72,7 +72,20 @@ TEST_CASE_TYPE_TO_DIR = {
 
 
 class VerificationTestReader(object):
-    """ Read a model verification test case """
+    """ Read a model verification test case
+
+    Read and access settings and expected results of an SBML test suite test case
+
+    Attributes:
+        expected_predictions_df (:obj:`pandas.DataFrame`): the test case's expected predictions
+        expected_predictions_file (:obj:`str`): pathname of the test case's expected predictions
+        model (:obj:`wc_lang.Model`): the test case's `wc_lang` model
+        model_filename (:obj:`str`): pathname of the test case's model file
+        settings_file (:obj:`str`): pathname of the test case's settings file
+        test_case_dir (:obj:`str`): pathname of the directory storing the test case
+        test_case_num (:obj:`str`): the test case's unique ID number
+        test_case_type (:obj:`VerificationTestCaseType`): the test case's type
+    """
     SBML_FILE_SUFFIX = '.xml'
     def __init__(self, test_case_type, test_case_dir, test_case_num):
         if test_case_type not in VerificationTestCaseType.__members__:
@@ -129,7 +142,7 @@ class VerificationTestReader(object):
 
         if self.test_case_type == VerificationTestCaseType.CONTINUOUS_DETERMINISTIC:
             # expected predictions should contain time and the amount or concentration of each species
-            # todo: use entire SBML test suite and get expected predictions as amount or concentration
+            # todo: use more SBML test suite cases and get expected predictions as amount or concentration
             expected_columns = set(self.settings['amount'])
             actual_columns = set(expected_predictions_df.columns.values)
             if expected_columns - actual_columns:
@@ -147,6 +160,36 @@ class VerificationTestReader(object):
                     expected_predictions_file, expected_columns - set(expected_predictions_df.columns.values)))
 
         return expected_predictions_df
+
+    def species_columns(self):
+        """ Get the names of the species columns
+
+        Returns:
+            :obj:`set`: the names of the species columns
+        """
+        return set(self.expected_predictions_df.columns.values) - {'time'}
+
+    def slope_of_predictions(self):
+        """ Determine the expected derivatives of species from the expected populations
+
+        Returns:
+            :obj:`pandas.DataFrame`: expected derivatives inferred from the expected populations
+        """
+        if self.test_case_type == VerificationTestCaseType.CONTINUOUS_DETERMINISTIC:
+            # obtain linear estimates of derivatives
+            results = self.expected_predictions_df
+            times = results.time
+            derivatives = pd.DataFrame(np.nan, index=results.index.copy(deep=True),
+                                       columns=results.columns.copy(deep=True),
+                                       dtype=np.float64)
+            derivatives.time = times.copy()
+            for species in self.species_columns():
+                species_pops = results[species].values
+                for i in range(len(times)-1):
+                    derivatives.loc[i, species] = \
+                        (species_pops[i+1] - species_pops[i]) / (times[i+1] - times[i])
+
+            return derivatives
 
     def read_model(self):
         """  Read a model into a `wc_lang` representation. """
@@ -324,8 +367,8 @@ class SsaEnsemble(object):
 class CaseVerifier(object):
     """ Verify a test case """
     def __init__(self, test_cases_root_dir, test_case_type, test_case_num,
-        default_num_stochastic_runs=config_multialgorithm['num_ssa_verification_sim_runs'],
-        time_step_factor=None):
+                 default_num_stochastic_runs=config_multialgorithm['num_ssa_verification_sim_runs'],
+                 time_step_factor=None):
         # read model, config and expected predictions
         self.test_case_dir = os.path.join(test_cases_root_dir, TEST_CASE_TYPE_TO_DIR[test_case_type],
             test_case_num)
@@ -502,7 +545,7 @@ class CaseVerifier(object):
                 # mean +/- 3 sd
                 expected_kwargs['linestyle'] = 'dashed'
                 expected_sd_df = self.verification_test_reader.expected_predictions_df.loc[:, species_type+'-sd']
-                # TODO: take range -3, +3 should be taken from settings data
+                # TODO: range for mean (-3, +3) should be taken from settings data
                 correct_mean_plus_3sd, = plt.plot(times, expected_mean_df.values + 3 * expected_sd_df / math.sqrt(self.results_comparator.n_runs),
                     **expected_kwargs)
                 correct_mean_minus_3sd, = plt.plot(times, expected_mean_df.values - 3 * expected_sd_df / math.sqrt(self.results_comparator.n_runs),
@@ -572,7 +615,13 @@ VerificationRunResult.__new__.__defaults__ = (None, )
 # VerificationRunResult.__doc__ += ': directory storing all test cases'
 
 class VerificationSuite(object):
-    """ A suite of verification tests of `wc_sim`'s dynamic behavior """
+    """ A suite of verification tests of `wc_sim`'s dynamic behavior
+
+    Attributes:
+        cases_dir (:obj:`str`): path to cases directory
+        plot_dir (:obj:`str`): path to directory of plots
+        results (:obj:`list`): results
+    """
 
     def __init__(self, cases_dir, plot_dir=None):
         if not os.path.isdir(cases_dir):
@@ -632,7 +681,7 @@ class VerificationSuite(object):
             verification_result = case_verifier.verify_model(**kwargs)
             if verbose:
                 run_time = time.process_time() - start_time
-                print("run time: {:8.3f}".format(run_time))
+                print("run time: {:.3f} sec".format(run_time))
 
         except Exception as e:
             raise e
@@ -642,8 +691,10 @@ class VerificationSuite(object):
         if verification_result:
             self._record_result(case_type_name, case_num, VerificationResultType.CASE_DID_NOT_VERIFY,
                                 verification_result)
+            print(f"{case_type_name} {case_num} did not verify")
         else:
             self._record_result(case_type_name, case_num, VerificationResultType.CASE_VERIFIED)
+            print(f"{case_type_name} {case_num} verified")
 
     def run(self, test_case_type_name=None, cases=None, num_stochastic_runs=None, time_step_factor=None,
             verbose=False):

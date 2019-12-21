@@ -271,7 +271,7 @@ class MultialgorithmSimulation(object):
     def set_simultaneous_execution_priorities(self):
         """ Assign simultaneous execution priorities for all simulation objects and submodels
         """
-        # simulation objects and submodels executing at the same simulation time will run in this order:
+        # Simulation objects and submodels executing at the same simulation time run in this order:
         SimObjClassPriority.assign_decreasing_priority([SsaSubmodel,
                                                         DsaSubmodel,
                                                         DfbaSubmodel,

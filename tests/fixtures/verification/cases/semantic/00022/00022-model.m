@@ -1,8 +1,8 @@
 (* 
 
 category:      Test
-synopsis:      Two reactions with two species in one compartment, with a
-               reaction involving a non-integer stoichiometry.
+synopsis:      Two reactions with two species in one compartment, with both
+               reactions involving a non-integer stoichiometry.
 componentTags: Compartment, Species, Reaction, Parameter 
 testTags:      Amount, NonUnityCompartment, NonUnityStoichiometry
 testType:      TimeCourse

@@ -87,6 +87,16 @@ class TestVerificationTestReader(unittest.TestCase):
             with self.assertRaisesRegexp(VerificationError, expected_error.format(missing_variable)):
                 verification_test_reader.read_expected_predictions()
 
+    def test_slope_of_predictions(self):
+        verification_test_reader = make_verification_test_reader('00001', 'CONTINUOUS_DETERMINISTIC')
+        verification_test_reader.run()
+        derivatives_df = verification_test_reader.slope_of_predictions()
+        results = verification_test_reader.expected_predictions_df
+        self.assertTrue(derivatives_df.time.equals(results.time))
+        species = 'S1'
+        self.assertEqual(derivatives_df.loc[0, species],
+            (results.loc[1, species] - results.loc[0, species])/(results.time[1] - results.time[0]))
+
     def test_read_model(self):
         verification_test_reader = make_verification_test_reader('00001', 'DISCRETE_STOCHASTIC')
         model = verification_test_reader.read_model()
@@ -488,14 +498,14 @@ class RunVerificationSuite(unittest.TestCase):
         # todo: get rid of TIME_STEP_FACTOR
         TIME_STEP_FACTOR = 1
         self.ode_test_cases = [
-            ('00001', TIME_STEP_FACTOR),
-            ('00004', TIME_STEP_FACTOR),
-            ('00006', TIME_STEP_FACTOR),
-            # todo: fix: ('00010', TIME_STEP_FACTOR),
-            ('00014', TIME_STEP_FACTOR),
-            ('00015', TIME_STEP_FACTOR),
-            # ('00021', 0.2*TIME_STEP_FACTOR),  # fails, perhaps because compartment volume = 0.3 rather than 1 liter
-            ('00022', TIME_STEP_FACTOR)
+            ('00001', TIME_STEP_FACTOR),    # verifies
+            ('00004', TIME_STEP_FACTOR),    # does not verify
+            ('00006', TIME_STEP_FACTOR),    # verifies
+            # dies ('00010', TIME_STEP_FACTOR),    # does not verify
+            ('00014', TIME_STEP_FACTOR),    # does not verify
+            ('00015', TIME_STEP_FACTOR),    # does not verify
+            ('00021', TIME_STEP_FACTOR),    # does not verify
+            ('00022', TIME_STEP_FACTOR),    # does not verify
         ]
         self.root_test_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', 'fixtures',
                                               'verification', 'cases'))
@@ -515,6 +525,20 @@ class RunVerificationSuite(unittest.TestCase):
         if case_type == 'CONTINUOUS_DETERMINISTIC':
             for test_case, time_step_factor in verification_cases:
                 print(f"testing {case_type} test_case {test_case}")
+                '''
+                print('\t'.join(odes.OdeSubmodel.run_ode_solver_header))
+                test_case_dir = os.path.join(self.root_test_dir, TEST_CASE_TYPE_TO_DIR[case_type], test_case)
+                test_reader = VerificationTestReader(case_type, test_case_dir, test_case)
+                test_reader.run()
+                volume = 1
+                derivatives_df = test_reader.slope_of_predictions()
+                # molar/sec = moles / (liter sec)
+                # moles / (liter sec) * NA (molecule/mole) * volume (liter) -> molecule/sec
+                for species in test_reader.species_columns():
+                    derivatives_df[species] = derivatives_df[species] * Avogadro * volume
+                print('expected derivatives (molecule/sec)')
+                print(derivatives_df)
+                '''
                 self.verification_suite.run(case_type, [test_case], time_step_factor=time_step_factor,
                                             verbose=True)
 
