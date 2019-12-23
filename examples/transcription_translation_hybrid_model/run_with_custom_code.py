@@ -98,8 +98,8 @@ def sim_ssa(rxns, rate_params, init_species, init_time, time_max, checkpoint_per
         if tot_prop == 0:
             break
 
-        time_step = numpy.random.exponential(1 / tot_prop)
-        time += time_step
+        dt = numpy.random.exponential(1 / tot_prop)
+        time += dt
         i_log = int(numpy.ceil((time - init_time) / checkpoint_period))
         time_log[i_log:] = time
 
