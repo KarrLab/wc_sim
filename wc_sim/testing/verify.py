@@ -10,6 +10,7 @@ from enum import Enum
 from inspect import currentframe, getframeinfo
 from matplotlib.backends.backend_pdf import PdfPages
 from pprint import pprint, pformat
+from scipy.constants import Avogadro
 import inspect
 import math
 import matplotlib.pyplot as plt
@@ -85,6 +86,10 @@ class VerificationTestReader(object):
         test_case_dir (:obj:`str`): pathname of the directory storing the test case
         test_case_num (:obj:`str`): the test case's unique ID number
         test_case_type (:obj:`VerificationTestCaseType`): the test case's type
+        volume_scales (:obj:`list` of :obj:`float`): if set, volume_final / volume_initial ratios
+            for all compartments, used to shrink them to test appropriate-sized populations
+        _populations (:obj:`bool`): whether 'CONTINUOUS_DETERMINISTIC' species are represented
+            as populations
     """
     SBML_FILE_SUFFIX = '.xml'
     def __init__(self, test_case_type, test_case_dir, test_case_num):
@@ -94,6 +99,7 @@ class VerificationTestReader(object):
             self.test_case_type = VerificationTestCaseType[test_case_type]
         self.test_case_dir = test_case_dir
         self.test_case_num = test_case_num
+        self._populations = False
 
     def read_settings(self):
         """ Read a test case's settings into a key-value dictionary """
@@ -142,7 +148,7 @@ class VerificationTestReader(object):
 
         if self.test_case_type == VerificationTestCaseType.CONTINUOUS_DETERMINISTIC:
             # expected predictions should contain time and the amount or concentration of each species
-            # todo: use more SBML test suite cases and get expected predictions as amount or concentration
+            # todo: use more SBML test suite cases and obtain expected predictions as amount or concentration
             expected_columns = set(self.settings['amount'])
             actual_columns = set(expected_predictions_df.columns.values)
             if expected_columns - actual_columns:
@@ -203,6 +209,31 @@ class VerificationTestReader(object):
         self.settings = self.read_settings()
         self.expected_predictions_df = self.read_expected_predictions()
         self.model = self.read_model()
+        # todo: check that the variances on the model's distributions are zero, or set them
+
+    def populations(self):
+        return self._populations
+
+    def transform_for_small_volume_populations(self, compt_vol=None):
+        """ Transform the model before simulation and expected predictions before verification
+
+        Args:
+            compt_vol (:obj:`float`, optional): if set, the volume to use for compartments
+        """
+        if 1 < len(self.model.get_compartments()):
+            raise VerificationError(f"multiple compartments not supported")
+        self.volume_scales = []
+        if compt_vol:
+            for compartment in self.model.get_compartments():
+                if compartment.init_volume.std != 0:
+                    raise VerificationError(f"std of compartment '{compartment.id}' volume is not 0")
+                self.volume_scales.append(compt_vol / compartment.init_volume.mean)
+                compartment.init_volume.mean = compt_vol
+
+            # convert expected predictions to populations
+            # assuming expected predictions are provided as 'amount'
+            self.expected_predictions_df.loc[:, self.species_columns()] *= self.volume_scales[0] * Avogadro
+            self._populations = True
 
     def __str__(self):
         rv = []
@@ -368,12 +399,24 @@ class CaseVerifier(object):
     """ Verify a test case """
     def __init__(self, test_cases_root_dir, test_case_type, test_case_num,
                  default_num_stochastic_runs=config_multialgorithm['num_ssa_verification_sim_runs'],
-                 time_step_factor=None):
-        # read model, config and expected predictions
+                 time_step_factor=None, compt_vol=None):
+        """ Read model, config and expected predictions
+
+        Args:
+            test_cases_root_dir (:obj:`str`): pathname of directory containing test case files
+            test_case_type (:obj:`str`): the type of case, `CONTINUOUS_DETERMINISTIC`
+                or `DISCRETE_STOCHASTIC`
+            test_case_num (:obj:`str`): unique id of a verification case
+            num_stochastic_runs (:obj:`int`, optional): number of Monte Carlo runs for an SSA test
+            time_step_factor (:obj:`float`, optional): factor by which to change the ODE time step
+            compt_vol (:obj:`float`, optional): if set, the volume to use for compartments
+        """
         self.test_case_dir = os.path.join(test_cases_root_dir, TEST_CASE_TYPE_TO_DIR[test_case_type],
             test_case_num)
         self.verification_test_reader = VerificationTestReader(test_case_type, self.test_case_dir, test_case_num)
         self.verification_test_reader.run()
+        if compt_vol is not None:
+            self.verification_test_reader.transform_for_small_volume_populations(compt_vol=compt_vol)
         self.default_num_stochastic_runs = default_num_stochastic_runs
         self.time_step_factor = time_step_factor
 
@@ -518,7 +561,11 @@ class CaseVerifier(object):
                 pop_time_series = concentrations.loc[:, species]
                 simul_pops, = plt.plot(times, pop_time_series, 'b-', linewidth=0.8)
 
-                plt.ylabel('{} (M)'.format(species_type), fontsize=10)
+                if self.verification_test_reader.populations():
+                    units = 'molecules'
+                else:
+                    units = 'M'
+                plt.ylabel(f'{species_type} ({units})', fontsize=10)
                 plt.xlabel('time (s)', fontsize=10)
                 plt.legend((simul_pops, correct_mean),
                     ('{} simulation run'.format(species_type), 'Correct concentration'),
@@ -652,15 +699,25 @@ class VerificationSuite(object):
             self.results.append(VerificationRunResult(self.cases_dir, case_type_sub_dir, case_num,
                                                       result_type))
 
-    def _run_test(self, case_type_name, case_num, num_stochastic_runs=20, time_step_factor=None,
-                  verbose=True):
-        """Run one test case and report the result
+    def _run_test(self, case_type_name, case_num,
+                  num_stochastic_runs=config_multialgorithm['num_ssa_verification_sim_runs'],
+                  time_step_factor=None, verbose=True, compt_vol=None):
+        """ Run one test case and report the result
+
+        Args:
+            case_type_name (:obj:`str`): the type of case, `CONTINUOUS_DETERMINISTIC`
+                or `DISCRETE_STOCHASTIC`
+            case_num (:obj:`str`): unique id of a verification case
+            num_stochastic_runs (:obj:`int`, optional): number of Monte Carlo runs for an SSA test
+            time_step_factor (:obj:`float`, optional): factor by which to change the ODE time step
+            verbose (:obj:`bool`, optional): whether to produce verbose output
+            compt_vol (:obj:`float`, optional): if set, the volume to use for compartments
         """
         if verbose:
             start_time = time.process_time()
         try:
             case_verifier = CaseVerifier(self.cases_dir, case_type_name, case_num,
-                                         time_step_factor=time_step_factor)
+                                         time_step_factor=time_step_factor, compt_vol=compt_vol)
         except:
             tb = traceback.format_exc()
             self._record_result(case_type_name, case_num, VerificationResultType.CASE_UNREADABLE, tb)
@@ -697,8 +754,17 @@ class VerificationSuite(object):
             print(f"{case_type_name} {case_num} verified")
 
     def run(self, test_case_type_name=None, cases=None, num_stochastic_runs=None, time_step_factor=None,
-            verbose=False):
+            verbose=False, compt_vol=None):
         """Run all requested test cases
+
+        Args:
+            test_case_type_name (:obj:`str`, optional): the type of case, `CONTINUOUS_DETERMINISTIC`
+                or `DISCRETE_STOCHASTIC`
+            cases (:obj:`list` of :obj:`str`, optional): list of unique ids of verification cases
+            num_stochastic_runs (:obj:`int`, optional): number of Monte Carlo runs for an SSA test
+            time_step_factor (:obj:`float`, optional): factor by which to change the ODE time step
+            verbose (:obj:`bool`, optional): whether to produce verbose output
+            compt_vol (:obj:`float`, optional): if set, the volume to use for compartments
         """
         if isinstance(cases, str):
             raise VerificationError("cases should be an iterator over case nums, not a string")
@@ -711,14 +777,14 @@ class VerificationSuite(object):
                 cases = os.listdir(os.path.join(self.cases_dir, TEST_CASE_TYPE_TO_DIR[test_case_type_name]))
             for case_num in cases:
                 self._run_test(test_case_type_name, case_num, num_stochastic_runs=num_stochastic_runs,
-                    time_step_factor=time_step_factor, verbose=verbose)
+                               time_step_factor=time_step_factor, verbose=verbose, compt_vol=compt_vol)
         else:
             for verification_test_case_type in VerificationTestCaseType:
                 for case_num in os.listdir(os.path.join(self.cases_dir,
                                            TEST_CASE_TYPE_TO_DIR[verification_test_case_type.name])):
                     self._run_test(verification_test_case_type.name, case_num,
-                        num_stochastic_runs=num_stochastic_runs, time_step_factor=time_step_factor,
-                        verbose=verbose)
+                                   num_stochastic_runs=num_stochastic_runs,
+                                   time_step_factor=time_step_factor, verbose=verbose, compt_vol=compt_vol)
         return self.results
 
 

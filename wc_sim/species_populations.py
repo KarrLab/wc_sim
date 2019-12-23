@@ -1026,7 +1026,7 @@ class TempPopulationsLSP(object):
     """ A context manager for using temporary population values in a LocalSpeciesPopulation
     """
     def __init__(self, local_species_population, temporary_populations):
-        """ Sett populations temporarily, as specified in `temporary_populations`
+        """ Set populations temporarily, as specified in `temporary_populations`
 
         Args:
             local_species_population (:obj:`LocalSpeciesPopulation`): an existing `LocalSpeciesPopulation`

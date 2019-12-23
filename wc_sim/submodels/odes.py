@@ -67,7 +67,7 @@ class OdeSubmodel(DynamicSubmodel):
     using_solver = False
 
     def __init__(self, id, dynamic_model, reactions, species, dynamic_compartments,
-                 local_species_population, ode_time_step, testing=False):
+                 local_species_population, ode_time_step, testing=True):
         """ Initialize an ODE submodel instance
 
         Args:
@@ -203,7 +203,7 @@ class OdeSubmodel(DynamicSubmodel):
             self.compute_population_change_rates(time, new_species_populations, population_change_rates)
 
             self.num_right_hand_side_calls += 1
-            if self.testing:
+            if self.testing and self.time == 0:
                 # testing
                 time_change = time - self._last_internal_step
                 summary = ['internal step',
@@ -290,7 +290,8 @@ class OdeSubmodel(DynamicSubmodel):
 
         for idx, species_id in enumerate(self.ode_species_ids):
             self.adjustments[species_id] = population_change_rates[idx]
-        if self.testing:
+
+        if self.testing and self.time == 0:
             print('time_advance:',time_advance)
             if solution.errors.t:
                 print('solution.errors.t:', solution.errors.t)

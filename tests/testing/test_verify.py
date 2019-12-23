@@ -500,12 +500,12 @@ class RunVerificationSuite(unittest.TestCase):
         self.ode_test_cases = [
             ('00001', TIME_STEP_FACTOR),    # verifies
             ('00004', TIME_STEP_FACTOR),    # does not verify
-            ('00006', TIME_STEP_FACTOR),    # verifies
-            # dies ('00010', TIME_STEP_FACTOR),    # does not verify
-            ('00014', TIME_STEP_FACTOR),    # does not verify
-            ('00015', TIME_STEP_FACTOR),    # does not verify
-            ('00021', TIME_STEP_FACTOR),    # does not verify
-            ('00022', TIME_STEP_FACTOR),    # does not verify
+            # ('00006', TIME_STEP_FACTOR),    # verifies
+            # # dies ('00010', TIME_STEP_FACTOR),    # does not verify
+            # ('00014', TIME_STEP_FACTOR),    # does not verify
+            # ('00015', TIME_STEP_FACTOR),    # does not verify
+            # ('00021', TIME_STEP_FACTOR),    # does not verify
+            # ('00022', TIME_STEP_FACTOR),    # does not verify
         ]
         self.root_test_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', 'fixtures',
                                               'verification', 'cases'))
@@ -539,6 +539,7 @@ class RunVerificationSuite(unittest.TestCase):
                 print('expected derivatives (molecule/sec)')
                 print(derivatives_df)
                 '''
+                # REDUCED_VOLUME = 1E-15; value for optional parameter, compt_vol
                 self.verification_suite.run(case_type, [test_case], time_step_factor=time_step_factor,
                                             verbose=True)
 
