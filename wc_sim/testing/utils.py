@@ -7,12 +7,13 @@
 """
 
 from collections import defaultdict
-import math
 from matplotlib import pyplot
 from matplotlib.backends.backend_pdf import PdfPages
+import math
 import numpy as np
 import os
 import tempfile
+import time
 
 from wc_lang import Model
 from wc_lang.io import Reader
@@ -290,7 +291,6 @@ def verify_independently_solved_model(test_case, model_filename, results_dir):
             if os.path.isfile(file_path):
                 os.unlink(file_path)
 
-        print(f'testing {os.path.basename(model_filename)} with {integration_framework}')
         model = read_model_for_test(model_filename, integration_framework=f'WC:{integration_framework}')
 
         # simulate model
@@ -300,7 +300,11 @@ def verify_independently_solved_model(test_case, model_filename, results_dir):
                     checkpoint_period=checkpoint_period,
                     ode_time_step=1.)
         simulation = Simulation(model)
+        start_time = time.perf_counter()
         _, results_dir = simulation.run(end_time=end_time, **args)
+        elapsed_rt = time.perf_counter() - start_time
+        print(f'ran {os.path.basename(model_filename)} with {integration_framework} in '
+              f'{elapsed_rt:.2e} (sec)')
 
         # test dynamics
         # read expected trajectories
