@@ -115,6 +115,7 @@ class MultialgorithmSimulation(object):
         dynamic_model (:obj:`DynamicModel`): the dynamic state of a model being simulated
         temp_dynamic_compartments (:obj:`dict`): the simulation's `DynamicCompartment`s, one for each
             compartment in `model`; temporary attribute used until :obj:`DynamicModel` is made
+        _skipped_submodels (:obj:`set` of :obj:`str`): submodels that won't be run, identified by their ids
     """
 
     def __init__(self, model, args):
@@ -131,10 +132,37 @@ class MultialgorithmSimulation(object):
         self.model = model
         self.args = args or []
 
+        self._skipped_submodels = self.prepare_skipped_submodels()
+
         # a model without submodels cannot be simulated
-        if not self.model.get_submodels():
+        submodel_ids = set([submodel.id for submodel in self.model.get_submodels()])
+        if not submodel_ids - self.skipped_submodels():
             raise MultialgorithmError(f"model {self.model.id} cannot be simulated because it contains"
                                       f" no submodels")
+
+    def prepare_skipped_submodels(self):
+        """ Prepare the IDs of the submodels that will not be run
+
+        Returns:
+            :obj:`set` of :obj:`str`: the IDs of submodels that will not run
+        """
+        if 'submodels_to_skip' in self.args:
+            submodels_to_skip = set(self.args['submodels_to_skip'])
+            submodel_ids = set([submodel.id for submodel in self.model.get_submodels()])
+            if submodels_to_skip - submodel_ids:
+                raise MultialgorithmError(f"'submodels_to_skip' contains submodels that aren't in the model: "
+                                          f"{submodels_to_skip - submodel_ids}")
+            return submodels_to_skip
+        else:
+            return set()
+
+    def skipped_submodels(self):
+        """ IDs of the submodels that will not be run
+
+        Returns:
+            :obj:`set` of :obj:`str`: the IDs of submodels that will not be run
+        """
+        return self._skipped_submodels
 
     def build_simulation(self):
         """ Prepare a multialgorithm simulation
@@ -227,7 +255,7 @@ class MultialgorithmSimulation(object):
         self.temp_dynamic_compartments = {}
         for compartment in self.model.get_compartments():
             self.temp_dynamic_compartments[compartment.id] = DynamicCompartment(None, self.random_state,
-                                                                           compartment)
+                                                                                compartment)
 
     def prepare_dynamic_compartments(self):
         """ Prepare the :obj:`DynamicCompartment`\ s for this simulation
@@ -254,9 +282,10 @@ class MultialgorithmSimulation(object):
         # TODO(Arthur): support non-zero initial population slopes; calculate them with initial runs of dFBA and ODE submodels
         init_pop_slopes = {}
         for submodel in self.model.get_submodels():
+            if submodel.id in self.skipped_submodels():
+                continue
             if are_terms_equivalent(submodel.framework, onto['WC:ordinary_differential_equations']) or \
                     are_terms_equivalent(submodel.framework, onto['WC:dynamic_flux_balance_analysis']):
-                # todo: understand why get_children() of submodel needs kind=submodel
                 for species in submodel.get_children(kind='submodel', __type=Species):
                     init_pop_slopes[species.id] = 0.0
 
@@ -291,7 +320,6 @@ class MultialgorithmSimulation(object):
         multialgorithm_checkpointing_sim_obj = MultialgorithmicCheckpointingSimObj(
             CHECKPOINTING_SIM_OBJ, checkpoint_period, checkpoints_dir,
             self.local_species_population, self.dynamic_model, self)
-        # print(f'multialgorithm_checkpointing_sim_obj: {multialgorithm_checkpointing_sim_obj}')
 
         # add the multialgorithm checkpointing object to the simulation
         self.simulation.add_object(multialgorithm_checkpointing_sim_obj)
@@ -309,6 +337,9 @@ class MultialgorithmSimulation(object):
         # make the simulation's submodels
         simulation_submodels = {}
         for lang_submodel in self.model.get_submodels():
+
+            if lang_submodel.id in self.skipped_submodels():
+                continue
 
             # don't create a submodel with no reactions
             if not lang_submodel.reactions:

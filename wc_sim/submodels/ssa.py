@@ -111,7 +111,6 @@ class SsaSubmodel(DynamicSubmodel):
             :obj:`MultialgorithmError`: if the initial SSA wait exponential moving average is not positive
         """
         super().__init__(id, dynamic_model, reactions, species, dynamic_compartments, local_species_population)
-        print(f'time: {self.time}, id: {id}, reactions {[r.id for r in reactions]}')
 
         self.num_SsaWaits=0
         if default_center_of_mass is None:
@@ -230,7 +229,6 @@ class SsaSubmodel(DynamicSubmodel):
             :obj:`float`: the delay until the next SSA reaction, or `None` if no reaction is scheduled
         """
         (propensities, total_propensities) = self.get_reaction_propensities()
-        print(f'time: {self.time}, id: {self.id}, propensities: {propensities}, total_propensities: {total_propensities}')
         if total_propensities is None or total_propensities == 0:
             return
 
@@ -267,7 +265,6 @@ class SsaSubmodel(DynamicSubmodel):
         """
         self.log_with_time("submodel: {} "
             "executing reaction {}".format(self.id, self.reactions[reaction_index].id))
-        print(f'time: {self.time}, id: {self.id}, executing: {self.reactions[reaction_index].id}')
         self.execute_reaction(self.reactions[reaction_index])
 
     def handle_SsaWait_msg(self, event):

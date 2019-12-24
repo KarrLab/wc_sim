@@ -30,10 +30,11 @@ TOY_MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', '2_spec
 class TestSimulation(unittest.TestCase):
 
     def setUp(self):
-        self.results_dir = tempfile.mkdtemp()
+        self.test_dir = tempfile.mkdtemp()
+        self.results_dir = tempfile.mkdtemp(dir=self.test_dir)
 
     def tearDown(self):
-        shutil.rmtree(self.results_dir)
+        shutil.rmtree(self.test_dir)
 
     def run_simulation(self, simulation, end_time=100):
         checkpoint_period = min(10, end_time)
@@ -73,7 +74,7 @@ class TestSimulation(unittest.TestCase):
         self.assertTrue(0 < num_events)
         self.assertEqual(results_dir, None)
 
-    def test_simulate(self):
+    def test_run(self):
         with CaptureOutput(relay=False):
             num_events, results_dir = Simulation(TOY_MODEL_FILENAME).run(end_time=5,
                                                                          results_dir=self.results_dir,
@@ -84,6 +85,12 @@ class TestSimulation(unittest.TestCase):
             ckpt = Checkpoint.get_checkpoint(results_dir, time=time)
             self.assertEqual(time, ckpt.time)
             self.assertTrue(ckpt.random_state != None)
+
+        with self.assertRaisesRegex(MultialgorithmError, 'cannot be simulated .* it contains no submodels'):
+            Simulation(TOY_MODEL_FILENAME).run(end_time=5,
+                                               results_dir=tempfile.mkdtemp(dir=self.test_dir),
+                                               checkpoint_period=1,
+                                               submodels_to_skip=['test_submodel'])
 
     def test_reseed(self):
         # different seeds must make different results

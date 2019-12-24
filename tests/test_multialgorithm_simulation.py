@@ -95,6 +95,20 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
         with self.assertRaises(MultialgorithmError):
             MultialgorithmSimulation(self.model, None)
 
+    def test_prepare_skipped_submodels(self):
+        multialgorithm_simulation = MultialgorithmSimulation(self.model, self.args)
+        self.assertEqual(multialgorithm_simulation.skipped_submodels(), set())
+        submodels_to_skip = ['submodel_1']
+        self.args['submodels_to_skip'] = submodels_to_skip
+        multialgorithm_simulation = MultialgorithmSimulation(self.model, self.args)
+        self.assertEqual(multialgorithm_simulation.skipped_submodels(), set(submodels_to_skip))
+
+        submodels_to_skip = ['no_such_submodel']
+        self.args['submodels_to_skip'] = submodels_to_skip
+        with self.assertRaisesRegex(MultialgorithmError,
+                                    "'submodels_to_skip' contains submodels that aren't in the model:"):
+            MultialgorithmSimulation(self.model, self.args)
+
     def test_molecular_weights_for_species(self):
         multi_alg_sim = self.multialgorithm_simulation
         expected = {
@@ -224,6 +238,14 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
                          MultialgorithmicCheckpointingSimObj)
         self.assertEqual(multialgorithm_simulation.dynamic_model.get_num_submodels(), 2)
         self.assertTrue(callable(simulation_engine.stop_condition))
+
+        # test skipped submodel
+        submodels_to_skip = ['submodel_2']
+        self.args['submodels_to_skip'] = submodels_to_skip
+        ma_sim = MultialgorithmSimulation(self.model, self.args)
+        _, dynamic_model = ma_sim.build_simulation()
+        expected_dynamic_submodels = set([sm.id for sm in self.model.get_submodels()]) - ma_sim.skipped_submodels()
+        self.assertEqual(expected_dynamic_submodels, set(dynamic_model.dynamic_submodels))
 
     def test_get_dynamic_compartments(self):
         expected_compartments = dict(

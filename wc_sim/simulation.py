@@ -172,7 +172,7 @@ class Simulation(object):
                     "equal to end time".format(args['ode_time_step']))
 
     def run(self, end_time, results_dir=None, checkpoint_period=None, ode_time_step=1, seed=None,
-            verbose=True):
+            submodels_to_skip=None, verbose=True):
         """ Run one simulation
 
         Args:
@@ -182,6 +182,8 @@ class Simulation(object):
             ode_time_step (:obj:`float`, optional): time step length of time-stepped submodels (sec)
             seed (:obj:`object`, optional): a seed for the simulation's `numpy.random.RandomState`;
                 if provided, `seed` will reseed the simulator's PRNG
+            submodels_to_skip (:obj:`list` of :obj:`str`, optional): submodels that should not be run,
+                identified by their ids
             verbose (:obj:`bool`, optional): whether to print success output
 
         Returns:
@@ -199,9 +201,12 @@ class Simulation(object):
         simulation_args = dict(metadata=self.simulation_metadata,
                                end_time=end_time,
                                ode_time_step=ode_time_step)
+        # todo: define constants for all the keys used in simulation_args
         if results_dir:
             simulation_args['results_dir'] = results_dir
             simulation_args['checkpoint_period'] = checkpoint_period
+        if submodels_to_skip is not None:
+            simulation_args['submodels_to_skip'] = submodels_to_skip
 
         self.process_and_validate_args(simulation_args)
 
