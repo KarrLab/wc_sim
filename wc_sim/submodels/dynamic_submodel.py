@@ -7,18 +7,20 @@
 :License: MIT
 """
 
+from de_sim.utilities import FastLogger
 from scipy.constants import Avogadro
-from wc_lang import Compartment, Species, Reaction, Parameter
+import numpy as np
+
 from de_sim.simulation_object import ApplicationSimulationObject
+from wc_lang import Compartment, Species, Reaction, Parameter
 from wc_sim import message_types, distributed_properties
 from wc_sim.debug_logs import logs as debug_logs
 from wc_sim.dynamic_components import DynamicCompartment, DynamicModel
 from wc_sim.multialgorithm_errors import MultialgorithmError, SpeciesPopulationError
-import numpy as np
+
 
 # TODO(Arthur): rename reactions -> dynamic reactions
 # TODO(Arthur): species -> dynamic species, or morph into species populations species
-# TODO(Arthur): add logging/debugging, using fast logger
 # TODO(Arthur): use lists instead of sets for reproducibility
 
 
@@ -40,7 +42,7 @@ class DynamicSubmodel(ApplicationSimulationObject):
             adjacent compartments used by its transfer reactions
         local_species_population (:obj:`LocalSpeciesPopulation`): the store that maintains this
             dynamic submodel's species population
-        logger (:obj:`logging.Logger`): debug logger
+        fast_debug_file_logger (:obj:`FastLogger`): a fast logger for debugging messages
     """
 
     def __init__(self, id, dynamic_model, reactions, species, dynamic_compartments, local_species_population):
@@ -56,7 +58,7 @@ class DynamicSubmodel(ApplicationSimulationObject):
         self.species = species
         self.dynamic_compartments = dynamic_compartments
         self.local_species_population = local_species_population
-        self.logger = debug_logs.get_log('wc.debug.file')
+        self.fast_debug_file_logger = FastLogger(debug_logs.get_log('wc.debug.file'), 'debug')
 
     # The next 3 methods implement the abstract methods in ApplicationSimulationObject
     def send_initial_events(self):
@@ -137,11 +139,9 @@ class DynamicSubmodel(ApplicationSimulationObject):
             if rxn.rate_laws:
                 self.rates[idx_reaction] = self.calc_reaction_rate(rxn)
 
-        # TODO(Arthur): optimization: get this if to work:
-        # if self.logger.isEnabledFor(self.logger.getEffectiveLevel()):
-        # print('self.logger.getEffectiveLevel())', self.logger.getEffectiveLevel())
-        msg = str([(self.reactions[i].id, self.rates[i]) for i in range(len(self.reactions))])
-        debug_logs.get_log('wc.debug.file').debug(msg, sim_time=self.time)
+        if self.fast_debug_file_logger.is_active():
+            msg = str([(self.reactions[i].id, self.rates[i]) for i in range(len(self.reactions))])
+            self.fast_debug_file_logger.fast_log(msg, sim_time=self.time)
         return self.rates
 
     # These methods - enabled_reaction, identify_enabled_reactions, execute_reaction - are used

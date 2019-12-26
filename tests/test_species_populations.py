@@ -402,6 +402,13 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         with self.assertRaises(SpeciesPopulationError):
             self.local_species_pop.clear_temp_populations(['not a species id'])
 
+    def test_concentrations_api(self):
+        self.assertFalse(self.local_species_pop.concentrations_api())
+        self.local_species_pop.concentrations_api_on()
+        self.assertTrue(self.local_species_pop.concentrations_api())
+        self.local_species_pop.concentrations_api_off()
+        self.assertFalse(self.local_species_pop.concentrations_api())
+
     def test_history(self):
         an_LSP_wo_recording_history = LocalSpeciesPopulation('test',
                                                              self.init_populations,

@@ -6,6 +6,7 @@
 :License: MIT
 """
 
+from datetime import datetime
 from pprint import pprint
 from scipy.constants import Avogadro
 import copy
@@ -513,7 +514,7 @@ class TestRunSSASimulation(unittest.TestCase):
         simulation_engine.initialize()
         return simulation_engine
 
-    @unittest.skip("performance scaling test; runs slowly")
+    # @unittest.skip("performance scaling test; runs slowly")
     def test_performance(self):
         end_sim_time = 100
         min_num_ssa_submodels = 2
@@ -545,10 +546,16 @@ class TestRunSSASimulation(unittest.TestCase):
 
             num_ssa_submodels *= 4
 
-        print('Performance summary')
-        print("\n".join(unprofiled_perf))
-        self.restore_logging()
+        performance_log = os.path.join(os.path.dirname(__file__), 'perf_results',
+                                       'wc_sim_performance_log.txt')
+        with open(performance_log, 'a') as perf_log:
+            today = datetime.today().strftime('%Y-%m-%d')
+            print(f'Performance summary on {today}', end='', file=perf_log)
+            print("\n".join(unprofiled_perf), file=perf_log)
+            print(file=perf_log)
 
+        print(f'Performance summary, written to {performance_log}')
+        print("\n".join(unprofiled_perf))
 
     # TODO(Arthur): test multiple ssa submodels, in shared or different compartments
     # TODO(Arthur): test have identify_enabled_reactions() return a disabled reaction & ssa submodel with reactions that cannot run

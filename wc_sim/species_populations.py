@@ -21,6 +21,7 @@ import sys
 
 from de_sim.simulation_object import (SimulationObject, ApplicationSimulationObject,
                                       AppSimObjAndABCMeta, ApplicationSimulationObjMeta)
+from de_sim.utilities import FastLogger
 from wc_sim import distributed_properties, message_types
 from wc_sim.config import core as config_core_multialgorithm
 from wc_sim.debug_logs import logs as debug_logs
@@ -292,7 +293,7 @@ class AccessSpeciesPopulations(AccessSpeciesPopulationInterface):   # pragma: no
 
         Args:
             time (:obj:`float`): the time at which the population is being adjusted
-            adjustments (:obj:`dict` of `float`): map: species_ids -> population_adjustment; adjustments
+            adjustments (:obj:`dict` of :obj:`float`): map: species_ids -> population_adjustment; adjustments
                 to be made to some species populations
 
         Returns:
@@ -493,9 +494,6 @@ class SpeciesPopulationCache(object):       # pragma: no cover
         return {species: self._cache[species][1] for species in species_ids}
 
 
-# logging
-debug_log = debug_logs.get_log('wc.debug.file')
-
 # TODO(Arthur): after MVP wc_sim is done, replace references to LocalSpeciesPopulation with
 # references to AccessSpeciesPopulations
 
@@ -522,15 +520,16 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
     Attributes:
         name (:obj:`str`): the name of this object
         time (:obj:`float`): the time of the most recent access to this `LocalSpeciesPopulation`
-        _molecular_weights (:obj:`dict` of `float`): map: species_id -> molecular_weight; the
+        _molecular_weights (:obj:`dict` of :obj:`float`): map: species_id -> molecular_weight; the
             molecular weight of each species
         _population (:obj:`dict` of :obj:`DynamicSpeciesState`): map: species_id -> DynamicSpeciesState();
             the species whose counts are stored, represented by DynamicSpeciesState objects.
-        last_access_time (:obj:`dict` of `float`): map: species_name -> last_time; the last time at
+        last_access_time (:obj:`dict` of :obj:`float`): map: species_name -> last_time; the last time at
             which the species was accessed.
         _history (:obj:`dict`) nested dict; an optional history of the species' state. The population
             history is recorded at each continuous adjustment.
         random_state (:obj:`numpy.random.RandomState`): a PRNG used by all `Species`
+        fast_debug_file_logger (:obj:`FastLogger`): a fast logger for debugging messages
     """
     # TODO(Arthur): support tracking the population history of species added at any time in the simulation
     # TODO(Arthur): report an error if a DynamicSpeciesState is updated by multiple continuous submodels
@@ -545,17 +544,19 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
 
         Args:
             name (:obj:`str`): the name of this object
-            initial_population (:obj:`dict` of `float`): initial population for some species;
+            initial_population (:obj:`dict` of :obj:`float`): initial population for some species;
                 dict: species_id -> initial_population
-            molecular_weights (:obj:`dict` of `float`): map: species_id -> molecular_weight,
+            molecular_weights (:obj:`dict` of :obj:`float`): map: species_id -> molecular_weight,
                 provided for computing the mass of lists of species in a `LocalSpeciesPopulation`
-            initial_population_slopes (:obj:`dict` of `float`, optional): map: species_id -> initial_slope;
+            initial_population_slopes (:obj:`dict` of :obj:`float`, optional): map: species_id -> initial_slope;
                 initial rate of change must be provided for all species whose populations are predicted
                 by a submodel that uses a continuous integration algorithm. These are ignored for
                 species not specified in `initial_population`.
             initial_time (:obj:`float`, optional): the initialization time; defaults to 0
             random_state (:obj:`numpy.random.RandomState`, optional): a PRNG used by all `DynamicSpeciesState`
             retain_history (:obj:`bool`, optional): whether to retain species population history
+            _concentrations_api (:obj:`bool`, optional): if set, use concentrations; species amounts
+                passed into and returned by methods must be concentrations (molar == mol/L); defaults to `False`
 
         Raises:
             :obj:`SpeciesPopulationError`: if the population cannot be initialized
@@ -565,6 +566,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self._population = {}
         self.last_access_time = {}
         self.random_state = random_state
+        self._concentrations_api = False
 
         if retain_history:
             self._initialize_history()
@@ -581,13 +583,14 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             # raise exception if any species are missing weights
             raise SpeciesPopulationError("Cannot init LocalSpeciesPopulation because some species "
                                          "are missing weights: {}".format(
-                                             ', '.join(map(lambda x: "'{}'".format(str(x)), unknown_weights))))
+                                             ', '.join([f"'{str(uw)}'" for uw in unknown_weights])))
         self._molecular_weights = molecular_weights
 
         # log initialization data
-        debug_log.debug("initial_population: {}".format(DictUtil.to_string_sorted_by_key(
+        self.fast_debug_file_logger = FastLogger(debug_logs.get_log('wc.debug.file'), 'debug')
+        self.fast_debug_file_logger.fast_log("initial_population: {}".format(DictUtil.to_string_sorted_by_key(
             initial_population)), sim_time=self.time)
-        debug_log.debug("initial_population_slopes: {}".format(
+        self.fast_debug_file_logger.fast_log("initial_population_slopes: {}".format(
                         DictUtil.to_string_sorted_by_key(initial_population_slopes)), sim_time=self.time)
 
     def init_cell_state_species(self, species_id, population, initial_population_slope=None):
@@ -615,10 +618,10 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self._add_to_history(species_id)
 
     def _all_species(self):
-        """ Return the IDs species known by this LocalSpeciesPopulation
+        """ Return the IDs of species known by this :obj:`LocalSpeciesPopulation`
 
         Returns:
-            :obj:`set`: the species known by this LocalSpeciesPopulation
+            :obj:`set`: the species known by this :obj:`LocalSpeciesPopulation`
         """
         return set(self._population.keys())
 
@@ -666,6 +669,89 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         for species_id in species:
             self.last_access_time[species_id] = time
 
+    def _volumes_for_species(self, species_populations, dynamic_model):
+        """ Compute the volumes of the compartments containing some species
+
+        Args:
+            species (:obj:`iterator` of :obj:`str`): iterator over species id
+            dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
+
+        Returns:
+            :obj:`dict` of :obj:`float`: the volumes of the compartments containing the species;
+                map: compartment id -> volume
+        """
+        # compute the volume of each compartment only once
+        volumes = {}
+        for species_id in species:
+            _, compartment_id = wc_lang.Species.parse_id(species_id)
+            if compartment_id not in volumes:
+                volumes[compartment_id] = dynamic_model.dynamic_compartments[compartment_id].volume()
+        return volumes
+
+    def populations_to_concentrations(self, species_populations, dynamic_model, volumes=None):
+        """ Convert species populations, in molecules, to concentrations, in molar
+
+        Args:
+            species_populations (:obj:`dict` of :obj:`float`): map: species id -> population
+            dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
+            volumes (:obj:`dict` of :obj:`float`, optional): map: compartment id -> volume; volumes
+                of compartments containing species in `species_populations`; optionally provided as an
+                optimization, to avoid computing volumes
+
+        Returns:
+            :obj:`dict` of :obj:`float`: the concentrations of the species; map: species id -> concentration
+        """
+        if not volumes:
+            volumes = self._volumes_for_species(species_populations, dynamic_model)
+
+        # concentration (mole/liter) = population (molecule) / (Avogagro (molecule/mole) * volume (liter))
+        for species_id, population in species_populations.items():
+            _, species_compartment = wc_lang.Species.parse_id(species_id)
+            concentrations[species_id] = population / (Avogagro * volumes[species_compartment])
+        return concentrations
+
+    def concentrations_to_populations(self, species_concentrations, dynamic_model, volumes=None):
+        """ Convert species concentrations, in molar, to populations, in molecules
+
+        Args:
+            species_concentrations (:obj:`dict` of :obj:`float`): map: species id -> concentration
+            dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
+            volumes (:obj:`dict` of :obj:`float`, optional): map: compartment id -> volume; volumes
+                of compartments containing species in `species_populations`; optionally provided as an
+                optimization, to avoid computing volumes
+
+        Returns:
+            :obj:`dict` of :obj:`float`: the populations of the species; map: species id -> population
+        """
+        if not volumes:
+            volumes = self._volumes_for_species(species_concentrations, dynamic_model)
+
+        populations = {}
+        # population (molecule) = concentration (mole/liter) * Avogagro (molecule/mole) * volume (liter)
+        for species_id, concentration in species_concentrations.items():
+            _, species_compartment = wc_lang.Species.parse_id(species_id)
+            populations[species_id] = concentration * Avogagro * volumes[species_compartment]
+        return populations
+
+    def concentrations_api(self):
+        """ Get the status of the concentrations API; if `True`, species amounts must be in molar
+
+        Returns:
+            :obj:`bool`: the status of the concentrations API; if set, species amounts must be in molar
+        """
+        return self._concentrations_api
+
+    def concentrations_api_on(self):
+        """ Turn the concentrations API on; species amounts must be in concentrations (molar)
+        """
+        self._concentrations_api = True
+
+    def concentrations_api_off(self):
+        """ Turn the concentrations API on; species amounts must be in populations (molecule)
+        """
+        self._concentrations_api = False
+
+
     def read_one(self, time, species_id):
         """ Obtain the predicted population of species `species_id` at simulation time `time`
 
@@ -685,11 +771,15 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self._check_species(None, species_id_in_set, check_early_accesses=False)
         dynamic_species_state = self._population[species_id]
         if not dynamic_species_state.get_temp_population_value() is None:
+            # todo: make concentrations: return through converter that changes pops to concs if in conc state
             return dynamic_species_state.get_temp_population_value()
         self._check_species(time, species_id_in_set)
         self.time = time
         self._update_access_times(time, species_id_in_set)
+        # todo: make concentrations: return through converter that changes pops to concs if in conc state
         return dynamic_species_state.get_population(time)
+
+    # todo: make concentrations: add method to read species into an existing ndarray
 
     def read(self, time, species=None, round=True):
         """ Read the predicted population of a list of species at simulation time `time`
@@ -711,13 +801,15 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self._check_species(time, species)
         self.time = time
         self._update_access_times(time, species)
+        # todo: make concentrations: return through converter that changes pops to concs if in conc state
         return {s: self._population[s].get_population(time, round=round) for s in species}
 
+    # todo: make concentrations: temp values just support concentrations
     def set_temp_populations(self, populations):
         """ Set temporary population values for a set of species
 
         Args:
-            populations (:obj:`dict` of `float`): map: species_id -> temporary_population_value
+            populations (:obj:`dict` of :obj:`float`): map: species_id -> temporary_population_value
 
         Raises:
             :obj:`SpeciesPopulationError`: if any of the species_ids in `populations` are unknown,
@@ -732,8 +824,10 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         if errors:
             raise SpeciesPopulationError("set_temp_populations error(s):\n{}".format('\n'.join(errors)))
         for species_id, population in populations.items():
+            # todo: make concentrations: pass population through converter that changes pops to concs if in conc state
             self._population[species_id].set_temp_population_value(population)
 
+    # todo: make concentrations: temp values just support concentrations
     def clear_temp_populations(self, species_ids):
         """ Clear temporary population values for a set of species
 
@@ -753,7 +847,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
 
         Args:
             time (:obj:`float`): the simulation time of the population adjustedment
-            adjustments (:obj:`dict` of `float`): map: species_ids -> population_adjustment; adjustments
+            adjustments (:obj:`dict` of :obj:`float`): map: species_ids -> population_adjustment; adjustments
                 to be made to the population of some species
 
         Raises:
@@ -775,6 +869,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             raise SpeciesPopulationError("adjust_discretely error(s) at time {}:\n{}".format(
                 time, '\n'.join(errors)))
 
+    # todo: make concentrations: support concentrations option
     def adjust_continuously(self, time, population_slopes):
         """ A continuous submodel adjusts the population slopes of a set of species at simulation time `time`
 
@@ -783,7 +878,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
 
         Args:
             time (:obj:`float`): the time at which the population is being adjusted
-            population_slopes (:obj:`dict` of `float`): map: species_id -> population_slope;
+            population_slopes (:obj:`dict` of :obj:`float`): map: species_id -> population_slope;
                 updated population slopes for some, or all, species populations
 
         Raises:
@@ -803,8 +898,8 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             except (SpeciesPopulationError, NegativePopulationError) as e:
                 errors.append(str(e))
         if errors:
-            # TODO(Arthur): consistently use debug_log
-            debug_log.error("Error: on species {}: {}".format(species_id, '\n'.join(errors)), sim_time=self.time)
+            self.fast_debug_file_logger.fast_log("Error: on species {}: {}".format(species_id,
+                                                 '\n'.join(errors)), sim_time=self.time)
             raise SpeciesPopulationError("adjust_continuously error(s) at time {}:\n{}".format(
                 time, '\n'.join(errors)))
 
@@ -886,7 +981,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         values = [message, species.last_population, population_slope]
         values = map(lambda x: str(x), values)
         # log Sim_time Adjustment_type New_population New_population_slope
-        debug_log.debug('\t'.join(values), local_call_depth=1, sim_time=self.time)
+        self.fast_debug_file_logger.fast_log('\t'.join(values), sim_time=self.time)
 
     def _initialize_history(self):
         """ Initialize the population history with current population """
@@ -1021,6 +1116,10 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             state.append(self._population[species_id].row())
         return '\n'.join(state)
 
+# todo: make concentrations: make concentrations context
+# todo: make concentrations: pass in dynamic_model so volumes can be obtained to compute concentrations
+        # todo: make concentrations: set concentrations option
+        # todo: make concentrations: reset concentrations option
 
 class TempPopulationsLSP(object):
     """ A context manager for using temporary population values in a LocalSpeciesPopulation
@@ -1030,7 +1129,7 @@ class TempPopulationsLSP(object):
 
         Args:
             local_species_population (:obj:`LocalSpeciesPopulation`): an existing `LocalSpeciesPopulation`
-            temporary_populations (:obj:`dict` of `float`): map: species_id -> temporary_population_value;
+            temporary_populations (:obj:`dict` of :obj:`float`): map: species_id -> temporary_population_value;
                 temporary populations for some species in `local_species_population`
         """
         self.local_species_population = local_species_population
@@ -1071,11 +1170,11 @@ class MakeTestLSP(object):
 
         Args:
             name (:obj:`str`, optional): the name of the local species population being created
-            initial_population (:obj:`dict` of `float`, optional): initial population for some species;
+            initial_population (:obj:`dict` of :obj:`float`, optional): initial population for some species;
                 dict: species_id -> initial_population
-            molecular_weights (:obj:`dict` of `float`, optional): map: species_id -> molecular_weight,
+            molecular_weights (:obj:`dict` of :obj:`float`, optional): map: species_id -> molecular_weight,
                 provided for computing the mass of lists of species in a `LocalSpeciesPopulation`
-            initial_population_slopes (:obj:`dict` of `float`, optional): map: species_id -> initial_population_slope;
+            initial_population_slopes (:obj:`dict` of :obj:`float`, optional): map: species_id -> initial_population_slope;
                 initial population slopes for all species whose populations are estimated by a continuous
                 submodel. Population slopes are ignored for species not specified in initial_population.
             record_history (:obj:`bool`, optional): whether to record the history of operations
