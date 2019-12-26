@@ -482,7 +482,7 @@ SsaTestCase = namedtuple('SsaTestCase', 'case_num, dsmts_num, MA_order, num_ssa_
 class RunVerificationSuite(unittest.TestCase):
 
     def setUp(self):
-        NUM_SIMULATION_RUNS = 50
+        NUM_SIMULATION_RUNS = 200
         self.ssa_test_cases = [
             # see: https://github.com/sbmlteam/sbml-test-suite/blob/master/cases/stochastic/DSMTS-userguide-31v2.pdf
             SsaTestCase('00001', '001-01', (1, ), NUM_SIMULATION_RUNS),
@@ -490,7 +490,7 @@ class RunVerificationSuite(unittest.TestCase):
             SsaTestCase('00004', '001-04', (1, ), NUM_SIMULATION_RUNS),
             SsaTestCase('00007', '001-07', (1, ), NUM_SIMULATION_RUNS),
             SsaTestCase('00012', '001-12', (1, ), NUM_SIMULATION_RUNS),
-            SsaTestCase('00020', '002-01', (0, 1), 100),
+            SsaTestCase('00020', '002-01', (0, 1), NUM_SIMULATION_RUNS),
             SsaTestCase('00021', '002-02', (0, 1), NUM_SIMULATION_RUNS),
             SsaTestCase('00030', '003-01', (1, 2), NUM_SIMULATION_RUNS),
             SsaTestCase('00037', '004-01', (0, 1), NUM_SIMULATION_RUNS)
@@ -500,12 +500,12 @@ class RunVerificationSuite(unittest.TestCase):
         self.ode_test_cases = [
             ('00001', TIME_STEP_FACTOR),    # verifies
             ('00004', TIME_STEP_FACTOR),    # does not verify
-            # ('00006', TIME_STEP_FACTOR),    # verifies
-            # # dies ('00010', TIME_STEP_FACTOR),    # does not verify
-            # ('00014', TIME_STEP_FACTOR),    # does not verify
-            # ('00015', TIME_STEP_FACTOR),    # does not verify
-            # ('00021', TIME_STEP_FACTOR),    # does not verify
-            # ('00022', TIME_STEP_FACTOR),    # does not verify
+            ('00006', TIME_STEP_FACTOR),    # verifies
+            # dies ('00010', TIME_STEP_FACTOR),    # does not verify
+            ('00014', TIME_STEP_FACTOR),    # does not verify
+            ('00015', TIME_STEP_FACTOR),    # does not verify
+            ('00021', TIME_STEP_FACTOR),    # does not verify
+            ('00022', TIME_STEP_FACTOR),    # does not verify
         ]
         self.root_test_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', 'fixtures',
                                               'verification', 'cases'))
@@ -526,6 +526,7 @@ class RunVerificationSuite(unittest.TestCase):
             for test_case, time_step_factor in verification_cases:
                 print(f"testing {case_type} test_case {test_case}")
                 '''
+                # todo: compare and report detailed results: don't print here
                 print('\t'.join(odes.OdeSubmodel.run_ode_solver_header))
                 test_case_dir = os.path.join(self.root_test_dir, TEST_CASE_TYPE_TO_DIR[case_type], test_case)
                 test_reader = VerificationTestReader(case_type, test_case_dir, test_case)
@@ -539,9 +540,10 @@ class RunVerificationSuite(unittest.TestCase):
                 print('expected derivatives (molecule/sec)')
                 print(derivatives_df)
                 '''
-                # REDUCED_VOLUME = 1E-15; value for optional parameter, compt_vol
+                REDUCED_VOLUME = 1E-9  # value for optional parameter, compt_vol
                 self.verification_suite.run(case_type, [test_case], time_step_factor=time_step_factor,
-                                            verbose=True)
+                                            verbose=True, compt_vol=REDUCED_VOLUME)
+                # todo: compare and report detailed results: combine expected amounts and derivatives with ODE log file, & plot
 
         failures = []
         successes = []
