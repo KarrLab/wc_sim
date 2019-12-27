@@ -377,12 +377,7 @@ class SsaEnsemble(object):
             # TODO: provide method(s) in Simulation and classes it uses (SimulationEngine) to reload() a simulation,
             # that is, do another monte Carlo simulation with a different seed
             simulation = Simulation(model)
-            rv = simulation.run(**simul_kwargs)
-            if rv is None:
-                raise VerificationError(f"simulation.run of {test_case_type} {model.id} with {simul_kwargs} "
-                                        f"fails iteration {i}")
-            else:
-                _, results_dir = rv
+            _, results_dir = simulation.run(**simul_kwargs)
             simulation_run_results.append(RunResults(results_dir))
         return simulation_run_results
 
