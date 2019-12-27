@@ -377,7 +377,12 @@ class SsaEnsemble(object):
             # TODO: provide method(s) in Simulation and classes it uses (SimulationEngine) to reload() a simulation,
             # that is, do another monte Carlo simulation with a different seed
             simulation = Simulation(model)
-            _, results_dir = simulation.run(**simul_kwargs)
+            rv = simulation.run(**simul_kwargs)
+            if rv is None:
+                raise VerificationError(f"simulation.run of {test_case_type} {model.id} with {simul_kwargs} "
+                                        f"fails iteration {i}")
+            else:
+                _, results_dir = rv
             simulation_run_results.append(RunResults(results_dir))
         return simulation_run_results
 
@@ -593,10 +598,10 @@ class CaseVerifier(object):
                 expected_kwargs['linestyle'] = 'dashed'
                 expected_sd_df = self.verification_test_reader.expected_predictions_df.loc[:, species_type+'-sd']
                 # TODO: range for mean (-3, +3) should be taken from settings data
-                correct_mean_plus_3sd, = plt.plot(times, expected_mean_df.values + 3 * expected_sd_df / math.sqrt(self.results_comparator.n_runs),
-                    **expected_kwargs)
-                correct_mean_minus_3sd, = plt.plot(times, expected_mean_df.values - 3 * expected_sd_df / math.sqrt(self.results_comparator.n_runs),
-                    **expected_kwargs)
+                correct_mean_plus_3sd, = plt.plot(times, expected_mean_df.values + 3 * expected_sd_df \
+                                                  / math.sqrt(self.results_comparator.n_runs), **expected_kwargs)
+                correct_mean_minus_3sd, = plt.plot(times, expected_mean_df.values - 3 * expected_sd_df \
+                                                   / math.sqrt(self.results_comparator.n_runs), **expected_kwargs)
 
                 # plot mean simulation pop
                 model_kwargs = dict(color='green')

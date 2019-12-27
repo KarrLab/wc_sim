@@ -482,7 +482,7 @@ SsaTestCase = namedtuple('SsaTestCase', 'case_num, dsmts_num, MA_order, num_ssa_
 class RunVerificationSuite(unittest.TestCase):
 
     def setUp(self):
-        NUM_SIMULATION_RUNS = 200
+        NUM_SIMULATION_RUNS = 100
         self.ssa_test_cases = [
             # see: https://github.com/sbmlteam/sbml-test-suite/blob/master/cases/stochastic/DSMTS-userguide-31v2.pdf
             SsaTestCase('00001', '001-01', (1, ), NUM_SIMULATION_RUNS),
@@ -493,7 +493,7 @@ class RunVerificationSuite(unittest.TestCase):
             SsaTestCase('00020', '002-01', (0, 1), NUM_SIMULATION_RUNS),
             SsaTestCase('00021', '002-02', (0, 1), NUM_SIMULATION_RUNS),
             SsaTestCase('00030', '003-01', (1, 2), NUM_SIMULATION_RUNS),
-            SsaTestCase('00037', '004-01', (0, 1), NUM_SIMULATION_RUNS)
+            SsaTestCase('00037', '004-01', (0, 1), 200)
         ]
         # todo: get rid of TIME_STEP_FACTOR
         TIME_STEP_FACTOR = 1
