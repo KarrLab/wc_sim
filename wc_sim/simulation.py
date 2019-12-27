@@ -10,6 +10,7 @@ import os
 import datetime
 import numpy
 
+from de_sim.errors import SimulatorError
 from de_sim.sim_metadata import SimulationMetadata, AuthorMetadata, RunMetadata
 from de_sim.simulation_engine import SimulationEngine
 from wc_lang import Model, Validator
@@ -190,6 +191,9 @@ class Simulation(object):
             :obj:`tuple` of (`int`, `str`): number of simulation events, pathname of directory
                 containing the results, or :obj:`tuple` of (`int`, `None`): number of simulation events,
                 `None` if `results_dir=None`
+
+        Raises:
+            :obj:`MultialgorithmError`: if the simulation raises an exception
         """
         if seed is not None:
             RandomStateManager.initialize(seed=seed)
@@ -220,12 +224,10 @@ class Simulation(object):
         # run simulation
         try:
             num_events = self.simulation_engine.simulate(end_time)
-        except MultialgorithmError as e:
-            print('Simulation terminated with multialgorithm error: {}'.format(e))
-            return
-        except BaseException as e:  # pragma: no cover
-            print('Simulation terminated with error: {}'.format(e))
-            return
+        except SimulatorError as e:     # pragma: no cover
+            raise MultialgorithmError(f'Simulation terminated with simulator error:\n{e}')
+        except BaseException as e:      # pragma: no cover
+            raise MultialgorithmError(f'Simulation terminated with error:\n{e}')
 
         self.simulation_metadata.run.record_end()
         # update metadata in file
