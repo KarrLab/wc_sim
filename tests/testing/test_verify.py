@@ -493,7 +493,7 @@ class RunVerificationSuite(unittest.TestCase):
             SsaTestCase('00020', '002-01', (0, 1), NUM_SIMULATION_RUNS),
             SsaTestCase('00021', '002-02', (0, 1), NUM_SIMULATION_RUNS),
             SsaTestCase('00030', '003-01', (1, 2), NUM_SIMULATION_RUNS),
-            SsaTestCase('00037', '004-01', (0, 1), 200)
+            SsaTestCase('00037', '004-01', (0, 1), 400)
         ]
         # todo: get rid of TIME_STEP_FACTOR
         TIME_STEP_FACTOR = 1

@@ -51,6 +51,10 @@ class RunResults(object):
             results_dir (:obj:`str`): directory storing checkpoints and/or HDF5 file with
                 the simulation run results
         """
+        if results_dir is None:
+            raise MultialgorithmError('results_dir is None')
+        if not os.path.isdir(results_dir):
+            raise MultialgorithmError(f'results_dir {results_dir} must be a directory')
         self.results_dir = results_dir
         self.run_results = {}
 
