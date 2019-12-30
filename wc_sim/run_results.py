@@ -288,6 +288,8 @@ class RunResults(object):
         random_states_s = pandas.Series(index=checkpoints)
 
         # load these pandas objects
+        print('aggregate_states_df')
+        print(aggregate_states_df)
         for time in Checkpoint.list_checkpoints(self.results_dir):
 
             checkpoint = Checkpoint.get_checkpoint(self.results_dir, time=time)

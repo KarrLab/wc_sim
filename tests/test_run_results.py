@@ -67,6 +67,12 @@ class TestRunResults(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.temp_dir)
 
+    def test_errors(self):
+        with self.assertRaises(MultialgorithmError):
+            RunResults(None)
+        with self.assertRaises(MultialgorithmError):
+            RunResults('not a dir')
+
     def test__check_component(self):
         for component in RunResults.COMPONENTS:
             self.assertEqual(self.run_results_1_cmpt._check_component(component), None)
