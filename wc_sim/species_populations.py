@@ -16,7 +16,7 @@ from enum import Enum
 from scipy.constants import Avogadro
 import abc
 import math
-import numpy
+import numpy as np
 import sys
 
 from de_sim.simulation_object import (SimulationObject, ApplicationSimulationObject,
@@ -528,7 +528,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             which the species was accessed.
         _history (:obj:`dict`) nested dict; an optional history of the species' state. The population
             history is recorded at each continuous adjustment.
-        random_state (:obj:`numpy.random.RandomState`): a PRNG used by all `Species`
+        random_state (:obj:`np.random.RandomState`): a PRNG used by all `Species`
         fast_debug_file_logger (:obj:`FastLogger`): a fast logger for debugging messages
     """
     # TODO(Arthur): support tracking the population history of species added at any time in the simulation
@@ -553,7 +553,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
                 by a submodel that uses a continuous integration algorithm. These are ignored for
                 species not specified in `initial_population`.
             initial_time (:obj:`float`, optional): the initialization time; defaults to 0
-            random_state (:obj:`numpy.random.RandomState`, optional): a PRNG used by all `DynamicSpeciesState`
+            random_state (:obj:`np.random.RandomState`, optional): a PRNG used by all `DynamicSpeciesState`
             retain_history (:obj:`bool`, optional): whether to retain species population history
             _concentrations_api (:obj:`bool`, optional): if set, use concentrations; species amounts
                 passed into and returned by methods must be concentrations (molar == mol/L); defaults to `False`
@@ -625,6 +625,8 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         """
         return set(self._population.keys())
 
+    # todo: make concentrations: stop requiring that species in sets, instead require iterator
+    # and remove set(species) below
     def _check_species(self, time, species=None, check_early_accesses=True):
         """ Check whether the species are a set, or not known by this LocalSpeciesPopulation
 
@@ -669,69 +671,83 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         for species_id in species:
             self.last_access_time[species_id] = time
 
-    def _volumes_for_species(self, species_populations, dynamic_model):
-        """ Compute the volumes of the compartments containing some species
+    def _accounted_volumes_for_species(self, species, dynamic_model):
+        """ Compute the accounted for volumes of the compartments containing some species
 
         Args:
             species (:obj:`iterator` of :obj:`str`): iterator over species id
             dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
 
         Returns:
-            :obj:`dict` of :obj:`float`: the volumes of the compartments containing the species;
-                map: compartment id -> volume
+            :obj:`dict` of :obj:`float`: the accounted for volumes of the compartments containing the
+                species; map: compartment id -> volume
+
+        Raises:
+            :obj:`SpeciesPopulationError`: if no species are provided
         """
+        if not species:
+            raise SpeciesPopulationError(f"no species provided")
+
         # compute the volume of each compartment only once
         volumes = {}
         for species_id in species:
             _, compartment_id = wc_lang.Species.parse_id(species_id)
             if compartment_id not in volumes:
-                volumes[compartment_id] = dynamic_model.dynamic_compartments[compartment_id].volume()
+                volumes[compartment_id] = \
+                    dynamic_model.dynamic_compartments[compartment_id].accounted_volume()
         return volumes
 
-    def populations_to_concentrations(self, species_populations, dynamic_model, volumes=None):
+    def populations_to_concentrations(self, species, populations, dynamic_model, concentrations,
+                                      volumes=None):
         """ Convert species populations, in molecules, to concentrations, in molar
 
         Args:
-            species_populations (:obj:`dict` of :obj:`float`): map: species id -> population
+            species (:obj:`np.ndarray` of :obj:`str`): species ids
+            populations (:obj:`np.ndarray` of :obj:`float`): corresponding populations of the species
+                in `species`
             dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
+            concentrations (:obj:`np.ndarray` of :obj:`float`): array to hold the concentrations of
+                the corresponding species in `species`
             volumes (:obj:`dict` of :obj:`float`, optional): map: compartment id -> volume; volumes
-                of compartments containing species in `species_populations`; optionally provided as an
+                of compartments containing species in `species`; optionally provided as an
                 optimization, to avoid computing volumes
 
         Returns:
-            :obj:`dict` of :obj:`float`: the concentrations of the species; map: species id -> concentration
+            :None`: the concentrations are returned in `concentrations`
         """
-        if not volumes:
-            volumes = self._volumes_for_species(species_populations, dynamic_model)
+        if volumes is None:
+            volumes = self._accounted_volumes_for_species(species, dynamic_model)
 
-        # concentration (mole/liter) = population (molecule) / (Avogagro (molecule/mole) * volume (liter))
-        for species_id, population in species_populations.items():
-            _, species_compartment = wc_lang.Species.parse_id(species_id)
-            concentrations[species_id] = population / (Avogagro * volumes[species_compartment])
-        return concentrations
+        # concentration (mole/liter) = population (molecule) / (Avogadro (molecule/mole) * volume (liter))
+        for i in range(len(species)):
+            _, species_compartment = wc_lang.Species.parse_id(species[i])
+            concentrations[i] = populations[i] / (Avogadro * volumes[species_compartment])
 
-    def concentrations_to_populations(self, species_concentrations, dynamic_model, volumes=None):
+    def concentrations_to_populations(self, species, concentrations, dynamic_model, populations,
+                                      volumes=None):
         """ Convert species concentrations, in molar, to populations, in molecules
 
         Args:
-            species_concentrations (:obj:`dict` of :obj:`float`): map: species id -> concentration
+            species (:obj:`np.ndarray` of :obj:`str`): species ids
+            concentrations (:obj:`np.ndarray` of :obj:`float`): corresponding concentrations of the
+                species in `species`
             dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
+            populations (:obj:`np.ndarray` of :obj:`float`): array to hold the populations of
+                the corresponding species in `species`
             volumes (:obj:`dict` of :obj:`float`, optional): map: compartment id -> volume; volumes
-                of compartments containing species in `species_populations`; optionally provided as an
+                of compartments containing species in `species`; optionally provided as an
                 optimization, to avoid computing volumes
 
         Returns:
-            :obj:`dict` of :obj:`float`: the populations of the species; map: species id -> population
+            :None`: the populations are returned in `populations`
         """
-        if not volumes:
-            volumes = self._volumes_for_species(species_concentrations, dynamic_model)
+        if volumes is None:
+            volumes = self._accounted_volumes_for_species(species, dynamic_model)
 
-        populations = {}
-        # population (molecule) = concentration (mole/liter) * Avogagro (molecule/mole) * volume (liter)
-        for species_id, concentration in species_concentrations.items():
-            _, species_compartment = wc_lang.Species.parse_id(species_id)
-            populations[species_id] = concentration * Avogagro * volumes[species_compartment]
-        return populations
+        # population (molecule) = concentration (mole/liter) * Avogadro (molecule/mole) * volume (liter)
+        for i in range(len(species)):
+            _, species_compartment = wc_lang.Species.parse_id(species[i])
+            populations[i] = concentrations[i] * Avogadro * volumes[species_compartment]
 
     def concentrations_api(self):
         """ Get the status of the concentrations API; if `True`, species amounts must be in molar
@@ -751,7 +767,6 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         """
         self._concentrations_api = False
 
-
     def read_one(self, time, species_id):
         """ Obtain the predicted population of species `species_id` at simulation time `time`
 
@@ -763,9 +778,6 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
 
         Returns:
             :obj:`float`: the predicted population of `species_id` at simulation time `time`.
-
-        Raises:
-            :obj:`SpeciesPopulationError`: if the population of an unknown species was requested
         """
         species_id_in_set = {species_id}
         self._check_species(None, species_id_in_set, check_early_accesses=False)
@@ -779,8 +791,6 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         # todo: make concentrations: return through converter that changes pops to concs if in conc state
         return dynamic_species_state.get_population(time)
 
-    # todo: make concentrations: add method to read species into an existing ndarray
-
     def read(self, time, species=None, round=True):
         """ Read the predicted population of a list of species at simulation time `time`
 
@@ -792,9 +802,6 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         Returns:
             :obj:`dict`: species counts: species_id -> copy_number; the predicted copy number of each
             requested species at `time`
-
-        Raises:
-            :obj:`SpeciesPopulationError`: if the population of unknown species are requested
         """
         if species is None:
             species = self._all_species()
@@ -803,6 +810,26 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self._update_access_times(time, species)
         # todo: make concentrations: return through converter that changes pops to concs if in conc state
         return {s: self._population[s].get_population(time, round=round) for s in species}
+
+    def read_into_array(self, time, species, populations, round=True):
+        """ Obtain the predicted population of an iterator over species at simulation time `time`
+
+        Args:
+            time (:obj:`float`): the time at which the population should be predicted
+            species (:obj:`iterator` of :obj:`str`): identifiers of the species to read
+            populations (:obj:`np.ndarray` of :obj:`float`): array to hold the populations of
+                the corresponding species in `species`
+            round (:obj:`bool`, optional): if `round` then round the populations to integers
+
+        Returns:
+            :None`: the populations are returned in `populations`
+        """
+        self._check_species(time, set(species))
+        self.time = time
+        self._update_access_times(time, species)
+        for idx, species_id in enumerate(species):
+            populations[idx] = self._population[species_id].get_population(time, round=round)
+    # todo: make concentrations: combine read() and read_into_array() into 1 method
 
     # todo: make concentrations: temp values just support concentrations
     def set_temp_populations(self, populations):
@@ -933,7 +960,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
                 except KeyError as e:
                     raise SpeciesPopulationError("molecular weight not available for '{}'".format(
                         species_id))
-                if not numpy.isnan(mw):
+                if not np.isnan(mw):
                     mass += mw * self.read_one(time, species_id)
         return mass / Avogadro
 
@@ -1032,7 +1059,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         """ Provide the time and species count history
 
         Args:
-            numpy_format (:obj:`bool`, optional): if set, return history in a 3 dimensional numpy array
+            numpy_format (:obj:`bool`, optional): if set, return history in a 3 dimensional np array
             species_type_ids (:obj:`list` of :obj:`str`, optional): the ids of species_types in the
                 `Model` being simulated
             compartment_ids (:obj:`list` of :obj:`str`, optional): the ids of the compartments in the
@@ -1042,7 +1069,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             :obj:`dict`: The time and species count history. By default, return a `dict`, with
             `rv['time']` = list of time samples
             `rv['population'][species_id]` = list of counts for species_id at the time samples
-            If `numpy_format` set, return a tuple containing a pair of numpy arrays that contain
+            If `numpy_format` set, return a tuple containing a pair of np arrays that contain
             the time and population histories, respectively.
 
         Raises:
@@ -1056,8 +1083,8 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             if species_type_ids is None or compartment_ids is None:
                 raise SpeciesPopulationError(
                     "species_type_ids and compartment_ids must be provided if numpy_format is set")
-            time_hist = numpy.asarray(self._history['time'])
-            species_counts_hist = numpy.zeros((len(species_type_ids), len(compartment_ids),
+            time_hist = np.asarray(self._history['time'])
+            species_counts_hist = np.zeros((len(species_type_ids), len(compartment_ids),
                                                len(self._history['time'])))
             for species_type_index, species_type_id in list(enumerate(species_type_ids)):
                 for comp_index, compartment_id in list(enumerate(compartment_ids)):
@@ -1369,7 +1396,7 @@ class DynamicSpeciesState(object):
     Attributes:
         species_name (:obj:`str`): the species' name; not logically needed, but helpful for error
             reporting, logging, debugging, etc.
-        random_state (:obj:`numpy.random.RandomState`): a shared PRNG, used to round populations
+        random_state (:obj:`np.random.RandomState`): a shared PRNG, used to round populations
             to integers
         last_population (:obj:`float`): species population at the most recent adjustment
         modeled_continuously (:obj:`bool`): whether one of the submodels modeling the species is a
@@ -1401,7 +1428,7 @@ class DynamicSpeciesState(object):
         Args:
             species_name (:obj:`str`): the species' name; not logically needed, but helpful for error
                 reporting, logging, debugging, etc.
-            random_state (:obj:`numpy.random.RandomState`): a shared PRNG
+            random_state (:obj:`np.random.RandomState`): a shared PRNG
             initial_population (:obj:`int`): non-negative number; initial population of the species
             modeled_continuously (:obj:`bool`, optional): whether a continuous submodel models this species;
                 default=`False`

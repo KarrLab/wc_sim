@@ -27,10 +27,13 @@ from wc_lang.io import Reader
 from wc_sim import distributed_properties
 from wc_sim import message_types
 from wc_sim.config import core as config_core_multialgorithm
+from wc_sim.dynamic_components import DynamicModel
 from wc_sim.multialgorithm_errors import NegativePopulationError, SpeciesPopulationError
+from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.species_populations import (LOCAL_POP_STORE, DynamicSpeciesState, SpeciesPopSimObject,
                                         SpeciesPopulationCache, LocalSpeciesPopulation, TempPopulationsLSP,
                                         MakeTestLSP, AccessSpeciesPopulations)
+from wc_sim.testing.utils import read_model_for_test
 from wc_utils.util.rand import RandomStateManager
 import wc_lang
 
@@ -285,6 +288,9 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
                                    self.init_populations,
                                    self.molecular_weights)
 
+        self.MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures',
+                                           'test_model_for_access_species_populations.xlsx')
+
     def test_init(self):
         self.assertEqual(self.local_species_pop_no_init_pop_slope._all_species(), set(self.species_ids))
         an_LSP = LocalSpeciesPopulation('test', {}, {}, retain_history=False)
@@ -408,6 +414,81 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         self.assertTrue(self.local_species_pop.concentrations_api())
         self.local_species_pop.concentrations_api_off()
         self.assertFalse(self.local_species_pop.concentrations_api())
+
+    def make_dynamic_model(self):
+
+        # read model while ignoring missing models
+        model = read_model_for_test(self.MODEL_FILENAME)
+
+        # create dynamic model
+        self.multialgorithm_simulation = MultialgorithmSimulation(model, None)
+        self.multialgorithm_simulation.initialize_components()
+        self.local_species_population = self.multialgorithm_simulation.local_species_population
+        dynamic_model = DynamicModel(model, self.local_species_population,
+                                          self.multialgorithm_simulation.temp_dynamic_compartments)
+
+        self.compt_accounted_volumes = {}
+        for dynamic_compartment in dynamic_model.dynamic_compartments.values():
+            self.compt_accounted_volumes[dynamic_compartment.id] = dynamic_compartment.accounted_volume()
+
+        return dynamic_model
+
+    def test_accounted_volumes_for_species(self):
+        dynamic_model = self.make_dynamic_model()
+        species_ids = ['specie_3[c]', 'specie_2[e]', 'specie_3[e]']
+        volumes = self.local_species_population._accounted_volumes_for_species(species_ids, dynamic_model)
+        self.assertEqual(self.compt_accounted_volumes, volumes)
+
+        # test one volume
+        species_ids = ['specie_3[c]']
+        volumes = self.local_species_population._accounted_volumes_for_species(species_ids, dynamic_model)
+        self.assertEqual(['c'], list(volumes))
+        self.assertEqual(self.compt_accounted_volumes['c'], volumes['c'])
+
+        with self.assertRaises(SpeciesPopulationError):
+            self.local_species_population._accounted_volumes_for_species([], dynamic_model)
+
+    def test_populations_to_concentrations(self):
+        dynamic_model = self.make_dynamic_model()
+        species_ids = ['specie_3[c]']
+        volumes = self.local_species_population._accounted_volumes_for_species(species_ids, dynamic_model)
+
+        populations = np.empty(len(species_ids))
+        self.local_species_population.read_into_array(0, species_ids, populations)
+        concentrations = np.empty(len(species_ids))
+        self.local_species_population.populations_to_concentrations(species_ids, populations,
+            dynamic_model, concentrations)
+        expected_concentration = populations[0] / (Avogadro * volumes['c'])
+        self.assertEqual(concentrations[0], expected_concentration)
+
+    def test_populations_to_concentrations_and_concentrations_to_populations(self):
+        dynamic_model = self.make_dynamic_model()
+        species_ids = ['specie_3[c]', 'specie_2[e]', 'specie_3[e]']
+
+        # test round-trip
+        populations = np.empty(len(species_ids))
+        self.local_species_population.read_into_array(0, species_ids, populations)
+        concentrations = np.empty(len(species_ids))
+        self.local_species_population.populations_to_concentrations(species_ids, populations,
+            dynamic_model, concentrations)
+        populations_round_trip = np.empty(len(species_ids))
+        self.local_species_population.concentrations_to_populations(species_ids, concentrations,
+            dynamic_model, populations_round_trip)
+        self.assertTrue(np.allclose(populations, populations_round_trip))
+
+        # test using volumes
+        volumes = self.local_species_population._accounted_volumes_for_species(species_ids, dynamic_model)
+        self.local_species_population.populations_to_concentrations(species_ids, populations,
+            dynamic_model, concentrations, volumes=volumes)
+        populations_round_trip = np.empty(len(species_ids))
+        self.local_species_population.concentrations_to_populations(species_ids, concentrations,
+            dynamic_model, populations_round_trip, volumes=volumes)
+        self.assertTrue(np.allclose(populations, populations_round_trip))
+
+    def test_read_into_array(self):
+        populations = np.empty(len(self.species_ids))
+        self.local_species_pop.read_into_array(0, self.species_ids, populations)
+        self.assertTrue(np.array_equiv(populations, np.fromiter(self.species_nums, np.float64)))
 
     def test_history(self):
         an_LSP_wo_recording_history = LocalSpeciesPopulation('test',
