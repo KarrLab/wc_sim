@@ -57,6 +57,7 @@ class OdeSubmodel(DynamicSubmodel):
         testing (:obj:`bool`, optional): if set, produce test output
     """
     ABS_ODE_SOLVER_TOLERANCE = config_multialgorithm['abs_ode_solver_tolerance']
+    REL_ODE_SOLVER_TOLERANCE = config_multialgorithm['rel_ode_solver_tolerance']
 
     # register the message types sent by OdeSubmodel
     messages_sent = [message_types.RunOde]
@@ -67,7 +68,7 @@ class OdeSubmodel(DynamicSubmodel):
     using_solver = False
 
     def __init__(self, id, dynamic_model, reactions, species, dynamic_compartments,
-                 local_species_population, ode_time_step, testing=True):
+                 local_species_population, ode_time_step, testing=False):
         """ Initialize an ODE submodel instance
 
         Args:
@@ -91,7 +92,8 @@ class OdeSubmodel(DynamicSubmodel):
         self.ode_time_step = ode_time_step
         self.set_up_ode_submodel()
         self.set_up_optimizations()
-        options = {'atol': self.ABS_ODE_SOLVER_TOLERANCE}
+        options = {'atol': self.ABS_ODE_SOLVER_TOLERANCE,
+                   'rtol': self.REL_ODE_SOLVER_TOLERANCE}
         self.solver = self.create_ode_solver(**options)
         self.num_right_hand_side_calls = 0
         self.history_num_right_hand_side_calls = []
@@ -122,7 +124,8 @@ class OdeSubmodel(DynamicSubmodel):
                 tmp_coeffs_and_rate_laws[species_id].append((species_coefficient.coefficient,
                                                              dynamic_rate_law))
 
-        # todo: replace rate_of_change_expressions with a stoichiometric matrix S
+        # todo: use linear algebra to compute species derivatives, & calc each RL once
+        # replace rate_of_change_expressions with a stoichiometric matrix S
         # then, in compute_population_change_rates() compute a vector of reaction rates R and get
         # rates of change of species from R * S
         self.rate_of_change_expressions = []
@@ -142,7 +145,7 @@ class OdeSubmodel(DynamicSubmodel):
         # make fixed set of species ids used by this OdeSubmodel
         self.ode_species_ids_set = set(self.ode_species_ids)
         # pre-allocate dict of adjustments used to pass changes to LocalSpeciesPopulation
-        self.adjustments = {species_id:None for species_id in self.ode_species_ids}
+        self.adjustments = {species_id: None for species_id in self.ode_species_ids}
         # pre-allocate numpy arrays for populations
         self.num_species = len(self.ode_species_ids)
         self.populations = np.zeros(self.num_species)
@@ -181,6 +184,9 @@ class OdeSubmodel(DynamicSubmodel):
         solver = ode(CVODE_SOLVER, self.right_hand_side, old_api=False, **options)
         if not isinstance(solver, ode):    # pragma: no cover
             raise MultialgorithmError(f"OdeSubmodel {self.id}: scikits.odes.ode() failed")
+        # todo: compare and report detailed results: define ODE log file
+        run_ode_solver_header = 'mode time time_change rhs_calls elapsed_rt population_0 population_1'.split()
+        # todo: compare and report detailed results: fix header & write it to ODE log file
         return solver
 
     def right_hand_side(self, time, new_species_populations, population_change_rates):
@@ -203,6 +209,7 @@ class OdeSubmodel(DynamicSubmodel):
             self.compute_population_change_rates(time, new_species_populations, population_change_rates)
 
             self.num_right_hand_side_calls += 1
+            # todo: compare and report detailed results: remove 'and self.time == 0'; write summary to ODE debug log file
             if self.testing and self.time == 0:
                 # testing
                 time_change = time - self._last_internal_step
@@ -244,12 +251,9 @@ class OdeSubmodel(DynamicSubmodel):
         with TempPopulationsLSP(self.local_species_population, temporary_populations):
             for idx in range(self.num_species):
                 species_rate_of_change = 0.0
-                s_terms = []
                 for coeff, dynamic_rate_law in self.rate_of_change_expressions[idx]:
                     rate = dynamic_rate_law.eval(time)
-                    s_terms.append(f'{coeff} * {rate:.3e}')
                     species_rate_of_change += coeff * rate
-                # print(f'species: {idx}', ' + '.join(s_terms))
                 population_change_rates[idx] = species_rate_of_change
 
     def current_species_populations(self):
@@ -261,7 +265,6 @@ class OdeSubmodel(DynamicSubmodel):
         for idx, species_id in enumerate(self.ode_species_ids):
             self.populations[idx] = pops_dict[species_id]
 
-    run_ode_solver_header = 'mode time time_change rhs_calls elapsed_rt population_0 population_1'.split()
     def run_ode_solver(self):
         """ Run the ODE solver for one WC simulator time step and save the species populations changes """
 
@@ -304,6 +307,7 @@ class OdeSubmodel(DynamicSubmodel):
             pprint(self.adjustments)
         self.local_species_population.adjust_continuously(self.time, self.adjustments)
         self.history_num_right_hand_side_calls.append(self.num_right_hand_side_calls)
+        # todo: compare and report detailed results: write summary to ODE log
         if self.testing:
             end = time.perf_counter()
             elapsed_rt = end - start

@@ -172,7 +172,7 @@ class TestOdeSubmodel(unittest.TestCase):
             print('rxn:', attr.serialize(rxn.participants))
             print('rate law:', rxn.rate_laws[0].expression.serialize())
         print(self.ode_submodel_1.local_species_population)
-        print('\t'.join(OdeSubmodel.run_ode_solver_header))
+        # print('\t'.join(OdeSubmodel.run_ode_solver_header))
         summary = ['external step',
                    f'{0:.4e}',
                    f'{0:.4e}',

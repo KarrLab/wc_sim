@@ -16,3 +16,33 @@ Performance summary on 2019-12-27
 8	2561	   3.739	 684.941
 32	10516	  23.903	 439.943
 
+Performance summary on 2019-12-30
+#SSA submodels	# events	run time (s)	reactions/s
+2	703	   1.058	 664.568
+8	2561	   3.620	 707.415
+32	10516	  23.880	 440.374
+
+Performance summary on 2020-01-02
+#SSA submodels	# events	run time (s)	reactions/s
+2	703	   1.032	 681.199
+8	2561	   4.603	 556.328
+32	10516	  28.842	 364.612
+
+Performance summary on 2020-01-02
+#SSA submodels	# events	run time (s)	reactions/s
+2	674	   0.831	 811.318
+8	2789	   3.881	 718.616
+32	10613	  26.876	 394.886
+
+Performance summary on 2020-01-04
+#SSA submodels	# events	run time (s)	reactions/s
+2	674	   0.924	 729.426
+8	2789	   4.471	 623.825
+32	10613	  25.620	 414.242
+
+Performance summary on 2020-01-04
+#SSA submodels	# events	run time (s)	reactions/s
+2	674	   1.970	 342.116
+8	2789	   4.128	 675.614
+32	10613	  25.206	 421.043
+

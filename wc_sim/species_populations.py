@@ -625,8 +625,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         """
         return set(self._population.keys())
 
-    # todo: make concentrations: stop requiring that species in sets, instead require iterator
-    # and remove set(species) below
+    # todo: stop requiring that species be in sets, instead require iterator and remove set(species) below
     def _check_species(self, time, species=None, check_early_accesses=True):
         """ Check whether the species are a set, or not known by this LocalSpeciesPopulation
 
@@ -783,12 +782,10 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self._check_species(None, species_id_in_set, check_early_accesses=False)
         dynamic_species_state = self._population[species_id]
         if not dynamic_species_state.get_temp_population_value() is None:
-            # todo: make concentrations: return through converter that changes pops to concs if in conc state
             return dynamic_species_state.get_temp_population_value()
         self._check_species(time, species_id_in_set)
         self.time = time
         self._update_access_times(time, species_id_in_set)
-        # todo: make concentrations: return through converter that changes pops to concs if in conc state
         return dynamic_species_state.get_population(time)
 
     def read(self, time, species=None, round=True):
@@ -808,7 +805,6 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self._check_species(time, species)
         self.time = time
         self._update_access_times(time, species)
-        # todo: make concentrations: return through converter that changes pops to concs if in conc state
         return {s: self._population[s].get_population(time, round=round) for s in species}
 
     def read_into_array(self, time, species, populations, round=True):
@@ -829,9 +825,8 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self._update_access_times(time, species)
         for idx, species_id in enumerate(species):
             populations[idx] = self._population[species_id].get_population(time, round=round)
-    # todo: make concentrations: combine read() and read_into_array() into 1 method
+    # todo: combine read() and read_into_array() into 1 method
 
-    # todo: make concentrations: temp values just support concentrations
     def set_temp_populations(self, populations):
         """ Set temporary population values for a set of species
 
@@ -851,10 +846,8 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         if errors:
             raise SpeciesPopulationError("set_temp_populations error(s):\n{}".format('\n'.join(errors)))
         for species_id, population in populations.items():
-            # todo: make concentrations: pass population through converter that changes pops to concs if in conc state
             self._population[species_id].set_temp_population_value(population)
 
-    # todo: make concentrations: temp values just support concentrations
     def clear_temp_populations(self, species_ids):
         """ Clear temporary population values for a set of species
 
@@ -896,7 +889,6 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             raise SpeciesPopulationError("adjust_discretely error(s) at time {}:\n{}".format(
                 time, '\n'.join(errors)))
 
-    # todo: make concentrations: support concentrations option
     def adjust_continuously(self, time, population_slopes):
         """ A continuous submodel adjusts the population slopes of a set of species at simulation time `time`
 
@@ -1143,10 +1135,6 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             state.append(self._population[species_id].row())
         return '\n'.join(state)
 
-# todo: make concentrations: make concentrations context
-# todo: make concentrations: pass in dynamic_model so volumes can be obtained to compute concentrations
-        # todo: make concentrations: set concentrations option
-        # todo: make concentrations: reset concentrations option
 
 class TempPopulationsLSP(object):
     """ A context manager for using temporary population values in a LocalSpeciesPopulation

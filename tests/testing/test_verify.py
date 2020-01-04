@@ -498,14 +498,23 @@ class RunVerificationSuite(unittest.TestCase):
         # todo: get rid of TIME_STEP_FACTOR
         TIME_STEP_FACTOR = 1
         self.ode_test_cases = [
-            ('00001', TIME_STEP_FACTOR),    # verifies
-            ('00004', TIME_STEP_FACTOR),    # does not verify
-            ('00006', TIME_STEP_FACTOR),    # verifies
-            # dies ('00010', TIME_STEP_FACTOR),    # does not verify
-            ('00014', TIME_STEP_FACTOR),    # does not verify
+            ('00001', TIME_STEP_FACTOR),
+            ('00002', TIME_STEP_FACTOR),
+            ('00003', TIME_STEP_FACTOR),
+            ('00004', TIME_STEP_FACTOR),
+            ('00005', TIME_STEP_FACTOR),
+            ('00006', TIME_STEP_FACTOR),
+            ('00010', TIME_STEP_FACTOR),
+            ('00014', TIME_STEP_FACTOR),
             ('00015', TIME_STEP_FACTOR),    # does not verify
+            ('00017', TIME_STEP_FACTOR),
+            ('00018', TIME_STEP_FACTOR),
+            ('00019', TIME_STEP_FACTOR),
+            ('00020', TIME_STEP_FACTOR),
             ('00021', TIME_STEP_FACTOR),    # does not verify
-            ('00022', TIME_STEP_FACTOR),    # does not verify
+            ('00022', TIME_STEP_FACTOR),
+            ('00028', TIME_STEP_FACTOR),
+            # dies: ('00054', TIME_STEP_FACTOR), # 2 compartments: results_comparator.differs() failure
         ]
         self.root_test_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', 'fixtures',
                                               'verification', 'cases'))
@@ -540,9 +549,8 @@ class RunVerificationSuite(unittest.TestCase):
                 print('expected derivatives (molecule/sec)')
                 print(derivatives_df)
                 '''
-                REDUCED_VOLUME = 1E-9  # value for optional parameter, compt_vol
                 self.verification_suite.run(case_type, [test_case], time_step_factor=time_step_factor,
-                                            verbose=True, compt_vol=REDUCED_VOLUME)
+                                            verbose=True)
                 # todo: compare and report detailed results: combine expected amounts and derivatives with ODE log file, & plot
 
         failures = []
