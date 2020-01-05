@@ -14,6 +14,7 @@ from scipy.constants import Avogadro
 
 from de_sim.checkpoint import Checkpoint
 from de_sim.sim_metadata import SimulationMetadata
+from wc_lang import Species
 from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_utils.util.misc import as_dict
 
@@ -89,7 +90,7 @@ class RunResults(object):
         self._load_hdf_file()
 
     @classmethod
-    def prepare_computed_components(cls):
+    def _prepare_computed_components(cls):
         """ Check and initialize the `COMPUTED_COMPONENTS`
 
         Raises:
@@ -151,30 +152,42 @@ class RunResults(object):
             return RunResults.COMPUTED_COMPONENTS[component](self)
         return self.run_results[component]
 
-    def get_concentrations(self, compartment_id):
-        """ Get concentrations of the species in a compartment at checkpoint times
+    def get_concentrations(self, compartment_id=None):
+        """ Get species concentrations at checkpoint times
 
         Args:
-            compartment_id (:obj:`str`): the compartment containing species for which concentrations
-                will be returned
+            compartment_id (:obj:`str`, optional): if provided, obtain concentrations for species in
+                `compartment_id`; otherwise, return the concentrations of all species
 
         Returns:
-            :obj:`pandas.DataFrame`: the concentrations of the species in a compartment at checkpoint times
+            :obj:`pandas.DataFrame`: the concentrations of species at checkpoint times, filtered
+                by `compartment_id` if it's provided
 
         Raises:
             :obj:`MultialgorithmError`: if no species are in the compartment
         """
         populations = self.get('populations')
         self._check_component('populations')
-        compartment_vols = self.get_volumes(compartment_id)
-        # filter to populations for species in compartment_id
-        filter = f'\[{compartment_id}\]$'
-        filtered_populations = populations.filter(regex=filter)
-        if filtered_populations.empty:  # pragma: no cover
-            raise MultialgorithmError(f"No species found in compartment '{compartment_id}'")
-        pop_div_vol = populations.div(compartment_vols, axis='index')
-        concentrations = populations.div(compartment_vols, axis='index') / Avogadro
-        return(concentrations)
+        if compartment_id is None:
+            # iterate over species in populations, dividing by the right compartment
+            # (as of 0.25.3 pandas doesn't support joins between two MultiIndexes)
+            pop_div_vol = populations.copy()
+            for species_id in populations.columns.values:
+                _, compartment_id = Species.parse_id(species_id)
+                pop_div_vol.loc[:, species_id] = pop_div_vol.loc[:, species_id] / \
+                    self.get_volumes(compartment_id=compartment_id)
+            concentrations = pop_div_vol / Avogadro
+            return(concentrations)
+
+        else:
+            compartment_vols = self.get_volumes(compartment_id=compartment_id)
+            # filter to populations for species in compartment_id
+            filter = f'\[{compartment_id}\]$'
+            filtered_populations = populations.filter(regex=filter)
+            if filtered_populations.empty:  # pragma: no cover
+                raise MultialgorithmError(f"No species found in compartment '{compartment_id}'")
+            concentrations = filtered_populations.div(compartment_vols, axis='index') / Avogadro
+            return(concentrations)
 
     def get_times(self):
         """ Get simulation times of results data
@@ -189,11 +202,11 @@ class RunResults(object):
         """ Get the names of the aggregate state properties
 
         Returns:
-            :obj:`list`: the names of the aggregate state properties in a `RunResults`
+            :obj:`set`: the names of the aggregate state properties in a `RunResults`
         """
         self._check_component('aggregate_states')
         aggregate_states_df = self.get('aggregate_states')
-        return list(aggregate_states_df.columns.get_level_values('property').values)
+        return set(aggregate_states_df.columns.get_level_values('property').values)
 
     def get_properties(self, compartment_id, property=None):
         """ Get a compartment's aggregate state properties or property at checkpoint times
@@ -220,7 +233,7 @@ class RunResults(object):
                 otherwise, return the volumes of all compartments
 
         Returns:
-            :obj:`pandas.DataFrame`: the volumes of a compartment or all compartments at all checkpoint times
+            :obj:`pandas.DataFrame`: the volumes of one compartment or all compartments at all checkpoint times
         """
         if compartment_id is not None:
             return self.get_properties(compartment_id, 'volume')
@@ -311,4 +324,4 @@ class RunResults(object):
 
         return (population_df, observables_df, functions_df, aggregate_states_df, random_states_s)
 
-RunResults.prepare_computed_components()
+RunResults._prepare_computed_components()

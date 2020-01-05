@@ -45,6 +45,10 @@ class TestRunResults(unittest.TestCase):
         exchange_rxn_model = os.path.join(os.path.dirname(__file__), 'fixtures', 'dynamic_tests',
                                           'one_exchange_rxn_compt_growth.xlsx')
         model = read_model_for_test(exchange_rxn_model)
+        # make both compartments in model cellular, so results are created for both of them
+        comp_c = model.get_compartments(id='c')[0]
+        comp_e = model.get_compartments(id='e')[0]
+        comp_e.biological_type = comp_c.biological_type
         simulation = Simulation(model)
         with CaptureOutput(relay=False):
             _, cls.results_dir_dyn_aggr = simulation.run(end_time=cls.max_time,
@@ -114,7 +118,7 @@ class TestRunResults(unittest.TestCase):
         RunResults.COMPUTED_COMPONENTS = {
             'volumes': 'get_volumes'
         }
-        RunResults.prepare_computed_components()
+        RunResults._prepare_computed_components()
         self.assertEqual(RunResults.COMPUTED_COMPONENTS['volumes'], RunResults.get_volumes)
 
         BAD_COMPUTED_COMPONENTS = {
@@ -122,7 +126,7 @@ class TestRunResults(unittest.TestCase):
         }
         RunResults.COMPUTED_COMPONENTS = BAD_COMPUTED_COMPONENTS
         with self.assertRaisesRegex(MultialgorithmError, 'in COMPUTED_COMPONENTS is not a method'):
-            RunResults.prepare_computed_components()
+            RunResults._prepare_computed_components()
 
         # restore COMPUTED_COMPONENTS
         RunResults.COMPUTED_COMPONENTS = saved_COMPUTED_COMPONENTS
@@ -141,6 +145,15 @@ class TestRunResults(unittest.TestCase):
                                      self.run_results_1_cmpt.get('populations')['spec_type_0[compt_1]'][0.0] /
                                         (self.run_results_1_cmpt.get_volumes('compt_1')[0.0] * Avogadro),
                                      rel_tol=1e-9))
+        concentrations_in_c = self.run_results_dyn_aggr.get_concentrations('c')
+        self.assertTrue(concentrations_in_c.columns.values, ['A[c]'])
+
+        concentrations_in_two_compts = self.run_results_dyn_aggr.get_concentrations()
+        conc_spec_type_A__compt_c__at_0 = concentrations_in_two_compts['A[c]'][0.0]
+        self.assertTrue(math.isclose(conc_spec_type_A__compt_c__at_0,
+                                     self.run_results_dyn_aggr.get('populations')['A[c]'][0.0] /
+                                        (self.run_results_dyn_aggr.get_volumes('c')[0.0] * Avogadro),
+                                     rel_tol=1e-9))
 
     def test_get_times(self):
         expected_times = numpy.arange(0., float(self.max_time), self.checkpoint_period, dtype='float64')
@@ -148,7 +161,7 @@ class TestRunResults(unittest.TestCase):
         numpy.testing.assert_array_equal(self.run_results_1_cmpt.get_times(), expected_times)
 
     def test_aggregate_state_properties(self):
-        expected_properties = ['mass', 'volume', 'accounted mass', 'accounted volume']
+        expected_properties = set(['mass', 'volume', 'accounted mass', 'accounted volume'])
         self.assertEqual(self.run_results_1_cmpt.aggregate_state_properties(), expected_properties)
         self.assertEqual(self.run_results_dyn_aggr.aggregate_state_properties(), expected_properties)
 
