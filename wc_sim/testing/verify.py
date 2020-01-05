@@ -24,6 +24,7 @@ import time
 import traceback
 import warnings
 
+from wc_lang import Species
 from wc_lang.core import ReactionParticipantAttribute, Model
 from wc_lang.io import Reader
 from wc_sim.config import core as config_core_multialgorithm
@@ -93,8 +94,8 @@ class VerificationTestReader(object):
     def __init__(self, test_case_type, test_case_dir, test_case_num):
         if test_case_type not in VerificationTestCaseType.__members__:
             raise VerificationError("Unknown VerificationTestCaseType: '{}'".format(test_case_type))
-        else:
-            self.test_case_type = VerificationTestCaseType[test_case_type]
+
+        self.test_case_type = VerificationTestCaseType[test_case_type]
         self.test_case_dir = test_case_dir
         self.test_case_num = test_case_num
 
@@ -202,6 +203,35 @@ class VerificationTestReader(object):
             raise VerificationError("Reading SBML files not supported: model filename '{}'".format(model_filename))
         return Reader().run(self.model_filename, validate=True)[Model][0]
 
+    def get_species_id(self, species_type):
+        """ Get the species id of a species type
+
+        Raises an error if the given species type is contained in multiple compartments. I believe this doesn't
+        occur for models in the SBML test suite.
+
+        Args:
+            species_type (:obj:`str`): the species type of the species in the SBML test case
+
+        Returns:
+            :obj:`str`: the species id of the species type
+
+        Raises:
+            :obj:`VerificationError`: if multiple species ids are found for `species_type`, or
+                if no species id is found for `species_type`
+        """
+        species_id = None
+        for species in self.model.get_species():
+            possible_species_type_id, _ = Species.parse_id(species.id)
+            if possible_species_type_id == species_type:
+                if species_id is not None:
+                        raise VerificationError(f"multiple species ids for species_type {species_type}: "
+                                                f"{species_id} and {species.id}")
+                else:
+                    species_id = species.id
+        if species_id is None:
+            raise VerificationError(f"no species id found for species_type '{species_type}'")
+        return species_id
+
     def run(self):
         self.settings = self.read_settings()
         self.expected_predictions_df = self.read_expected_predictions()
@@ -216,9 +246,6 @@ class VerificationTestReader(object):
         return '\n'.join(rv)
 
 
-# the compartment for test cases
-TEST_CASE_COMPARTMENT = 'c'
-
 class ResultsComparator(object):
     """ Compare simulated and expected predictions """
     TOLERANCE_MAP = dict(
@@ -232,9 +259,16 @@ class ResultsComparator(object):
         # obtain default tolerances in np.allclose()
         self.default_tolerances = VerificationUtilities.get_default_args(np.allclose)
 
-    @staticmethod
-    def get_species(species_type):
-        return "{}[{}]".format(species_type, TEST_CASE_COMPARTMENT)
+    def get_species(self, species_type):
+        """ Get the species id of a species type
+
+        Args:
+            species_type (:obj:`str`): the species type of the species in the SBML test case
+
+        Returns:
+            :obj:`str`: the species id of the species type
+        """
+        return self.verification_test_reader.get_species_id(species_type)
 
     @staticmethod
     def get_species_type(string):
@@ -280,12 +314,12 @@ class ResultsComparator(object):
         if self.verification_test_reader.test_case_type == VerificationTestCaseType.CONTINUOUS_DETERMINISTIC:
             kwargs = self.prepare_tolerances()
             # todo: fix: if expected values in settings are in 'amounts' then SB moles, not concentrations
-            concentrations_df = self.simulation_run_results.get_concentrations(TEST_CASE_COMPARTMENT)
+            concentrations_df = self.simulation_run_results.get_concentrations()
             # for each prediction, determine if its trajectory is close enough to the expected predictions
             for species_type in self.verification_test_reader.settings['amount']:
-                species = ResultsComparator.get_species(species_type)
+                species_id = self.get_species(species_type)
                 if not np.allclose(self.verification_test_reader.expected_predictions_df[species_type].values,
-                    concentrations_df[species].values, **kwargs):
+                    concentrations_df[species_id].values, **kwargs):
                     differing_values.append(species_type)
             return differing_values or False
 
@@ -322,7 +356,8 @@ class ResultsComparator(object):
                 e_sd = self.zero_to_inf(e_sd)
 
                 # load simul. runs into 2D np array to find mean and SD
-                pop_mean, pop_sd = SsaEnsemble.results_mean_n_sd(self.simulation_run_results, species_type)
+                species_id = self.get_species(species_type)
+                pop_mean, pop_sd = SsaEnsemble.results_mean_n_sd(self.simulation_run_results, species_id)
                 self.simulation_pop_means[species_type] = pop_mean
                 Z = math.sqrt(n_runs) * (pop_mean - e_mean) / e_sd
 
@@ -355,15 +390,14 @@ class SsaEnsemble(object):
         return simulation_run_results
 
     @staticmethod
-    def results_mean_n_sd(simulation_run_results, species_type):
+    def results_mean_n_sd(simulation_run_results, species_id):
         times = simulation_run_results[0].get_times()
         n_times = len(times)
         n_runs = len(simulation_run_results)
         run_results_array = np.empty((n_times, n_runs))
         for idx, run_result in enumerate(simulation_run_results):
             run_pop_df = run_result.get('populations')
-            species = ResultsComparator.get_species(species_type)
-            run_results_array[:, idx] = run_pop_df.loc[:, species].values
+            run_results_array[:, idx] = run_pop_df.loc[:, species_id].values
         # take mean & sd at each time
         return run_results_array.mean(axis=1), run_results_array.std(axis=1)
 
@@ -527,8 +561,8 @@ class CaseVerifier(object):
 
                 # plot simulation pops
                 # plot second, so appears on top, and narrower width so expected shows
-                species = ResultsComparator.get_species(species_type)
-                concentrations = self.simulation_run_results.get_concentrations(TEST_CASE_COMPARTMENT)
+                species = self.verification_test_reader.get_species_id(species_type)
+                concentrations = self.simulation_run_results.get_concentrations()
                 pop_time_series = concentrations.loc[:, species]
                 simul_pops, = plt.plot(times, pop_time_series, 'b-', linewidth=0.8)
 
@@ -548,7 +582,7 @@ class CaseVerifier(object):
 
                 # plot simulation pops
                 # TODO: try making individual runs visible by slightly varying color and/or width
-                species = ResultsComparator.get_species(species_type)
+                species = self.verification_test_reader.get_species_id(species_type)
                 for rr in self.simulation_run_results[:max_runs_to_plot]:
                     pop_time_series = rr.get('populations').loc[:, species]
                     simul_pops, = plt.plot(times, pop_time_series, 'b-', linewidth=0.1)
@@ -870,7 +904,8 @@ class HybridModelVerification(object):
         pop_means = {}
         pop_sds = {}
         for species_type in settings['amount']:
-            pop_means[species_type], pop_sds[species_type] = SsaEnsemble.results_mean_n_sd(run_results, species_type)
+            # todo: fix: obtain species_id
+            pop_means[species_type], pop_sds[species_type] = SsaEnsemble.results_mean_n_sd(run_results, species_id)
 
         # construct dataframe
         times = run_results[0].get_times()
