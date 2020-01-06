@@ -387,6 +387,8 @@ class SsaEnsemble(object):
             simulation = Simulation(model)
             _, results_dir = simulation.run(**simul_kwargs)
             simulation_run_results.append(RunResults(results_dir))
+            # remove results_dir after RunResults created
+            shutil.rmtree(simul_kwargs['results_dir'])
         return simulation_run_results
 
     @staticmethod
@@ -464,7 +466,8 @@ class CaseVerifier(object):
             '''
             TODO: retry on failure
                 if failure, retry "evaluate whether mean of simulation trajectories match expected trajectory"
-                    # simulations generating the correct trajectories will fail verification (100*(p-value threshold)) percent of the time
+                    # simulations generating the correct trajectories will fail verification
+                        (100*(p-value threshold)) percent of the time
                 if failure again, report failure    # assuming p-value << 1, two failures indicates likely errors
             '''
             # TODO: convert to probabilistic test with multiple runs and p-value
