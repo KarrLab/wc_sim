@@ -14,9 +14,10 @@ import numpy
 import os
 import pandas
 
-FILE = 'test_tols_all.txt'
+FILE = '2020-01-08_test_tols_all.txt'
 
-def analyze(file):
+
+def analyze(file):  # pragma: no cover
     atols = set()
     rtols = set()
     cases = set()
@@ -24,78 +25,122 @@ def analyze(file):
     with open(file, 'r') as fh:
         for line in fh:
             fields = line.strip().split('\t')
-            if len(fields) == 5:
-                # atol	rtol	case_num	verified    run_time
+            if len(fields) == 5 or len(fields) == 4:
+                # atol	rtol	case_num	verified    [run_time]
                 verified = fields[3]
-                if verified in ['True', 'False']:
+                if verified == 'Simulation terminated with error:':
+                    verified = 'Error'
+                if verified in ['True', 'False', 'Error']:
                     atol = float(fields[0])
                     rtol = float(fields[1])
                     atols.add(atol)
                     rtols.add(rtol)
                     case = fields[2]
                     cases.add(case)
-                    verified = True if fields[3] == 'True' else False
-                    run_time = float(fields[4])
+                    try:
+                        run_time = float(fields[4])
+                    except:
+                        run_time = float('nan')
                     data[(atol, rtol, case)] = (verified, run_time)
+
+    print('atols', list(reversed(sorted(atols))))
+    print('rtols', list(sorted(rtols)))
 
     # get fraction of cases verified vs. atol & rtol
     num_solved_array = numpy.zeros((len(atols), len(rtols)))    # shape: row, column
     num_solved_df = pandas.DataFrame(num_solved_array,
-                                     index=sorted(atols),
+                                     index=reversed(sorted(atols)),
                                      columns=sorted(rtols))
     for (atol, rtol, case), values in data.items():
-        verified, run_time = values
+        verified, _ = values
+        verified = True if verified == 'True' else False
         if verified:
             num_solved_df.at[atol, rtol] = num_solved_df.at[atol, rtol] + 1
 
     # get ODE run time
     compute_time = numpy.zeros((len(atols), len(rtols)))
     compute_time_df = pandas.DataFrame(compute_time,
-                                     index=sorted(atols),
+                                     index=reversed(sorted(atols)),
                                      columns=sorted(rtols))
     for (atol, rtol, _), values in data.items():
         verified, run_time = values
+        verified = True if verified == 'True' else False
         if verified:
             compute_time_df.at[atol, rtol] = compute_time_df.at[atol, rtol] + run_time
 
-    return len(cases), num_solved_df / len(cases), compute_time_df
+    # get failure rates
+    num_failures = numpy.zeros((len(atols), len(rtols)))
+    num_failures_df = pandas.DataFrame(num_failures,
+                                     index=reversed(sorted(atols)),
+                                     columns=sorted(rtols))
+    for (atol, rtol, _), values in data.items():
+        verified, _ = values
+        if verified == 'Error':
+            num_failures_df.at[atol, rtol] = num_failures_df.at[atol, rtol] + 1
 
-# make heatmaps of tolerances vs. validation & compute time
-def plot():
+    return len(cases), num_solved_df / len(cases), compute_time_df, num_failures_df / len(cases)
+
+
+# make heatmaps of tolerances vs. validation, failures & compute time
+def plot(): # pragma: no cover
     file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'tests', 'testing',
                         'verification_results', 'ode_tuning', FILE)
     pathname = os.path.normpath(file)
-    num_cases, fraction_solved_df, compute_time_df = analyze(pathname)
+    num_cases, fraction_solved_df, compute_time_df, failures_rate_df = analyze(pathname)
 
     columns = list(fraction_solved_df.columns)
     rows = list(fraction_solved_df.index)
 
-    fig, axes = plt.subplots(1, 2)
+    fig, axes = plt.subplots(2, 2)
+    fig.suptitle('Evaluation of relative and absolute tolerances for ODE solver', fontsize=8, y=1)
+    ((ax1, ax2), (ax3, ax4)) = axes
     size = 6
     font = {'family' : 'normal',
             'size'   : size}
     matplotlib.rc('font', **font)
-    im, cbar = heatmap(fraction_solved_df.values, rows, columns, ax=axes[0],
-                       size=size, cmap="YlGn", cbarlabel="Fraction cases validated",
+    im, cbar = heatmap(fraction_solved_df.values, rows, columns, ax=ax1,
+                       size=size, cmap="Greens", cbarlabel="Fraction cases validated",
                        xlabel='rel-tol', ylabel='abs-tol',
-                       title=f'Fraction of {num_cases} SBML test cases verified')
-    texts = annotate_heatmap(im, size=size, valfmt="{x:.2f}")
+                       title=f'Verification rate on {num_cases} SBML test suite cases')
+    # texts = annotate_heatmap(im, size=size, valfmt="{x:.2f}")
 
-    im, cbar = heatmap(compute_time_df.values, rows, columns, ax=axes[1],
-                       size=size, cmap="RdBu", cbarlabel="Compute time (sec)",
+    im, cbar = heatmap(failures_rate_df.values, rows, columns, ax=ax2,
+                       size=size, cmap="Reds", cbarlabel="Failure rate",
+                       xlabel='rel-tol', ylabel='abs-tol',
+                       title=f'Failure rate of ODE solver for {num_cases} SBML test suite cases')
+
+    im, cbar = heatmap(compute_time_df.values, rows, columns, ax=ax3,
+                       size=size, cmap="RdPu", cbarlabel="Compute time (sec)",
                        xlabel='rel-tol', ylabel='abs-tol',
                        title=f'Total cpu time (sec) for {num_cases} cases')
-    texts = annotate_heatmap(im, size=size, valfmt="{x:.0f}")
 
+    # fig.delaxes(axes.flatten()[3])
+    ax4.axis('off')
+    dy = -0.05
+    metadata = ['Metadata:',
+                'Repo: wc_sim',
+                'Commit: x',
+                'ODE solver interface: scikits.odes.ode',
+                'scikits.odes version: 2.4.0',
+                'ODE solver: CVODE',
+                'Date: 2020-01-08']
+    y = 1
+    x = 0
+    indent_x = 0.1
+    for text in metadata:
+        ax4.text(x, y, text)
+        y += dy
+        x = indent_x
     fig.tight_layout()
     plot_file = os.path.join(os.path.dirname(pathname), FILE + '.pdf')
     fig.savefig(plot_file)
     plt.close(fig)
     print("Wrote: {}".format(plot_file))
 
+
 # from https://matplotlib.org/3.1.1/gallery/images_contours_and_fields/image_annotated_heatmap.html
 def heatmap(data, row_labels, col_labels, ax=None, size=None,
-            cbar_kw={}, cbarlabel="", xlabel=None, ylabel=None, title=None, **kwargs):
+            cbar_kw={}, cbarlabel="", xlabel=None, ylabel=None, title=None, **kwargs):  # pragma: no cover
     """
     Create a heatmap from a numpy array and two lists of labels.
 
@@ -137,9 +182,9 @@ def heatmap(data, row_labels, col_labels, ax=None, size=None,
     if size:
         ax.tick_params(axis='both', which='major', labelsize=size)
     if xlabel:
-        ax.set_xlabel(xlabel)
+        ax.set_xlabel(xlabel, fontsize=size)
     if ylabel:
-        ax.set_ylabel(ylabel)
+        ax.set_ylabel(ylabel, fontsize=size)
     if title:
         ax.set_title(title)
 
@@ -162,9 +207,10 @@ def heatmap(data, row_labels, col_labels, ax=None, size=None,
 
     return im, cbar
 
+
 def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
                      textcolors=["black", "white"],
-                     threshold=None, **textkw):
+                     threshold=None, **textkw): # pragma: no cover
     """
     A function to annotate a heatmap.
 
@@ -219,5 +265,6 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
             texts.append(text)
 
     return texts
+
 
 plot()
