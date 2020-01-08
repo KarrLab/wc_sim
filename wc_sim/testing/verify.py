@@ -139,7 +139,7 @@ class VerificationTestReader(object):
             self.test_case_dir, self.test_case_num+'-results.csv')
         expected_predictions_df = pd.read_csv(expected_predictions_file)
         # expected predictions should contain data for all time steps
-        times = np.linspace(self.settings['start'], self.settings['duration'], num=self.settings['steps']+1)
+        times = np.linspace(self.settings['start'], self.settings['duration'], num=int(self.settings['steps'] + 1))
         if not np.allclose(times, expected_predictions_df.time):
             raise VerificationError("times in settings '{}' differ from times in expected predictions '{}'".format(
                 self.settings_file, expected_predictions_file))
