@@ -309,7 +309,7 @@ class MultiAlgorithmSpeciesPopNode(object):
     def __init__(self,  **kwargs):
         """
         Args:
-            **kwargs (:obj:`dict`, optional): keywords for initialization
+            kwargs (:obj:`dict`, optional): keywords for initialization
                 allowed keywords:
                     `pop_before` - if supplied, will be assigned to `self.pop_before`
                     `pop_after` - if supplied, will be assigned to `self.pop_after`
