@@ -173,7 +173,7 @@ class Simulation(object):
                     "equal to end time".format(args['ode_time_step']))
 
     def run(self, end_time, results_dir=None, checkpoint_period=None, ode_time_step=1, seed=None,
-            submodels_to_skip=None, verbose=True):
+            submodels_to_skip=None, verbose=True, options=None):
         """ Run one simulation
 
         Args:
@@ -186,6 +186,7 @@ class Simulation(object):
             submodels_to_skip (:obj:`list` of :obj:`str`, optional): submodels that should not be run,
                 identified by their ids
             verbose (:obj:`bool`, optional): whether to print success output
+            options (:obj:`dict`, optional): options for submodels, passed to `MultialgorithmSimulation`
 
         Returns:
             :obj:`tuple` of (`int`, `str`): number of simulation events, pathname of directory
@@ -214,7 +215,7 @@ class Simulation(object):
 
         self.process_and_validate_args(simulation_args)
 
-        multialgorithm_simulation = MultialgorithmSimulation(self.model, simulation_args)
+        multialgorithm_simulation = MultialgorithmSimulation(self.model, simulation_args, options)
         self.simulation_engine, self.dynamic_model = multialgorithm_simulation.build_simulation()
         self.simulation_engine.initialize()
 

@@ -90,7 +90,7 @@ class SsaSubmodel(DynamicSubmodel):
         for sim_msg_type in MESSAGE_TYPES_BY_PRIORITY]
 
     def __init__(self, id, dynamic_model, reactions, species, dynamic_compartments,
-                 local_species_population, default_center_of_mass=None):
+                 local_species_population, default_center_of_mass=None, options=None):
         """ Initialize an SSA submodel object.
 
         Args:
@@ -106,11 +106,14 @@ class SsaSubmodel(DynamicSubmodel):
                 SSA submodel's species population
             default_center_of_mass (:obj:`float`, optional): the center-of-mass for the
                 :obj:`ExponentialMovingAverage`
+            options (:obj:`dict`, optional): SSA submodel options
 
         Raises:
             :obj:`MultialgorithmError`: if the initial SSA wait exponential moving average is not positive
         """
-        super().__init__(id, dynamic_model, reactions, species, dynamic_compartments, local_species_population)
+        super().__init__(id, dynamic_model, reactions, species, dynamic_compartments,
+                         local_species_population)
+        self.options = options
 
         self.num_SsaWaits=0
         if default_center_of_mass is None:

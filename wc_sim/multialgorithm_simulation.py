@@ -118,11 +118,12 @@ class MultialgorithmSimulation(object):
         _skipped_submodels (:obj:`set` of :obj:`str`): submodels that won't be run, identified by their ids
     """
 
-    def __init__(self, model, args):
+    def __init__(self, model, args, options=None):
         """
         Args:
             model (:obj:`Model`): the model being simulated
             args (:obj:`dict`): parameters for the simulation
+            options (:obj:`dict`, optional): options for submodels, keyed by submodel class name
         """
         # initialize simulation infrastructure
         self.simulation = SimulationEngine()
@@ -131,6 +132,7 @@ class MultialgorithmSimulation(object):
         # create simulation attributes
         self.model = model
         self.args = args or []
+        self.options = options
 
         self._skipped_submodels = self.prepare_skipped_submodels()
 
@@ -334,6 +336,12 @@ class MultialgorithmSimulation(object):
         Raises:
             :obj:`MultialgorithmError`: if a submodel cannot be created
         """
+        def get_options(self, submodel_class_name):
+            if self.options is not None and submodel_class_name in self.options:
+                return self.options[submodel_class_name]
+            else:
+                return {}
+
         # make the simulation's submodels
         simulation_submodels = {}
         for lang_submodel in self.model.get_submodels():
@@ -354,7 +362,8 @@ class MultialgorithmSimulation(object):
                     list(lang_submodel.reactions),
                     lang_submodel.get_children(kind='submodel', __type=Species),
                     self.get_dynamic_compartments(lang_submodel),
-                    self.local_species_population
+                    self.local_species_population,
+                    **get_options(self, 'SsaSubmodel')
                 )
 
             elif are_terms_equivalent(lang_submodel.framework, onto['WC:dynamic_flux_balance_analysis']):
@@ -366,7 +375,8 @@ class MultialgorithmSimulation(object):
                     lang_submodel.get_children(kind='submodel', __type=Species),
                     self.get_dynamic_compartments(lang_submodel),
                     self.local_species_population,
-                    self.args['dfba_time_step']
+                    self.args['dfba_time_step'],
+                    **get_options(self, 'DfbaSubmodel')
                 )
 
             elif are_terms_equivalent(lang_submodel.framework, onto['WC:ordinary_differential_equations']):
@@ -377,7 +387,8 @@ class MultialgorithmSimulation(object):
                     lang_submodel.get_children(kind='submodel', __type=Species),
                     self.get_dynamic_compartments(lang_submodel),
                     self.local_species_population,
-                    self.args['ode_time_step']
+                    self.args['ode_time_step'],
+                    **get_options(self, 'OdeSubmodel')
                 )
 
             elif are_terms_equivalent(lang_submodel.framework, onto['WC:deterministic_simulation_algorithm']):
@@ -388,7 +399,8 @@ class MultialgorithmSimulation(object):
                     list(lang_submodel.reactions),
                     lang_submodel.get_children(kind='submodel', __type=Species),
                     self.get_dynamic_compartments(lang_submodel),
-                    self.local_species_population
+                    self.local_species_population,
+                    **get_options(self, 'DsaSubmodel')
                 )
 
             else:

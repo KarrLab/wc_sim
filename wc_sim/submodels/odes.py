@@ -68,7 +68,7 @@ class OdeSubmodel(DynamicSubmodel):
     using_solver = False
 
     def __init__(self, id, dynamic_model, reactions, species, dynamic_compartments,
-                 local_species_population, ode_time_step, testing=False):
+                 local_species_population, ode_time_step, testing=False, options=None):
         """ Initialize an ODE submodel instance
 
         Args:
@@ -84,17 +84,22 @@ class OdeSubmodel(DynamicSubmodel):
                 ODE submodel's species population
             ode_time_step (:obj:`float`): initial time interval between ODE analyses
             testing (:obj:`bool`, optional): if set, produce test output
+            options (:obj:`dict`, optional): ODE submodel options
         """
         super().__init__(id, dynamic_model, reactions, species, dynamic_compartments,
                          local_species_population)
         if ode_time_step <= 0:
-            raise MultialgorithmError(f"OdeSubmodel {self.id}: ode_time_step must be positive, but is {ode_time_step}")
+            raise MultialgorithmError(f"OdeSubmodel {self.id}: ode_time_step must be positive, but is "
+                                      f"{ode_time_step}")
         self.ode_time_step = ode_time_step
         self.set_up_ode_submodel()
         self.set_up_optimizations()
-        options = {'atol': self.ABS_ODE_SOLVER_TOLERANCE,
-                   'rtol': self.REL_ODE_SOLVER_TOLERANCE}
-        self.solver = self.create_ode_solver(**options)
+        ode_solver_options = {'atol': self.ABS_ODE_SOLVER_TOLERANCE,
+                              'rtol': self.REL_ODE_SOLVER_TOLERANCE}
+        if options is not None and 'tolerances' in options:
+            ode_solver_options = {'atol': options['tolerances']['atol'],
+                                  'rtol': options['tolerances']['rtol']}
+        self.solver = self.create_ode_solver(**ode_solver_options)
         self.num_right_hand_side_calls = 0
         self.history_num_right_hand_side_calls = []
         self.testing = testing

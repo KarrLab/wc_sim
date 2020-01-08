@@ -66,22 +66,31 @@ class DfbaSubmodel(DynamicSubmodel):
         message_types.RunFba,
     ]
 
-    def __init__(self, id, dynamic_model, reactions, species, dynamic_compartment,
-        local_species_population, time_step):
-        """ Initialize an FBA submodel
-
-        # TODO(Arthur): expand description
+    def __init__(self, id, dynamic_model, reactions, species, dynamic_compartments,
+                 local_species_population, time_step, options=None):
+        """ Initialize a dFBA submodel instance
 
         Args:
-            See pydocs of super classes.
-            dynamic_model (:obj:`DynamicModel`): the aggregate state of a simulation
-            time_step: float; time between FBA executions
+            id (:obj:`str`): unique id of this dynamic dFBA submodel
+            dynamic_model (:obj: `DynamicModel`): the aggregate state of a simulation
+            reactions (:obj:`list` of `wc_lang.Reaction`): the reactions modeled by this dFBA submodel
+            species (:obj:`list` of `wc_lang.Species`): the species that participate in the reactions
+                modeled by this dFBA submodel
+            dynamic_compartments (:obj: `dict`): `DynamicCompartment`s, keyed by id, that contain
+                species which participate in reactions that this dFBA submodel models, including
+                adjacent compartments used by its transfer reactions
+            local_species_population (:obj:`LocalSpeciesPopulation`): the store that maintains this
+                dFBA submodel's species population
+            time_step (:obj:`float`): time between FBA executions
+            options (:obj:`dict`, optional): dFBA submodel options
         """
-        super().__init__(id, dynamic_model, reactions, species, dynamic_compartment, local_species_population)
+        super().__init__(id, dynamic_model, reactions, species, dynamic_compartments,
+                         local_species_population)
         self.algorithm = 'FBA'
         if time_step <= 0:
             raise MultialgorithmError("time_step must be positive, but is {}".format(time_step))
         self.time_step = time_step
+        self.options = options
 
         # log initialization data
         self.log_with_time("init: id: {}".format(id))

@@ -240,6 +240,19 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
         self.assertEqual(multialgorithm_simulation.dynamic_model.get_num_submodels(), 2)
         self.assertTrue(callable(simulation_engine.stop_condition))
 
+        # check that submodels receive options
+        dfba_options = dict(dfba='fast but inaccurate')
+        ssa_options = dict(ssa='accurate but slow')
+        options = {'DfbaSubmodel': dict(options=dfba_options),
+                   'SsaSubmodel': dict(options=ssa_options)
+                  }
+        multialgorithm_simulation = MultialgorithmSimulation(self.model, args, options)
+        multialgorithm_simulation.build_simulation()
+        dfba_submodel = multialgorithm_simulation.dynamic_model.dynamic_submodels['submodel_1']
+        ssa_submodel = multialgorithm_simulation.dynamic_model.dynamic_submodels['submodel_2']
+        self.assertEqual(dfba_submodel.options, dfba_options)
+        self.assertEqual(ssa_submodel.options, ssa_options)
+
         # test skipped submodel
         submodels_to_skip = ['submodel_2']
         self.args['submodels_to_skip'] = submodels_to_skip

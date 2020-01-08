@@ -303,6 +303,17 @@ class TestDsaSubmodel(unittest.TestCase):
         with self.assertRaises(MultialgorithmError):
             dsa_submodel.handle_ExecuteDsaReaction_msg(event)
 
+        # test DsaSubmodel options
+        expected = dict(a=1)
+        options = dict(DsaSubmodel=dict(optiona=expected))
+        options = {'DsaSubmodel': {'options': expected
+                                  }
+                  }
+        multialgorithm_simulation = MultialgorithmSimulation(self.model, dict(dfba_time_step=1), options)
+        multialgorithm_simulation.build_simulation()
+        dsa_submodel = multialgorithm_simulation.dynamic_model.dynamic_submodels['submodel_2']
+        self.assertEqual(dsa_submodel.options, expected)
+
     def test_simulate_deterministic_simulation_algorithm_submodel(self):
         model = MakeModel.make_test_model('1 species, 1 reaction')
         self.transform_model_for_dsa_simulation(model)

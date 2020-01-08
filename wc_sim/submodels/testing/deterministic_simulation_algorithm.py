@@ -48,9 +48,25 @@ class DsaSubmodel(DynamicSubmodel):
     event_handlers = [(ExecuteDsaReaction, 'handle_ExecuteDsaReaction_msg')]
 
     def __init__(self, id, dynamic_model, reactions, species, dynamic_compartments,
-                 local_species_population):
+                 local_species_population, options=None):
+        """ Initialize a DSA submodel instance
+
+        Args:
+            id (:obj:`str`): unique id of this dynamic DSA submodel
+            dynamic_model (:obj: `DynamicModel`): the aggregate state of a simulation
+            reactions (:obj:`list` of `wc_lang.Reaction`): the reactions modeled by this DSA submodel
+            species (:obj:`list` of `wc_lang.Species`): the species that participate in the reactions
+                modeled by this DSA submodel
+            dynamic_compartments (:obj: `dict`): `DynamicCompartment`s, keyed by id, that contain
+                species which participate in reactions that this DSA submodel models, including
+                adjacent compartments used by its transfer reactions
+            local_species_population (:obj:`LocalSpeciesPopulation`): the store that maintains this
+                DSA submodel's species population
+            options (:obj:`dict`, optional): DSA submodel options
+        """
         super().__init__(id, dynamic_model, reactions, species, dynamic_compartments,
                          local_species_population)
+        self.options = options
         self.reaction_table = {}
         for index, rxn in enumerate(self.reactions):
             self.reaction_table[rxn.id] = index
