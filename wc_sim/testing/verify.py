@@ -87,8 +87,6 @@ class VerificationTestReader(object):
         test_case_dir (:obj:`str`): pathname of the directory storing the test case
         test_case_num (:obj:`str`): the test case's unique ID number
         test_case_type (:obj:`VerificationTestCaseType`): the test case's type
-        volume_scales (:obj:`list` of :obj:`float`): if set, volume_final / volume_initial ratios
-            for all compartments, used to shrink them to test appropriate-sized populations
     """
     SBML_FILE_SUFFIX = '.xml'
     def __init__(self, test_case_type, test_case_dir, test_case_num):
@@ -242,7 +240,14 @@ class VerificationTestReader(object):
         rv = []
         rv.append(pformat(self.settings))
         rv.append(pformat(self.expected_predictions_df))
-        rv.append(pformat(self.model))
+        for attr in ['expected_predictions_file',
+                     'model_filename',
+                     'settings_file',
+                     'test_case_dir',
+                     'test_case_num',
+                     'test_case_type',]:
+            if hasattr(self, attr):
+                rv.append(f'{attr}: {getattr(self, attr)}')
         return '\n'.join(rv)
 
 
@@ -426,9 +431,17 @@ class CaseVerifier(object):
         self.default_num_stochastic_runs = default_num_stochastic_runs
         self.time_step_factor = time_step_factor
 
-    def verify_model(self, num_discrete_stochastic_runs=None, discard_run_results=True, plot_file=None):
+    def verify_model(self, num_discrete_stochastic_runs=None, discard_run_results=True, plot_file=None,
+                     tolerances=None):
         """ Verify a model
+
+        Args:
+            num_discrete_stochastic_runs (:obj:`int`, optional): number of stochastic runs
+            discard_run_results (:obj:`bool`, optional): whether to discard run results
+            plot_file (:obj:`str`, optional): path of plotted results, if desired
+            tolerances (:obj:`dict`, optional): if testing tolerances, values of ODE solver tolerances
         """
+
         # check settings
         required_settings = ['duration', 'steps']
         settings = self.verification_test_reader.settings
@@ -456,9 +469,10 @@ class CaseVerifier(object):
             factor = self.time_step_factor
         simul_kwargs['ode_time_step'] = factor * settings['duration']/settings['steps']
 
-        print(f"Running {self.verification_test_reader.model.id}")
         if self.verification_test_reader.test_case_type == VerificationTestCaseType.CONTINUOUS_DETERMINISTIC:
             simulation = Simulation(self.verification_test_reader.model)
+            if tolerances:
+                simul_kwargs['options'] = dict(OdeSubmodel=dict(options=dict(tolerances=tolerances)))
             _, results_dir = simulation.run(**simul_kwargs)
             self.simulation_run_results = RunResults(results_dir)
 
@@ -704,9 +718,14 @@ class VerificationSuite(object):
             self.results.append(VerificationRunResult(self.cases_dir, case_type_sub_dir, case_num,
                                                       result_type))
 
+    # default ranges for analyzing ODE solver sensitivity to tolerances
+    DEFAULT_MIN_RTOL = 1E-15
+    DEFAULT_MAX_RTOL = 1E-3
+    DEFAULT_MIN_ATOL = 1E-15
+    DEFAULT_MAX_ATOL = 1E-6
     def _run_test(self, case_type_name, case_num,
                   num_stochastic_runs=config_multialgorithm['num_ssa_verification_sim_runs'],
-                  time_step_factor=None, verbose=True):
+                  time_step_factor=None, verbose=False, tolerances=False):
         """ Run one test case and report the result
 
         Args:
@@ -716,9 +735,9 @@ class VerificationSuite(object):
             num_stochastic_runs (:obj:`int`, optional): number of Monte Carlo runs for an SSA test
             time_step_factor (:obj:`float`, optional): factor by which to change the ODE time step
             verbose (:obj:`bool`, optional): whether to produce verbose output
+            tolerances (:obj:`bool`, optional): whether to analze ODE sensitivity to tolerances
         """
-        if verbose:
-            start_time = time.process_time()
+        start_time = time.process_time()
         try:
             case_verifier = CaseVerifier(self.cases_dir, case_type_name, case_num,
                                          time_step_factor=time_step_factor)
@@ -726,6 +745,7 @@ class VerificationSuite(object):
             tb = traceback.format_exc()
             self._record_result(case_type_name, case_num, VerificationResultType.CASE_UNREADABLE, tb)
             return
+
         try:
             kwargs = {}
             if self.plot_dir:
@@ -734,28 +754,62 @@ class VerificationSuite(object):
                 kwargs['plot_file'] = plot_file
             if num_stochastic_runs:
                 kwargs['num_discrete_stochastic_runs'] = num_stochastic_runs
-            if verbose:
-                notice = "Verifying {} case {}".format(case_type_name, case_num)
-                if num_stochastic_runs is not None:
-                    notice += " with {} runs".format(num_stochastic_runs)
-                print(notice)
-            verification_result = case_verifier.verify_model(**kwargs)
-            if verbose:
-                run_time = time.process_time() - start_time
-                print("run time: {:.3f} sec".format(run_time))
+
+            if tolerances:
+                # iterate over tolerances
+                min_rtol = self.DEFAULT_MIN_RTOL
+                max_rtol = self.DEFAULT_MAX_RTOL
+                min_atol = self.DEFAULT_MIN_ATOL
+                max_atol = self.DEFAULT_MAX_ATOL
+                rtol = min_rtol
+                header = ['atol', 'rtol', 'case_num', 'verified', 'run_time (s)']
+                print('\t'.join(header))
+                while rtol <= max_rtol * 1.01:
+                    atol = min_atol
+                    while atol <= max_atol * 1.01:
+                        tolerances_dict = dict(atol=atol, rtol=rtol)
+                        kwargs['tolerances'] = tolerances_dict
+                        try:
+                            verification_result = case_verifier.verify_model(**kwargs)
+                            if verification_result:
+                                self._record_result(case_type_name, case_num,
+                                                    VerificationResultType.CASE_DID_NOT_VERIFY,
+                                                    verification_result)
+                            else:
+                                self._record_result(case_type_name, case_num,
+                                                    VerificationResultType.CASE_VERIFIED)
+                            run_time = time.process_time() - start_time
+                            results = [f"{tolerances_dict['atol']:.2e}", f"{tolerances_dict['rtol']:.2e}",
+                                       f"{case_num}", f"{not verification_result}", f"{run_time:.2e}"]
+                            print('\t'.join(results), flush=True)
+                        except Exception as e:
+                            results = [f"{tolerances_dict['atol']:.2e}", f"{tolerances_dict['rtol']:.2e}",
+                                       f"{case_num}", f"{str(e)}", f"{float('nan')}"]
+                            print('\t'.join(results), flush=True)
+
+                        atol *= 10
+                    rtol *= 10
+            else:
+                if verbose:
+                    notice = "Verifying {} case {}".format(case_type_name, case_num)
+                    if num_stochastic_runs is not None:
+                        notice += " with {} runs".format(num_stochastic_runs)
+                    print(notice)
+                verification_result = case_verifier.verify_model(**kwargs)
+                if verbose:
+                    run_time = time.process_time() - start_time
+                    print("run time: {:.3f} sec".format(run_time))
+                if verification_result:
+                    self._record_result(case_type_name, case_num, VerificationResultType.CASE_DID_NOT_VERIFY,
+                                        verification_result)
+                    print(f"{case_type_name} {case_num} did not verify")
+                else:
+                    self._record_result(case_type_name, case_num, VerificationResultType.CASE_VERIFIED)
+                    print(f"{case_type_name} {case_num} verified")
 
         except Exception as e:
-            raise e
             tb = traceback.format_exc()
             self._record_result(case_type_name, case_num, VerificationResultType.FAILED_VERIFICATION_RUN, tb)
-            return
-        if verification_result:
-            self._record_result(case_type_name, case_num, VerificationResultType.CASE_DID_NOT_VERIFY,
-                                verification_result)
-            print(f"{case_type_name} {case_num} did not verify")
-        else:
-            self._record_result(case_type_name, case_num, VerificationResultType.CASE_VERIFIED)
-            print(f"{case_type_name} {case_num} verified")
 
     def run(self, test_case_type_name=None, cases=None, num_stochastic_runs=None, time_step_factor=None,
             verbose=False):
