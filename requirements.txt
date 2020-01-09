@@ -4,7 +4,7 @@ cobra
 matplotlib
 numpy
 pandas
-pint >= 0.9
+pint >= 0.10
 python_libsedml
 recordtype
 scikits.odes

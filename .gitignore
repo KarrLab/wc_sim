@@ -73,6 +73,7 @@ README.rst
 # temporary files
 .~lock*
 ~$*.xls*
+.~*.xlsx
 
 # Jupyter files #
 #################
@@ -81,6 +82,7 @@ README.rst
 # test results
 ################
 tests/results/
+tests/testing/tmp/
 
 examples/**/*.h5
 examples/**/*.pickle
