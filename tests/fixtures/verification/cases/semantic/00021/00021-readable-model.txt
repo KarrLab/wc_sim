@@ -1,0 +1,10 @@
+S1 -> 2 S2 @ k1 * S1 * compartment
+2 S2 -> S1 @ k2 * S2 * S2 * compartment
+
+Initial conditions:
+
+Amount of S1              1.5 10^-4   mole
+Amount of S2              0           mole
+Parameter k1              0.35        second^-1
+Parameter k2            180           litre mole^-1 second^-1
+Volume of compartment     0.3         litre
