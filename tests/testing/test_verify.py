@@ -374,8 +374,6 @@ class TestCaseVerifier(unittest.TestCase):
         os.makedirs(os.path.dirname(plot_file), exist_ok=True)
         return plot_file
 
-    # todo: fix
-    @unittest.skip('broken')
     def test_case_verifier(self):
         for model_type in self.model_types:
             plot_file = self.make_plot_file(model_type)
@@ -528,26 +526,24 @@ class RunVerificationSuite(unittest.TestCase):
             SsaTestCase('00030', '003-01', (1, 2), NUM_SIMULATION_RUNS),
             SsaTestCase('00037', '004-01', (0, 1), 4 * NUM_SIMULATION_RUNS)
         ]
-        # todo: get rid of TIME_STEP_FACTOR
-        TIME_STEP_FACTOR = 1
         self.ode_test_cases = [
-            ('00001', TIME_STEP_FACTOR),
-            ('00002', TIME_STEP_FACTOR),
-            ('00003', TIME_STEP_FACTOR),
-            ('00004', TIME_STEP_FACTOR),
-            ('00005', TIME_STEP_FACTOR),
-            ('00006', TIME_STEP_FACTOR),
-            ('00010', TIME_STEP_FACTOR),
-            ('00014', TIME_STEP_FACTOR),
-            ('00015', TIME_STEP_FACTOR),    # does not verify
-            ('00017', TIME_STEP_FACTOR),
-            ('00018', TIME_STEP_FACTOR),
-            ('00019', TIME_STEP_FACTOR),
-            ('00020', TIME_STEP_FACTOR),
-            ('00021', TIME_STEP_FACTOR),    # does not verify
-            ('00022', TIME_STEP_FACTOR),
-            ('00028', TIME_STEP_FACTOR),
-            ('00054', TIME_STEP_FACTOR), # 2 compartments
+            '00001',
+            '00002',
+            '00003',
+            '00004',
+            '00005',
+            '00006',
+            '00010',
+            '00014',
+            '00015',    # does not verify
+            '00017',
+            '00018',
+            '00019',
+            '00020',
+            '00021',
+            '00022',
+            '00028',
+            '00054', # 2 compartments
         ]
         self.root_test_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', 'fixtures',
                                               'verification', 'cases'))
@@ -556,16 +552,15 @@ class RunVerificationSuite(unittest.TestCase):
         os.makedirs(self.plot_dir, exist_ok=True)
         self.verification_suite = VerificationSuite(self.root_test_dir, self.plot_dir)
 
-    def run_verification_cases(self, case_type, verification_cases, testing=False, time_step_factor=None):
+    def run_verification_cases(self, case_type, verification_cases, testing=False):
 
         if case_type == 'DISCRETE_STOCHASTIC':
             for ssa_test_case in verification_cases:
                 self.verification_suite.run(case_type, [ssa_test_case.case_num],
-                                            num_stochastic_runs=ssa_test_case.num_ssa_runs,
-                                            verbose=True, time_step_factor=time_step_factor)
+                                            num_stochastic_runs=ssa_test_case.num_ssa_runs, verbose=True)
 
         if case_type == 'CONTINUOUS_DETERMINISTIC':
-            for test_case, time_step_factor in verification_cases:
+            for test_case in verification_cases:
                 '''
                 # todo: compare and report detailed results: don't print here
                 print('\t'.join(odes.OdeSubmodel.run_ode_solver_header))
@@ -581,8 +576,7 @@ class RunVerificationSuite(unittest.TestCase):
                 print('expected derivatives (molecule/sec)')
                 print(derivatives_df)
                 '''
-                self.verification_suite.run(case_type, [test_case], time_step_factor=time_step_factor,
-                                            verbose=True)
+                self.verification_suite.run(case_type, [test_case], verbose=True)
                 # todo: compare and report detailed results: combine expected amounts and derivatives with
                 # ODE log file, & plot
 
@@ -602,6 +596,7 @@ class RunVerificationSuite(unittest.TestCase):
         else:
             print('\nfailure(s):', '\n'.join(failures))
         return self.verification_suite.get_results(), failures, successes
+        # todo: convert failures into failed tests
 
     def test_verification_stochastic(self):
         # todo: move to verification main program
@@ -614,6 +609,9 @@ class RunVerificationSuite(unittest.TestCase):
         self.assertEqual(orders_verified, {0, 1, 2})
 
     def test_verification_deterministic(self):
+        # todo: set good tolerances for SBML test cases
+        # abs_ode_solver_tolerance = 1e-10
+        # rel_ode_solver_tolerance = 1e-8
         self.run_verification_cases('CONTINUOUS_DETERMINISTIC', self.ode_test_cases)
 
     @unittest.skip('Fails on first 150 SBML models in the test suite')

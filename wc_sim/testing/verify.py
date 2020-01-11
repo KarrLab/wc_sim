@@ -313,7 +313,7 @@ class ResultsComparator(object):
 
         Returns:
             :obj:`obj`: `False` if populations in the expected result and simulation run are equal
-                within tolerances, otherwise :obj:`list`: of species types with differing values
+                within tolerances, otherwise :obj:`list`: of species types whose populations differ
         """
         differing_values = []
         if self.verification_test_reader.test_case_type == VerificationTestCaseType.CONTINUOUS_DETERMINISTIC:
@@ -410,7 +410,20 @@ class SsaEnsemble(object):
 
 
 class CaseVerifier(object):
-    """ Verify a test case """
+    """ Verify a test case
+
+    Attributes:
+        default_num_stochastic_runs (:obj:`int`): default number of Monte Carlo runs for SSA simulations
+        num_runs (:obj:`int`): actual number of Monte Carlo runs for an SSA test
+        results_comparator (:obj:`ResultsComparator`): object that compares expected and actual predictions
+        simulation_run_results (:obj:`RunResults`): results for a simulation run
+        test_case_dir (:obj:`str`): directory containing the test case
+        time_step_factor (:obj:`float`): factor by which to multiply the ODE time step
+        tmp_results_dir (:obj:`str`): temporary directory for simulation results
+        verification_test_reader (:obj:`VerificationTestReader`): the test case's reader
+        comparison_result (:obj:`obj`): `False` if populations in the expected result and simulation run
+            are equal within tolerances, otherwise :obj:`list`: of species types whose populations differ
+    """
     def __init__(self, test_cases_root_dir, test_case_type, test_case_num,
                  default_num_stochastic_runs=config_multialgorithm['num_ssa_verification_sim_runs'],
                  time_step_factor=None):
@@ -440,6 +453,10 @@ class CaseVerifier(object):
             discard_run_results (:obj:`bool`, optional): whether to discard run results
             plot_file (:obj:`str`, optional): path of plotted results, if desired
             tolerances (:obj:`dict`, optional): if testing tolerances, values of ODE solver tolerances
+
+        Returns:
+            :obj:`obj`: `False` if populations in the expected result and simulation run are equal
+                within tolerances, otherwise :obj:`list`: of species types whose populations differ
         """
 
         # check settings
@@ -463,40 +480,50 @@ class CaseVerifier(object):
                             results_dir=tmp_results_dir,
                             verbose= False)
 
-        ## 1. run simulation
         factor = 1
         if self.time_step_factor is not None:
             factor = self.time_step_factor
         simul_kwargs['ode_time_step'] = factor * settings['duration']/settings['steps']
 
         if self.verification_test_reader.test_case_type == VerificationTestCaseType.CONTINUOUS_DETERMINISTIC:
+            ## 1. run simulation
             simulation = Simulation(self.verification_test_reader.model)
             if tolerances:
                 simul_kwargs['options'] = dict(OdeSubmodel=dict(options=dict(tolerances=tolerances)))
             _, results_dir = simulation.run(**simul_kwargs)
             self.simulation_run_results = RunResults(results_dir)
 
+            ## 2. compare results
+            self.results_comparator = ResultsComparator(self.verification_test_reader, self.simulation_run_results)
+            self.comparison_result = self.results_comparator.differs()
+
         if self.verification_test_reader.test_case_type == VerificationTestCaseType.DISCRETE_STOCHASTIC:
-            '''
-            TODO: retry on failure
-                if failure, retry "evaluate whether mean of simulation trajectories match expected trajectory"
-                    # simulations generating the correct trajectories will fail verification
-                        (100*(p-value threshold)) percent of the time
-                if failure again, report failure    # assuming p-value << 1, two failures indicates likely errors
-            '''
-            # TODO: convert to probabilistic test with multiple runs and p-value
             # make multiple simulation runs with different random seeds
             if num_discrete_stochastic_runs is not None:
                 num_runs = num_discrete_stochastic_runs
             else:
                 num_runs = self.default_num_stochastic_runs
             self.num_runs = num_runs
-            self.simulation_run_results = \
-                SsaEnsemble.run(self.verification_test_reader.model, simul_kwargs, tmp_results_dir, num_runs)
 
-        ## 2. compare results
-        self.results_comparator = ResultsComparator(self.verification_test_reader, self.simulation_run_results)
-        self.comparison_result = self.results_comparator.differs()
+            ## retry on failure
+            # if failure, rerun and evaluate; correct simulations will fail to verify
+            # (100*(p-value threshold)) percent of the time
+            # assuming p-value << 1, two failures indicate a likely error
+            # if failure repeats, report it
+            MAX_TRIES = 2
+            try_num = 1
+            while try_num <= MAX_TRIES:
+                ## 1. run simulation
+                self.simulation_run_results = \
+                    SsaEnsemble.run(self.verification_test_reader.model, simul_kwargs, tmp_results_dir, num_runs)
+
+                ## 2. compare results
+                self.results_comparator = ResultsComparator(self.verification_test_reader, self.simulation_run_results)
+                self.comparison_result = self.results_comparator.differs()
+                # if model & simulation verify, don't retry
+                if not self.comparison_result:
+                    break
+                try_num += 1
 
         ## 3 plot comparison of actual and expected trajectories
         if plot_file:
@@ -568,26 +595,33 @@ class CaseVerifier(object):
         plot_num = 1
         if self.verification_test_reader.test_case_type == VerificationTestCaseType.CONTINUOUS_DETERMINISTIC:
             times = self.simulation_run_results.get_times()
+            simulated_concentrations = self.simulation_run_results.get_concentrations()
             for species_type in self.verification_test_reader.settings['amount']:
                 plt.subplot(n_rows, n_cols, plot_num)
 
-                # plot expected predictions
-                expected_kwargs = dict(color='red', linewidth=1.2)
-                expected_mean_df = self.verification_test_reader.expected_predictions_df.loc[:, species_type]
-                correct_mean, = plt.plot(times, expected_mean_df.values, **expected_kwargs)
+                # linestyles, designed so simulated and expected curves which are equal will both be visible
+                dashdotted = (0, (2, 3, 3, 2))
+                loosely_dashed = (0, (4, 6))
+                linewidth = 0.8
+                expected_plot_kwargs = dict(color='red', linestyle=dashdotted,
+                                            linewidth=linewidth)
+                simulated_plot_kwargs = dict(color='blue', linestyle=loosely_dashed,
+                                             linewidth=linewidth)
 
-                # plot simulation pops
-                # plot second, so appears on top, and narrower width so expected shows
+                # plot expected predictions
+                expected_mean_df = self.verification_test_reader.expected_predictions_df.loc[:, species_type]
+                correct_mean, = plt.plot(times, expected_mean_df.values, **expected_plot_kwargs)
+
+                # plot simulation populations
                 species = self.verification_test_reader.get_species_id(species_type)
-                concentrations = self.simulation_run_results.get_concentrations()
-                pop_time_series = concentrations.loc[:, species]
-                simul_pops, = plt.plot(times, pop_time_series, 'b-', linewidth=0.8)
+                species_simulated_conc = simulated_concentrations.loc[:, species]
+                simul_pops, = plt.plot(times, species_simulated_conc, **simulated_plot_kwargs)
 
                 units = 'M'
                 plt.ylabel(f'{species_type} ({units})', fontsize=10)
                 plt.xlabel('time (s)', fontsize=10)
                 plt.legend((simul_pops, correct_mean),
-                    ('{} simulation run'.format(species_type), 'Correct concentration'),
+                    (f'{species_type} simulation run', 'Correct concentration'),
                     loc='lower left', fontsize=legend_fontsize)
                 plot_num += 1
 

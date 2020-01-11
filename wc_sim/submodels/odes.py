@@ -288,6 +288,13 @@ class OdeSubmodel(DynamicSubmodel):
         if solution.flag != StatusEnum.SUCCESS:   # pragma: no cover
             raise MultialgorithmError(f"OdeSubmodel {self.id}: solver step() error: '{solution.message}' "
                                       f"for time step [{self.time}, {end_time})")
+        if solution.errors.t:
+            print('solution.errors.t:', solution.errors.t)
+        if solution.errors.y:
+            print('solution.errors.y:', solution.errors.y)
+        SUCCESSFUL_RETURN_MSG = 'Successful function return.'
+        if solution.message != SUCCESSFUL_RETURN_MSG:   # pragma: no cover
+            print('solution.message:', solution.message)
 
         ### store results in local_species_population ###
         solution_time = solution.values.t[1]
@@ -301,10 +308,6 @@ class OdeSubmodel(DynamicSubmodel):
 
         if self.testing and self.time == 0:
             print('time_advance:',time_advance)
-            if solution.errors.t:
-                print('solution.errors.t:', solution.errors.t)
-            if solution.errors.y:
-                print('solution.errors.y:', solution.errors.y)
             print('population_changes:',population_changes)
             print('population_change_rates:',population_change_rates)
             print('self.ode_species_ids', self.ode_species_ids)
