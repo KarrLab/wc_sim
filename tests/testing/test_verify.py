@@ -560,25 +560,8 @@ class RunVerificationSuite(unittest.TestCase):
                                             num_stochastic_runs=ssa_test_case.num_ssa_runs, verbose=True)
 
         if case_type == 'CONTINUOUS_DETERMINISTIC':
-            for test_case in verification_cases:
-                '''
-                # todo: compare and report detailed results: don't print here
-                print('\t'.join(odes.OdeSubmodel.run_ode_solver_header))
-                test_case_dir = os.path.join(self.root_test_dir, TEST_CASE_TYPE_TO_DIR[case_type], test_case)
-                test_reader = VerificationTestReader(case_type, test_case_dir, test_case)
-                test_reader.run()
-                volume = 1
-                derivatives_df = test_reader.slope_of_predictions()
-                # molar/sec = moles / (liter sec)
-                # moles / (liter sec) * NA (molecule/mole) * volume (liter) -> molecule/sec
-                for species in test_reader.species_columns():
-                    derivatives_df[species] = derivatives_df[species] * Avogadro * volume
-                print('expected derivatives (molecule/sec)')
-                print(derivatives_df)
-                '''
-                self.verification_suite.run(case_type, [test_case], verbose=True)
-                # todo: compare and report detailed results: combine expected amounts and derivatives with
-                # ODE log file, & plot
+            for ode_test_case in verification_cases:
+                self.verification_suite.run(case_type, [ode_test_case], verbose=True)
 
         failures = []
         successes = []
@@ -591,12 +574,12 @@ class RunVerificationSuite(unittest.TestCase):
                 successes.append("{} {}".format(result.case_num, result.result_type.name))
         if testing:
             self.assertTrue(failures == [], msg='\n'.join(successes + failures))
-        if not failures:
-            print('\nsuccesses(s):', '\n'.join(successes))
-        else:
-            print('\nfailure(s):', '\n'.join(failures))
+        if successes:
+            print('\nsuccess(es):\n' + '\n'.join(successes))
+        if failures:
+            msg = "SBML test suite case(s) failed validation:\n" + '\n'.join(failures)
+            self.fail(msg=msg)
         return self.verification_suite.get_results(), failures, successes
-        # todo: convert failures into failed tests
 
     def test_verification_stochastic(self):
         # todo: move to verification main program
