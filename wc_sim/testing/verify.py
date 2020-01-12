@@ -444,6 +444,8 @@ class CaseVerifier(object):
         self.default_num_stochastic_runs = default_num_stochastic_runs
         self.time_step_factor = time_step_factor
 
+    # maximum number of attempts to verify an SSA model
+    MAX_TRIES = 3
     def verify_model(self, num_discrete_stochastic_runs=None, discard_run_results=True, plot_file=None,
                      tolerances=None):
         """ Verify a model
@@ -510,9 +512,8 @@ class CaseVerifier(object):
             # (100*(p-value threshold)) percent of the time
             # assuming p-value << 1, two failures indicate a likely error
             # if failure repeats, report it
-            MAX_TRIES = 2
             try_num = 1
-            while try_num <= MAX_TRIES:
+            while try_num <= self.MAX_TRIES:
                 ## 1. run simulation
                 self.simulation_run_results = \
                     SsaEnsemble.run(self.verification_test_reader.model, simul_kwargs, tmp_results_dir, num_runs)
