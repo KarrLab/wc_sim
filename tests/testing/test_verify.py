@@ -535,7 +535,7 @@ class RunVerificationSuite(unittest.TestCase):
             '00006',
             '00010',
             '00014',
-            '00015',    # does not verify
+            '00015',
             '00017',
             '00018',
             '00019',
