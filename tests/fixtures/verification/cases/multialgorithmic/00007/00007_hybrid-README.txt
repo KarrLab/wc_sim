@@ -1,0 +1,1 @@
+Contains a hybrid test model based on the SBML stochastic 00007 test case
