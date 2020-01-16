@@ -51,11 +51,11 @@ class TestODETestIterators(unittest.TestCase):
             next(geometric_iterator(.1, 0.3, .6))
 
     def test_ode_test_iterator(self):
-        ode_test_iterator = ODETestIterators.ode_test_iterator
+        ode_test_generator = ODETestIterators.ode_test_generator
         default_rtol = config_multialgorithm['rel_ode_solver_tolerance']
         default_atol = config_multialgorithm['abs_ode_solver_tolerance']
         self.assertEqual([{'ode_time_step_factor': 1.0, 'rtol': default_rtol, 'atol': default_atol}],
-                         list(ode_test_iterator()))
+                         list(ode_test_generator()))
 
         def close_dicts(d1, d2):
             if set(d1.keys()) != set(d2.keys()):
@@ -69,7 +69,7 @@ class TestODETestIterators(unittest.TestCase):
         max_rtol = 1E-8
         rtol_range = dict(min=min_rtol, max=max_rtol)
         tolerance_ranges = {'rtol': rtol_range}
-        generated_test_arguments = list(ode_test_iterator(tolerance_ranges=tolerance_ranges))
+        generated_test_arguments = list(ode_test_generator(tolerance_ranges=tolerance_ranges))
         first_kwargs = generated_test_arguments[0]
         last_kwargs = generated_test_arguments[-1]
         self.assertTrue(close_dicts({'ode_time_step_factor': 1.0, 'rtol': min_rtol, 'atol': default_atol},
@@ -81,7 +81,7 @@ class TestODETestIterators(unittest.TestCase):
         max_atol = 1E-7
         atol_range = dict(min=min_atol, max=max_atol)
         tolerance_ranges = {'atol': atol_range}
-        generated_test_arguments = list(ode_test_iterator(tolerance_ranges=tolerance_ranges))
+        generated_test_arguments = list(ode_test_generator(tolerance_ranges=tolerance_ranges))
         first_kwargs = generated_test_arguments[0]
         last_kwargs = generated_test_arguments[-1]
         self.assertTrue(close_dicts({'ode_time_step_factor': 1.0, 'rtol': default_rtol, 'atol': min_atol},
@@ -91,7 +91,7 @@ class TestODETestIterators(unittest.TestCase):
 
         tolerance_ranges = {'rtol': rtol_range,
                             'atol': atol_range}
-        generated_test_arguments = list(ode_test_iterator(tolerance_ranges=tolerance_ranges))
+        generated_test_arguments = list(ode_test_generator(tolerance_ranges=tolerance_ranges))
         first_kwargs = generated_test_arguments[0]
         last_kwargs = generated_test_arguments[-1]
         self.assertTrue(close_dicts({'ode_time_step_factor': 1.0, 'rtol': min_rtol, 'atol': min_atol},
@@ -100,7 +100,7 @@ class TestODETestIterators(unittest.TestCase):
                         last_kwargs))
 
         ts_fcts = [.5, .1, 0.01]
-        generated_test_arguments = list(ode_test_iterator(ode_time_step_factors=ts_fcts,
+        generated_test_arguments = list(ode_test_generator(ode_time_step_factors=ts_fcts,
                                                           tolerance_ranges=tolerance_ranges))
         first_kwargs = generated_test_arguments[0]
         last_kwargs = generated_test_arguments[-1]
@@ -154,7 +154,8 @@ class TestVerificationTestReader(unittest.TestCase):
 
         # wrong time sequence
         verification_test_reader.settings['duration'] += 1
-        with self.assertRaisesRegexp(VerificationError, "times in settings .* differ from times in expected predictions"):
+        with self.assertRaisesRegexp(VerificationError,
+                                     "times in settings .* differ from times in expected predictions"):
             verification_test_reader.read_expected_predictions()
         verification_test_reader.settings['duration'] -= 1
 
@@ -210,6 +211,13 @@ class TestVerificationTestReader(unittest.TestCase):
         test_case_num = '00001'
         verification_test_reader = make_verification_test_reader(test_case_num, 'DISCRETE_STOCHASTIC')
         self.assertEqual(None, verification_test_reader.run())
+
+        # test __str__()
+        self.assertIn('duration', str(verification_test_reader))
+        self.assertIn('time', str(verification_test_reader))
+        for attr_colon in ['expected_predictions_file:', 'model_filename:', 'settings_file:',
+                           'test_case_dir:', 'test_case_num:', 'test_case_type:']:
+            self.assertIn(attr_colon, str(verification_test_reader))
 
         # test exceptions
         with self.assertRaisesRegexp(VerificationError, "Unknown VerificationTestCaseType:"):
@@ -424,15 +432,22 @@ class TestResultsComparator(unittest.TestCase):
 class TestCaseVerifier(unittest.TestCase):
 
     def setUp(self):
-        print(self.id())
         self.test_case_num = '00001'
         self.tmp_dir = os.path.join(os.path.dirname(__file__), 'tmp')
         self.case_verifiers = {}
         self.model_types = ['DISCRETE_STOCHASTIC', 'CONTINUOUS_DETERMINISTIC']
         for model_type in self.model_types:
             self.case_verifiers[model_type] = CaseVerifier(TEST_CASES, model_type, self.test_case_num,
-                                                           default_num_stochastic_runs=30,
-                                                           time_step_factor=0.01)
+                                                           default_num_stochastic_runs=10)
+
+    def test_init_optional_args(self):
+        case_verifier = CaseVerifier(TEST_CASES, 'DISCRETE_STOCHASTIC', self.test_case_num)
+        self.assertEqual(case_verifier.default_num_stochastic_runs,
+                         config_multialgorithm['num_ssa_verification_sim_runs'])
+        num_runs = 10
+        case_verifier = CaseVerifier(TEST_CASES, 'DISCRETE_STOCHASTIC', self.test_case_num,
+                                     default_num_stochastic_runs=num_runs)
+        self.assertEqual(case_verifier.default_num_stochastic_runs, num_runs)
 
     def test_case_verifier_errors(self):
         for model_type in self.model_types:
@@ -456,37 +471,66 @@ class TestCaseVerifier(unittest.TestCase):
         os.makedirs(os.path.dirname(plot_file), exist_ok=True)
         return plot_file
 
-    @unittest.skip('too slow')
     def test_case_verifier(self):
         for model_type in self.model_types:
             plot_file = self.make_plot_file(model_type)
             self.assertFalse(self.case_verifiers[model_type].verify_model(plot_file=plot_file))
             self.assertTrue(os.path.isfile(plot_file))
 
-    def test_verify_model_tolerances(self):
+    def test_verify_model_stochastic_fails(self):
+        # test a failure despite running CaseVerifier.MAX_TRIES
+        discrete_verifier = self.case_verifiers['DISCRETE_STOCHASTIC']
+        # alter the expected predictions
+        expected_predictions_df = discrete_verifier.verification_test_reader.expected_predictions_df
+        expected_predictions_df.loc[:, 'X-mean'] *= 2
+        comparison_result = discrete_verifier.verify_model(num_discrete_stochastic_runs=3)
+        self.assertTrue(comparison_result)
+
+    def test_verify_model_optional_args(self):
+        discrete_verifier = self.case_verifiers['DISCRETE_STOCHASTIC']
+        continuous_verifier = self.case_verifiers['CONTINUOUS_DETERMINISTIC']
+
+        # test num_discrete_stochastic_runs
+        comparison_result = discrete_verifier.verify_model(num_discrete_stochastic_runs=3)
+        self.assertFalse(comparison_result)
+        comparison_result = discrete_verifier.verify_model(num_discrete_stochastic_runs=0)
+        self.assertFalse(comparison_result)
+
+        # test discard_run_results
+        comparison_result = continuous_verifier.verify_model(discard_run_results=True)
+        self.assertFalse(comparison_result)
+        self.assertFalse(os.path.isdir(continuous_verifier.tmp_results_dir))
+        comparison_result = continuous_verifier.verify_model(discard_run_results=False)
+        self.assertFalse(comparison_result)
+        self.assertTrue(os.path.isdir(continuous_verifier.tmp_results_dir))
+
+        # test ode_time_step_factor
+        ode_time_step_factor = 1.0
+        comparison_result = continuous_verifier.verify_model(ode_time_step_factor=ode_time_step_factor)
+        self.assertFalse(comparison_result)
+
         # test tolerances
         test_atol = 1E-10
         test_rtol = 1E-10
         tolerances = dict(atol=test_atol, rtol=test_rtol)
-        comparison_result = self.case_verifiers['CONTINUOUS_DETERMINISTIC'].verify_model(tolerances=tolerances)
+        comparison_result = continuous_verifier.verify_model(tolerances=tolerances)
         self.assertFalse(comparison_result)
 
-    # test verification failure
-    # todo: move to separate test
-    '''
-    expected_preds_df = self.case_verifiers[model_type].verification_test_reader.expected_predictions_df
-    expected_preds_array = expected_preds_df.loc[:, 'X-mean'].values
-    expected_preds_df.loc[:, 'X-mean'] = np.full(expected_preds_array.shape, 0)
-    self.assertEqual(['X'], self.case_verifiers[model_type].verify_model(
-        discard_run_results=False, plot_file=self.make_plot_file(model_type)))
-    '''
-    # todo: test deletion (and not) of run_results
+    def test_plot_model_verification(self):
+        discrete_verifier = self.case_verifiers['DISCRETE_STOCHASTIC']
+        for presentation_qual in [True, False]:
+            plot_file = self.make_plot_file('DISCRETE_STOCHASTIC')
+            comparison_result = discrete_verifier.verify_model(num_discrete_stochastic_runs=5)
+            discrete_verifier.plot_model_verification(plot_file, presentation_qual=presentation_qual)
+            self.assertTrue(os.path.isfile(plot_file))
+            # alter the expected predictions, so second plot shows failed verification
+            expected_predictions_df = discrete_verifier.verification_test_reader.expected_predictions_df
+            expected_predictions_df.loc[:, 'X-mean'] *= 2
 
 
 class TestVerificationSuite(unittest.TestCase):
 
     def setUp(self):
-        print(self.id())
         self.tmp_dir = tempfile.mkdtemp()
         self.verification_suite = VerificationSuite(TEST_CASES, self.tmp_dir)
 
@@ -511,15 +555,18 @@ class TestVerificationSuite(unittest.TestCase):
         self.assertEqual(len(self.verification_suite.results), 1)
         self.assertEqual(self.verification_suite.results[-1], result)
 
-        result = VerificationRunResult(TEST_CASES, sub_dir, '00001', VerificationResultType.CASE_UNREADABLE, 0)
+        result = VerificationRunResult(TEST_CASES, sub_dir, '00001',
+                                       VerificationResultType.CASE_UNREADABLE, 0)
         self.verification_suite._record_result(*result[1:])
         self.assertEqual(len(self.verification_suite.results), 2)
         self.assertEqual(self.verification_suite.results[-1], result)
 
-        with self.assertRaisesRegexp(VerificationError, "result_type must be a VerificationResultType, not a"):
-            self.verification_suite._record_result(TEST_CASES, sub_dir, '00001', 'not a VerificationResultType')
+        with self.assertRaisesRegexp(VerificationError,
+                                     "result_type must be a VerificationResultType, not a"):
+            self.verification_suite._record_result(TEST_CASES, sub_dir, '00001',
+                                                   'not a VerificationResultType')
 
-    def test_run_test(self):
+    def test__run_test(self):
         test_case_num = '00001'
         self.verification_suite._run_test('CONTINUOUS_DETERMINISTIC', test_case_num)
         results = self.verification_suite.get_results()
@@ -530,11 +577,27 @@ class TestVerificationSuite(unittest.TestCase):
         # test without plotting
         verification_suite = VerificationSuite(TEST_CASES)
         verification_suite._run_test('CONTINUOUS_DETERMINISTIC', test_case_num)
-        self.assertEqual(verification_suite.results.pop().result_type, VerificationResultType.CASE_VERIFIED)
+        self.assertEqual(verification_suite.results.pop().result_type,
+                         VerificationResultType.CASE_VERIFIED)
+
+        # be verbose
+        verification_suite = VerificationSuite(TEST_CASES)
+        with CaptureOutput(relay=False) as capturer:
+            verification_suite._run_test('CONTINUOUS_DETERMINISTIC', test_case_num, verbose=True)
+            self.assertIn('Verifying CONTINUOUS_DETERMINISTIC case 00001', capturer.get_text())
+
+        # rtol or atol, but not both
+        default_rtol = config_multialgorithm['rel_ode_solver_tolerance']
+        self.verification_suite._run_test('CONTINUOUS_DETERMINISTIC', test_case_num, rtol=default_rtol)
+        self.assertEqual(results.pop().result_type, VerificationResultType.CASE_VERIFIED)
+
+        default_atol = config_multialgorithm['abs_ode_solver_tolerance']
+        self.verification_suite._run_test('CONTINUOUS_DETERMINISTIC', test_case_num, atol=default_atol)
+        self.assertEqual(results.pop().result_type, VerificationResultType.CASE_VERIFIED)
 
         # case unreadable
         verification_suite = VerificationSuite(TEST_CASES)
-        self.verification_suite._run_test('stochastic', test_case_num, num_stochastic_runs=5)
+        self.verification_suite._run_test('invalid_case_type_name', test_case_num)
         self.assertEqual(results.pop().result_type, VerificationResultType.CASE_UNREADABLE)
 
         # run fails
@@ -546,28 +609,27 @@ class TestVerificationSuite(unittest.TestCase):
         self.assertEqual(verification_suite.results.pop().result_type,
                          VerificationResultType.FAILED_VERIFICATION_RUN)
 
-        # tolerances
-        test_case_num = '00001'
-        verification_suite = VerificationSuite(TEST_CASES)
-        # narrow the ranges so the test runs quickly
-        VerificationSuite.DEFAULT_MIN_RTOL = 1E-10
-        VerificationSuite.DEFAULT_MAX_RTOL = 1E-9
-        VerificationSuite.DEFAULT_MIN_ATOL = 1E-10
-        VerificationSuite.DEFAULT_MAX_ATOL = 1E-9
-        with CaptureOutput(relay=False) as capturer:
-            verification_suite._run_test('CONTINUOUS_DETERMINISTIC', test_case_num, tolerances=True)
-        for value in [f'{VerificationSuite.DEFAULT_MIN_RTOL:.2e}', test_case_num, 'True']:
-             self.assertIn(value, capturer.get_text())
-
-        # run does not verify
-        # todo: fix
-        '''
         verification_suite = VerificationSuite(TEST_CASES)
         verification_suite._run_test('DISCRETE_STOCHASTIC', '00006', num_stochastic_runs=1)
-        self.assertEqual(verification_suite.results.pop().result_type, VerificationResultType.CASE_DID_NOT_VERIFY)
+        self.assertEqual(verification_suite.results.pop().result_type,
+                         VerificationResultType.CASE_DID_NOT_VERIFY)
+
+    def test__run_tests(self):
+        # todo: do NOW
+        '''
+        _run_tests(self, case_type_name, case_num, num_stochastic_runs=None,
+                          time_step_factors=None, tolerance_ranges=None, verbose=False)
+        results = self.verification_suite._run_tests('CONTINUOUS_DETERMINISTIC', '00001',
+                          time_step_factors=[.1, 1, 10.], tolerance_ranges=None)
         '''
 
-    @unittest.skip('too slow')
+    def test_tolerance_ranges_for_sensitivity_analysis(self):
+        tolerance_ranges = VerificationSuite.tolerance_ranges_for_sensitivity_analysis()
+        for tol in ['rtol', 'atol']:
+            self.assertIn(tol, tolerance_ranges)
+            for limit in ['min', 'max']:
+                self.assertIn(limit, tolerance_ranges[tol])
+
     def test_run(self):
         results = self.verification_suite.run('CONTINUOUS_DETERMINISTIC', ['00001'])
         self.assertEqual(results.pop().result_type, VerificationResultType.CASE_VERIFIED)
@@ -599,19 +661,18 @@ SsaTestCase = namedtuple('SsaTestCase', 'case_num, dsmts_num, num_ssa_runs')
 class RunVerificationSuite(unittest.TestCase):
 
     def setUp(self):
-        print(self.id())
         NUM_SIMULATION_RUNS = 20
         self.ssa_test_cases = [
             # see: https://github.com/sbmlteam/sbml-test-suite/blob/master/cases/stochastic/DSMTS-userguide-31v2.pdf
-            # SsaTestCase('00001', '001-01', NUM_SIMULATION_RUNS),
-            # SsaTestCase('00003', '001-03', NUM_SIMULATION_RUNS),
-            # SsaTestCase('00004', '001-04', NUM_SIMULATION_RUNS),
+            SsaTestCase('00001', '001-01', NUM_SIMULATION_RUNS),
+            SsaTestCase('00003', '001-03', NUM_SIMULATION_RUNS),
+            SsaTestCase('00004', '001-04', NUM_SIMULATION_RUNS),
             SsaTestCase('00007', '001-07', 2 * NUM_SIMULATION_RUNS),
-            # SsaTestCase('00012', '001-12', NUM_SIMULATION_RUNS),
-            # SsaTestCase('00020', '002-01', NUM_SIMULATION_RUNS),
-            # SsaTestCase('00021', '002-02', NUM_SIMULATION_RUNS),
-            # SsaTestCase('00030', '003-01', NUM_SIMULATION_RUNS),
-            # SsaTestCase('00037', '004-01', 4 * NUM_SIMULATION_RUNS)
+            SsaTestCase('00012', '001-12', NUM_SIMULATION_RUNS),
+            SsaTestCase('00020', '002-01', NUM_SIMULATION_RUNS),
+            SsaTestCase('00021', '002-02', NUM_SIMULATION_RUNS),
+            SsaTestCase('00030', '003-01', NUM_SIMULATION_RUNS),
+            SsaTestCase('00037', '004-01', 4 * NUM_SIMULATION_RUNS)
         ]
         self.ode_test_cases = [
             '00001',

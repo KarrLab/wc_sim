@@ -59,12 +59,12 @@ class TestInitialDynamicComponentsComprehensively(unittest.TestCase):
             numpy.testing.assert_approx_equal(dynamic_function.eval(0), expected_value)
         # test eval_dynamic_functions()
         for func_id, func_val in self.dynamic_model.eval_dynamic_functions(0).items():
-            expected_value = float(self.model.get_functions(id= func_id)[0].comments)
+            expected_value = float(self.model.get_functions(id=func_id)[0].comments)
             numpy.testing.assert_approx_equal(func_val, expected_value)
         a_func_id = list(self.dynamic_model.dynamic_functions)[0]
         for func_id, func_val in \
             self.dynamic_model.eval_dynamic_functions(0, functions_to_eval=[a_func_id]).items():
-            expected_value = float(self.model.get_functions(id= func_id)[0].comments)
+            expected_value = float(self.model.get_functions(id=func_id)[0].comments)
             numpy.testing.assert_approx_equal(func_val, expected_value)
 
         # DynamicStopCondition

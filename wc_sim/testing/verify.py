@@ -63,6 +63,8 @@ class WcSimVerificationWarning(UserWarning):
 
 
 class ODETestIterators(object):
+    """ Convenient iterators for exploring ODE submodel and solver parameter spaces
+    """
 
     # todo: move to wc_utils
     @staticmethod
@@ -96,7 +98,7 @@ class ODETestIterators(object):
             sequence_value *= factor
 
     @staticmethod
-    def ode_test_iterator(ode_time_step_factors=None, tolerance_ranges=None):
+    def ode_test_generator(ode_time_step_factors=None, tolerance_ranges=None):
         """ Generate a nested iteration of test arguments for an ODE submodel
 
         Iterates over ODE time step factor and solver tolerances
@@ -109,7 +111,7 @@ class ODETestIterators(object):
                 may be provided; configured defaults are used for tolerance(s) that are not provided
 
         Returns:
-            :obj:`iterator` of :obj:`dict`: a sequence of `kwargs` :obj:`dict`\ s for ODE time step factor,
+            :obj:`iterator` of :obj:`dict`: a generator of `kwargs` :obj:`dict`\ s for ODE time step factor,
                 a relative tolerance for ODE solver, and an absolute tolerance for the ODE solver
         """
         # if necessary, provide defaults
@@ -178,7 +180,11 @@ class VerificationTestReader(object):
         self.test_case_num = test_case_num
 
     def read_settings(self):
-        """ Read a test case's settings into a key-value dictionary """
+        """ Read a test case's settings into a key-value dictionary
+
+        Returns:
+            :obj:`dict`: key-value pairs for the test case's settings
+        """
         self.settings_file = settings_file = os.path.join(self.test_case_dir, self.test_case_num+'-settings.txt')
         settings = {}
         errors = []
@@ -213,6 +219,11 @@ class VerificationTestReader(object):
         return settings
 
     def read_expected_predictions(self):
+        """ Get the test case's expected predictions
+
+        Returns:
+            :obj:`pandas.DataFrame`: the test case's expected predictions
+        """
         self.expected_predictions_file = expected_predictions_file = os.path.join(
             self.test_case_dir, self.test_case_num+'-results.csv')
         expected_predictions_df = pd.read_csv(expected_predictions_file)
@@ -500,15 +511,17 @@ class CaseVerifier(object):
         results_comparator (:obj:`ResultsComparator`): object that compares expected and actual predictions
         simulation_run_results (:obj:`RunResults`): results for a simulation run
         test_case_dir (:obj:`str`): directory containing the test case
-        time_step_factor (:obj:`float`): factor by which to multiply the ODE time step
         tmp_results_dir (:obj:`str`): temporary directory for simulation results
         verification_test_reader (:obj:`VerificationTestReader`): the test case's reader
         comparison_result (:obj:`obj`): `False` if populations in the expected result and simulation run
             are equal within tolerances, otherwise :obj:`list`: of species types whose populations differ
     """
+
+    # maximum number of attempts to verify an SSA model
+    MAX_TRIES = 3
+
     def __init__(self, test_cases_root_dir, test_case_type, test_case_num,
-                 default_num_stochastic_runs=config_multialgorithm['num_ssa_verification_sim_runs'],
-                 time_step_factor=None):
+                 default_num_stochastic_runs=None):
         """ Read model, config and expected predictions
 
         Args:
@@ -517,7 +530,6 @@ class CaseVerifier(object):
                 `DISCRETE_STOCHASTIC`, or `MULTIALGORITHMIC`
             test_case_num (:obj:`str`): unique id of a verification case
             num_stochastic_runs (:obj:`int`, optional): number of Monte Carlo runs for an SSA test
-            time_step_factor (:obj:`float`, optional): factor by which to change the ODE time step
         """
         self.test_case_dir = os.path.join(test_cases_root_dir,
                                           VerificationTestCaseType[test_case_type].value, test_case_num)
@@ -525,18 +537,18 @@ class CaseVerifier(object):
                                                                test_case_num)
         self.verification_test_reader.run()
         self.default_num_stochastic_runs = default_num_stochastic_runs
-        self.time_step_factor = time_step_factor
+        if default_num_stochastic_runs is None:
+            self.default_num_stochastic_runs = config_multialgorithm['num_ssa_verification_sim_runs']
 
-    # maximum number of attempts to verify an SSA model
-    MAX_TRIES = 3
     def verify_model(self, num_discrete_stochastic_runs=None, discard_run_results=True, plot_file=None,
-                     tolerances=None):
+                     ode_time_step_factor=None, tolerances=None):
         """ Verify a model
 
         Args:
             num_discrete_stochastic_runs (:obj:`int`, optional): number of stochastic runs
             discard_run_results (:obj:`bool`, optional): whether to discard run results
             plot_file (:obj:`str`, optional): path of plotted results, if desired
+            ode_time_step_factor (:obj:`float`, optional): factor by which to multiply the ODE time step
             tolerances (:obj:`dict`, optional): if testing tolerances, values of ODE solver tolerances
 
         Returns:
@@ -565,10 +577,9 @@ class CaseVerifier(object):
                             results_dir=tmp_results_dir,
                             verbose= False)
 
-        factor = 1
-        if self.time_step_factor is not None:
-            factor = self.time_step_factor
-        simul_kwargs['ode_time_step'] = factor * settings['duration']/settings['steps']
+        simul_kwargs['ode_time_step'] = settings['duration']/settings['steps']
+        if ode_time_step_factor is not None:
+            simul_kwargs['ode_time_step'] *= ode_time_step_factor
 
         if self.verification_test_reader.test_case_type == VerificationTestCaseType.CONTINUOUS_DETERMINISTIC:
             ## 1. run simulation
@@ -585,7 +596,7 @@ class CaseVerifier(object):
         if self.verification_test_reader.test_case_type in [VerificationTestCaseType.DISCRETE_STOCHASTIC,
                                                             VerificationTestCaseType.MULTIALGORITHMIC]:
             # make multiple simulation runs with different random seeds
-            if num_discrete_stochastic_runs is not None:
+            if num_discrete_stochastic_runs is not None and 0 < num_discrete_stochastic_runs:
                 num_runs = num_discrete_stochastic_runs
             else:
                 num_runs = self.default_num_stochastic_runs
@@ -657,7 +668,6 @@ class CaseVerifier(object):
             summary.append("Num simul runs: {}".format(self.num_runs))
         summary.append("Test case type: {}".format(self.verification_test_reader.test_case_type.name))
         summary.append("Test case number: {}".format(self.verification_test_reader.test_case_num))
-        summary.append("Time step factor: {}".format(self.time_step_factor))
         return summary
 
     def plot_model_verification(self, plot_file, max_runs_to_plot=100, presentation_qual=False):
@@ -713,7 +723,7 @@ class CaseVerifier(object):
                     loc='lower left', fontsize=legend_fontsize)
                 plot_num += 1
 
-        elif self.verification_test_reader.test_case_type in [VerificationTestCaseType.DISCRETE_STOCHASTIC,
+        if self.verification_test_reader.test_case_type in [VerificationTestCaseType.DISCRETE_STOCHASTIC,
                                                               VerificationTestCaseType.MULTIALGORITHMIC]:
             times = self.simulation_run_results[0].get_times()
 
@@ -813,7 +823,7 @@ VerificationRunResult.error.__doc__ = 'optional, error message for the test'
 
 
 class VerificationSuite(object):
-    """ A suite of verification tests of `wc_sim`'s dynamic behavior
+    """ Manage a suite of verification tests of `wc_sim`'s dynamic behavior
 
     Attributes:
         cases_dir (:obj:`str`): path to cases directory
@@ -854,115 +864,122 @@ class VerificationSuite(object):
         self.results.append(VerificationRunResult(self.cases_dir, case_type_name, case_num,
                                                   result_type, duration, output, error))
 
-    # default ranges for analyzing ODE solver sensitivity to tolerances
-    DEFAULT_MIN_RTOL = 1E-15
-    DEFAULT_MAX_RTOL = 1E-3
-    DEFAULT_MIN_ATOL = 1E-15
-    DEFAULT_MAX_ATOL = 1E-6
-    def _run_test(self, case_type_name, case_num,
-                  num_stochastic_runs=config_multialgorithm['num_ssa_verification_sim_runs'],
-                  time_step_factor=None, verbose=False, tolerances=False):
+    def _run_test(self, case_type_name, case_num, num_stochastic_runs=None,
+                  ode_time_step_factor=None, rtol=None, atol=None, verbose=False):
         """ Run one test case and report the result
 
         Args:
             case_type_name (:obj:`str`): the type of case, a name in `VerificationTestCaseType`
             case_num (:obj:`str`): unique id of a verification case
             num_stochastic_runs (:obj:`int`, optional): number of Monte Carlo runs for an SSA test
-            time_step_factor (:obj:`float`, optional): factor by which to change the ODE time step
+            ode_time_step_factor (:obj:`float`, optional): factor by which to change the ODE time step
+            rtol (:obj:`float`, optional): relative tolerance for the ODE solver
+            atol (:obj:`float`, optional): absolute tolerance for the ODE solver
             verbose (:obj:`bool`, optional): whether to produce verbose output
-            tolerances (:obj:`bool`, optional): whether to analze ODE sensitivity to tolerances
         """
-        start_time = time.process_time()
         try:
-            case_verifier = CaseVerifier(self.cases_dir, case_type_name, case_num,
-                                         time_step_factor=time_step_factor)
+            case_verifier = CaseVerifier(self.cases_dir, case_type_name, case_num)
         except:
             tb = traceback.format_exc()
             self._record_result(case_type_name, case_num, VerificationResultType.CASE_UNREADABLE,
-                                time.process_time() - start_time, error=tb)
+                                float('nan'), error=tb)
             return
 
+        # assemble kwargs
+        kwargs = {}
+        if self.plot_dir:
+            plot_file = os.path.join(self.plot_dir,
+                                     "{}_{}_verification_test.pdf".format(case_type_name, case_num))
+            kwargs['plot_file'] = plot_file
+
+        if num_stochastic_runs is None:
+            kwargs['num_discrete_stochastic_runs'] = config_multialgorithm['num_ssa_verification_sim_runs']
+        else:
+            kwargs['num_discrete_stochastic_runs'] = num_stochastic_runs
+
+        kwargs['ode_time_step_factor'] = ode_time_step_factor
+
+        if rtol is not None or atol is not None:
+            tolerances_dict = {}
+            if rtol is not None:
+                tolerances_dict['rtol'] = rtol
+            if atol is not None:
+                tolerances_dict['atol'] = atol
+            kwargs['tolerances'] = tolerances_dict
+
+        # save pretty printed kwargs in results; they can be restored with eval()
+        pformat_kwargs = pformat(kwargs)
+
+        if verbose:
+            print("Verifying {} case {}".format(case_type_name, case_num))
+
         try:
-            kwargs = {}
-            if self.plot_dir:
-                plot_file = os.path.join(self.plot_dir,
-                                         "{}_{}_verification_test.pdf".format(case_type_name, case_num))
-                kwargs['plot_file'] = plot_file
-            if num_stochastic_runs:
-                kwargs['num_discrete_stochastic_runs'] = num_stochastic_runs
-
-            if tolerances:
-                # iterate over tolerances
-                min_rtol = self.DEFAULT_MIN_RTOL
-                max_rtol = self.DEFAULT_MAX_RTOL
-                min_atol = self.DEFAULT_MIN_ATOL
-                max_atol = self.DEFAULT_MAX_ATOL
-                rtol = min_rtol
-                header = ['atol', 'rtol', 'case_num', 'verified', 'run_time (s)']
-                print('\t'.join(header))
-                while rtol <= max_rtol * 1.01:
-                    atol = min_atol
-                    while atol <= max_atol * 1.01:
-                        tolerances_dict = dict(atol=atol, rtol=rtol)
-                        kwargs['tolerances'] = tolerances_dict
-                        try:
-                            verification_result = case_verifier.verify_model(**kwargs)
-                            if verification_result:
-                                self._record_result(case_type_name, case_num,
-                                                    VerificationResultType.CASE_DID_NOT_VERIFY,
-                                                    time.process_time() - start_time,
-                                                    error=verification_result)
-                            else:
-                                self._record_result(case_type_name, case_num,
-                                                    VerificationResultType.CASE_VERIFIED,
-                                                    time.process_time() - start_time)
-                            results = [f"{tolerances_dict['atol']:.2e}", f"{tolerances_dict['rtol']:.2e}",
-                                       f"{case_num}", f"{not verification_result}", f"{run_time:.2e}"]
-                            print('\t'.join(results), flush=True)
-                        except Exception as e:
-                            results = [f"{tolerances_dict['atol']:.2e}", f"{tolerances_dict['rtol']:.2e}",
-                                       f"{case_num}", f"{str(e)}", f"{float('nan')}"]
-                            print('\t'.join(results), flush=True)
-
-                        atol *= 10
-                    rtol *= 10
+            start_time = time.process_time()
+            verification_result = case_verifier.verify_model(**kwargs)
+            run_time = time.process_time() - start_time
+            if verification_result:
+                self._record_result(case_type_name, case_num,
+                                    VerificationResultType.CASE_DID_NOT_VERIFY,
+                                    run_time,
+                                    error=verification_result)
             else:
-                if verbose:
-                    notice = "Verifying {} case {}".format(case_type_name, case_num)
-                    if num_stochastic_runs is not None:
-                        notice += " with {} runs".format(num_stochastic_runs)
-                    print(notice)
-                verification_result = case_verifier.verify_model(**kwargs)
-                if verbose:
-                    run_time = time.process_time() - start_time
-                    print("run time: {:.3f} sec".format(run_time))
-                if verification_result:
-                    self._record_result(case_type_name, case_num, VerificationResultType.CASE_DID_NOT_VERIFY,
-                                        time.process_time() - start_time, error=verification_result)
-                    print(f"{case_type_name} {case_num} did not verify")
-                else:
-                    self._record_result(case_type_name, case_num, VerificationResultType.CASE_VERIFIED,
-                                        time.process_time() - start_time)
-                    print(f"{case_type_name} {case_num} verified")
+                self._record_result(case_type_name, case_num,
+                                    VerificationResultType.CASE_VERIFIED,
+                                    run_time,
+                                    output=pformat_kwargs)
 
         except Exception as e:
+            run_time = time.process_time() - start_time
             tb = traceback.format_exc()
-            self._record_result(case_type_name, case_num, VerificationResultType.FAILED_VERIFICATION_RUN, tb)
+            self._record_result(case_type_name, case_num, VerificationResultType.FAILED_VERIFICATION_RUN,
+                                run_time, output=pformat_kwargs, error=tb)
 
-    def _record_result(self, case_type_name, case_num, result_type, duration, output=None, error=None):
-        """ Record the result of a test run
+    def _run_tests(self, case_type_name, case_num, num_stochastic_runs=None,
+                  ode_time_step_factors=None, tolerance_ranges=None, verbose=False):
+        """ Run one or more tests, possibly iterating over over ODE time step factors and solver tolerances
 
         Args:
             case_type_name (:obj:`str`): the type of case, a name in `VerificationTestCaseType`
             case_num (:obj:`str`): unique id of a verification case
-            result_type (:obj:`VerificationResultType`): the result's classification
-            duration (:obj:`float`): time it took to run the test
-            output (:obj:`str`, optional): description of the test, if any
-            error (:obj:`str`, optional): description of the error, if any
-        """
+            num_stochastic_runs (:obj:`int`, optional): number of Monte Carlo runs for an SSA test
+            ode_time_step_factors (:obj:`list` of :obj:`float`): factors by which the ODE time step will
+                be multiplied
+            tolerance_ranges (:obj:`dict`): ranges for absolute and relative ODE tolerances;
+                see `default_tolerance_ranges` in `ode_test_generator` for the dict's structure;
+                `rtol`, `atol` or both may be provided; configured defaults are used for tolerance(s)
+                that are not provided
+            verbose (:obj:`bool`, optional): whether to produce verbose output
 
-    def run(self, test_case_type_name=None, cases=None, num_stochastic_runs=None, time_step_factor=None,
-            verbose=False):
+        Returns:
+            :obj:`list`: of :obj:`VerificationRunResult`: the results for this :obj:`VerificationSuite`
+        """
+        ode_test_iterator = ODETestIterators.ode_test_generator(ode_time_step_factors=ode_time_step_factors,
+                                                                tolerance_ranges=tolerance_ranges)
+        for test_kwargs in ode_test_iterator:
+            self._run_test(case_type_name, case_num,
+                            num_stochastic_runs=num_stochastic_runs, verbose=verbose, **test_kwargs)
+        return self.results
+
+    # default ranges for analyzing ODE solver sensitivity to tolerances
+    DEFAULT_MIN_RTOL = 1E-15
+    DEFAULT_MAX_RTOL = 1E-3
+    DEFAULT_MIN_ATOL = 1E-15
+    DEFAULT_MAX_ATOL = 1E-6
+    @staticmethod
+    def tolerance_ranges_for_sensitivity_analysis():
+        """ Get the default tolerance ranges for analyzing ODE solver sensitivity to tolerances
+
+        Returns:
+            :obj:`dict`: the default tolerance ranges for sensitivity analysis
+        """
+        tolerance_ranges = {'rtol': dict(min=VerificationSuite.DEFAULT_MIN_RTOL,
+                                         max=VerificationSuite.DEFAULT_MAX_RTOL),
+                            'atol': dict(min=VerificationSuite.DEFAULT_MIN_ATOL,
+                                         max=VerificationSuite.DEFAULT_MAX_ATOL)}
+        return tolerance_ranges
+
+    def run(self, test_case_type_name=None, cases=None, num_stochastic_runs=None,
+            ode_time_step_factors=None, tolerance_ranges=None, verbose=False):
         """ Run all requested test cases
 
         Args:
@@ -970,7 +987,12 @@ class VerificationSuite(object):
                 `DISCRETE_STOCHASTIC` or `MULTIALGORITHMIC`
             cases (:obj:`list` of :obj:`str`, optional): list of unique ids of verification cases
             num_stochastic_runs (:obj:`int`, optional): number of Monte Carlo runs for an SSA test
-            time_step_factor (:obj:`float`, optional): factor by which to change the ODE time step
+            ode_time_step_factors (:obj:`list` of :obj:`float`): factors by which the ODE time step will
+                be multiplied
+            tolerance_ranges (:obj:`dict`): ranges for absolute and relative ODE tolerances;
+                see `default_tolerance_ranges` in `ode_test_generator` for the dict's structure;
+                `rtol`, `atol` or both may be provided; configured defaults are used for tolerance(s)
+                that are not provided
             verbose (:obj:`bool`, optional): whether to produce verbose output
         """
         if isinstance(cases, str):
@@ -984,14 +1006,16 @@ class VerificationSuite(object):
                 cases = os.listdir(os.path.join(self.cases_dir,
                                                 VerificationTestCaseType[test_case_type_name].value))
             for case_num in cases:
-                self._run_test(test_case_type_name, case_num, num_stochastic_runs=num_stochastic_runs,
-                               time_step_factor=time_step_factor, verbose=verbose)
+                self._run_tests(test_case_type_name, case_num, num_stochastic_runs=num_stochastic_runs,
+                                ode_time_step_factors=ode_time_step_factors,
+                                verbose=verbose)
         else:
             for verification_test_case_type in VerificationTestCaseType:
                 for case_num in os.listdir(os.path.join(self.cases_dir, verification_test_case_type.value)):
-                    self._run_test(verification_test_case_type.name, case_num,
+                    self._run_tests(verification_test_case_type.name, case_num,
                                    num_stochastic_runs=num_stochastic_runs,
-                                   time_step_factor=time_step_factor, verbose=verbose)
+                                   ode_time_step_factors=ode_time_step_factors,
+                                   tolerance_ranges=tolerance_ranges, verbose=verbose)
         return self.results
 
 

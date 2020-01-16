@@ -97,8 +97,10 @@ class OdeSubmodel(DynamicSubmodel):
         ode_solver_options = {'atol': self.ABS_ODE_SOLVER_TOLERANCE,
                               'rtol': self.REL_ODE_SOLVER_TOLERANCE}
         if options is not None and 'tolerances' in options:
-            ode_solver_options = {'atol': options['tolerances']['atol'],
-                                  'rtol': options['tolerances']['rtol']}
+            if 'atol' in options['tolerances']:
+                ode_solver_options['atol'] = options['tolerances']['atol']
+            if 'rtol' in options['tolerances']:
+                ode_solver_options['rtol'] = options['tolerances']['rtol']
         self.solver = self.create_ode_solver(**ode_solver_options)
         self.num_right_hand_side_calls = 0
         self.history_num_right_hand_side_calls = []
