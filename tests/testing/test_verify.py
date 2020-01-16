@@ -628,19 +628,19 @@ class TestVerificationSuite(unittest.TestCase):
         max_atol = 1E-11
         test_tolerance_ranges = {'rtol': dict(min=1E-10, max=max_rtol),
                                  'atol': dict(min=1E-13, max=max_atol)}
-        self.verification_suite._reset_results()
         results = self.verification_suite._run_tests('CONTINUOUS_DETERMINISTIC', '00001',
-                                                     tolerance_ranges=test_tolerance_ranges)
+                                                     tolerance_ranges=test_tolerance_ranges,
+                                                     empty_results=True)
         self.assertEqual(len(results), 2 * 3)
         last_result = results[-1]
         params = eval(last_result.output)
         self.assertEqual(params['tolerances']['rtol'], max_rtol)
         self.assertEqual(params['tolerances']['atol'], max_atol)
 
-        self.verification_suite._reset_results()
         results = self.verification_suite._run_tests('CONTINUOUS_DETERMINISTIC', '00001',
                                                      ode_time_step_factors=ode_time_step_factors,
-                                                     tolerance_ranges=test_tolerance_ranges)
+                                                     tolerance_ranges=test_tolerance_ranges,
+                                                     empty_results=True)
         self.assertEqual(len(results), len(ode_time_step_factors) * 2 * 3)
         last_result = results[-1]
         params = eval(last_result.output)
@@ -657,7 +657,7 @@ class TestVerificationSuite(unittest.TestCase):
 
     def test_run(self):
         results = self.verification_suite.run('CONTINUOUS_DETERMINISTIC', ['00001'])
-        self.assertEqual(results.pop().result_type, VerificationResultType.CASE_VERIFIED)
+        self.assertEqual(results[-1].result_type, VerificationResultType.CASE_VERIFIED)
 
         results = self.verification_suite.run('CONTINUOUS_DETERMINISTIC', ['00001', '00006'])
         expected_types = [VerificationResultType.CASE_VERIFIED, VerificationResultType.CASE_UNREADABLE]

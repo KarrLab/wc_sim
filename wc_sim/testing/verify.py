@@ -838,12 +838,20 @@ class VerificationSuite(object):
         if plot_dir and not os.path.isdir(plot_dir):
             raise VerificationError("cannot open plot_dir: '{}'".format(plot_dir))
         self.plot_dir = plot_dir
-        self._reset_results()
+        self._empty_results()
 
-    def _reset_results(self):
+    def _empty_results(self):
+        """ Discard all results of test runs
+        """
         self.results = []
 
     def get_results(self):
+        """ Provide results of test runs
+
+        Returns:
+            :obj:`list` of :obj:`VerificationRunResult`: results of previous `_run_test()`\ s, in
+                execution order
+        """
         return self.results
 
     def _record_result(self, case_type_name, case_num, result_type, duration, output=None, error=None):
@@ -936,7 +944,8 @@ class VerificationSuite(object):
                                 run_time, output=pformat_kwargs, error=tb)
 
     def _run_tests(self, case_type_name, case_num, num_stochastic_runs=None,
-                  ode_time_step_factors=None, tolerance_ranges=None, verbose=False):
+                  ode_time_step_factors=None, tolerance_ranges=None, verbose=False,
+                  empty_results=False):
         """ Run one or more tests, possibly iterating over over ODE time step factors and solver tolerances
 
         Args:
@@ -950,10 +959,13 @@ class VerificationSuite(object):
                 `rtol`, `atol` or both may be provided; configured defaults are used for tolerance(s)
                 that are not provided
             verbose (:obj:`bool`, optional): whether to produce verbose output
+            empty_results (:obj:`bool`, optional): whether to empty the list of verification run results
 
         Returns:
             :obj:`list`: of :obj:`VerificationRunResult`: the results for this :obj:`VerificationSuite`
         """
+        if empty_results:
+            self._empty_results()
         ode_test_iterator = ODETestIterators.ode_test_generator(ode_time_step_factors=ode_time_step_factors,
                                                                 tolerance_ranges=tolerance_ranges)
         for test_kwargs in ode_test_iterator:
@@ -980,12 +992,17 @@ class VerificationSuite(object):
         return tolerance_ranges
 
     def run(self, test_case_type_name=None, cases=None, num_stochastic_runs=None,
-            ode_time_step_factors=None, tolerance_ranges=None, verbose=False):
+            ode_time_step_factors=None, tolerance_ranges=None, verbose=False, empty_results=True):
         """ Run all requested test cases
 
+        If `test_case_type_name` is not specified, then all cases for all
+        :obj:`VerificationTestCaseType`\ s are verified.
+        If `cases` are not specified, then all cases with the specified `test_case_type_name` are
+        verified.
+
         Args:
-            test_case_type_name (:obj:`str`, optional): the type of case, `CONTINUOUS_DETERMINISTIC`,
-                `DISCRETE_STOCHASTIC` or `MULTIALGORITHMIC`
+            test_case_type_name (:obj:`str`, optional): the type of case, a name in
+                `VerificationTestCaseType`
             cases (:obj:`list` of :obj:`str`, optional): list of unique ids of verification cases
             num_stochastic_runs (:obj:`int`, optional): number of Monte Carlo runs for an SSA test
             ode_time_step_factors (:obj:`list` of :obj:`float`): factors by which the ODE time step will
@@ -995,7 +1012,10 @@ class VerificationSuite(object):
                 `rtol`, `atol` or both may be provided; configured defaults are used for tolerance(s)
                 that are not provided
             verbose (:obj:`bool`, optional): whether to produce verbose output
+            empty_results (:obj:`bool`, optional): whether to empty the list of verification run results
         """
+        if empty_results:
+            self._empty_results()
         if isinstance(cases, str):
             raise VerificationError("cases should be an iterator over case nums, not a string")
         if cases and not test_case_type_name:
