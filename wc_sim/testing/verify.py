@@ -921,6 +921,7 @@ class VerificationSuite(object):
                 self._record_result(case_type_name, case_num,
                                     VerificationResultType.CASE_DID_NOT_VERIFY,
                                     run_time,
+                                    output=pformat_kwargs,
                                     error=verification_result)
             else:
                 self._record_result(case_type_name, case_num,

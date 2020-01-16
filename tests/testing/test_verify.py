@@ -110,7 +110,8 @@ class TestODETestIterators(unittest.TestCase):
                         last_kwargs))
 
 
-TEST_CASES = os.path.join(os.path.dirname(__file__), '..', 'fixtures', 'verification', 'testing')
+TEST_CASES = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'fixtures',
+                                          'verification', 'testing'))
 
 def make_test_case_dir(test_case_num, test_case_type='DISCRETE_STOCHASTIC'):
     return os.path.join(TEST_CASES, VerificationTestCaseType[test_case_type].value, test_case_num)
@@ -615,13 +616,37 @@ class TestVerificationSuite(unittest.TestCase):
                          VerificationResultType.CASE_DID_NOT_VERIFY)
 
     def test__run_tests(self):
-        # todo: do NOW
-        '''
-        _run_tests(self, case_type_name, case_num, num_stochastic_runs=None,
-                          time_step_factors=None, tolerance_ranges=None, verbose=False)
+        ode_time_step_factors = [.5, 1, 5]
         results = self.verification_suite._run_tests('CONTINUOUS_DETERMINISTIC', '00001',
-                          time_step_factors=[.1, 1, 10.], tolerance_ranges=None)
-        '''
+                                                     ode_time_step_factors=ode_time_step_factors)
+        self.assertEqual(len(results), len(ode_time_step_factors))
+        last_result = results[-1]
+        params = eval(last_result.output)
+        self.assertEqual(params['ode_time_step_factor'], ode_time_step_factors[-1])
+
+        max_rtol = 1E-9
+        max_atol = 1E-11
+        test_tolerance_ranges = {'rtol': dict(min=1E-10, max=max_rtol),
+                                 'atol': dict(min=1E-13, max=max_atol)}
+        self.verification_suite._reset_results()
+        results = self.verification_suite._run_tests('CONTINUOUS_DETERMINISTIC', '00001',
+                                                     tolerance_ranges=test_tolerance_ranges)
+        self.assertEqual(len(results), 2 * 3)
+        last_result = results[-1]
+        params = eval(last_result.output)
+        self.assertEqual(params['tolerances']['rtol'], max_rtol)
+        self.assertEqual(params['tolerances']['atol'], max_atol)
+
+        self.verification_suite._reset_results()
+        results = self.verification_suite._run_tests('CONTINUOUS_DETERMINISTIC', '00001',
+                                                     ode_time_step_factors=ode_time_step_factors,
+                                                     tolerance_ranges=test_tolerance_ranges)
+        self.assertEqual(len(results), len(ode_time_step_factors) * 2 * 3)
+        last_result = results[-1]
+        params = eval(last_result.output)
+        self.assertEqual(params['ode_time_step_factor'], ode_time_step_factors[-1])
+        self.assertEqual(params['tolerances']['rtol'], max_rtol)
+        self.assertEqual(params['tolerances']['atol'], max_atol)
 
     def test_tolerance_ranges_for_sensitivity_analysis(self):
         tolerance_ranges = VerificationSuite.tolerance_ranges_for_sensitivity_analysis()
