@@ -25,7 +25,7 @@ from wc_sim.config import core as config_core_multialgorithm
 from wc_sim.run_results import RunResults
 from wc_sim.testing.verify import (VerificationError, VerificationTestCaseType, VerificationTestReader,
                                    ResultsComparator, ResultsComparator, CaseVerifier, VerificationResultType,
-                                   VerificationSuite, VerificationUtilities, MultialgModelVerification,
+                                   VerificationSuite, VerificationUtilities,
                                    VerificationRunResult, ODETestIterators)
 import obj_tables
 import wc_lang
@@ -546,7 +546,7 @@ class TestVerificationSuite(unittest.TestCase):
         with self.assertRaisesRegexp(VerificationError, "cannot open plot_dir"):
             VerificationSuite(TEST_CASES, no_such_dir)
 
-    def test_record_result(self):
+    def test__record_result(self):
         self.assertEqual(self.verification_suite.results, [])
         sub_dir = os.path.join(self.tmp_dir, 'test_case_sub_dir')
 
@@ -566,6 +566,32 @@ class TestVerificationSuite(unittest.TestCase):
                                      "result_type must be a VerificationResultType, not a"):
             self.verification_suite._record_result(TEST_CASES, sub_dir, '00001',
                                                    'not a VerificationResultType')
+
+    def test_dump_results(self):
+        self.assertEqual(self.verification_suite.dump_results(), [])
+        self.assertEqual(self.verification_suite.dump_results(errors=True), [])
+
+        test_case_num = '00001'
+        self.verification_suite._run_test('CONTINUOUS_DETERMINISTIC', test_case_num)
+        last_result = self.verification_suite.dump_results()[-1]
+        expected = {'case_num': test_case_num,
+                    'result_type': 'CASE_VERIFIED',
+                    ('ode_time_step_factor',): None}
+        for k, v in expected.items():
+            self.assertEqual(expected[k], last_result[k])
+        self.assertEqual(self.verification_suite.dump_results(errors=True), [])
+
+        default_rtol = config_multialgorithm['rel_ode_solver_tolerance']
+        self.verification_suite._run_test('CONTINUOUS_DETERMINISTIC', test_case_num, rtol=default_rtol)
+        self.assertEqual(len(self.verification_suite.dump_results()), 2)
+        last_result = self.verification_suite.dump_results()[-1]
+        self.assertEqual(last_result[('tolerances', 'rtol')], default_rtol)
+
+        # get errors
+        self.verification_suite._run_test('invalid_case_type_name', test_case_num)
+        self.assertEqual(len(self.verification_suite.dump_results(errors=True)), 1)
+        last_error_result = self.verification_suite.dump_results(errors=True)[-1]
+        self.assertIn('invalid_case_type_name', last_error_result['error'])
 
     def test__run_test(self):
         test_case_num = '00001'
@@ -679,6 +705,10 @@ class TestVerificationSuite(unittest.TestCase):
         with self.assertRaisesRegexp(VerificationError, 'Unknown VerificationTestCaseType: '):
             self.verification_suite.run(test_case_type_name='no such VerificationTestCaseType')
 
+    def test_run_multialg(self):
+        results = self.verification_suite.run_multialg(['00007'])
+        self.assertEqual(results[-1].result_type, VerificationResultType.CASE_VERIFIED)
+
 
 SsaTestCase = namedtuple('SsaTestCase', 'case_num, dsmts_num, num_ssa_runs')
 
@@ -740,6 +770,10 @@ class RunVerificationSuite(unittest.TestCase):
             for ode_test_case in verification_cases:
                 self.verification_suite.run(case_type, [ode_test_case], verbose=True)
 
+        if case_type == 'MULTIALGORITHMIC':
+            for multialg_test_case in verification_cases:
+                self.verification_suite.run_multialg([multialg_test_case], verbose=True)
+
         failures = []
         successes = []
         for result in self.verification_suite.get_results():
@@ -767,6 +801,9 @@ class RunVerificationSuite(unittest.TestCase):
         # abs_ode_solver_tolerance = 1e-10
         # rel_ode_solver_tolerance = 1e-8
         self.run_verification_cases('CONTINUOUS_DETERMINISTIC', self.ode_test_cases)
+
+    def test_verification_multialgorithmic(self):
+        self.run_verification_cases('MULTIALGORITHMIC', self.multialgorithmic_test_cases)
 
     @unittest.skip('Fails on first 150 SBML models in the test suite')
     def test_convert_sbml_to_wc_lang(self):

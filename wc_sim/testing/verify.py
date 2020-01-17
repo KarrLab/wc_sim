@@ -32,6 +32,7 @@ from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_sim.run_results import RunResults
 from wc_sim.simulation import Simulation
 from wc_sim.testing.make_models import MakeModel
+from wc_utils.util.dict import DictUtil
 
 config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 
@@ -872,6 +873,41 @@ class VerificationSuite(object):
         self.results.append(VerificationRunResult(self.cases_dir, case_type_name, case_num,
                                                   result_type, duration, output, error))
 
+    def dump_results(self, errors=False):
+        """ Provide results of tests run by `_run_test`
+
+        Args:
+            errors (:obj:`bool`, optional): if set, provide results that have errors; otherwise,
+                provide results that don't have errors
+
+        Returns:
+            :obj:`list` of :obj:`dict` of :obj:`obj`: results summarized as depth-one dict for each run
+        """
+        formatted_results = []
+        for result in self.results:
+            row = {}
+            row['simul_type'] = result.case_type
+            row['case_num'] = result.case_num
+            row['result_type'] = result.result_type.name
+            row['duration'] = result.duration
+            if result.output:
+                params = eval(result.output)
+                params = DictUtil.flatten_dict(params)
+                for k, v in params.items():
+                    row[k] = v
+
+            # if errors is set, just provide results with errors
+            if errors and result.error:
+                    row['error'] = result.error
+                    formatted_results.append(row)
+
+            # if errors is False, just provide results without errors
+            if not errors and not result.error:
+                # results without errors
+                formatted_results.append(row)
+
+        return formatted_results
+
     def _run_test(self, case_type_name, case_num, num_stochastic_runs=None,
                   ode_time_step_factor=None, rtol=None, atol=None, verbose=False):
         """ Run one test case and report the result
@@ -1013,6 +1049,9 @@ class VerificationSuite(object):
                 that are not provided
             verbose (:obj:`bool`, optional): whether to produce verbose output
             empty_results (:obj:`bool`, optional): whether to empty the list of verification run results
+
+        Returns:
+            :obj:`list`: of :obj:`VerificationRunResult`: the results for this :obj:`VerificationSuite`
         """
         if empty_results:
             self._empty_results()
@@ -1028,46 +1067,45 @@ class VerificationSuite(object):
                                                 VerificationTestCaseType[test_case_type_name].value))
             for case_num in cases:
                 self._run_tests(test_case_type_name, case_num, num_stochastic_runs=num_stochastic_runs,
-                                ode_time_step_factors=ode_time_step_factors,
+                                ode_time_step_factors=ode_time_step_factors, tolerance_ranges=tolerance_ranges,
                                 verbose=verbose)
         else:
             for verification_test_case_type in VerificationTestCaseType:
                 for case_num in os.listdir(os.path.join(self.cases_dir, verification_test_case_type.value)):
                     self._run_tests(verification_test_case_type.name, case_num,
-                                   num_stochastic_runs=num_stochastic_runs,
-                                   ode_time_step_factors=ode_time_step_factors,
-                                   tolerance_ranges=tolerance_ranges, verbose=verbose)
+                                    num_stochastic_runs=num_stochastic_runs,
+                                    ode_time_step_factors=ode_time_step_factors,
+                                    tolerance_ranges=tolerance_ranges, verbose=verbose)
         return self.results
 
+    def run_multialg(self, cases, ode_time_step_factors=None, tolerances=False, verbose=None):
+        """ Test a suite of multialgorithmic models
 
-class MultialgModelVerification(object):
-    """ Test a suite of multialgorithmic models
+        initial approach:
 
-    initial approach
-        use SBML stochastic models with multiple reactions to test multialgorithmic simulation
-        evaluate correctness using DISCRETE_STOCHASTIC expected results and verification code
-        try various settings for ODE time step, tolerances, etc.
+        * use SBML stochastic models with multiple reactions to test multialgorithmic simulation
+        * evaluate correctness using DISCRETE_STOCHASTIC expected results and verification code
+        * try various settings for ODE time step, tolerances, etc.
 
-    Attributes:
-        verification_suite (:obj:`VerificationSuite`): a `VerificationSuite` for running the
-            verification tests
-    """
-
-    def __init__(self, cases_dir, plot_dir=None, ODE_time_steps=None, tolerance_ranges=None):
-        """
         Args:
-            cases_dir (:obj:`str`): path to cases directory
-            plot_dir (:obj:`str`, optional): path to directory of plots
-            ODE_time_steps (:obj:`list`, optional): different ODE_time_step values to try
-            tolerance_ranges (:obj:`dict`, optional): dictionary with min and max values for
-                relative and/or absolute tolerance
+            cases (:obj:`list` of :obj:`str`): list of unique ids of verification cases
+            ode_time_step_factors (:obj:`list` of :obj:`float`, optional): factors by which the ODE
+                time step will be multiplied
+            tolerance_ranges (:obj:`dict`): ranges for absolute and relative ODE tolerances;
+            verbose (:obj:`bool`, optional): whether to produce verbose output
+
+        Returns:
+            :obj:`list`: of :obj:`VerificationRunResult`: the results for this :obj:`VerificationSuite`
         """
-        self.cases_dir = cases_dir
-        self.plot_dir = plot_dir
-        self.ODE_time_steps = ODE_time_steps
-        self.tolerance_ranges = tolerance_ranges
-        self.verification_suite = VerificationSuite(cases_dir, plot_dir)
-        self.verification_suite.run()
+        if ode_time_step_factors is None:
+            ode_time_step_factors = [0.05, 0.1, 1.0]
+        tolerance_ranges = None
+        if tolerances:
+            tolerance_ranges = self.tolerance_ranges_for_sensitivity_analysis()
+        return self.run(test_case_type_name='MULTIALGORITHMIC', cases=cases,
+                        num_stochastic_runs=10,
+                        ode_time_step_factors=ode_time_step_factors, tolerance_ranges=tolerance_ranges,
+                        empty_results=False, verbose=verbose)
 
 
 class MultialgModelVerificationFuture(object):    # pragma: no cover
