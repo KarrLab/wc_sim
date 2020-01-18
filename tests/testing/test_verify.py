@@ -844,11 +844,11 @@ class RunVerificationSuite(unittest.TestCase):
                     errors.append(f"could not read '{sbml_model}: {e}'")
         print('Could not process\n', '\n'.join(errors))
 
+    @unittest.skip('incomplete')
     def test_verification_hybrid(self):
         # transcription_translation_case = SsaTestCase('transcription_translation', 'NA', 10)
         # translation_metabolism_case = SsaTestCase('translation_metabolism', 'NA', 10)
         results, _, _ = self.run_verification_cases('MULTIALGORITHMIC', self.multialgorithmic_test_cases)
-        return
         profile = False
         if profile:
             print('profiling')
