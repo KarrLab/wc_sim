@@ -741,7 +741,7 @@ class TestVerificationSuite(unittest.TestCase):
         self.assertEqual(results[-1].result_type, VerificationResultType.CASE_VERIFIED)
 
 
-SsaTestCase = namedtuple('SsaTestCase', 'case_num, dsmts_num, num_ssa_runs')
+SsaTestCase = namedtuple('SsaTestCase', 'case_num, num_ssa_runs')
 
 
 class RunVerificationSuite(unittest.TestCase):
@@ -750,15 +750,15 @@ class RunVerificationSuite(unittest.TestCase):
         NUM_SIMULATION_RUNS = 20
         self.ssa_test_cases = [
             # see: https://github.com/sbmlteam/sbml-test-suite/blob/master/cases/stochastic/DSMTS-userguide-31v2.pdf
-            SsaTestCase('00001', '001-01', NUM_SIMULATION_RUNS),
-            SsaTestCase('00003', '001-03', NUM_SIMULATION_RUNS),
-            SsaTestCase('00004', '001-04', NUM_SIMULATION_RUNS),
-            SsaTestCase('00007', '001-07', 2 * NUM_SIMULATION_RUNS),
-            SsaTestCase('00012', '001-12', NUM_SIMULATION_RUNS),
-            SsaTestCase('00020', '002-01', NUM_SIMULATION_RUNS),
-            SsaTestCase('00021', '002-02', NUM_SIMULATION_RUNS),
-            SsaTestCase('00030', '003-01', NUM_SIMULATION_RUNS),
-            SsaTestCase('00037', '004-01', 4 * NUM_SIMULATION_RUNS)
+            SsaTestCase('00001', NUM_SIMULATION_RUNS),
+            SsaTestCase('00003', NUM_SIMULATION_RUNS),
+            SsaTestCase('00004', NUM_SIMULATION_RUNS),
+            SsaTestCase('00007', 2 * NUM_SIMULATION_RUNS),
+            SsaTestCase('00012', NUM_SIMULATION_RUNS),
+            SsaTestCase('00020', NUM_SIMULATION_RUNS),
+            SsaTestCase('00021', NUM_SIMULATION_RUNS),
+            SsaTestCase('00030', NUM_SIMULATION_RUNS),
+            SsaTestCase('00037', 4 * NUM_SIMULATION_RUNS)
         ]
         self.ode_test_cases = [
             '00001',
@@ -823,8 +823,8 @@ class RunVerificationSuite(unittest.TestCase):
             self.fail(msg=msg)
         return self.verification_suite.get_results(), failures, successes
 
+    # todo: move test_verification_* methods to main verification module
     def test_verification_stochastic(self):
-        # todo: move to verification main program
         results, _, _ = self.run_verification_cases('DISCRETE_STOCHASTIC', self.ssa_test_cases)
 
     def test_verification_deterministic(self):
