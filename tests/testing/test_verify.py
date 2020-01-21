@@ -24,7 +24,7 @@ import unittest
 from wc_sim.config import core as config_core_multialgorithm
 from wc_sim.run_results import RunResults
 from wc_sim.testing.verify import (VerificationError, VerificationTestCaseType, VerificationTestReader,
-                                   ResultsComparator, ResultsComparator, CaseVerifier, VerificationResultType,
+                                   ResultsComparator, CaseVerifier, VerificationResultType,
                                    VerificationSuite, VerificationUtilities,
                                    VerificationRunResult, ODETestIterators)
 import obj_tables
@@ -225,15 +225,13 @@ class TestVerificationTestReader(unittest.TestCase):
             VerificationTestReader('no_such_test_case_type', '', test_case_num)
 
 
-# todo: fix
-@unittest.skip('doesnt work for multiple compartments')
 class TestResultsComparator(unittest.TestCase):
 
     def setUp(self):
         self.tmp_dir = tempfile.mkdtemp()
         self.test_case_data = {
             'CONTINUOUS_DETERMINISTIC': {
-                'test_case_num': '00001',
+                'test_case_num': '00054',   # a test case with 2 compartments
             },
             'DISCRETE_STOCHASTIC': {
                 'test_case_num': '00001',
@@ -246,15 +244,14 @@ class TestResultsComparator(unittest.TestCase):
                 make_verification_test_reader(data['test_case_num'], test_case_type)
             data['verification_test_reader'].run()
 
-    def make_run_results_hdf_filename(self):
-        return os.path.join(tempfile.mkdtemp(dir=self.tmp_dir), RunResults.HDF5_FILENAME)
-
     def tearDown(self):
         shutil.rmtree(self.tmp_dir)
 
-    # todo: add argument that maps species type ids to species ids
-    def make_run_results(self, test_case_type, species_amount_df):
-        # make a RunResults obj with given species amounts
+    def make_run_results_hdf_filename(self):
+        return os.path.join(tempfile.mkdtemp(dir=self.tmp_dir), RunResults.HDF5_FILENAME)
+
+    def make_run_results(self, test_case_type_name, test_case_num, test_case_dir, species_amount_df):
+        # make a RunResults obj from the species amounts in an SBML test suite case
 
         # create empty dfs for all RunResults components
         run_results_hdf_filename = self.make_run_results_hdf_filename()
@@ -262,41 +259,66 @@ class TestResultsComparator(unittest.TestCase):
         for component in RunResults.COMPONENTS:
             empty_df.to_hdf(run_results_hdf_filename, component)
 
-        # add compartments to species
-        cols = list(species_amount_df.columns)
-        species_amount_df.columns = cols[:1] + list(map(ResultsComparator.get_species, cols[1:]))
+        times = species_amount_df.loc[:, 'time']
+
+        if test_case_type_name == 'DISCRETE_STOCHASTIC':
+            # obtain the columns with expected populations
+            species_amount_df = species_amount_df.filter(regex='mean|time', axis='columns')
+            # delete the '-mean' suffixes in population column names
+            species_amount_df.columns = [col.replace('-mean', '') for col in species_amount_df.columns]
+
+        # map species type ids to species ids
+        verification_test_reader = VerificationTestReader(test_case_type_name, test_case_dir, test_case_num)
+        verification_test_reader.run()
+        species_type_ids = list(species_amount_df.columns)[1:]
+        species_ids = list(map(verification_test_reader.get_species_id, species_type_ids))
+
+        # create species amounts df with correct index & columns
+        amounts_df = pandas.DataFrame(data=species_amount_df.loc[:, species_type_ids].values, index=times,
+                                      columns=species_ids, dtype=np.float64, copy=True)
+
+        # get compartment volumes from model
+        # this assumes that compartment volumes are constant
+        volumes = {}
+        test_case_compartments = []
+        for compartment in verification_test_reader.model.get_compartments():
+            # todo: ensure that compartment is an abstract compartment with initial volume sd = 0
+            volumes[compartment.id] = compartment.init_volume.mean
+            test_case_compartments.append(compartment.id)
 
         # species amounts are Moles for continuous (aka 'semantic') tests and copy numbers for stochastic tests
-        if test_case_type == 'CONTINUOUS_DETERMINISTIC':
-            # volumes in the continuous test cases are static at 1 liter
-            VOLUMES = 1
+        if test_case_type_name == 'CONTINUOUS_DETERMINISTIC':
             # for continuous tests, convert Moles to populations that will be stored in run results
-            pops_df = species_amount_df * VOLUMES * Avogadro
+            for spec_id in species_ids:
+                _, comp_id = wc_lang.Species.parse_id(spec_id)
+                amounts_df.loc[:, spec_id] = amounts_df.loc[:, spec_id] * volumes[comp_id] * Avogadro
 
-        elif test_case_type == 'DISCRETE_STOCHASTIC':
-            pops_df = species_amount_df
+        # create an hdf storing the amounts
+        amounts_df.to_hdf(run_results_hdf_filename, 'populations')
 
-        # create an hdf
-        pops_df.to_hdf(run_results_hdf_filename, 'populations')
-
-        if test_case_type == 'CONTINUOUS_DETERMINISTIC':
+        if test_case_type_name == 'CONTINUOUS_DETERMINISTIC':
             # create the compartment volumes, needed for continuous models
-            columns = pandas.MultiIndex.from_tuples(((TEST_CASE_COMPARTMENT, 'volume'), ),
+            tuples = list(zip(test_case_compartments, ['volume'] * len(test_case_compartments)))
+            columns = pandas.MultiIndex.from_tuples(tuples,
                                                     names=['compartment', 'property'])
-            data = [VOLUMES] * len(pops_df.index)
-            aggregate_states_df =  pandas.DataFrame(data=data, index=pops_df.index, columns=columns,
-                                                    dtype=np.float64, copy=True)
+            # make volume columns
+            data = np.empty((len(amounts_df.index), len(test_case_compartments)))
+            for idx, comp_id in enumerate(test_case_compartments):
+                data[:, idx] = [volumes[comp_id]] * len(times)
+            aggregate_states_df = pandas.DataFrame(data=data, index=times, columns=columns,
+                                                   dtype=np.float64, copy=True)
             aggregate_states_df.to_hdf(run_results_hdf_filename, 'aggregate_states')
 
         # make & return a RunResults
         return RunResults(os.path.dirname(run_results_hdf_filename))
 
-    def make_run_results_from_expected_results(self, test_case_type, test_case_num):
+    def make_run_results_from_expected_results(self, test_case_type_name, test_case_num):
         """ Create a RunResults object with the same populations and volumes as a test case """
-        results_file = os.path.join(TEST_CASES, VerificationTestCaseType[test_case_type],
-                                    test_case_num, test_case_num+'-results.csv')
+        test_case_dir = os.path.join(TEST_CASES, VerificationTestCaseType[test_case_type_name].value,
+                                     test_case_num)
+        results_file = os.path.join(test_case_dir, test_case_num+'-results.csv')
         results_df = pandas.read_csv(results_file)
-        return self.make_run_results(test_case_type, results_df)
+        return self.make_run_results(test_case_type_name, test_case_num, test_case_dir, results_df)
 
     def test_results_comparator_continuous_deterministic(self):
         test_case_data = self.test_case_data['CONTINUOUS_DETERMINISTIC']
@@ -306,7 +328,7 @@ class TestResultsComparator(unittest.TestCase):
 
         # to fail a comparison, modify the run results for first species at time 0
         species_type_1 = test_case_data['verification_test_reader'].settings['amount'][0]
-        species_1 = ResultsComparator.get_species(species_type_1)
+        species_1 = test_case_data['verification_test_reader'].get_species_id(species_type_1)
         test_case_data['simulation_run_results'].get('populations').loc[0, species_1] *= 2
         self.assertTrue(results_comparator.differs())
         self.assertIn(species_type_1, results_comparator.differs())
@@ -349,11 +371,15 @@ class TestResultsComparator(unittest.TestCase):
             pops[:,0] = times
             # add stochasticity to populations
             pops[:,1] = np.add(means, (np.random.rand(n_times)*2)-1)
-            pop_df = pandas.DataFrame(pops, index=times, columns=['time', 'X'])
-            run_results_list.append(self.make_run_results('DISCRETE_STOCHASTIC', pop_df))
+            pop_df = pandas.DataFrame(pops, index=times, columns=['time', 'X-mean'])
+            run_results_list.append(self.make_run_results('DISCRETE_STOCHASTIC',
+                                                          verification_test_reader.test_case_num,
+                                                          verification_test_reader.test_case_dir,
+                                                          pop_df))
 
-        results_comparator = ResultsComparator(verification_test_reader, run_results_list)
-        self.assertEqual(False, results_comparator.differs())
+        results_comparator_1 = ResultsComparator(verification_test_reader, run_results_list)
+        # todo: QUANT DIFF: make test for quantify_stoch_diff()
+        self.assertEqual(False, results_comparator_1.differs())
 
         ### adjust data to test all Z thresholds ###
         # test by altering data at this arbitrary time
@@ -384,10 +410,11 @@ class TestResultsComparator(unittest.TestCase):
 
         def set_all_pops(run_results_list, time, pop_val):
             # set all run results pops at time to pop_val
-            species = ResultsComparator.get_species('X')
+            species = verification_test_reader.get_species_id('X')
             for run_results in run_results_list:
                 run_results.get('populations').loc[time, species] = pop_val
 
+        # test quantify_stoch_diff
         for test_z_score, expected_differ in z_scores_and_expected_differs:
             test_pop_mean = get_test_pop_mean(time, n_runs, expected_predictions_df, test_z_score)
             set_all_pops(run_results_list, time, test_pop_mean)
@@ -397,14 +424,18 @@ class TestResultsComparator(unittest.TestCase):
         loc = [0, 'X-mean']
         self.stash_pd_value(expected_predictions_df, loc, -1)
         with self.assertRaisesRegexp(VerificationError, "e_mean contains negative value.*"):
-            ResultsComparator(verification_test_reader, run_results_list).differs()
+            ResultsComparator(verification_test_reader, run_results_list).quantify_stoch_diff()
         self.restore_pd_value(expected_predictions_df, loc)
 
         loc = [0, 'X-sd']
         self.stash_pd_value(expected_predictions_df, loc, -1)
         with self.assertRaisesRegexp(VerificationError, "e_sd contains negative value.*"):
-            ResultsComparator(verification_test_reader, run_results_list).differs()
+            ResultsComparator(verification_test_reader, run_results_list).quantify_stoch_diff()
         self.restore_pd_value(expected_predictions_df, loc)
+
+        expected_predictions_df.loc[:, 'X-sd'] = 0
+        with self.assertRaisesRegexp(VerificationError, "e_sd contains too many zero"):
+            ResultsComparator(verification_test_reader, run_results_list).quantify_stoch_diff()
 
     def test_prepare_tolerances(self):
         # make mock VerificationTestReader with just settings
@@ -821,7 +852,6 @@ class RunVerificationSuite(unittest.TestCase):
         model_types = ['semantic', 'stochastic']
         for model_type in model_types:
             model_type_dir = os.path.join(self.root_test_dir, model_type)
-            print(f'processing: {model_type_dir}')
             sbml_models = glob.glob(os.path.join(model_type_dir, '0*/0*-sbml-l3v[1-2].xml'))
             for sbml_model in sorted(sbml_models):
                 print(f'sbml_model: {os.path.basename(sbml_model)}')
@@ -837,14 +867,13 @@ class RunVerificationSuite(unittest.TestCase):
                 LibSbmlInterface.raise_if_error(sbml_doc, f'Model could not be read from {sbml_model}')
                 try:
                     wc_lang_model = sbml_io.SbmlImporter().run(sbml_doc)
-                    print(f'writing: {wc_lang_model_filename}')
                     Writer().run(wc_lang_model_pathname, wc_lang_model, data_repo_metadata=False,
                                  protected=False)
                 except wc_lang.sbml.util.LibSbmlError as e:
                     errors.append(f"could not read '{sbml_model}: {e}'")
         print('Could not process\n', '\n'.join(errors))
 
-    @unittest.skip('incomplete')
+    @unittest.skip('broken')
     def test_verification_hybrid(self):
         # transcription_translation_case = SsaTestCase('transcription_translation', 'NA', 10)
         # translation_metabolism_case = SsaTestCase('translation_metabolism', 'NA', 10)

@@ -172,11 +172,11 @@ class VerificationTestReader(object):
         test_case_type (:obj:`VerificationTestCaseType`): the test case's type
     """
     SBML_FILE_SUFFIX = '.xml'
-    def __init__(self, test_case_type, test_case_dir, test_case_num):
-        if test_case_type not in VerificationTestCaseType.__members__:
-            raise VerificationError("Unknown VerificationTestCaseType: '{}'".format(test_case_type))
+    def __init__(self, test_case_type_name, test_case_dir, test_case_num):
+        if test_case_type_name not in VerificationTestCaseType.__members__:
+            raise VerificationError("Unknown VerificationTestCaseType: '{}'".format(test_case_type_name))
 
-        self.test_case_type = VerificationTestCaseType[test_case_type]
+        self.test_case_type = VerificationTestCaseType[test_case_type_name]
         self.test_case_dir = test_case_dir
         self.test_case_num = test_case_num
 
@@ -297,8 +297,8 @@ class VerificationTestReader(object):
     def get_species_id(self, species_type):
         """ Get the species id of a species type
 
-        Raises an error if the given species type is contained in multiple compartments. I believe this doesn't
-        occur for models in the SBML test suite.
+        Raises an error if the given species type is contained in multiple compartments. I believe
+        that this doesn't occur for models in the SBML test suite.
 
         Args:
             species_type (:obj:`str`): the species type of the species in the SBML test case
@@ -357,24 +357,6 @@ class ResultsComparator(object):
         # obtain default tolerances in np.allclose()
         self.default_tolerances = VerificationUtilities.get_default_args(np.allclose)
 
-    def get_species(self, species_type):
-        """ Get the species id of a species type
-
-        Args:
-            species_type (:obj:`str`): the species type of the species in the SBML test case
-
-        Returns:
-            :obj:`str`: the species id of the species type
-        """
-        return self.verification_test_reader.get_species_id(species_type)
-
-    @staticmethod
-    def get_species_type(string):
-        # if string is a species get the species type, otherwise return the string
-        if re.match(r'\w+\[\w+\]$', string, flags=re.ASCII):
-            return string.split('[')[0]
-        return string
-
     def prepare_tolerances(self):
         """ Prepare tolerance dictionary
 
@@ -401,6 +383,61 @@ class ResultsComparator(object):
         infs = np.full(np_array.shape, float('inf'))
         return np.where(np_array != 0, np_array, infs)
 
+    def quantify_stoch_diff(self):
+        """ Quantify the difference between stochastic simulation predicted(s) and expected species population(s)
+
+        Used to tune multialgorithmic models
+
+        Returns:
+            :obj:`dict`: map from each species to its difference from the expcected population;
+                returns the normalized Z score for DISCRETE_STOCHASTIC and MULTIALGORITHMIC models
+        """
+        differences = {}
+        if self.verification_test_reader.test_case_type in [VerificationTestCaseType.DISCRETE_STOCHASTIC,
+                                                            VerificationTestCaseType.MULTIALGORITHMIC]:
+            """ Test mean and sd population over multiple runs
+
+            Follow algorithm in
+            github.com/sbmlteam/sbml-test-suite/blob/master/cases/stochastic/DSMTS-userguide-31v2.pdf,
+            from Evans, et al. The SBML discrete stochastic models test suite, Bioinformatics, 24:285-286, 2008.
+            """
+            # TODO: warn if values lack precision; want int64 integers and float64 floats
+            # see https://docs.scipy.org/doc/numpy-1.15.0/reference/arrays.scalars.html
+            # use warnings.warn("", WcSimVerificationWarning)
+
+            ### test means ###
+            mean_range = self.verification_test_reader.settings['meanRange']
+            self.n_runs = n_runs = len(self.simulation_run_results)
+
+            self.simulation_pop_means = {}
+            for species_type in self.verification_test_reader.settings['amount']:
+                # extract nx1 correct mean and sd np arrays
+                correct_df = self.verification_test_reader.expected_predictions_df
+                e_mean = correct_df.loc[:, species_type+'-mean'].values
+                e_sd = correct_df.loc[:, species_type+'-sd'].values
+                # errors if e_sd or e_mean < 0
+                if np.any(e_mean < 0):
+                    raise VerificationError("e_mean contains negative value(s)")
+                if np.any(e_sd < 0):
+                    raise VerificationError("e_sd contains negative value(s)")
+
+                # avoid division by 0 when sd==0
+                # mask off SDs that are very close to 0
+                mask = np.isclose(np.zeros_like(e_sd), e_sd, atol=1e-14, rtol=0)
+                if 2 < np.count_nonzero(mask) or 0.3 < np.count_nonzero(mask) / len(mask):
+                    raise VerificationError(f"e_sd contains too many zero(s): {np.count_nonzero(mask)}")
+
+                # load simul. runs into 2D np array to find mean and SD
+                species_id = self.verification_test_reader.get_species_id(species_type)
+                pop_mean, pop_sd = SsaEnsemble.results_mean_n_sd(self.simulation_run_results, species_id)
+                self.simulation_pop_means[species_type] = pop_mean
+                Z = np.zeros_like(pop_mean)
+                Z[~mask] = math.sqrt(n_runs) * (pop_mean[~mask] - e_mean[~mask]) / e_sd[~mask]
+                differences[species_type] = Z
+
+            return differences
+
+    # todo: QUANT DIFF: rename 'quantify_stoch_diff', and then use in differs
     def differs(self):
         """ Evaluate whether simulation runs(s) differ from their expected species population prediction(s)
 
@@ -415,7 +452,7 @@ class ResultsComparator(object):
             concentrations_df = self.simulation_run_results.get_concentrations()
             # for each prediction, determine if its trajectory is close enough to the expected predictions
             for species_type in self.verification_test_reader.settings['amount']:
-                species_id = self.get_species(species_type)
+                species_id = self.verification_test_reader.get_species_id(species_type)
                 if not np.allclose(self.verification_test_reader.expected_predictions_df[species_type].values,
                     concentrations_df[species_id].values, **kwargs):
                     differing_values.append(species_type)
@@ -455,11 +492,12 @@ class ResultsComparator(object):
                 e_sd = self.zero_to_inf(e_sd)
 
                 # load simul. runs into 2D np array to find mean and SD
-                species_id = self.get_species(species_type)
+                species_id = self.verification_test_reader.get_species_id(species_type)
                 pop_mean, pop_sd = SsaEnsemble.results_mean_n_sd(self.simulation_run_results, species_id)
                 self.simulation_pop_means[species_type] = pop_mean
                 Z = math.sqrt(n_runs) * (pop_mean - e_mean) / e_sd
 
+                # todo: QUANT DIFF: return mean of Z
                 # compare with mean_range
                 if np.any(Z < mean_range[0]) or np.any(mean_range[1] < Z):
                     differing_values.append(species_type)
@@ -541,6 +579,7 @@ class CaseVerifier(object):
         if default_num_stochastic_runs is None:
             self.default_num_stochastic_runs = config_multialgorithm['num_ssa_verification_sim_runs']
 
+    # todo: QUANT DIFF: return pair: (True/False for verification, Mean Z score)
     def verify_model(self, num_discrete_stochastic_runs=None, discard_run_results=True, plot_file=None,
                      ode_time_step_factor=None, tolerances=None):
         """ Verify a model
@@ -552,6 +591,7 @@ class CaseVerifier(object):
             ode_time_step_factor (:obj:`float`, optional): factor by which to multiply the ODE time step
             tolerances (:obj:`dict`, optional): if testing tolerances, values of ODE solver tolerances
 
+        # todo: QUANT DIFF: return pair: (True/False for verification, Mean Z score)
         Returns:
             :obj:`obj`: `False` if populations in the expected result and simulation run are equal
                 within tolerances, otherwise :obj:`list`: of species types whose populations differ
@@ -819,6 +859,7 @@ VerificationRunResult.case_type.__doc__ = 'type of the case, a name in `Verifica
 VerificationRunResult.case_num.__doc__ = 'case number'
 VerificationRunResult.result_type.__doc__ = "a VerificationResultType: the result's classification"
 VerificationRunResult.duration.__doc__ = 'time it took to run the test'
+# todo: QUANT DIFF: rename to params, add quant_diff
 VerificationRunResult.output.__doc__ = 'optional, text output generated by the test'
 VerificationRunResult.error.__doc__ = 'optional, error message for the test'
 
@@ -931,10 +972,6 @@ class VerificationSuite(object):
 
         # assemble kwargs
         kwargs = {}
-        if self.plot_dir:
-            plot_file = os.path.join(self.plot_dir,
-                                     "{}_{}_verification_test.pdf".format(case_type_name, case_num))
-            kwargs['plot_file'] = plot_file
 
         if num_stochastic_runs is None:
             kwargs['num_discrete_stochastic_runs'] = config_multialgorithm['num_ssa_verification_sim_runs']
@@ -942,14 +979,23 @@ class VerificationSuite(object):
             kwargs['num_discrete_stochastic_runs'] = num_stochastic_runs
 
         kwargs['ode_time_step_factor'] = ode_time_step_factor
+        plot_name_params = [f"ode_{ode_time_step_factor}"]
 
         if rtol is not None or atol is not None:
             tolerances_dict = {}
             if rtol is not None:
                 tolerances_dict['rtol'] = rtol
+                plot_name_params.append(f"rtol_{rtol}")
             if atol is not None:
                 tolerances_dict['atol'] = atol
+                plot_name_params.append(f"atol_{atol}")
             kwargs['tolerances'] = tolerances_dict
+
+        if self.plot_dir:
+            plot_name_append = '_'.join(plot_name_params)
+            plot_file = os.path.join(self.plot_dir,
+                                     f"{case_type_name}_{case_num}_{plot_name_append}_verification_test.pdf")
+            kwargs['plot_file'] = plot_file
 
         # save pretty printed kwargs in results; they can be restored with eval()
         pformat_kwargs = pformat(kwargs)
@@ -960,6 +1006,8 @@ class VerificationSuite(object):
         try:
             start_time = time.process_time()
             verification_result = case_verifier.verify_model(**kwargs)
+            # todo: QUANT DIFF: have verify_model() return
+
             run_time = time.process_time() - start_time
             if verification_result:
                 self._record_result(case_type_name, case_num,
@@ -968,6 +1016,7 @@ class VerificationSuite(object):
                                     output=pformat_kwargs,
                                     error=verification_result)
             else:
+                # todo: QUANT DIFF: save quant_diff
                 self._record_result(case_type_name, case_num,
                                     VerificationResultType.CASE_VERIFIED,
                                     run_time,
