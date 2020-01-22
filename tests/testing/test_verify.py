@@ -378,7 +378,6 @@ class TestResultsComparator(unittest.TestCase):
                                                           pop_df))
 
         results_comparator_1 = ResultsComparator(verification_test_reader, run_results_list)
-        # todo: QUANT DIFF: make test for quantify_stoch_diff()
         self.assertEqual(False, results_comparator_1.differs())
 
         ### adjust data to test all Z thresholds ###
@@ -414,7 +413,6 @@ class TestResultsComparator(unittest.TestCase):
             for run_results in run_results_list:
                 run_results.get('populations').loc[time, species] = pop_val
 
-        # test quantify_stoch_diff
         for test_z_score, expected_differ in z_scores_and_expected_differs:
             test_pop_mean = get_test_pop_mean(time, n_runs, expected_predictions_df, test_z_score)
             set_all_pops(run_results_list, time, test_pop_mean)
@@ -436,6 +434,13 @@ class TestResultsComparator(unittest.TestCase):
         expected_predictions_df.loc[:, 'X-sd'] = 0
         with self.assertRaisesRegexp(VerificationError, "e_sd contains too many zero"):
             ResultsComparator(verification_test_reader, run_results_list).quantify_stoch_diff()
+
+    def test_quantify_stoch_diff(self):
+        test_case_data = self.test_case_data['CONTINUOUS_DETERMINISTIC']
+        results_comparator = ResultsComparator(test_case_data['verification_test_reader'],
+                                               test_case_data['simulation_run_results'])
+        # quantify_stoch_diff() ignores CONTINUOUS_DETERMINISTIC models
+        self.assertEqual(None, results_comparator.quantify_stoch_diff())
 
     def test_prepare_tolerances(self):
         # make mock VerificationTestReader with just settings
@@ -753,12 +758,12 @@ class RunVerificationSuite(unittest.TestCase):
             SsaTestCase('00001', NUM_SIMULATION_RUNS),
             SsaTestCase('00003', NUM_SIMULATION_RUNS),
             SsaTestCase('00004', NUM_SIMULATION_RUNS),
-            SsaTestCase('00007', 2 * NUM_SIMULATION_RUNS),
+            SsaTestCase('00007', NUM_SIMULATION_RUNS),
             SsaTestCase('00012', NUM_SIMULATION_RUNS),
             SsaTestCase('00020', NUM_SIMULATION_RUNS),
             SsaTestCase('00021', NUM_SIMULATION_RUNS),
             SsaTestCase('00030', NUM_SIMULATION_RUNS),
-            SsaTestCase('00037', 4 * NUM_SIMULATION_RUNS)
+            SsaTestCase('00037', NUM_SIMULATION_RUNS)
         ]
         self.ode_test_cases = [
             '00001',

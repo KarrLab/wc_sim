@@ -377,14 +377,8 @@ class ResultsComparator(object):
                     pass
         return kwargs
 
-    @staticmethod
-    def zero_to_inf(np_array):
-        """ replace 0s with inf """
-        infs = np.full(np_array.shape, float('inf'))
-        return np.where(np_array != 0, np_array, infs)
-
     def quantify_stoch_diff(self):
-        """ Quantify the difference between stochastic simulation predicted(s) and expected species population(s)
+        """ Quantify the difference between stochastic simulation population(s) and expected population(s)
 
         Used to tune multialgorithmic models
 
@@ -395,23 +389,16 @@ class ResultsComparator(object):
         differences = {}
         if self.verification_test_reader.test_case_type in [VerificationTestCaseType.DISCRETE_STOCHASTIC,
                                                             VerificationTestCaseType.MULTIALGORITHMIC]:
-            """ Test mean and sd population over multiple runs
-
-            Follow algorithm in
-            github.com/sbmlteam/sbml-test-suite/blob/master/cases/stochastic/DSMTS-userguide-31v2.pdf,
-            from Evans, et al. The SBML discrete stochastic models test suite, Bioinformatics, 24:285-286, 2008.
-            """
             # TODO: warn if values lack precision; want int64 integers and float64 floats
             # see https://docs.scipy.org/doc/numpy-1.15.0/reference/arrays.scalars.html
             # use warnings.warn("", WcSimVerificationWarning)
 
-            ### test means ###
-            mean_range = self.verification_test_reader.settings['meanRange']
+            ### compute Z scores of mean differences ###
             self.n_runs = n_runs = len(self.simulation_run_results)
 
             self.simulation_pop_means = {}
             for species_type in self.verification_test_reader.settings['amount']:
-                # extract nx1 correct mean and sd np arrays
+                # extract n x 1 correct mean and sd np arrays
                 correct_df = self.verification_test_reader.expected_predictions_df
                 e_mean = correct_df.loc[:, species_type+'-mean'].values
                 e_sd = correct_df.loc[:, species_type+'-sd'].values
@@ -421,8 +408,7 @@ class ResultsComparator(object):
                 if np.any(e_sd < 0):
                     raise VerificationError("e_sd contains negative value(s)")
 
-                # avoid division by 0 when sd==0
-                # mask off SDs that are very close to 0
+                # avoid division by 0 when sd==0 by masking off SDs that are very close to 0
                 mask = np.isclose(np.zeros_like(e_sd), e_sd, atol=1e-14, rtol=0)
                 if 2 < np.count_nonzero(mask) or 0.3 < np.count_nonzero(mask) / len(mask):
                     raise VerificationError(f"e_sd contains too many zero(s): {np.count_nonzero(mask)}")
@@ -437,13 +423,12 @@ class ResultsComparator(object):
 
             return differences
 
-    # todo: QUANT DIFF: rename 'quantify_stoch_diff', and then use in differs
     def differs(self):
-        """ Evaluate whether simulation runs(s) differ from their expected species population prediction(s)
+        """ Evaluate whether the species amounts predicted by simulation run(s) differ from the correct amounts
 
         Returns:
-            :obj:`obj`: `False` if populations in the expected result and simulation run are equal
-                within tolerances, otherwise :obj:`list`: of species types whose populations differ
+            :obj:`obj`: `False` if amounts in the simulation run(s) and the correct amounts are equal
+                within tolerances, otherwise :obj:`list`: of species types whose amounts differ
         """
         differing_values = []
         if self.verification_test_reader.test_case_type == VerificationTestCaseType.CONTINUOUS_DETERMINISTIC:
@@ -460,7 +445,7 @@ class ResultsComparator(object):
 
         if self.verification_test_reader.test_case_type in [VerificationTestCaseType.DISCRETE_STOCHASTIC,
                                                             VerificationTestCaseType.MULTIALGORITHMIC]:
-            """ Test mean and sd population over multiple runs
+            """ Test mean population over multiple runs
 
             Follow algorithm in
             github.com/sbmlteam/sbml-test-suite/blob/master/cases/stochastic/DSMTS-userguide-31v2.pdf,
@@ -471,39 +456,17 @@ class ResultsComparator(object):
             # use warnings.warn("", WcSimVerificationWarning)
 
             ### test means ###
-            mean_range = self.verification_test_reader.settings['meanRange']
-            self.n_runs = n_runs = len(self.simulation_run_results)
+            mean_min_Z, mean_max_Z = self.verification_test_reader.settings['meanRange']
+            differences = self.quantify_stoch_diff()
+            for species_type, Z in differences.items():
 
-            self.simulation_pop_means = {}
-            for species_type in self.verification_test_reader.settings['amount']:
-                # extract nx1 correct mean and sd np arrays
-                correct_df = self.verification_test_reader.expected_predictions_df
-                e_mean = correct_df.loc[:, species_type+'-mean'].values
-                e_sd = correct_df.loc[:, species_type+'-sd'].values
-                # errors if e_sd or e_mean < 0
-                if np.any(e_mean < 0):
-                    raise VerificationError("e_mean contains negative value(s)")
-                if np.any(e_sd < 0):
-                    raise VerificationError("e_sd contains negative value(s)")
-
-                # avoid division by 0 and sd=0; replace 0s in e_sd with inf
-                # TODO: instead of this, remove 0s in e_sd and corresponding pop_mean & e_mean rows;
-                # if too many removed, raise error
-                e_sd = self.zero_to_inf(e_sd)
-
-                # load simul. runs into 2D np array to find mean and SD
-                species_id = self.verification_test_reader.get_species_id(species_type)
-                pop_mean, pop_sd = SsaEnsemble.results_mean_n_sd(self.simulation_run_results, species_id)
-                self.simulation_pop_means[species_type] = pop_mean
-                Z = math.sqrt(n_runs) * (pop_mean - e_mean) / e_sd
-
-                # todo: QUANT DIFF: return mean of Z
                 # compare with mean_range
-                if np.any(Z < mean_range[0]) or np.any(mean_range[1] < Z):
+                if np.any(Z < mean_min_Z) or np.any(mean_max_Z < Z):
                     differing_values.append(species_type)
 
             ### test sds ###
             # TODO: test sds
+
             return differing_values or False
 
 
