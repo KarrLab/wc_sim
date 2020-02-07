@@ -8,6 +8,7 @@
 from capturer import CaptureOutput
 from collections import namedtuple
 from inspect import currentframe, getframeinfo
+from pprint import pprint
 from scipy.constants import Avogadro
 import cProfile
 import datetime
@@ -19,7 +20,6 @@ import pstats
 import shutil
 import tempfile
 import unittest
-
 
 from wc_sim.config import core as config_core_multialgorithm
 from wc_sim.run_results import RunResults
@@ -228,20 +228,21 @@ class TestVerificationTestReader(unittest.TestCase):
 class TestResultsComparator(unittest.TestCase):
 
     def setUp(self):
+        print(self.id())
         self.tmp_dir = tempfile.mkdtemp()
         self.test_case_data = {
-            'CONTINUOUS_DETERMINISTIC': {
+            VerificationTestCaseType.CONTINUOUS_DETERMINISTIC.name: {
                 'test_case_num': '00054',   # a test case with 2 compartments
             },
-            'DISCRETE_STOCHASTIC': {
+            VerificationTestCaseType.DISCRETE_STOCHASTIC.name: {
                 'test_case_num': '00001',
             }
         }
-        for test_case_type, data in self.test_case_data.items():
+        for test_case_type_name, data in self.test_case_data.items():
             data['simulation_run_results'] = \
-                self.make_run_results_from_expected_results(test_case_type, data['test_case_num'])
+                self.make_run_results_from_expected_results(test_case_type_name, data['test_case_num'])
             data['verification_test_reader'] = \
-                make_verification_test_reader(data['test_case_num'], test_case_type)
+                make_verification_test_reader(data['test_case_num'], test_case_type_name)
             data['verification_test_reader'].run()
 
     def tearDown(self):
@@ -318,7 +319,11 @@ class TestResultsComparator(unittest.TestCase):
                                      test_case_num)
         results_file = os.path.join(test_case_dir, test_case_num+'-results.csv')
         results_df = pandas.read_csv(results_file)
-        return self.make_run_results(test_case_type_name, test_case_num, test_case_dir, results_df)
+        run_results = self.make_run_results(test_case_type_name, test_case_num, test_case_dir, results_df)
+        if test_case_type_name == VerificationTestCaseType.CONTINUOUS_DETERMINISTIC.name:
+            return run_results
+        elif test_case_type_name == VerificationTestCaseType.DISCRETE_STOCHASTIC.name:
+            return [run_results]
 
     def test_results_comparator_continuous_deterministic(self):
         test_case_data = self.test_case_data['CONTINUOUS_DETERMINISTIC']
@@ -436,6 +441,18 @@ class TestResultsComparator(unittest.TestCase):
             ResultsComparator(verification_test_reader, run_results_list).quantify_stoch_diff()
 
     def test_quantify_stoch_diff(self):
+        test_case_data = self.test_case_data['DISCRETE_STOCHASTIC']
+        results_comparator = ResultsComparator(test_case_data['verification_test_reader'],
+                                               test_case_data['simulation_run_results'])
+        mean_diffs = results_comparator.quantify_stoch_diff(evaluate=True)
+        print('mean_diffs')
+        pprint(mean_diffs)
+        for mean_diff in mean_diffs.values():
+            self.assertTrue(isinstance(mean_diff, float))
+            # todo: QUANT DIFF: checking correct values
+            # diff should be 0 because test RunResults is created from expected mean populations
+            self.assertTrue(math.isclose(mean_diff, 0.))
+
         test_case_data = self.test_case_data['CONTINUOUS_DETERMINISTIC']
         results_comparator = ResultsComparator(test_case_data['verification_test_reader'],
                                                test_case_data['simulation_run_results'])
@@ -469,6 +486,7 @@ class TestResultsComparator(unittest.TestCase):
 class TestCaseVerifier(unittest.TestCase):
 
     def setUp(self):
+        print(self.id())
         self.test_case_num = '00001'
         self.tmp_dir = os.path.join(os.path.dirname(__file__), 'tmp')
         self.case_verifiers = {}
@@ -500,6 +518,9 @@ class TestCaseVerifier(unittest.TestCase):
             with self.assertRaisesRegexp(VerificationError, "non-zero start setting .* not supported"):
                 self.case_verifiers[model_type].verify_model()
 
+        with self.assertRaises(VerificationError):
+            self.case_verifiers['CONTINUOUS_DETERMINISTIC'].verify_model(evaluate=True)
+
     def make_plot_file(self, model_type, case=None):
         if case is None:
             case = self.test_case_num
@@ -513,6 +534,11 @@ class TestCaseVerifier(unittest.TestCase):
             plot_file = self.make_plot_file(model_type)
             self.assertFalse(self.case_verifiers[model_type].verify_model(plot_file=plot_file))
             self.assertTrue(os.path.isfile(plot_file))
+
+        mean_diffs = self.case_verifiers['DISCRETE_STOCHASTIC'].verify_model(evaluate=True)
+        print(mean_diffs)
+        for mean_diff in mean_diffs.values():
+            self.assertTrue(isinstance(mean_diff, float))
 
     def test_verify_model_stochastic_fails(self):
         # test a failure despite running CaseVerifier.MAX_TRIES
@@ -568,6 +594,7 @@ class TestCaseVerifier(unittest.TestCase):
 class TestVerificationSuite(unittest.TestCase):
 
     def setUp(self):
+        print(self.id())
         self.tmp_dir = tempfile.mkdtemp()
         self.verification_suite = VerificationSuite(TEST_CASES, self.tmp_dir)
 
@@ -584,24 +611,25 @@ class TestVerificationSuite(unittest.TestCase):
 
     def test__record_result(self):
         self.assertEqual(self.verification_suite.results, [])
-        sub_dir = os.path.join(self.tmp_dir, 'test_case_sub_dir')
 
-        result = VerificationRunResult(TEST_CASES, sub_dir, '00001', VerificationResultType.CASE_VERIFIED,
-                                       1.1, output='test output', error='eg error')
-        self.verification_suite._record_result(*result[1:])
+        params = dict(ode_time_step_factor=2.0)
+        kwargs = dict(params=params, error='eg error')
+        test_args = ('CONTINUOUS_DETERMINISTIC', '00001', VerificationResultType.CASE_VERIFIED, 1.1)
+        result = VerificationRunResult(TEST_CASES, *test_args, **kwargs)
+        self.verification_suite._record_result(*test_args, **kwargs)
         self.assertEqual(len(self.verification_suite.results), 1)
         self.assertEqual(self.verification_suite.results[-1], result)
 
-        result = VerificationRunResult(TEST_CASES, sub_dir, '00001',
-                                       VerificationResultType.CASE_UNREADABLE, 0)
-        self.verification_suite._record_result(*result[1:])
+        test_args = ('MULTIALGORITHMIC', '00001', VerificationResultType.CASE_UNREADABLE, 2.2)
+        result = VerificationRunResult(TEST_CASES, *test_args, **kwargs)
+        self.verification_suite._record_result(*test_args, **kwargs)
         self.assertEqual(len(self.verification_suite.results), 2)
         self.assertEqual(self.verification_suite.results[-1], result)
 
         with self.assertRaisesRegexp(VerificationError,
                                      "result_type must be a VerificationResultType, not a"):
-            self.verification_suite._record_result(TEST_CASES, sub_dir, '00001',
-                                                   'not a VerificationResultType')
+            self.verification_suite._record_result('MULTIALGORITHMIC', '00001',
+                                                   'not a VerificationResultType', 0)
 
     def test_dump_results(self):
         self.assertEqual(self.verification_suite.dump_results(), [])
@@ -660,8 +688,16 @@ class TestVerificationSuite(unittest.TestCase):
 
         # case unreadable
         verification_suite = VerificationSuite(TEST_CASES)
-        self.verification_suite._run_test('invalid_case_type_name', test_case_num)
+        verification_suite._run_test('invalid_case_type_name', test_case_num)
+        results = verification_suite.get_results()
         self.assertEqual(results.pop().result_type, VerificationResultType.CASE_UNREADABLE)
+
+        # test stochastic submodels
+        verification_suite._run_test('DISCRETE_STOCHASTIC', test_case_num, evaluate=True)
+        last_result = results.pop()
+        self.assertTrue(isinstance(last_result.quant_diff, dict))
+        for diff_mean in last_result.quant_diff.values():
+            self.assertTrue(isinstance(diff_mean, float))
 
         # run fails
         plot_dir = tempfile.mkdtemp()
@@ -683,7 +719,7 @@ class TestVerificationSuite(unittest.TestCase):
                                                      ode_time_step_factors=ode_time_step_factors)
         self.assertEqual(len(results), len(ode_time_step_factors))
         last_result = results[-1]
-        params = eval(last_result.output)
+        params = eval(last_result.params)
         self.assertEqual(params['ode_time_step_factor'], ode_time_step_factors[-1])
 
         max_rtol = 1E-9
@@ -695,7 +731,7 @@ class TestVerificationSuite(unittest.TestCase):
                                                      empty_results=True)
         self.assertEqual(len(results), 2 * 3)
         last_result = results[-1]
-        params = eval(last_result.output)
+        params = eval(last_result.params)
         self.assertEqual(params['tolerances']['rtol'], max_rtol)
         self.assertEqual(params['tolerances']['atol'], max_atol)
 
@@ -705,7 +741,7 @@ class TestVerificationSuite(unittest.TestCase):
                                                      empty_results=True)
         self.assertEqual(len(results), len(ode_time_step_factors) * 2 * 3)
         last_result = results[-1]
-        params = eval(last_result.output)
+        params = eval(last_result.params)
         self.assertEqual(params['ode_time_step_factor'], ode_time_step_factors[-1])
         self.assertEqual(params['tolerances']['rtol'], max_rtol)
         self.assertEqual(params['tolerances']['atol'], max_atol)
@@ -742,13 +778,27 @@ class TestVerificationSuite(unittest.TestCase):
             self.verification_suite.run(test_case_type_name='no such VerificationTestCaseType')
 
     def test_run_multialg(self):
-        results = self.verification_suite.run_multialg(['00007'])
-        self.assertEqual(results[-1].result_type, VerificationResultType.CASE_VERIFIED)
+        results = self.verification_suite.run_multialg(['00007'], evaluate=False)
+        result_types = [result.result_type for result in results]
+        # run with last entry in VerificationSuite.ODE_TIME_STEP_FACTORS might not verify
+        expected_result_type_sets = [{VerificationResultType.CASE_VERIFIED},
+                                     {VerificationResultType.CASE_VERIFIED},
+                                     {VerificationResultType.CASE_VERIFIED,
+                                      VerificationResultType.CASE_DID_NOT_VERIFY}]
+        for result_type, expected_result_type_set in zip(result_types, expected_result_type_sets):
+            self.assertTrue(result_type in expected_result_type_set)
 
+        results = self.verification_suite.run_multialg(['00007'], evaluate=True)
+        last_result = results.pop()
+        # todo: QUANT DIFF: check correct values
+        self.assertTrue(isinstance(last_result.quant_diff, dict))
+        for diff_mean in last_result.quant_diff.values():
+            self.assertTrue(isinstance(diff_mean, float))
 
 SsaTestCase = namedtuple('SsaTestCase', 'case_num, num_ssa_runs')
 
 
+@unittest.skip('temp. speed up')
 class RunVerificationSuite(unittest.TestCase):
 
     def setUp(self):

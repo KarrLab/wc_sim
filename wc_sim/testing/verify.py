@@ -345,7 +345,18 @@ class VerificationTestReader(object):
 
 
 class ResultsComparator(object):
-    """ Compare simulated and expected predictions """
+    """ Compare simulated population predictions against expected populations
+
+    Attributes:
+        verification_test_reader (:obj:`VerificationTestReader`): the test case's reader
+        simulation_run_results (:obj:`RunResults` or :obj:`list` of :obj:`RunResults`): simulation run results;
+            results for 1 run of a CONTINUOUS_DETERMINISTIC integration, or a :obj:`list` of results
+            for multiple runs of a stochastic integrator
+        n_runs (:obj:`int`): number off runs of a stochastic integrator
+        default_tolerances (:obj:`dict`): default tolerance specifications for ODE integrator
+        simulation_pop_means (:obj:`dict`): map from species id to ndarray of mean populations over a
+            simulation trajectory
+    """
     TOLERANCE_MAP = dict(
         rtol='relative',
         atol='absolute'
@@ -377,10 +388,15 @@ class ResultsComparator(object):
                     pass
         return kwargs
 
-    def quantify_stoch_diff(self):
+    # todo: QUANT DIFF: add 'evaluate' option
+    def quantify_stoch_diff(self, evaluate=False):
         """ Quantify the difference between stochastic simulation population(s) and expected population(s)
 
         Used to tune multialgorithmic models
+
+        Args:
+            evaluate (:obj:`bool`, optional): if `False` return an array of Z scores for each species;
+                if `True` return mean Z score for each species
 
         Returns:
             :obj:`dict`: map from each species to its difference from the expcected population;
@@ -421,6 +437,11 @@ class ResultsComparator(object):
                 Z[~mask] = math.sqrt(n_runs) * (pop_mean[~mask] - e_mean[~mask]) / e_sd[~mask]
                 differences[species_type] = Z
 
+            if evaluate:
+                # todo: QUANT DIFF: find mean diff for each species
+                for species_type, Z in differences.items():
+                    differences[species_type] = np.mean(Z)
+                return differences
             return differences
 
     def differs(self):
@@ -451,9 +472,6 @@ class ResultsComparator(object):
             github.com/sbmlteam/sbml-test-suite/blob/master/cases/stochastic/DSMTS-userguide-31v2.pdf,
             from Evans, et al. The SBML discrete stochastic models test suite, Bioinformatics, 24:285-286, 2008.
             """
-            # TODO: warn if values lack precision; want int64 integers and float64 floats
-            # see https://docs.scipy.org/doc/numpy-1.15.0/reference/arrays.scalars.html
-            # use warnings.warn("", WcSimVerificationWarning)
 
             ### test means ###
             mean_min_Z, mean_max_Z = self.verification_test_reader.settings['meanRange']
@@ -471,7 +489,8 @@ class ResultsComparator(object):
 
 
 class SsaEnsemble(object):
-    # handle an SSA ensemble
+    """ Handle an SSA ensemble
+    """
 
     @staticmethod
     def run(model, simul_kwargs, tmp_results_dir, num_runs):
@@ -505,7 +524,7 @@ class SsaEnsemble(object):
 
 
 class CaseVerifier(object):
-    """ Verify a test case
+    """ Verify or evaluate a test case
 
     Attributes:
         default_num_stochastic_runs (:obj:`int`): default number of Monte Carlo runs for SSA simulations
@@ -542,9 +561,9 @@ class CaseVerifier(object):
         if default_num_stochastic_runs is None:
             self.default_num_stochastic_runs = config_multialgorithm['num_ssa_verification_sim_runs']
 
-    # todo: QUANT DIFF: return pair: (True/False for verification, Mean Z score)
+    # todo: QUANT DIFF: add 'evaluate' option
     def verify_model(self, num_discrete_stochastic_runs=None, discard_run_results=True, plot_file=None,
-                     ode_time_step_factor=None, tolerances=None):
+                     ode_time_step_factor=None, tolerances=None, evaluate=False):
         """ Verify a model
 
         Args:
@@ -553,11 +572,21 @@ class CaseVerifier(object):
             plot_file (:obj:`str`, optional): path of plotted results, if desired
             ode_time_step_factor (:obj:`float`, optional): factor by which to multiply the ODE time step
             tolerances (:obj:`dict`, optional): if testing tolerances, values of ODE solver tolerances
+            evaluate (:obj:`bool`, optional): control the return value
 
-        # todo: QUANT DIFF: return pair: (True/False for verification, Mean Z score)
+        # todo: QUANT DIFF: depends on 'evaluate' option
+        # todo: QUANT DIFF: must return 
         Returns:
-            :obj:`obj`: `False` if populations in the expected result and simulation run are equal
-                within tolerances, otherwise :obj:`list`: of species types whose populations differ
+            :obj:`obj`: if `evaluate` is `False`, then return `False` if populations in the expected
+                result and simulation run are equal within tolerances, otherwise :obj:`list`: of species
+                types whose populations differ;
+                if `evaluate` is `True`, and the model contains a stochastic submmodel, then return
+                a :obj:`dict` containing the mean Z-score for each species
+
+        Raises:
+            :obj:`VerificationError`: if 'duration' or 'steps' are missing from settings, or
+                settings requires simulation to start at time other than 0, or
+                `evaluate` is `True` and test_case_type is CONTINUOUS_DETERMINISTIC
         """
 
         # check settings
@@ -573,6 +602,11 @@ class CaseVerifier(object):
             raise VerificationError('; '.join(errors))
         if 'start' in settings and settings['start'] != 0:
             raise VerificationError("non-zero start setting ({}) not supported".format(settings['start']))
+
+        # todo: QUANT DIFF: depends on 'evaluate' option
+        if self.verification_test_reader.test_case_type == VerificationTestCaseType.CONTINUOUS_DETERMINISTIC \
+            and evaluate:
+                raise VerificationError("evaluate is True and test_case_type is CONTINUOUS_DETERMINISTIC")
 
         # prepare for simulation
         self.tmp_results_dir = tmp_results_dir = tempfile.mkdtemp()
@@ -618,10 +652,14 @@ class CaseVerifier(object):
                     SsaEnsemble.run(self.verification_test_reader.model, simul_kwargs, tmp_results_dir, num_runs)
 
                 ## 2. compare results
-                self.results_comparator = ResultsComparator(self.verification_test_reader, self.simulation_run_results)
+                self.results_comparator = ResultsComparator(self.verification_test_reader,
+                                                            self.simulation_run_results)
                 self.comparison_result = self.results_comparator.differs()
-                # if model & simulation verify, don't retry
-                if not self.comparison_result:
+                # todo: QUANT DIFF: depends on 'evaluate' option
+                if evaluate:
+                    self.evaluation = self.results_comparator.quantify_stoch_diff(evaluate=evaluate)
+                # if model & simulation verify or evaluating, don't retry
+                if not self.comparison_result or evaluate:
                     break
                 try_num += 1
 
@@ -634,6 +672,10 @@ class CaseVerifier(object):
         ## 4. cleanup
         if discard_run_results:
             shutil.rmtree(self.tmp_results_dir)
+
+        # todo: QUANT DIFF: depends on 'evaluate' option
+        if evaluate:
+            return self.evaluation
         return self.comparison_result
 
     def get_model_summary(self):
@@ -809,26 +851,29 @@ class VerificationResultType(Enum):
     SLOW_VERIFICATION_RUN = 'verification run timed out'
     CASE_DID_NOT_VERIFY = 'case did not verify'
     CASE_VERIFIED = 'case verified'
+    VERIFICATION_UNKNOWN = 'verification not evaluated'
 
 
 VerificationRunResult = namedtuple('VerificationRunResult',
                                    ['cases_dir', 'case_type', 'case_num', 'result_type',
-                                    'duration', 'output', 'error'])
-# make error and output optional: see https://stackoverflow.com/a/18348004
-VerificationRunResult.__new__.__defaults__ = (None, None, )
+                                    'duration', 'quant_diff', 'params', 'error'])
+# make quant_diff, error and params optional: see https://stackoverflow.com/a/18348004
+VerificationRunResult.__new__.__defaults__ = (None, None, None,)
 VerificationRunResult.__doc__ += ': results for one verification test run'
 VerificationRunResult.cases_dir.__doc__ = 'directory containing the case(s)'
 VerificationRunResult.case_type.__doc__ = 'type of the case, a name in `VerificationTestCaseType`'
 VerificationRunResult.case_num.__doc__ = 'case number'
 VerificationRunResult.result_type.__doc__ = "a VerificationResultType: the result's classification"
 VerificationRunResult.duration.__doc__ = 'time it took to run the test'
-# todo: QUANT DIFF: rename to params, add quant_diff
-VerificationRunResult.output.__doc__ = 'optional, text output generated by the test'
+VerificationRunResult.quant_diff.__doc__ = ('mean Z-score difference between correct means and actual '
+                                            'simulation predictions')
+# todo: QUANT DIFF: rename to params
+VerificationRunResult.params.__doc__ = 'optional, parameters used by the test'
 VerificationRunResult.error.__doc__ = 'optional, error message for the test'
 
 
 class VerificationSuite(object):
-    """ Manage a suite of verification tests of `wc_sim`'s dynamic behavior
+    """ Manage a suite of verification tests of `wc_sim`\ 's dynamic behavior
 
     Attributes:
         cases_dir (:obj:`str`): path to cases directory
@@ -859,24 +904,27 @@ class VerificationSuite(object):
         """
         return self.results
 
-    def _record_result(self, case_type_name, case_num, result_type, duration, output=None, error=None):
+    def _record_result(self, case_type_name, case_num, result_type, duration, **kwargs):
         """ Record the result of a test run
 
         Args:
             case_type_name (:obj:`str`): the type of case, a name in `VerificationTestCaseType`
             case_num (:obj:`str`): unique id of a verification case
             result_type (:obj:`VerificationResultType`): the result's classification
-            duration (:obj:`float`): time it took to run the test
-            output (:obj:`str`, optional): description of the test, if any
+            duration (:obj:`float`): time it took to run the test (sec)
+            in `kwargs`:
+            quant_diff (:obj:`str`, optional): quantified difference between actual and expected
+            params (:obj:`str`, optional): parameters used by the test, if any
             error (:obj:`str`, optional): description of the error, if any
         """
-        # TODO: if an error occurs record more, like the results dir
         if type(result_type) != VerificationResultType:
             raise VerificationError("result_type must be a VerificationResultType, not a '{}'".format(
                                     type(result_type).__name__))
         self.results.append(VerificationRunResult(self.cases_dir, case_type_name, case_num,
-                                                  result_type, duration, output, error))
+                                                  result_type, duration, **kwargs))
 
+    # attributes in a VerificationRunResult to dump in `dump_results`
+    RESULTS_ATTRIBUTES_TO_DUMP = ['case_type', 'case_num', 'duration', 'quant_diff']
     def dump_results(self, errors=False):
         """ Provide results of tests run by `_run_test`
 
@@ -890,12 +938,12 @@ class VerificationSuite(object):
         formatted_results = []
         for result in self.results:
             row = {}
-            row['simul_type'] = result.case_type
-            row['case_num'] = result.case_num
+            for attr in self.RESULTS_ATTRIBUTES_TO_DUMP:
+                row[attr] = getattr(result, attr)
             row['result_type'] = result.result_type.name
-            row['duration'] = result.duration
-            if result.output:
-                params = eval(result.output)
+            # todo: QUANT DIFF: rename to params
+            if result.params:
+                params = eval(result.params)
                 params = DictUtil.flatten_dict(params)
                 for k, v in params.items():
                     row[k] = v
@@ -912,9 +960,14 @@ class VerificationSuite(object):
 
         return formatted_results
 
+    # todo: QUANT DIFF: add 'evaluate' option
     def _run_test(self, case_type_name, case_num, num_stochastic_runs=None,
-                  ode_time_step_factor=None, rtol=None, atol=None, verbose=False):
-        """ Run one test case and report the result
+                  ode_time_step_factor=None, rtol=None, atol=None, verbose=False, evaluate=False):
+        """ Run one test case and record the result
+
+        The results from running a test case are recorded by calling `self._record_result()`.
+        It records results in the list `self.results`. All types of results, including exceptions,
+        are recorded.
 
         Args:
             case_type_name (:obj:`str`): the type of case, a name in `VerificationTestCaseType`
@@ -924,6 +977,12 @@ class VerificationSuite(object):
             rtol (:obj:`float`, optional): relative tolerance for the ODE solver
             atol (:obj:`float`, optional): absolute tolerance for the ODE solver
             verbose (:obj:`bool`, optional): whether to produce verbose output
+            evaluate (:obj:`bool`, optional): whether to quantitatively evaluate the test case;
+                if `False`, then indicate whether the test passed in the saved result's `result_type`;
+                otherwise, provide the mean Z-score divergence in the result's `quant_diff`
+
+        Returns:
+            :obj:`None`: results are recorded in `self.results`
         """
         try:
             case_verifier = CaseVerifier(self.cases_dir, case_type_name, case_num)
@@ -961,6 +1020,7 @@ class VerificationSuite(object):
             kwargs['plot_file'] = plot_file
 
         # save pretty printed kwargs in results; they can be restored with eval()
+        # todo: QUANT DIFF: FIX: no, just put the dict in results
         pformat_kwargs = pformat(kwargs)
 
         if verbose:
@@ -968,32 +1028,39 @@ class VerificationSuite(object):
 
         try:
             start_time = time.process_time()
+            # todo: QUANT DIFF: if evaluate, set it in kwargs
+            if evaluate:
+                kwargs['evaluate'] = True
             verification_result = case_verifier.verify_model(**kwargs)
-            # todo: QUANT DIFF: have verify_model() return
 
             run_time = time.process_time() - start_time
-            if verification_result:
-                self._record_result(case_type_name, case_num,
-                                    VerificationResultType.CASE_DID_NOT_VERIFY,
-                                    run_time,
-                                    output=pformat_kwargs,
-                                    error=verification_result)
+            # todo: QUANT DIFF: make results_kwargs
+            results_kwargs = {}
+            results_kwargs['params'] = pformat_kwargs
+            if evaluate:
+                results_kwargs['quant_diff'] = verification_result
+                # todo: QUANT DIFF: if evaluate, don't worry about setting the VerificationRunResult.result_type
+                result_type = VerificationResultType.VERIFICATION_UNKNOWN
             else:
-                # todo: QUANT DIFF: save quant_diff
-                self._record_result(case_type_name, case_num,
-                                    VerificationResultType.CASE_VERIFIED,
-                                    run_time,
-                                    output=pformat_kwargs)
+                if verification_result:
+                    result_type = VerificationResultType.CASE_DID_NOT_VERIFY
+                    results_kwargs['error'] = verification_result
+                else:
+                    result_type = VerificationResultType.CASE_VERIFIED
+
+            self._record_result(case_type_name, case_num, result_type, run_time,
+                                **results_kwargs)
 
         except Exception as e:
             run_time = time.process_time() - start_time
             tb = traceback.format_exc()
             self._record_result(case_type_name, case_num, VerificationResultType.FAILED_VERIFICATION_RUN,
-                                run_time, output=pformat_kwargs, error=tb)
+                                run_time, params=pformat_kwargs, error=tb)
 
+    # todo: QUANT DIFF: add 'evaluate' option
     def _run_tests(self, case_type_name, case_num, num_stochastic_runs=None,
                   ode_time_step_factors=None, tolerance_ranges=None, verbose=False,
-                  empty_results=False):
+                  empty_results=False, evaluate=False):
         """ Run one or more tests, possibly iterating over over ODE time step factors and solver tolerances
 
         Args:
@@ -1008,6 +1075,7 @@ class VerificationSuite(object):
                 that are not provided
             verbose (:obj:`bool`, optional): whether to produce verbose output
             empty_results (:obj:`bool`, optional): whether to empty the list of verification run results
+            evaluate (:obj:`bool`, optional): whether to quantitatively evaluate the test case(s)
 
         Returns:
             :obj:`list`: of :obj:`VerificationRunResult`: the results for this :obj:`VerificationSuite`
@@ -1017,8 +1085,8 @@ class VerificationSuite(object):
         ode_test_iterator = ODETestIterators.ode_test_generator(ode_time_step_factors=ode_time_step_factors,
                                                                 tolerance_ranges=tolerance_ranges)
         for test_kwargs in ode_test_iterator:
-            self._run_test(case_type_name, case_num,
-                            num_stochastic_runs=num_stochastic_runs, verbose=verbose, **test_kwargs)
+            self._run_test(case_type_name, case_num, num_stochastic_runs=num_stochastic_runs,
+                           verbose=verbose, evaluate=evaluate, **test_kwargs)
         return self.results
 
     # default ranges for analyzing ODE solver sensitivity to tolerances
@@ -1039,8 +1107,10 @@ class VerificationSuite(object):
                                          max=VerificationSuite.DEFAULT_MAX_ATOL)}
         return tolerance_ranges
 
+    # todo: QUANT DIFF: add 'evaluate' option
     def run(self, test_case_type_name=None, cases=None, num_stochastic_runs=None,
-            ode_time_step_factors=None, tolerance_ranges=None, verbose=False, empty_results=True):
+            ode_time_step_factors=None, tolerance_ranges=None, verbose=False, empty_results=True,
+            evaluate=False):
         """ Run all requested test cases
 
         If `test_case_type_name` is not specified, then all cases for all
@@ -1061,6 +1131,7 @@ class VerificationSuite(object):
                 that are not provided
             verbose (:obj:`bool`, optional): whether to produce verbose output
             empty_results (:obj:`bool`, optional): whether to empty the list of verification run results
+            evaluate (:obj:`bool`, optional): whether to quantitatively evaluate the test case(s)
 
         Returns:
             :obj:`list`: of :obj:`VerificationRunResult`: the results for this :obj:`VerificationSuite`
@@ -1080,20 +1151,23 @@ class VerificationSuite(object):
             for case_num in cases:
                 self._run_tests(test_case_type_name, case_num, num_stochastic_runs=num_stochastic_runs,
                                 ode_time_step_factors=ode_time_step_factors, tolerance_ranges=tolerance_ranges,
-                                verbose=verbose)
+                                verbose=verbose, evaluate=evaluate)
         else:
             for verification_test_case_type in VerificationTestCaseType:
                 for case_num in os.listdir(os.path.join(self.cases_dir, verification_test_case_type.value)):
                     self._run_tests(verification_test_case_type.name, case_num,
                                     num_stochastic_runs=num_stochastic_runs,
                                     ode_time_step_factors=ode_time_step_factors,
-                                    tolerance_ranges=tolerance_ranges, verbose=verbose)
+                                    tolerance_ranges=tolerance_ranges, verbose=verbose, evaluate=evaluate)
         return self.results
 
-    def run_multialg(self, cases, ode_time_step_factors=None, tolerances=False, verbose=None):
+    # todo: QUANT DIFF: add 'evaluate' option
+    ODE_TIME_STEP_FACTORS = [0.05, 0.1, 1.0]
+    def run_multialg(self, cases, ode_time_step_factors=None, tolerances=False, verbose=None,
+                     evaluate=True):
         """ Test a suite of multialgorithmic models
 
-        initial approach:
+        Initial approach:
 
         * use SBML stochastic models with multiple reactions to test multialgorithmic simulation
         * evaluate correctness using DISCRETE_STOCHASTIC expected results and verification code
@@ -1105,19 +1179,22 @@ class VerificationSuite(object):
                 time step will be multiplied
             tolerance_ranges (:obj:`dict`): ranges for absolute and relative ODE tolerances;
             verbose (:obj:`bool`, optional): whether to produce verbose output
+            evaluate (:obj:`bool`, optional): whether to quantitatively evaluate the test case(s)
 
         Returns:
             :obj:`list`: of :obj:`VerificationRunResult`: the results for this :obj:`VerificationSuite`
         """
         if ode_time_step_factors is None:
-            ode_time_step_factors = [0.05, 0.1, 1.0]
+            ode_time_step_factors = self.ODE_TIME_STEP_FACTORS
         tolerance_ranges = None
         if tolerances:
             tolerance_ranges = self.tolerance_ranges_for_sensitivity_analysis()
-        return self.run(test_case_type_name='MULTIALGORITHMIC', cases=cases,
+        return self.run(test_case_type_name=VerificationTestCaseType.MULTIALGORITHMIC.name,
+                        cases=cases,
                         num_stochastic_runs=10,
-                        ode_time_step_factors=ode_time_step_factors, tolerance_ranges=tolerance_ranges,
-                        empty_results=False, verbose=verbose)
+                        ode_time_step_factors=ode_time_step_factors,
+                        tolerance_ranges=tolerance_ranges,
+                        empty_results=False, verbose=verbose, evaluate=evaluate)
 
 
 class MultialgModelVerificationFuture(object):    # pragma: no cover
@@ -1264,9 +1341,9 @@ class MultialgModelVerificationFuture(object):    # pragma: no cover
     def get_correct_results(self, num_runs, verbose=True):
         # get correct results from ssa model
         model = self.correct_typed_case_verifier.get_model()
-        correct_run_results = \
-            SsaEnsemble.run(model,
-                self.correct_typed_case_verifier.get_simul_kwargs(), self.tmp_results_dir, num_runs)
+        correct_run_results = SsaEnsemble.run(model,
+                                              self.correct_typed_case_verifier.get_simul_kwargs(),
+                                              self.tmp_results_dir, num_runs)
         if verbose:
             print("made {} runs of {}".format(len(correct_run_results), model.id))
         return correct_run_results
