@@ -36,20 +36,6 @@ config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multi
 
 class TestODETestIterators(unittest.TestCase):
 
-    def test_geometric_iterator(self):
-        geometric_iterator = ODETestIterators.geometric_iterator
-        self.assertEqual([2, 4, 8], list(geometric_iterator(2, 10, 2)))
-        self.assertEqual([1e-05, 0.0001, 0.001, 0.01, 0.1], list(geometric_iterator(1E-5, 0.1, 10)))
-        np.testing.assert_allclose([.1, .3], list(geometric_iterator(0.1, 0.3, 3)))
-        with self.assertRaisesRegexp(ValueError, '0 < min is required'):
-            next(geometric_iterator(-1, 0.3, 3))
-        with self.assertRaisesRegexp(ValueError, '0 < min is required'):
-            next(geometric_iterator(0, 0.3, 3))
-        with self.assertRaisesRegexp(ValueError, 'min <= max is required'):
-            next(geometric_iterator(1, 0.3, 3))
-        with self.assertRaisesRegexp(ValueError, '1 < factor is required'):
-            next(geometric_iterator(.1, 0.3, .6))
-
     def test_ode_test_iterator(self):
         ode_test_generator = ODETestIterators.ode_test_generator
         default_rtol = config_multialgorithm['rel_ode_solver_tolerance']
@@ -228,7 +214,6 @@ class TestVerificationTestReader(unittest.TestCase):
 class TestResultsComparator(unittest.TestCase):
 
     def setUp(self):
-        print(self.id())
         self.tmp_dir = tempfile.mkdtemp()
         self.test_case_data = {
             VerificationTestCaseType.CONTINUOUS_DETERMINISTIC.name: {
@@ -445,8 +430,6 @@ class TestResultsComparator(unittest.TestCase):
         results_comparator = ResultsComparator(test_case_data['verification_test_reader'],
                                                test_case_data['simulation_run_results'])
         mean_diffs = results_comparator.quantify_stoch_diff(evaluate=True)
-        print('mean_diffs')
-        pprint(mean_diffs)
         for mean_diff in mean_diffs.values():
             self.assertTrue(isinstance(mean_diff, float))
             # todo: QUANT DIFF: checking correct values
@@ -486,7 +469,6 @@ class TestResultsComparator(unittest.TestCase):
 class TestCaseVerifier(unittest.TestCase):
 
     def setUp(self):
-        print(self.id())
         self.test_case_num = '00001'
         self.tmp_dir = os.path.join(os.path.dirname(__file__), 'tmp')
         self.case_verifiers = {}
@@ -536,7 +518,6 @@ class TestCaseVerifier(unittest.TestCase):
             self.assertTrue(os.path.isfile(plot_file))
 
         mean_diffs = self.case_verifiers['DISCRETE_STOCHASTIC'].verify_model(evaluate=True)
-        print(mean_diffs)
         for mean_diff in mean_diffs.values():
             self.assertTrue(isinstance(mean_diff, float))
 
@@ -594,7 +575,6 @@ class TestCaseVerifier(unittest.TestCase):
 class TestVerificationSuite(unittest.TestCase):
 
     def setUp(self):
-        print(self.id())
         self.tmp_dir = tempfile.mkdtemp()
         self.verification_suite = VerificationSuite(TEST_CASES, self.tmp_dir)
 
@@ -798,7 +778,6 @@ class TestVerificationSuite(unittest.TestCase):
 SsaTestCase = namedtuple('SsaTestCase', 'case_num, num_ssa_runs')
 
 
-@unittest.skip('temp. speed up')
 class RunVerificationSuite(unittest.TestCase):
 
     def setUp(self):

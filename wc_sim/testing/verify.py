@@ -33,11 +33,11 @@ from wc_sim.run_results import RunResults
 from wc_sim.simulation import Simulation
 from wc_sim.testing.make_models import MakeModel
 from wc_utils.util.dict import DictUtil
+from wc_utils.util.misc import geometric_iterator
 
 config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 
 
-# TODO: doc strings
 class Error(Exception):
     """ Base class for exceptions involving `wc_sim` verification
 
@@ -66,37 +66,6 @@ class WcSimVerificationWarning(UserWarning):
 class ODETestIterators(object):
     """ Convenient iterators for exploring ODE submodel and solver parameter spaces
     """
-
-    # todo: move to wc_utils
-    @staticmethod
-    def geometric_iterator(min, max, factor):
-        """ Create a geometic sequence
-
-        Generates the sequence `min`, `min`*`factor`, `min`*`factor`**2, ..., stopping at `max`
-
-        Args:
-            min (:obj:`float`): first and smallest element of the geometic sequence
-            max (:obj:`float`): largest element of the geometic sequence
-            factor (:obj:`float`): multiplicative factor between sequence entries
-
-        Returns:
-            :obj:`iterator` of :obj:`float`: the geometic sequence
-
-        Raises:
-            :obj:`ValueError`: if `min` <= 0, or
-                if `max` < `min`, or
-                if `factor` <= 1
-        """
-        if not 0 < min:
-            raise ValueError(f'min = {min}; 0 < min is required')
-        if max < min:
-            raise ValueError(f'min = {min} and max = {max}; min <= max is required')
-        if factor <= 1:
-            raise ValueError(f'factor = {factor}; 1 < factor is required')
-        sequence_value = min
-        while sequence_value < max or math.isclose(sequence_value, max, rel_tol=1E-14):
-            yield sequence_value
-            sequence_value *= factor
 
     @staticmethod
     def ode_test_generator(ode_time_step_factors=None, tolerance_ranges=None):
@@ -131,17 +100,16 @@ class ODETestIterators(object):
             tolerance_ranges['atol'] = default_tolerance_ranges['atol']
 
         for ode_time_step_factor in ode_time_step_factors:
+            rtol_iterator = geometric_iterator(tolerance_ranges['rtol']['min'],
+                                               tolerance_ranges['rtol']['max'],
+                                               10)
 
-            rtol_iterator = ODETestIterators.geometric_iterator(tolerance_ranges['rtol']['min'],
-                                                                tolerance_ranges['rtol']['max'],
-                                                                10)
             for rtol in rtol_iterator:
+                atol_iterator = geometric_iterator(tolerance_ranges['atol']['min'],
+                                                   tolerance_ranges['atol']['max'],
+                                                   10)
 
-                atol_iterator = ODETestIterators.geometric_iterator(tolerance_ranges['atol']['min'],
-                                                                    tolerance_ranges['atol']['max'],
-                                                                    10)
                 for atol in atol_iterator:
-
                     # return kwargs for ode_time_step_factor, rtol, and atol
                     ode_test_params = dict(ode_time_step_factor=ode_time_step_factor,
                                            rtol=rtol,
@@ -324,6 +292,8 @@ class VerificationTestReader(object):
         return species_id
 
     def run(self):
+        """ Read the verification test
+        """
         self.settings = self.read_settings()
         self.expected_predictions_df = self.read_expected_predictions()
         self.model = self.read_model()
@@ -494,6 +464,17 @@ class SsaEnsemble(object):
 
     @staticmethod
     def run(model, simul_kwargs, tmp_results_dir, num_runs):
+        """ Simulate a stochastic model for multiple runs
+
+        Args:
+            model (:obj:`wc_lang.Model`): a model to simulate
+            simul_kwargs (:obj:`dict`): kwargs for `Simulation.run()`
+            tmp_results_dir (:obj:`str`): path of tmp directory for storing results
+            num_runs (:obj:`int`): number of Monte Carlo runs to make
+
+        Returns:
+            :obj:`list`: of :obj:`RunResults`: a :obj:`RunResults` for each simulation run
+        """
         simulation_run_results = []
         progress_factor = 1
         for i in range(num_runs):
@@ -512,6 +493,15 @@ class SsaEnsemble(object):
 
     @staticmethod
     def results_mean_n_sd(simulation_run_results, species_id):
+        """ Obtain the mean and standard deviation time courses of a species across multiple runs
+
+        Args:
+            simulation_run_results (:obj:`list`: of :obj:`RunResults`): results for each simulation run
+            species_id (:obj:`str`): id of a species
+
+        Returns:
+            :obj:`tuple`: a pair of numpy arrays, for the mean and standard deviation time courses
+        """
         times = simulation_run_results[0].get_times()
         n_times = len(times)
         n_runs = len(simulation_run_results)
@@ -718,6 +708,16 @@ class CaseVerifier(object):
 
     def plot_model_verification(self, plot_file, max_runs_to_plot=100, presentation_qual=False):
         """Plot a model verification run
+
+        Args:
+            plot_file (:obj:`str`): name of file in which to save the plot
+            max_runs_to_plot (:obj:`int`, optional): maximum number of runs to show when plotting
+                Monte Carlo data
+            presentation_qual (:obj:`bool`, optional): whether to produce presentation quality plot,
+                without debugging information; or not
+
+        Returns:
+            :obj:`str`: location of the plot
         """
         # TODO: configure max_runs_to_plot in config file
         # TODO: use matplotlib 3; use the more flexible OO API instead of pyplot
