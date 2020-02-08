@@ -254,12 +254,21 @@ class VerificationTestReader(object):
 
             return derivatives
 
-    def read_model(self):
-        """  Read a model into a `wc_lang` representation. """
-        self.model_filename = model_filename = os.path.join(
-            self.test_case_dir, self.test_case_num+'-wc_lang.xlsx')
-        if model_filename.endswith(self.SBML_FILE_SUFFIX):   # pragma: no cover
-            raise VerificationError("Reading SBML files not supported: model filename '{}'".format(model_filename))
+    def read_model(self, model_file_suffix='-wc_lang.xlsx'):
+        """  Read a model into a `wc_lang` representation
+
+        Args:
+            model_file_suffix (:obj:`str`, optional): the name suffix for the model
+
+        Returns:
+            :obj:`wc_lang.Model`: the root of the test case's `wc_lang` model
+
+        Raises:
+            :obj:`VerificationError`: if an SBML model is read
+        """
+        self.model_filename = os.path.join(self.test_case_dir, self.test_case_num + model_file_suffix)
+        if self.model_filename.endswith(self.SBML_FILE_SUFFIX):
+            raise VerificationError(f"SBML files not supported: model filename: '{self.model_filename}'")
         return Reader().run(self.model_filename, validate=True)[Model][0]
 
     def get_species_id(self, species_type):
@@ -358,7 +367,6 @@ class ResultsComparator(object):
                     pass
         return kwargs
 
-    # todo: QUANT DIFF: add 'evaluate' option
     def quantify_stoch_diff(self, evaluate=False):
         """ Quantify the difference between stochastic simulation population(s) and expected population(s)
 
@@ -408,7 +416,7 @@ class ResultsComparator(object):
                 differences[species_type] = Z
 
             if evaluate:
-                # todo: QUANT DIFF: find mean diff for each species
+                # find mean diff for each species
                 for species_type, Z in differences.items():
                     differences[species_type] = np.mean(Z)
                 return differences
@@ -551,7 +559,6 @@ class CaseVerifier(object):
         if default_num_stochastic_runs is None:
             self.default_num_stochastic_runs = config_multialgorithm['num_ssa_verification_sim_runs']
 
-    # todo: QUANT DIFF: add 'evaluate' option
     def verify_model(self, num_discrete_stochastic_runs=None, discard_run_results=True, plot_file=None,
                      ode_time_step_factor=None, tolerances=None, evaluate=False):
         """ Verify a model
@@ -564,8 +571,6 @@ class CaseVerifier(object):
             tolerances (:obj:`dict`, optional): if testing tolerances, values of ODE solver tolerances
             evaluate (:obj:`bool`, optional): control the return value
 
-        # todo: QUANT DIFF: depends on 'evaluate' option
-        # todo: QUANT DIFF: must return 
         Returns:
             :obj:`obj`: if `evaluate` is `False`, then return `False` if populations in the expected
                 result and simulation run are equal within tolerances, otherwise :obj:`list`: of species
@@ -593,7 +598,6 @@ class CaseVerifier(object):
         if 'start' in settings and settings['start'] != 0:
             raise VerificationError("non-zero start setting ({}) not supported".format(settings['start']))
 
-        # todo: QUANT DIFF: depends on 'evaluate' option
         if self.verification_test_reader.test_case_type == VerificationTestCaseType.CONTINUOUS_DETERMINISTIC \
             and evaluate:
                 raise VerificationError("evaluate is True and test_case_type is CONTINUOUS_DETERMINISTIC")
@@ -645,7 +649,6 @@ class CaseVerifier(object):
                 self.results_comparator = ResultsComparator(self.verification_test_reader,
                                                             self.simulation_run_results)
                 self.comparison_result = self.results_comparator.differs()
-                # todo: QUANT DIFF: depends on 'evaluate' option
                 if evaluate:
                     self.evaluation = self.results_comparator.quantify_stoch_diff(evaluate=evaluate)
                 # if model & simulation verify or evaluating, don't retry
@@ -663,7 +666,6 @@ class CaseVerifier(object):
         if discard_run_results:
             shutil.rmtree(self.tmp_results_dir)
 
-        # todo: QUANT DIFF: depends on 'evaluate' option
         if evaluate:
             return self.evaluation
         return self.comparison_result
@@ -867,7 +869,6 @@ VerificationRunResult.result_type.__doc__ = "a VerificationResultType: the resul
 VerificationRunResult.duration.__doc__ = 'time it took to run the test'
 VerificationRunResult.quant_diff.__doc__ = ('mean Z-score difference between correct means and actual '
                                             'simulation predictions')
-# todo: QUANT DIFF: rename to params
 VerificationRunResult.params.__doc__ = 'optional, parameters used by the test'
 VerificationRunResult.error.__doc__ = 'optional, error message for the test'
 
@@ -941,10 +942,8 @@ class VerificationSuite(object):
             for attr in self.RESULTS_ATTRIBUTES_TO_DUMP:
                 row[attr] = getattr(result, attr)
             row['result_type'] = result.result_type.name
-            # todo: QUANT DIFF: rename to params
             if result.params:
-                params = eval(result.params)
-                params = DictUtil.flatten_dict(params)
+                params = DictUtil.flatten_dict(result.params)
                 for k, v in params.items():
                     row[k] = v
 
@@ -960,7 +959,6 @@ class VerificationSuite(object):
 
         return formatted_results
 
-    # todo: QUANT DIFF: add 'evaluate' option
     def _run_test(self, case_type_name, case_num, num_stochastic_runs=None,
                   ode_time_step_factor=None, rtol=None, atol=None, verbose=False, evaluate=False):
         """ Run one test case and record the result
@@ -1019,27 +1017,20 @@ class VerificationSuite(object):
                                      f"{case_type_name}_{case_num}_{plot_name_append}_verification_test.pdf")
             kwargs['plot_file'] = plot_file
 
-        # save pretty printed kwargs in results; they can be restored with eval()
-        # todo: QUANT DIFF: FIX: no, just put the dict in results
-        pformat_kwargs = pformat(kwargs)
-
         if verbose:
             print("Verifying {} case {}".format(case_type_name, case_num))
 
         try:
             start_time = time.process_time()
-            # todo: QUANT DIFF: if evaluate, set it in kwargs
             if evaluate:
                 kwargs['evaluate'] = True
             verification_result = case_verifier.verify_model(**kwargs)
 
             run_time = time.process_time() - start_time
-            # todo: QUANT DIFF: make results_kwargs
             results_kwargs = {}
-            results_kwargs['params'] = pformat_kwargs
             if evaluate:
                 results_kwargs['quant_diff'] = verification_result
-                # todo: QUANT DIFF: if evaluate, don't worry about setting the VerificationRunResult.result_type
+                # since evaluate, don't worry about setting the VerificationRunResult.result_type
                 result_type = VerificationResultType.VERIFICATION_UNKNOWN
             else:
                 if verification_result:
@@ -1048,16 +1039,15 @@ class VerificationSuite(object):
                 else:
                     result_type = VerificationResultType.CASE_VERIFIED
 
-            self._record_result(case_type_name, case_num, result_type, run_time,
+            self._record_result(case_type_name, case_num, result_type, run_time, params=kwargs,
                                 **results_kwargs)
 
         except Exception as e:
             run_time = time.process_time() - start_time
             tb = traceback.format_exc()
             self._record_result(case_type_name, case_num, VerificationResultType.FAILED_VERIFICATION_RUN,
-                                run_time, params=pformat_kwargs, error=tb)
+                                run_time, params=kwargs, error=tb)
 
-    # todo: QUANT DIFF: add 'evaluate' option
     def _run_tests(self, case_type_name, case_num, num_stochastic_runs=None,
                   ode_time_step_factors=None, tolerance_ranges=None, verbose=False,
                   empty_results=False, evaluate=False):
@@ -1107,7 +1097,6 @@ class VerificationSuite(object):
                                          max=VerificationSuite.DEFAULT_MAX_ATOL)}
         return tolerance_ranges
 
-    # todo: QUANT DIFF: add 'evaluate' option
     def run(self, test_case_type_name=None, cases=None, num_stochastic_runs=None,
             ode_time_step_factors=None, tolerance_ranges=None, verbose=False, empty_results=True,
             evaluate=False):
@@ -1161,7 +1150,6 @@ class VerificationSuite(object):
                                     tolerance_ranges=tolerance_ranges, verbose=verbose, evaluate=evaluate)
         return self.results
 
-    # todo: QUANT DIFF: add 'evaluate' option
     ODE_TIME_STEP_FACTORS = [0.05, 0.1, 1.0]
     def run_multialg(self, cases, ode_time_step_factors=None, tolerances=False, verbose=None,
                      evaluate=True):

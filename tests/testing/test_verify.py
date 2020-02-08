@@ -173,6 +173,11 @@ class TestVerificationTestReader(unittest.TestCase):
         self.assertTrue(isinstance(model, obj_tables.Model))
         self.assertEqual(model.id, 'test_case_' + verification_test_reader.test_case_num)
 
+        # test exception
+        with self.assertRaisesRegexp(VerificationError, "SBML files not supported"):
+            model_file_suffix = f"-test_file{VerificationTestReader.SBML_FILE_SUFFIX}"
+            verification_test_reader.read_model(model_file_suffix=model_file_suffix)
+
     def test_get_species_id(self):
         verification_test_reader = make_verification_test_reader('00001', 'DISCRETE_STOCHASTIC')
         verification_test_reader.run()
@@ -432,7 +437,6 @@ class TestResultsComparator(unittest.TestCase):
         mean_diffs = results_comparator.quantify_stoch_diff(evaluate=True)
         for mean_diff in mean_diffs.values():
             self.assertTrue(isinstance(mean_diff, float))
-            # todo: QUANT DIFF: checking correct values
             # diff should be 0 because test RunResults is created from expected mean populations
             self.assertTrue(math.isclose(mean_diff, 0.))
 
@@ -699,8 +703,7 @@ class TestVerificationSuite(unittest.TestCase):
                                                      ode_time_step_factors=ode_time_step_factors)
         self.assertEqual(len(results), len(ode_time_step_factors))
         last_result = results[-1]
-        params = eval(last_result.params)
-        self.assertEqual(params['ode_time_step_factor'], ode_time_step_factors[-1])
+        self.assertEqual(last_result.params['ode_time_step_factor'], ode_time_step_factors[-1])
 
         max_rtol = 1E-9
         max_atol = 1E-11
@@ -711,9 +714,8 @@ class TestVerificationSuite(unittest.TestCase):
                                                      empty_results=True)
         self.assertEqual(len(results), 2 * 3)
         last_result = results[-1]
-        params = eval(last_result.params)
-        self.assertEqual(params['tolerances']['rtol'], max_rtol)
-        self.assertEqual(params['tolerances']['atol'], max_atol)
+        self.assertEqual(last_result.params['tolerances']['rtol'], max_rtol)
+        self.assertEqual(last_result.params['tolerances']['atol'], max_atol)
 
         results = self.verification_suite._run_tests('CONTINUOUS_DETERMINISTIC', '00001',
                                                      ode_time_step_factors=ode_time_step_factors,
@@ -721,10 +723,9 @@ class TestVerificationSuite(unittest.TestCase):
                                                      empty_results=True)
         self.assertEqual(len(results), len(ode_time_step_factors) * 2 * 3)
         last_result = results[-1]
-        params = eval(last_result.params)
-        self.assertEqual(params['ode_time_step_factor'], ode_time_step_factors[-1])
-        self.assertEqual(params['tolerances']['rtol'], max_rtol)
-        self.assertEqual(params['tolerances']['atol'], max_atol)
+        self.assertEqual(last_result.params['ode_time_step_factor'], ode_time_step_factors[-1])
+        self.assertEqual(last_result.params['tolerances']['rtol'], max_rtol)
+        self.assertEqual(last_result.params['tolerances']['atol'], max_atol)
 
     def test_tolerance_ranges_for_sensitivity_analysis(self):
         tolerance_ranges = VerificationSuite.tolerance_ranges_for_sensitivity_analysis()
@@ -770,7 +771,6 @@ class TestVerificationSuite(unittest.TestCase):
 
         results = self.verification_suite.run_multialg(['00007'], evaluate=True)
         last_result = results.pop()
-        # todo: QUANT DIFF: check correct values
         self.assertTrue(isinstance(last_result.quant_diff, dict))
         for diff_mean in last_result.quant_diff.values():
             self.assertTrue(isinstance(diff_mean, float))
