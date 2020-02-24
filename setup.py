@@ -33,7 +33,6 @@ setuptools.setup(
     packages=setuptools.find_packages(exclude=['tests', 'tests.*']),
     package_data={
         name: [
-            'VERSION',
             'core/config/core.default.cfg',
             'core/config/core.schema.cfg',
             'core/config/debug.default.cfg',
