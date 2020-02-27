@@ -13,4 +13,4 @@ setuptools
 tables >= 3.5.0
 wc_lang
 wc_onto
-wc_utils
+wc_utils[git]
