@@ -7,7 +7,7 @@
 :License: MIT
 """
 
-from obj_tables.expression import Expression
+from obj_tables.math.expression import Expression
 from scipy.constants import Avogadro
 from wc_lang import (Model, Submodel, Compartment, SpeciesType, Species,
                      Observable, Function, FunctionExpression,

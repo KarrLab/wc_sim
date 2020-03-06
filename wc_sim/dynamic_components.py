@@ -13,8 +13,7 @@ import math
 import numpy
 import warnings
 
-from obj_tables import utils
-from obj_tables.expression import ObjTablesTokenCodes
+from obj_tables.math.expression import ObjTablesTokenCodes
 from wc_lang import Species, Compartment
 from wc_onto import onto
 from wc_sim.config import core as config_core_multialgorithm

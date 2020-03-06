@@ -22,6 +22,7 @@ from wc_sim.dynamic_components import DynamicModel
 from wc_sim.run_results import RunResults
 from wc_sim.simulation import Simulation
 import obj_tables
+import obj_tables.io
 import wc_lang
 
 
@@ -196,7 +197,7 @@ def species_id_to_pop_attr(species_id):
 
 def define_trajectory_classes(model):
     # define the expected trajectory classes for model, SpeciesTrajectory & AggregateTrajectory
-    # based on init_schema from obj_tables.utils
+    # based on `init_schema` from `obj_tables.utils`
     # could put a list of species to ignore in Parameters, or, better yet, in a TestConfig worksheet
 
     # SpeciesTrajectory

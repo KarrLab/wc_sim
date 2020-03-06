@@ -17,7 +17,7 @@ import timeit
 import unittest
 import warnings
 
-from obj_tables.expression import Expression
+from obj_tables.math.expression import Expression
 from wc_lang import (Model, Compartment, Species, Parameter,
                      DistributionInitConcentration,
                      Observable, ObservableExpression, StopCondition,
@@ -34,6 +34,7 @@ from wc_sim.testing.utils import read_model_for_test
 from wc_utils.util.rand import RandomStateManager
 from wc_utils.util.units import unit_registry
 import obj_tables
+import obj_tables.io
 
 # Almost all machines map Python floats to IEEE-754 64-bit “double precision”, which provides 15 to
 # 17 decimal digits. Places for comparing values that should be equal to within the precision of floats
