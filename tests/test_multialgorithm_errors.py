@@ -34,6 +34,7 @@ class TestMultialgorithmErrors(unittest.TestCase):
         self.assertTrue(npe1 == npe1)
         self.assertTrue(npe1 == npe2)
         self.assertTrue(npe1 != npe3)
+        self.assertTrue(npe1 != 'string')
 
         with self.assertRaises(NegativePopulationError) as context:
             raise NegativePopulationError('method_name', 'species_name', 1, 3, 1)
