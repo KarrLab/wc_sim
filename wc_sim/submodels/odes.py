@@ -82,7 +82,8 @@ class OdeSubmodel(DynamicSubmodel):
                 adjacent compartments used by its transfer reactions
             local_species_population (:obj:`LocalSpeciesPopulation`): the store that maintains this
                 ODE submodel's species population
-            ode_time_step (:obj:`float`): initial time interval between ODE analyses
+            ode_time_step (:obj:`float`): time interval between ODE analyses
+            num_steps (:obj:`int`): number of steps taken
             testing (:obj:`bool`, optional): if set, produce test output
             options (:obj:`dict`, optional): ODE submodel options
         """
@@ -92,6 +93,7 @@ class OdeSubmodel(DynamicSubmodel):
             raise MultialgorithmError(f"OdeSubmodel {self.id}: ode_time_step must be positive, but is "
                                       f"{ode_time_step}")
         self.ode_time_step = ode_time_step
+        self.num_steps = 0
         self.set_up_ode_submodel()
         self.set_up_optimizations()
         ode_solver_options = {'atol': self.ABS_ODE_SOLVER_TOLERANCE,
@@ -345,7 +347,9 @@ class OdeSubmodel(DynamicSubmodel):
 
     def schedule_next_ode_analysis(self):
         """ Schedule the next analysis by this ODE submodel """
-        self.send_event(self.ode_time_step, self, message_types.RunOde())
+        next_event_time = self.num_steps * self.ode_time_step
+        self.num_steps += 1
+        self.send_event_absolute(next_event_time, self, message_types.RunOde())
 
     def handle_RunOde_msg(self, event):
         """ Handle an event containing a RunOde message
