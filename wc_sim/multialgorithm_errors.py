@@ -93,12 +93,12 @@ class NegativePopulationError(Error):
     def __str__(self):
         rv = "{}(): negative population predicted for '{}', with decline from {:g} to {:g}".format(
             self.method, self.species, self.last_population,
-            self.last_population+self.population_decrease)
+            self.last_population + self.population_decrease)
         if self.delta_time is None:
             return rv
         else:
             if self.delta_time == 1:
-                return rv + " over {:g} time unit".format(self.delta_time)
+                return rv + " over 1 time unit"
             else:
                 return rv + " over {:g} time units".format(self.delta_time)
 

@@ -5,38 +5,54 @@
 :License: MIT
 """
 
-import unittest, os
+import os
+import unittest
 
-from wc_sim.multialgorithm_errors import (Error,
-    MultialgorithmError, SpeciesPopulationError, NegativePopulationError)
+from wc_sim.multialgorithm_errors import (Error, MultialgorithmError, SpeciesPopulationError,
+                                          NegativePopulationError, FrozenSimulationError)
 
 
 class TestMultialgorithmErrors(unittest.TestCase):
 
     def test_errors(self):
         msg = 'test msg'
-        with self.assertRaises(Error) as context:
+
+        with self.assertRaisesRegexp(Error, msg):
             raise Error(msg)
-        self.assertEqual(msg, str(context.exception))
 
-        with self.assertRaises(MultialgorithmError) as context:
+        with self.assertRaisesRegexp(MultialgorithmError, msg):
             raise MultialgorithmError(msg)
-        self.assertEqual(msg, str(context.exception))
 
-        with self.assertRaises(SpeciesPopulationError) as context:
+        with self.assertRaisesRegexp(SpeciesPopulationError, msg):
             raise SpeciesPopulationError(msg)
-        self.assertEqual(msg, str(context.exception))
 
-    def test_negative_population_error(self):
+        with self.assertRaisesRegexp(FrozenSimulationError, msg):
+            raise FrozenSimulationError(msg)
+
+
+class TestNegativePopulationError(unittest.TestCase):
+
+    def test(self):
         npe1 = NegativePopulationError('method_name', 'species_name', 1, 2, 3)
         npe2 = NegativePopulationError('method_name', 'species_name', 1, 2, 3)
         npe3 = NegativePopulationError('method_name_3', 'species_name', 1, 2, 3)
-        self.assertTrue(npe1 == npe1)
-        self.assertTrue(npe1 == npe2)
-        self.assertTrue(npe1 != npe3)
-        self.assertTrue(npe1 != 'string')
+        npe4 = NegativePopulationError('method_name', 'species_name', 1, 5, 3)
+        self.assertEqual(npe1, npe1)
+        self.assertEqual(hash(npe1), hash(npe1))
+        self.assertEqual(npe1, npe2)
+        self.assertEqual(hash(npe1), hash(npe2))
+        self.assertNotEqual(npe1, npe3)
+        self.assertNotEqual(hash(npe1), hash(npe3))
+        self.assertNotEqual(npe1, 'string')
 
-        with self.assertRaises(NegativePopulationError) as context:
+        expected = "negative population predicted for .* with decline from .* to .* over .* time unit"
+        with self.assertRaisesRegexp(NegativePopulationError, expected):
             raise NegativePopulationError('method_name', 'species_name', 1, 3, 1)
-        self.assertRegex(str(context.exception),
-            "negative population predicted for .* with decline from .* to .* over .* time unit")
+
+    def test___str__(self):
+        npe = str(NegativePopulationError('method_name', 'species_name', 1, -2))
+        self.assertIn('decline from 1', npe)
+        npe = str(NegativePopulationError('method_name', 'species_name', 1, -2, 5))
+        self.assertIn('over 5 time units', npe)
+        npe = str(NegativePopulationError('method_name', 'species_name', 1, -2, 1))
+        self.assertIn('over 1 time unit', npe)
