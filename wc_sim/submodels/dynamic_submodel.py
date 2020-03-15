@@ -16,7 +16,8 @@ from wc_lang import Compartment, Species, Reaction, Parameter
 from wc_sim import message_types, distributed_properties
 from wc_sim.debug_logs import logs as debug_logs
 from wc_sim.dynamic_components import DynamicCompartment, DynamicModel
-from wc_sim.multialgorithm_errors import DynamicMultialgorithmError, MultialgorithmError, SpeciesPopulationError
+from wc_sim.multialgorithm_errors import (DynamicMultialgorithmError, MultialgorithmError,
+                                          DynamicSpeciesPopulationError)
 
 
 # TODO(Arthur): rename reactions -> dynamic reactions
@@ -201,7 +202,7 @@ class DynamicSubmodel(ApplicationSimulationObject):
             adjustments[species_id] += participant.coefficient
         try:
             self.local_species_population.adjust_discretely(self.time, adjustments)
-        except SpeciesPopulationError as e:
+        except DynamicSpeciesPopulationError as e:
             raise DynamicMultialgorithmError(self.time, "dynamic submodel '{}' cannot execute reaction: {}: {}".format(
                 self.id, reaction.id, e))
 
