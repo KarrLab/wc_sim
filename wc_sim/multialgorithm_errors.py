@@ -27,9 +27,19 @@ class MultialgorithmError(Error):
 
     def __init__(self, message=None):
         super().__init__(message)
-# todo: make subclass of MultialgorithmError for exceptions that occur during simulation, giving
-# it a time attribute so they're easier to debug
-# subclass NegativePopulationError, FrozenSimulationError and a new DynamicMultialgorithmError from it
+
+
+class DynamicMultialgorithmError(Error):
+    """ Exception raised for errors in package `wc_sim` that occur during a simulation
+
+    Attributes:
+        time (:obj:`float`): the simulation time at which the error occurs
+        message (:obj:`str`): the exception's message
+    """
+
+    def __init__(self, time, message=None):
+        self.time = time
+        super().__init__(f"{time}: {message}")
 
 
 class SpeciesPopulationError(Error):
@@ -43,25 +53,39 @@ class SpeciesPopulationError(Error):
         super().__init__(message)
 
 
-class FrozenSimulationError(MultialgorithmError):
+class DynamicSpeciesPopulationError(DynamicMultialgorithmError):
+    """ Exception raised when species population management encounters a problem during a simulation
+
+    Attributes:
+        time (:obj:`float`): the simulation time at which the error occurs
+        message (:obj:`str`): the exception's message
+    """
+
+    def __init__(self, time, message=None):
+        super().__init__(time, message)
+
+
+class DynamicFrozenSimulationError(DynamicMultialgorithmError):
     """ Exception raised by an SSA submodel when it is the only submodel and total propensities == 0
 
     A simulation in this state cannot progress.
 
     Attributes:
+        time (:obj:`float`): the simulation time at which the error occurs
         message (:obj:`str`): the exception's message
     """
 
-    def __init__(self, message=None):
-        super().__init__(message)
+    def __init__(self, time, message=None):
+        super().__init__(time, message)
 
 
-class NegativePopulationError(Error):
+class DynamicNegativePopulationError(DynamicMultialgorithmError):
     """ Exception raised when a negative species population is predicted
 
     The sum of `last_population` and `population_decrease` equals the predicted negative population.
 
     Attributes:
+        time (:obj:`float`): the simulation time at which the error occurs
         method (:obj:`str`): name of the method in which the exception occured
         species (:obj:`str`): name of the species whose population is predicted to be negative
         last_population (:obj:`float`): previous recorded population for the species
@@ -70,12 +94,14 @@ class NegativePopulationError(Error):
             time since the last continuous update
     """
 
-    def __init__(self, method, species, last_population, population_decrease, delta_time=None):
+    def __init__(self, time, method, species, last_population, population_decrease, delta_time=None):
         self.method = method
         self.species = species
         self.last_population = last_population
         self.population_decrease = population_decrease
         self.delta_time = delta_time
+        message = str(self)
+        super().__init__(time, message)
 
     def __eq__(self, other):
         """ Determine whether two instances have the same content """

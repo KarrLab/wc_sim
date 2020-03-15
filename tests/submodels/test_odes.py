@@ -17,7 +17,7 @@ from wc_lang.io import Reader
 from wc_onto import onto
 from wc_sim.dynamic_components import DynamicRateLaw
 from wc_sim.message_types import RunOde
-from wc_sim.multialgorithm_errors import MultialgorithmError
+from wc_sim.multialgorithm_errors import DynamicMultialgorithmError, MultialgorithmError
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.submodels.odes import OdeSubmodel
 from wc_sim.testing.make_models import MakeModel
@@ -78,7 +78,7 @@ class TestOdeSubmodel(unittest.TestCase):
     def test_solver_lock(self):
         self.ode_submodel_empty = OdeSubmodel('test_1', None, [], [], [], None, 1)
         self.assertTrue(self.ode_submodel_empty.get_solver_lock())
-        with self.assertRaisesRegexp(MultialgorithmError, 'OdeSubmodel .*: cannot get_solver_lock'):
+        with self.assertRaisesRegexp(DynamicMultialgorithmError, 'OdeSubmodel .*: cannot get_solver_lock'):
             self.ode_submodel_empty.get_solver_lock()
         self.assertTrue(self.ode_submodel_empty.release_solver_lock())
 
@@ -110,7 +110,7 @@ class TestOdeSubmodel(unittest.TestCase):
 
         # test exceptions
         short_list = [1]
-        with self.assertRaisesRegex(MultialgorithmError, 'OdeSubmodel .*: solver.right_hand_side\(\) failed'):
+        with self.assertRaisesRegex(DynamicMultialgorithmError, 'OdeSubmodel .*: solver.right_hand_side\(\) failed'):
             self.ode_submodel_1.right_hand_side(0, [num_reactants, 0], short_list)
 
         # rates decline as reactant converted to product
@@ -189,7 +189,7 @@ class TestOdeSubmodel(unittest.TestCase):
 
         # make OdeSubmodel.right_hand_side fail
         self.ode_submodel_1.num_species = None
-        with self.assertRaises(MultialgorithmError):
+        with self.assertRaises(DynamicMultialgorithmError):
             self.ode_submodel_1.run_ode_solver()
 
     @unittest.skip("todo: needs ODE_TEST_CASES")
@@ -202,7 +202,7 @@ class TestOdeSubmodel(unittest.TestCase):
 
         case_00001_ode_submodel = self.make_ode_submodel(self.case_00001_model)
         # odes outputs '[CVODE ERROR]  CVode\n  tout too close to t0 to start integration.'
-        with self.assertRaisesRegexp(MultialgorithmError, re.escape('solver step() error')):
+        with self.assertRaisesRegexp(DynamicMultialgorithmError, re.escape('solver step() error')):
             case_00001_ode_submodel.run_ode_solver()
 
     # test event scheduling and handling

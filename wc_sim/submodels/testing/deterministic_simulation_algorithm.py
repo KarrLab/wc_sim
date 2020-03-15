@@ -7,7 +7,7 @@
 """
 
 from de_sim.simulation_message import SimulationMessage
-from wc_sim.multialgorithm_errors import MultialgorithmError
+from wc_sim.multialgorithm_errors import DynamicMultialgorithmError
 from wc_sim.submodels.dynamic_submodel import DynamicSubmodel
 
 
@@ -93,14 +93,14 @@ class DsaSubmodel(DynamicSubmodel):
             event (:obj:`Event`): an :obj:`Event` to execute
 
         Raises:
-            :obj:`MultialgorithmError:` if the reaction does not have sufficient reactants to execute
+            :obj:`DynamicMultialgorithmError:` if the reaction does not have sufficient reactants to execute
         """
         # reaction_index is the reaction to execute
         reaction_index = event.message.reaction_index
         # execute reaction if it is enabled
         reaction = self.reactions[reaction_index]
         if not self.enabled_reaction(reaction):
-            raise MultialgorithmError(f"Insufficient reactants to execute reaction {reaction.id} at {self.time}")
+            raise DynamicMultialgorithmError(self.time, f"Insufficient reactants to execute reaction {reaction.id}")
         self.execute_reaction(reaction)
         self.schedule_next_reaction_execution(reaction)
 

@@ -20,7 +20,7 @@ from wc_lang.transform import PrepForWcSimTransform
 from wc_onto import onto
 from wc_sim.dynamic_components import DynamicModel
 from wc_sim.model_utilities import ModelUtilities
-from wc_sim.multialgorithm_errors import MultialgorithmError
+from wc_sim.multialgorithm_errors import DynamicMultialgorithmError, MultialgorithmError
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.simulation import Simulation
 from wc_sim.submodels.dynamic_submodel import DynamicSubmodel
@@ -160,10 +160,9 @@ class TestDynamicSubmodelStatically(unittest.TestCase):
         for dynamic_submodel in self.dynamic_submodels.values():
             for reaction in dynamic_submodel.reactions:
                 if reaction not in enabled_reactions:
-                    with self.assertRaises(MultialgorithmError) as context:
+                    with self.assertRaisesRegex(DynamicMultialgorithmError,
+                                                "dynamic submodel .* cannot execute reaction"):
                         dynamic_submodel.execute_reaction(reaction)
-                    self.assertRegex(str(context.exception),
-                                     "dynamic submodel .* cannot execute reaction")
 
     def do_test_execute_reaction(self, reaction_id, expected_adjustments):
         rxn = self.model.get_reactions(id=reaction_id)[0]
@@ -300,7 +299,7 @@ class TestDsaSubmodel(unittest.TestCase):
         for species_id in species:
             pop = populations.read_one(event.event_time, species_id)
             populations.adjust_discretely(event.event_time, {species_id: -pop})
-        with self.assertRaises(MultialgorithmError):
+        with self.assertRaises(DynamicMultialgorithmError):
             dsa_submodel.handle_ExecuteDsaReaction_msg(event)
 
         # test DsaSubmodel options

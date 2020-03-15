@@ -26,7 +26,8 @@ from wc_sim import distributed_properties, message_types
 from wc_sim.config import core as config_core_multialgorithm
 from wc_sim.debug_logs import logs as debug_logs
 from wc_sim.model_utilities import ModelUtilities
-from wc_sim.multialgorithm_errors import NegativePopulationError, SpeciesPopulationError
+from wc_sim.multialgorithm_errors import (DynamicSpeciesPopulationError, DynamicNegativePopulationError,
+                                          SpeciesPopulationError)
 from wc_utils.util.dict import DictUtil
 from wc_utils.util.rand import RandomStateManager
 import wc_lang
@@ -638,23 +639,23 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             check_early_accesses (:obj:`bool`, optional): whether to check for early accesses
 
         Raises:
-            :obj:`SpeciesPopulationError`: if species is not a set
-            :obj:`SpeciesPopulationError`: if any species in `species` do not exist
-            :obj:`SpeciesPopulationError`: if a species in `species` is being accessed at a time earlier
+            :obj:`DynamicSpeciesPopulationError`: if species is not a set
+            :obj:`DynamicSpeciesPopulationError`: if any species in `species` do not exist
+            :obj:`DynamicSpeciesPopulationError`: if a species in `species` is being accessed at a time earlier
                 than a prior access.
         """
         if not species is None:
             if not isinstance(species, set):
-                raise SpeciesPopulationError("species '{}' must be a set".format(species))
+                raise DynamicSpeciesPopulationError(time, "species '{}' must be a set".format(species))
             unknown_species = species - self._all_species()
             if unknown_species:
                 # raise exception if some species are non-existent
-                raise SpeciesPopulationError("request for population of unknown species: {}".format(
+                raise DynamicSpeciesPopulationError(time, "request for population of unknown species: {}".format(
                     ', '.join(map(lambda x: "'{}'".format(str(x)), unknown_species))))
             if check_early_accesses:
                 early_accesses = list(filter(lambda s: time < self.last_access_time[s], species))
                 if early_accesses:
-                    raise SpeciesPopulationError("access at time {} is an earlier access of species "
+                    raise DynamicSpeciesPopulationError(time, "access at time {} is an earlier access of species "
                                                  "{} than at {}".format(time, early_accesses,
                                                  [self.last_access_time[s] for s in early_accesses]))
 
@@ -670,10 +671,11 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         for species_id in species:
             self.last_access_time[species_id] = time
 
-    def _accounted_volumes_for_species(self, species, dynamic_model):
+    def _accounted_volumes_for_species(self, time, species, dynamic_model):
         """ Compute the accounted for volumes of the compartments containing some species
 
         Args:
+            time (:obj:`float`): current simulation time, for error reporting
             species (:obj:`iterator` of :obj:`str`): iterator over species id
             dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
 
@@ -682,10 +684,10 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
                 species; map: compartment id -> volume
 
         Raises:
-            :obj:`SpeciesPopulationError`: if no species are provided
+            :obj:`DynamicSpeciesPopulationError`: if no species are provided
         """
         if not species:
-            raise SpeciesPopulationError(f"no species provided")
+            raise DynamicSpeciesPopulationError(time, f"no species provided")
 
         # compute the volume of each compartment only once
         volumes = {}
@@ -696,11 +698,12 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
                     dynamic_model.dynamic_compartments[compartment_id].accounted_volume()
         return volumes
 
-    def populations_to_concentrations(self, species, populations, dynamic_model, concentrations,
+    def populations_to_concentrations(self, time, species, populations, dynamic_model, concentrations,
                                       volumes=None):
         """ Convert species populations, in molecules, to concentrations, in molar
 
         Args:
+            time (:obj:`float`): current simulation time
             species (:obj:`np.ndarray` of :obj:`str`): species ids
             populations (:obj:`np.ndarray` of :obj:`float`): corresponding populations of the species
                 in `species`
@@ -715,18 +718,19 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             :None`: the concentrations are returned in `concentrations`
         """
         if volumes is None:
-            volumes = self._accounted_volumes_for_species(species, dynamic_model)
+            volumes = self._accounted_volumes_for_species(time, species, dynamic_model)
 
         # concentration (mole/liter) = population (molecule) / (Avogadro (molecule/mole) * volume (liter))
         for i in range(len(species)):
             _, species_compartment = wc_lang.Species.parse_id(species[i])
             concentrations[i] = populations[i] / (Avogadro * volumes[species_compartment])
 
-    def concentrations_to_populations(self, species, concentrations, dynamic_model, populations,
+    def concentrations_to_populations(self, time, species, concentrations, dynamic_model, populations,
                                       volumes=None):
         """ Convert species concentrations, in molar, to populations, in molecules
 
         Args:
+            time (:obj:`float`): current simulation time
             species (:obj:`np.ndarray` of :obj:`str`): species ids
             concentrations (:obj:`np.ndarray` of :obj:`float`): corresponding concentrations of the
                 species in `species`
@@ -741,7 +745,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             :None`: the populations are returned in `populations`
         """
         if volumes is None:
-            volumes = self._accounted_volumes_for_species(species, dynamic_model)
+            volumes = self._accounted_volumes_for_species(time, species, dynamic_model)
 
         # population (molecule) = concentration (mole/liter) * Avogadro (molecule/mole) * volume (liter)
         for i in range(len(species)):
@@ -853,9 +857,6 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
 
         Args:
             species_ids (:obj:`iterator`): an iterator over some species ids
-
-        Raises:
-            :obj:`SpeciesPopulationError`: if any of the species ids in `species_ids` are unknown
         """
         species_ids = set(species_ids)
         self._check_species(None, species_ids, check_early_accesses=False)
@@ -871,9 +872,9 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
                 to be made to the population of some species
 
         Raises:
-            :obj:`SpeciesPopulationError`: if any adjustment attempts to change the population of an
-                unknown species
-            :obj:`SpeciesPopulationError`: if any population estimate would become negative
+            :obj:`DynamicSpeciesPopulationError`: if any adjustment attempts to change the population
+                of an unknown species
+            :obj:`DynamicSpeciesPopulationError`: if any population estimate would become negative
         """
         self._check_species(time, set(adjustments.keys()))
         self.time = time
@@ -883,11 +884,11 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
                 self._population[species].discrete_adjustment(self.time, adjustments[species])
                 self._update_access_times(time, {species})
                 self.log_event('discrete_adjustment', self._population[species])
-            except NegativePopulationError as e:
+            except DynamicNegativePopulationError as e:
                 errors.append(str(e))
         if errors:
-            raise SpeciesPopulationError("adjust_discretely error(s) at time {}:\n{}".format(
-                time, '\n'.join(errors)))
+            raise DynamicSpeciesPopulationError(time, "adjust_discretely error(s):\n{}".format(
+                                                '\n'.join(errors)))
 
     def adjust_continuously(self, time, population_slopes):
         """ A continuous submodel adjusts the population slopes of a set of species at simulation time `time`
@@ -901,8 +902,8 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
                 updated population slopes for some, or all, species populations
 
         Raises:
-            :obj:`SpeciesPopulationError`: if any adjustment attempts to change the population slope of an
-                unknown species,
+            :obj:`DynamicSpeciesPopulationError`: if any adjustment attempts to change the population slope
+                of an unknown species,
                 or if any population estimate would become negative
         """
         self._check_species(time, set(population_slopes.keys()))
@@ -914,13 +915,12 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
                 self._population[species_id].continuous_adjustment(time, population_slope)
                 self._update_access_times(time, [species_id])
                 self.log_event('continuous_adjustment', self._population[species_id])
-            except (SpeciesPopulationError, NegativePopulationError) as e:
+            except (DynamicSpeciesPopulationError, DynamicNegativePopulationError) as e:
                 errors.append(str(e))
         if errors:
             self.fast_debug_file_logger.fast_log("Error: on species {}: {}".format(species_id,
                                                  '\n'.join(errors)), sim_time=self.time)
-            raise SpeciesPopulationError("adjust_continuously error(s) at time {}:\n{}".format(
-                time, '\n'.join(errors)))
+            raise DynamicSpeciesPopulationError(time, "adjust_continuously error(s):\n{}".format('\n'.join(errors)))
 
     # TODO(Arthur): don't need compartment_id, because compartment is part of the species_ids
     def compartmental_mass(self, compartment_id, species_ids=None, time=None):
@@ -936,7 +936,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             :obj:`float`: the current total mass of the specified species in compartment `compartment_id`, in grams
 
         Raises:
-            :obj:`SpeciesPopulationError`: if a species' molecular weight was not provided to
+            :obj:`DynamicSpeciesPopulationError`: if a species' molecular weight was not provided to
                 `__init__()` in `molecular_weights`
         """
         if species_ids is None:
@@ -950,8 +950,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
                 try:
                     mw = self._molecular_weights[species_id]
                 except KeyError as e:
-                    raise SpeciesPopulationError("molecular weight not available for '{}'".format(
-                        species_id))
+                    raise DynamicSpeciesPopulationError(time, f"molecular weight not available for '{species_id}'")
                 if not np.isnan(mw):
                     mass += mw * self.read_one(time, species_id)
         return mass / Avogadro
@@ -1035,13 +1034,13 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         is obtained from `self.time`.
 
         Raises:
-            :obj:`SpeciesPopulationError`: if the current time is not greater than the previous time at which the
-            history was recorded.
+            :obj:`DynamicSpeciesPopulationError`: if the current time is not greater than the
+                previous time at which the history was recorded
         """
         # todo: more comprehensible error message here
         if not self._history['time'][-1] < self.time:
-            raise SpeciesPopulationError(f"time of previous _record_history() ({self._history['time'][-1]}) "
-                                         f"not less than current time ({self.time})")
+            raise DynamicSpeciesPopulationError(self.time, f"time of previous _record_history() "
+                                                f"({self._history['time'][-1]}) not less than current time ({self.time})")
         self._history['time'].append(self.time)
         for species_id, population in self.read(self.time, self._all_species()).items():
             self._history['population'][species_id].append(population)
@@ -1468,15 +1467,15 @@ class DynamicSpeciesState(object):
             method (:obj:`str`): name of the method making the adjustment
 
         Raises:
-            :obj:`SpeciesPopulationError`: if `adjustment_time` is earlier than latest prior adjustment,
+            :obj:`DynamicSpeciesPopulationError`: if `adjustment_time` is earlier than latest prior adjustment,
                  or if adjustment_time is earlier than latest prior read
         """
         if adjustment_time < self.last_adjustment_time:
-            raise SpeciesPopulationError(
+            raise DynamicSpeciesPopulationError(adjustment_time,
                 "{}(): adjustment_time is earlier than latest prior adjustment: "
                 "{:.2f} < {:.2f}".format(method, adjustment_time, self.last_adjustment_time))
         if adjustment_time < self.last_read_time:
-            raise SpeciesPopulationError(
+            raise DynamicSpeciesPopulationError(adjustment_time,
                 "{}(): adjustment_time is earlier than latest prior read: "
                 "{:.2f} < {:.2f}".format(method, adjustment_time, self.last_read_time))
 
@@ -1488,10 +1487,10 @@ class DynamicSpeciesState(object):
             method (:obj:`str`): name of the method making the read
 
         Raises:
-            :obj:`SpeciesPopulationError`: if `read_time` is earlier than latest prior adjustment
+            :obj:`DynamicSpeciesPopulationError`: if `read_time` is earlier than latest prior adjustment
         """
         if read_time < self.last_read_time:
-            raise SpeciesPopulationError(
+            raise DynamicSpeciesPopulationError(read_time,
                 "{}(): read_time is earlier than latest prior adjustment: "
                 "{:.2f} < {:.2f}".format(method, read_time, self.last_adjustment_time))
 
@@ -1535,7 +1534,7 @@ class DynamicSpeciesState(object):
             :obj:`int`: an integer approximation of the species' adjusted population
 
         Raises:
-            :obj:`NegativePopulationError`: if the predicted population at `time` is negative or
+            :obj:`DynamicNegativePopulationError`: if the predicted population at `time` is negative or
                 if decreasing the population by `population_change` would make the population negative
         """
         assert float(population_change).is_integer(), \
@@ -1544,8 +1543,8 @@ class DynamicSpeciesState(object):
         self._validate_adjustment_time(time, 'discrete_adjustment')
         current_population = self.get_population(time)
         if current_population + population_change < self.MINIMUM_ALLOWED_POPULATION:
-            raise NegativePopulationError('discrete_adjustment', self.species_name,
-                                          self.last_population, population_change)
+            raise DynamicNegativePopulationError(time, 'discrete_adjustment', self.species_name,
+                                                 self.last_population, population_change)
         self.last_population += population_change
         self._update_last_adjustment_time(time)
         self._record_operation_in_hist(time, 'discrete_adjustment', population_change)
@@ -1574,16 +1573,16 @@ class DynamicSpeciesState(object):
             :obj:`int`: the species' adjusted population, rounded to an integer
 
         Raises:
-            :obj:`SpeciesPopulationError`: if an initial population slope was not provided, or
+            :obj:`DynamicSpeciesPopulationError`: if an initial population slope was not provided, or
                 if `time` is not greater than the time of the most recent `continuous_adjustment` call
-            :obj:`NegativePopulationError`: if updating the population based on the previous `population_slope`
-                makes the population go negative
+            :obj:`DynamicNegativePopulationError`: if updating the population based on the previous
+                `population_slope` makes the population go negative
         """
         assert isinstance(population_slope, (float, int)), \
             (f"continuous_adjustment of species '{self.species_name}': population_slope "
              f"(type=='{type(population_slope).__name__}') must be an int or float")
         if not self.modeled_continuously:
-            raise SpeciesPopulationError(
+            raise DynamicSpeciesPopulationError(time,
                 f"continuous_adjustment(): DynamicSpeciesState for '{self.species_name}' needs "
                 f"self.modeled_continuously==True")
         self._validate_adjustment_time(time, 'continuous_adjustment')
@@ -1591,10 +1590,10 @@ class DynamicSpeciesState(object):
         if self.continuous_time is not None:
             if self.last_population + \
                 self.population_slope * (time - self.continuous_time) < self.MINIMUM_ALLOWED_POPULATION:
-                raise NegativePopulationError('continuous_adjustment', self.species_name,
-                                              self.last_population,
-                                              self.population_slope * (time - self.continuous_time),
-                                              delta_time=time - self.continuous_time)
+                raise DynamicNegativePopulationError(time, 'continuous_adjustment', self.species_name,
+                                                     self.last_population,
+                                                     self.population_slope * (time - self.continuous_time),
+                                                     delta_time=time - self.continuous_time)
             # add the population change since the last continuous_adjustment
             self.last_population += self.population_slope * (time - self.continuous_time)
         self.continuous_time = time
@@ -1663,9 +1662,9 @@ class DynamicSpeciesState(object):
                 the floating population
 
         Raises:
-            :obj:`SpeciesPopulationError`: if `time` is earlier than the time of a previous continuous
+            :obj:`DynamicSpeciesPopulationError`: if `time` is earlier than the time of a previous continuous
                 adjustment or discrete adjustment
-            :obj:`NegativePopulationError`: if interpolation predicts a negative population
+            :obj:`DynamicNegativePopulationError`: if interpolation predicts a negative population
         """
 
         self._validate_read_time(time, 'get_population')
@@ -1682,7 +1681,7 @@ class DynamicSpeciesState(object):
                 if interpolate:
                     interpolation = (time - self.continuous_time) * self.population_slope
                     if self.last_population + interpolation < self.MINIMUM_ALLOWED_POPULATION:
-                        raise NegativePopulationError('get_population', self.species_name,
+                        raise DynamicNegativePopulationError(time, 'get_population', self.species_name,
                             self.last_population, interpolation, time - self.continuous_time)
             float_copy_number = self.last_population + interpolation
             self._update_last_read_time(time)

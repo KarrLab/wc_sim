@@ -19,7 +19,7 @@ from de_sim.event import Event
 from wc_sim import message_types
 from wc_sim.config import core as config_core_multialgorithm
 from wc_sim.submodels.dynamic_submodel import DynamicSubmodel
-from wc_sim.multialgorithm_errors import MultialgorithmError, FrozenSimulationError
+from wc_sim.multialgorithm_errors import MultialgorithmError, DynamicFrozenSimulationError
 
 config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 
@@ -114,18 +114,17 @@ class SsaSubmodel(DynamicSubmodel):
         super().__init__(id, dynamic_model, reactions, species, dynamic_compartments,
                          local_species_population)
         self.options = options
-
         self.num_SsaWaits=0
-        if default_center_of_mass is None:
-            default_center_of_mass = config_multialgorithm['default_center_of_mass']
         # `initial_ssa_wait_ema` must be positive, as otherwise an infinite sequence of SsaWait
         # messages will be executed at the start of a simulation if no reactions are enabled
-        if config_multialgorithm['initial_ssa_wait_ema'] <= 0:
-            raise MultialgorithmError("'initial_ssa_wait_ema' must be positive to avoid infinite sequence of "
-            "SsaWait messages, but it is {}".format(config_multialgorithm['initial_ssa_wait_ema']))
-        self.ema_of_inter_event_time = \
-            ExponentialMovingAverage(config_multialgorithm['initial_ssa_wait_ema'],
-                                     center_of_mass=default_center_of_mass)
+        initial_ssa_wait_ema = config_multialgorithm['initial_ssa_wait_ema']
+        if initial_ssa_wait_ema <= 0:   # pragma: no cover
+            raise MultialgorithmError(f"'initial_ssa_wait_ema' must be positive to avoid infinite sequence of "
+            "SsaWait messages, but it is {initial_ssa_wait_ema}")
+        if default_center_of_mass is None:
+            default_center_of_mass = config_multialgorithm['default_center_of_mass']
+        self.ema_of_inter_event_time = ExponentialMovingAverage(initial_ssa_wait_ema,
+                                                                center_of_mass=default_center_of_mass)
         self.random_state = RandomStateManager.instance()
 
         self.log_with_time("init: id: {}".format(id))
@@ -150,7 +149,7 @@ class SsaSubmodel(DynamicSubmodel):
             reaction (propensities, total_propensities)
 
         Raises:
-            :obj:`FrozenSimulationError`: if the simulation has 1 submodel and the total propensities are 0
+            :obj:`DynamicFrozenSimulationError`: if the simulation has 1 submodel and the total propensities are 0
         """
 
         # TODO(Arthur): optimization: only calculate new reaction rates only for species whose counts have changed
@@ -167,7 +166,7 @@ class SsaSubmodel(DynamicSubmodel):
         assert not math.isnan(total_proportional_propensities), "total propensities is 'NaN'"   # pragma, no cover
         # TODO(Arthur): generalize: if other submodels can't change terms in the rate laws used by this SSA
         if total_proportional_propensities == 0 and self.get_num_submodels() == 1:
-            raise FrozenSimulationError(f"Simulation with 1 SSA submodel - '{self.id}' - with total "
+            raise DynamicFrozenSimulationError(self.time, f"Simulation with 1 SSA submodel - '{self.id}' - with total "
                                         f"propensities == 0 won't change species populations")
         return (proportional_propensities, total_proportional_propensities)
 
@@ -179,7 +178,7 @@ class SsaSubmodel(DynamicSubmodel):
         """
         try:
             propensities, total_propensities = self.determine_reaction_propensities()
-        except FrozenSimulationError:
+        except DynamicFrozenSimulationError:
             # TODO(Arthur): remove this send_event(), which isn't needed
             # schedule event for time = infinity so that other activities like checkpointing continue
             # for the remainder of the simulation

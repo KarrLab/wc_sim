@@ -8,8 +8,9 @@
 import os
 import unittest
 
-from wc_sim.multialgorithm_errors import (Error, MultialgorithmError, SpeciesPopulationError,
-                                          NegativePopulationError, FrozenSimulationError)
+from wc_sim.multialgorithm_errors import (DynamicFrozenSimulationError, DynamicMultialgorithmError,
+                                          DynamicNegativePopulationError, DynamicSpeciesPopulationError,
+                                          Error, MultialgorithmError, SpeciesPopulationError)
 
 
 class TestMultialgorithmErrors(unittest.TestCase):
@@ -26,17 +27,27 @@ class TestMultialgorithmErrors(unittest.TestCase):
         with self.assertRaisesRegexp(SpeciesPopulationError, msg):
             raise SpeciesPopulationError(msg)
 
-        with self.assertRaisesRegexp(FrozenSimulationError, msg):
-            raise FrozenSimulationError(msg)
+        def expected(time, msg):
+            return f"{time}: {msg}"
 
+        time = 3.5
+        with self.assertRaisesRegexp(DynamicFrozenSimulationError, expected(time, msg)):
+            raise DynamicFrozenSimulationError(time, msg)
+
+        with self.assertRaisesRegexp(DynamicMultialgorithmError, expected(time, msg)):
+            raise DynamicMultialgorithmError(time, msg)
+
+        with self.assertRaisesRegexp(DynamicSpeciesPopulationError, expected(time, msg)):
+            raise DynamicSpeciesPopulationError(time, msg)
 
 class TestNegativePopulationError(unittest.TestCase):
 
     def test(self):
-        npe1 = NegativePopulationError('method_name', 'species_name', 1, 2, 3)
-        npe2 = NegativePopulationError('method_name', 'species_name', 1, 2, 3)
-        npe3 = NegativePopulationError('method_name_3', 'species_name', 1, 2, 3)
-        npe4 = NegativePopulationError('method_name', 'species_name', 1, 5, 3)
+        time = 10.0
+        npe1 = DynamicNegativePopulationError(time, 'method_name', 'species_name', 1, 2, 3)
+        npe2 = DynamicNegativePopulationError(time, 'method_name', 'species_name', 1, 2, 3)
+        npe3 = DynamicNegativePopulationError(time, 'method_name_3', 'species_name', 1, 2, 3)
+        npe4 = DynamicNegativePopulationError(time, 'method_name', 'species_name', 1, 5, 3)
         self.assertEqual(npe1, npe1)
         self.assertEqual(hash(npe1), hash(npe1))
         self.assertEqual(npe1, npe2)
@@ -46,13 +57,14 @@ class TestNegativePopulationError(unittest.TestCase):
         self.assertNotEqual(npe1, 'string')
 
         expected = "negative population predicted for .* with decline from .* to .* over .* time unit"
-        with self.assertRaisesRegexp(NegativePopulationError, expected):
-            raise NegativePopulationError('method_name', 'species_name', 1, 3, 1)
+        with self.assertRaisesRegexp(DynamicNegativePopulationError, expected):
+            raise DynamicNegativePopulationError(time, 'method_name', 'species_name', 1, 3, 1)
 
     def test___str__(self):
-        npe = str(NegativePopulationError('method_name', 'species_name', 1, -2))
+        time = 12.125
+        npe = str(DynamicNegativePopulationError(time, 'method_name', 'species_name', 1, -2))
         self.assertIn('decline from 1', npe)
-        npe = str(NegativePopulationError('method_name', 'species_name', 1, -2, 5))
+        npe = str(DynamicNegativePopulationError(time, 'method_name', 'species_name', 1, -2, 5))
         self.assertIn('over 5 time units', npe)
-        npe = str(NegativePopulationError('method_name', 'species_name', 1, -2, 1))
+        npe = str(DynamicNegativePopulationError(time, 'method_name', 'species_name', 1, -2, 1))
         self.assertIn('over 1 time unit', npe)

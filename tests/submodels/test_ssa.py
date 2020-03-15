@@ -10,7 +10,7 @@ import unittest
 
 from wc_lang import Species
 from wc_lang.transform import PrepForWcSimTransform
-from wc_sim.multialgorithm_errors import FrozenSimulationError
+from wc_sim.multialgorithm_errors import DynamicFrozenSimulationError
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.submodels.ssa import SsaSubmodel
 from wc_sim.testing.make_models import MakeModel
@@ -80,6 +80,6 @@ class TestSsaSubmodel(unittest.TestCase):
         rl_constant = model.parameters.get_or_create(id='k_cat_1_1_for')
         rl_constant.value = 0
         ssa_submodel = self.make_ssa_submodel(model)
-        with self.assertRaisesRegex(FrozenSimulationError,
+        with self.assertRaisesRegex(DynamicFrozenSimulationError,
                                     "propensities == 0 won't change species populations"):
             ssa_submodel.determine_reaction_propensities()

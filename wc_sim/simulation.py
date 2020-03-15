@@ -165,12 +165,12 @@ class Simulation(object):
 
             if args['end_time'] / args['checkpoint_period'] % 1 != 0:
                 raise MultialgorithmError('end_time ({}) must be a multiple of checkpoint_period ({})'.format(
-                    args['end_time'], args['checkpoint_period']))
+                                          args['end_time'], args['checkpoint_period']))
 
         if 'ode_time_step' in args:
             if args['ode_time_step'] <= 0.0 or args['end_time'] < args['ode_time_step']:
                 raise MultialgorithmError("Timestep for time-stepped submodels ({}) must be positive and less than or "
-                    "equal to end time".format(args['ode_time_step']))
+                                          "equal to end time".format(args['ode_time_step']))
 
     def run(self, end_time, results_dir=None, checkpoint_period=None, ode_time_step=1, seed=None,
             submodels_to_skip=None, verbose=True, options=None):

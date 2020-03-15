@@ -28,7 +28,8 @@ from wc_sim import distributed_properties
 from wc_sim import message_types
 from wc_sim.config import core as config_core_multialgorithm
 from wc_sim.dynamic_components import DynamicModel
-from wc_sim.multialgorithm_errors import NegativePopulationError, SpeciesPopulationError
+from wc_sim.multialgorithm_errors import (DynamicSpeciesPopulationError, DynamicNegativePopulationError,
+                                          SpeciesPopulationError)
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.species_populations import (LOCAL_POP_STORE, DynamicSpeciesState, SpeciesPopSimObject,
                                         SpeciesPopulationCache, LocalSpeciesPopulation, TempPopulationsLSP,
@@ -336,19 +337,19 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         test_species = 'species_2[c2]'
         self.assertEqual(self.local_species_pop_no_init_pop_change.read_one(1, test_species),
                          self.init_populations[test_species])
-        with self.assertRaisesRegex(SpeciesPopulationError,
+        with self.assertRaisesRegex(DynamicSpeciesPopulationError,
                                     "request for population of unknown species: 'unknown_species_id'"):
             self.local_species_pop_no_init_pop_change.read_one(2, 'unknown_species_id')
-        with self.assertRaisesRegex(SpeciesPopulationError, r"is an earlier access of species"):
+        with self.assertRaisesRegex(DynamicSpeciesPopulationError, r"is an earlier access of species"):
             self.local_species_pop_no_init_pop_change.read_one(0, test_species)
 
     def reusable_assertions(self, the_local_species_pop, population_slope):
         # test both discrete and hybrid species
 
-        with self.assertRaisesRegex(SpeciesPopulationError, "must be a set"):
+        with self.assertRaisesRegex(DynamicSpeciesPopulationError, "must be a set"):
             the_local_species_pop._check_species(0, 2)
 
-        with self.assertRaisesRegex(SpeciesPopulationError,
+        with self.assertRaisesRegex(DynamicSpeciesPopulationError,
                                     re.escape("request for population of unknown species:")):
             the_local_species_pop._check_species(0, {'x'})
 
@@ -376,17 +377,17 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
 
     def test_adjustment_exceptions(self):
         time = 1.0
-        with self.assertRaisesRegex(SpeciesPopulationError, "adjust_discretely error"):
+        with self.assertRaisesRegex(DynamicSpeciesPopulationError, "adjust_discretely error"):
             self.local_species_pop.adjust_discretely(time, {id: -10 for id in self.species_ids})
 
         self.local_species_pop.adjust_continuously(time, {id: -10 for id in self.species_ids})
-        with self.assertRaisesRegex(SpeciesPopulationError, "adjust_continuously error"):
+        with self.assertRaisesRegex(DynamicSpeciesPopulationError, "adjust_continuously error"):
             self.local_species_pop.adjust_continuously(time + 1, {id: 0 for id in self.species_ids})
 
         self.local_species_pop.adjust_continuously(time, {self.species_ids[0]: -10})
-        with self.assertRaises(SpeciesPopulationError) as context:
+        with self.assertRaises(DynamicSpeciesPopulationError) as context:
             self.local_species_pop.adjust_continuously(time + 2, {self.species_ids[0]: 0})
-        self.assertIn(f"adjust_continuously error(s) at time {time + 2}", str(context.exception))
+        self.assertIn(f"{time + 2}: adjust_continuously error(s):", str(context.exception))
         self.assertIn("negative population predicted", str(context.exception))
 
     def test_temp_lsp_populations(self):
@@ -399,13 +400,13 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         self.local_species_pop.clear_temp_populations({s_0})
         self.assertEqual(self.local_species_pop.read_one(time, s_0), pop_s_0)
 
-        with self.assertRaises(SpeciesPopulationError):
+        with self.assertRaises(DynamicSpeciesPopulationError):
             self.local_species_pop.set_temp_populations({'not a species id': temp_pop_s_0})
 
         with self.assertRaisesRegex(SpeciesPopulationError, 'cannot use negative population'):
             self.local_species_pop.set_temp_populations({s_0: -4})
 
-        with self.assertRaises(SpeciesPopulationError):
+        with self.assertRaises(DynamicSpeciesPopulationError):
             self.local_species_pop.clear_temp_populations(['not a species id'])
 
     def test_concentrations_api(self):
@@ -436,27 +437,30 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
     def test_accounted_volumes_for_species(self):
         dynamic_model = self.make_dynamic_model()
         species_ids = ['specie_3[c]', 'specie_2[e]', 'specie_3[e]']
-        volumes = self.local_species_population._accounted_volumes_for_species(species_ids, dynamic_model)
+        time = 2
+        volumes = self.local_species_population._accounted_volumes_for_species(time, species_ids, dynamic_model)
         self.assertEqual(self.compt_accounted_volumes, volumes)
 
         # test one volume
         species_ids = ['specie_3[c]']
-        volumes = self.local_species_population._accounted_volumes_for_species(species_ids, dynamic_model)
+        volumes = self.local_species_population._accounted_volumes_for_species(time, species_ids, dynamic_model)
         self.assertEqual(['c'], list(volumes))
         self.assertEqual(self.compt_accounted_volumes['c'], volumes['c'])
 
-        with self.assertRaises(SpeciesPopulationError):
-            self.local_species_population._accounted_volumes_for_species([], dynamic_model)
+        with self.assertRaises(DynamicSpeciesPopulationError):
+            self.local_species_population._accounted_volumes_for_species(time, [], dynamic_model)
 
     def test_populations_to_concentrations(self):
         dynamic_model = self.make_dynamic_model()
         species_ids = ['specie_3[c]']
-        volumes = self.local_species_population._accounted_volumes_for_species(species_ids, dynamic_model)
+        time = 1
+        volumes = self.local_species_population._accounted_volumes_for_species(time, species_ids,
+                                                                               dynamic_model)
 
         populations = np.empty(len(species_ids))
         self.local_species_population.read_into_array(0, species_ids, populations)
         concentrations = np.empty(len(species_ids))
-        self.local_species_population.populations_to_concentrations(species_ids, populations,
+        self.local_species_population.populations_to_concentrations(time, species_ids, populations,
             dynamic_model, concentrations)
         expected_concentration = populations[0] / (Avogadro * volumes['c'])
         self.assertEqual(concentrations[0], expected_concentration)
@@ -469,19 +473,20 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         populations = np.empty(len(species_ids))
         self.local_species_population.read_into_array(0, species_ids, populations)
         concentrations = np.empty(len(species_ids))
-        self.local_species_population.populations_to_concentrations(species_ids, populations,
+        time = 1
+        self.local_species_population.populations_to_concentrations(time, species_ids, populations,
             dynamic_model, concentrations)
         populations_round_trip = np.empty(len(species_ids))
-        self.local_species_population.concentrations_to_populations(species_ids, concentrations,
+        self.local_species_population.concentrations_to_populations(time, species_ids, concentrations,
             dynamic_model, populations_round_trip)
         self.assertTrue(np.allclose(populations, populations_round_trip))
 
         # test using volumes
-        volumes = self.local_species_population._accounted_volumes_for_species(species_ids, dynamic_model)
-        self.local_species_population.populations_to_concentrations(species_ids, populations,
+        volumes = self.local_species_population._accounted_volumes_for_species(time, species_ids, dynamic_model)
+        self.local_species_population.populations_to_concentrations(time, species_ids, populations,
             dynamic_model, concentrations, volumes=volumes)
         populations_round_trip = np.empty(len(species_ids))
-        self.local_species_population.concentrations_to_populations(species_ids, concentrations,
+        self.local_species_population.concentrations_to_populations(time, species_ids, concentrations,
             dynamic_model, populations_round_trip, volumes=volumes)
         self.assertTrue(np.allclose(populations, populations_round_trip))
 
@@ -513,7 +518,7 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         first_species = self.species_ids[0]
         an_LSP_recording_history.read(next_time, {first_species})
         an_LSP_recording_history._record_history()
-        with self.assertRaisesRegex(SpeciesPopulationError,
+        with self.assertRaisesRegex(DynamicSpeciesPopulationError,
                                     re.escape(f"time of previous _record_history() ({next_time}) not "
                                               f"less than current time")):
             an_LSP_recording_history._record_history()
@@ -564,7 +569,7 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
                                mass_of_species_1_in_c1, places=30)
 
         unknown_species = 'species_x[c1]'
-        with self.assertRaisesRegex(SpeciesPopulationError,
+        with self.assertRaisesRegex(DynamicSpeciesPopulationError,
                                     re.escape(f"molecular weight not available for '{unknown_species}'")):
             self.local_species_pop.compartmental_mass('c1', species_ids=[unknown_species])
 
@@ -792,21 +797,21 @@ class TestDynamicSpeciesState(unittest.TestCase):
         self.assertEqual(ds_discrete.last_adjustment_time, time)
 
         # test exceptions
-        with self.assertRaisesRegex(SpeciesPopulationError,
+        with self.assertRaisesRegex(DynamicSpeciesPopulationError,
                                     "get_population\(\): read_time is earlier than latest "
                                     "prior adjustment: "):
             ds_discrete.get_population(time-1)
 
         time = 5
         ds_discrete.get_population(time)
-        with self.assertRaisesRegex(SpeciesPopulationError,
+        with self.assertRaisesRegex(DynamicSpeciesPopulationError,
                                     "discrete_adjustment\(\): adjustment_time is earlier than "
                                     "latest prior read: "):
             ds_discrete.discrete_adjustment(time-1, 0)
 
         time = 6
         ds_discrete.discrete_adjustment(time, 0)
-        with self.assertRaisesRegex(SpeciesPopulationError,
+        with self.assertRaisesRegex(DynamicSpeciesPopulationError,
                                     "discrete_adjustment\(\): adjustment_time is earlier than "
                                     "latest prior adjustment: "):
             ds_discrete.discrete_adjustment(time-1, 0)
@@ -820,21 +825,21 @@ class TestDynamicSpeciesState(unittest.TestCase):
         # test exceptions
         time = 2
         ds_hybrid.get_population(time)
-        with self.assertRaisesRegex(SpeciesPopulationError,
+        with self.assertRaisesRegex(DynamicSpeciesPopulationError,
                                     "continuous_adjustment\(\): adjustment_time is earlier than "
                                     "latest prior read: "):
             ds_hybrid.continuous_adjustment(time-1, 0)
 
         time = 4
         ds_hybrid.continuous_adjustment(time, 0)
-        with self.assertRaisesRegex(SpeciesPopulationError,
+        with self.assertRaisesRegex(DynamicSpeciesPopulationError,
                                     "continuous_adjustment\(\): adjustment_time is earlier than "
                                     "latest prior adjustment: "):
             ds_hybrid.continuous_adjustment(time-1, 0)
 
         # test failure to set modeled_continuously
         ds_discrete_2 = DynamicSpeciesState('ds_discrete_2', self.random_state, 0)
-        with self.assertRaisesRegex(SpeciesPopulationError,
+        with self.assertRaisesRegex(DynamicSpeciesPopulationError,
                                     "DynamicSpeciesState for .* needs self.modeled_continuously==True"):
             ds_discrete_2.continuous_adjustment(time, 0)
 
@@ -845,10 +850,10 @@ class TestDynamicSpeciesState(unittest.TestCase):
 
         time = 0
         adjustment = -3
-        with self.assertRaises(NegativePopulationError) as context:
+        with self.assertRaises(DynamicNegativePopulationError) as context:
             s1.discrete_adjustment(time, adjustment)
-        self.assertEqual(context.exception, NegativePopulationError('discrete_adjustment',
-                                                                    's1', pop, adjustment))
+        self.assertEqual(context.exception, DynamicNegativePopulationError(time, 'discrete_adjustment',
+                                                                           's1', pop, adjustment))
 
         # dynamic species modeled by continuous and discrete submodels
         pop = 3
@@ -861,18 +866,18 @@ class TestDynamicSpeciesState(unittest.TestCase):
         time += time_advance
         predicted_pop = pop + time * slope
         self.assertEqual(-1, predicted_pop)
-        with self.assertRaises(NegativePopulationError) as context:
+        with self.assertRaises(DynamicNegativePopulationError) as context:
             new_slope = 0
             s2.continuous_adjustment(time, new_slope)
-        self.assertEqual(context.exception, NegativePopulationError('continuous_adjustment', 's2',
-                                                                    pop, time_advance * slope,
-                                                                    time_advance))
+        self.assertEqual(context.exception, DynamicNegativePopulationError(time, 'continuous_adjustment', 's2',
+                                                                           pop, time_advance * slope,
+                                                                           time_advance))
 
-        with self.assertRaises(NegativePopulationError) as context:
+        with self.assertRaises(DynamicNegativePopulationError) as context:
             s2.get_population(time)
-        self.assertEqual(context.exception, NegativePopulationError('get_population', 's2',
-                                                                    pop, time_advance * slope,
-                                                                    time_advance))
+        self.assertEqual(context.exception, DynamicNegativePopulationError(time, 'get_population', 's2',
+                                                                           pop, time_advance * slope,
+                                                                           time_advance))
 
         MINIMUM_ALLOWED_POPULATION = config_multialgorithm['minimum_allowed_population']
         pop = 3
@@ -885,7 +890,7 @@ class TestDynamicSpeciesState(unittest.TestCase):
         time_advance = (MINIMUM_ALLOWED_POPULATION - pop) / slope
         self.assertAlmostEqual(s3.get_population(time_advance, round=False), MINIMUM_ALLOWED_POPULATION)
         # advance to time when population < MINIMUM_ALLOWED_POPULATION
-        with self.assertRaises(NegativePopulationError):
+        with self.assertRaises(DynamicNegativePopulationError):
             s3.get_population(time_advance + 1e-3)
 
     def test_assertions(self):

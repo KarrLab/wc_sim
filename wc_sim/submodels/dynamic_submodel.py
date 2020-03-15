@@ -16,7 +16,7 @@ from wc_lang import Compartment, Species, Reaction, Parameter
 from wc_sim import message_types, distributed_properties
 from wc_sim.debug_logs import logs as debug_logs
 from wc_sim.dynamic_components import DynamicCompartment, DynamicModel
-from wc_sim.multialgorithm_errors import MultialgorithmError, SpeciesPopulationError
+from wc_sim.multialgorithm_errors import DynamicMultialgorithmError, MultialgorithmError, SpeciesPopulationError
 
 
 # TODO(Arthur): rename reactions -> dynamic reactions
@@ -191,7 +191,7 @@ class DynamicSubmodel(ApplicationSimulationObject):
             reaction (:obj:`Reaction`): the reaction being executed
 
         Raises:
-            :obj:`MultialgorithmError:` if the species population cannot be updated
+            :obj:`DynamicMultialgorithmError:` if the species population cannot be updated
         """
         adjustments = {}
         for participant in reaction.participants:
@@ -202,8 +202,8 @@ class DynamicSubmodel(ApplicationSimulationObject):
         try:
             self.local_species_population.adjust_discretely(self.time, adjustments)
         except SpeciesPopulationError as e:
-            raise MultialgorithmError("{:7.1f}: dynamic submodel '{}' cannot execute reaction: {}: {}".format(
-                self.time, self.id, reaction.id, e))
+            raise DynamicMultialgorithmError(self.time, "dynamic submodel '{}' cannot execute reaction: {}: {}".format(
+                self.id, reaction.id, e))
 
     # TODO(Arthur): cover after MVP wc_sim done
     def handle_get_current_prop_event(self, event):   # pragma: no cover    not used
@@ -213,7 +213,7 @@ class DynamicSubmodel(ApplicationSimulationObject):
             event (:obj:`de_sim.event.Event`): an `Event` to process
 
         Raises:
-            MultialgorithmError: if an `GetCurrentProperty` message requests an unknown property
+            DynamicMultialgorithmError: if an `GetCurrentProperty` message requests an unknown property
         """
         property_name = event.message.property_name
         if property_name == distributed_properties.MASS:
@@ -223,6 +223,6 @@ class DynamicSubmodel(ApplicationSimulationObject):
                         message=message_types.GiveProperty(property_name, self.time,
                             self.mass()))
             '''
-            raise MultialgorithmError("Error: not handling distributed_properties.MASS")
+            raise DynamicMultialgorithmError(self.time, "Error: not handling distributed_properties.MASS")
         else:
-            raise MultialgorithmError("Error: unknown property_name: '{}'".format(property_name))
+            raise DynamicMultialgorithmError(self.time, "Error: unknown property_name: '{}'".format(property_name))

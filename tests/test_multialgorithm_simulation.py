@@ -25,7 +25,8 @@ from wc_lang.transform import PrepForWcSimTransform
 from wc_sim.dynamic_components import DynamicModel
 from wc_sim.multialgorithm_checkpointing import (MultialgorithmicCheckpointingSimObj,
                                                  MultialgorithmCheckpoint)
-from wc_sim.multialgorithm_errors import MultialgorithmError, SpeciesPopulationError
+from wc_sim.multialgorithm_errors import (DynamicSpeciesPopulationError, MultialgorithmError,
+                                          SpeciesPopulationError)
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.run_results import RunResults
 from wc_sim.simulation import Simulation
@@ -186,7 +187,7 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
         not_in_a_reaction = ['H2O[e]', 'H2O[c]']
         used_by_discrete_submodels = ['species_4[c]', 'species_5[c]', 'species_6[c]']
         adjustments = {species_id: 0. for species_id in used_by_discrete_submodels + not_in_a_reaction}
-        with self.assertRaises(SpeciesPopulationError):
+        with self.assertRaises(DynamicSpeciesPopulationError):
             local_species_population.adjust_continuously(2, adjustments)
 
     def test_set_simultaneous_execution_priorities(self):

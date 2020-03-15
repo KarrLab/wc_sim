@@ -100,3 +100,15 @@ Performance summary on 2020-02-08
 8	2681	   5.551	 483.000
 32	10852	  41.156	 263.682
 
+Performance summary on 2020-03-14
+#SSA submodels	# events	run time (s)	reactions/s
+2	718	   2.490	 288.343
+8	2751	   8.692	 316.502
+32	10642	  34.075	 312.313
+
+Performance summary on 2020-03-14
+#SSA submodels	# events	run time (s)	reactions/s
+2	689	   1.172	 587.741
+8	2752	   5.629	 488.908
+32	10703	  33.611	 318.438
+

@@ -19,7 +19,7 @@ from de_sim.simulation_object import SimulationObject
 from wc_sim import message_types
 from wc_sim.config import core as config_core_core
 from wc_sim.config import core as config_core_multialgorithm
-from wc_sim.multialgorithm_errors import MultialgorithmError
+from wc_sim.multialgorithm_errors import DynamicMultialgorithmError, MultialgorithmError
 from wc_sim.species_populations import TempPopulationsLSP
 from wc_sim.submodels.dynamic_submodel import DynamicSubmodel
 from wc_utils.util.list import det_dedupe
@@ -162,12 +162,17 @@ class OdeSubmodel(DynamicSubmodel):
         self.zero_populations = np.zeros(self.num_species)
 
     def get_solver_lock(self):
+        """ Acquire the solver lock
+
+        Raises:
+            :obj:`DynamicMultialgorithmError`: if the solver lock cannot be acquired
+        """
         cls = self.__class__
         if not cls.using_solver:
             cls.using_solver = True
             return True
         else:
-            raise MultialgorithmError("OdeSubmodel {}: cannot get_solver_lock".format(self.id))
+            raise DynamicMultialgorithmError(self.time, "OdeSubmodel {}: cannot get_solver_lock".format(self.id))
 
     def release_solver_lock(self):
         cls = self.__class__
@@ -201,6 +206,8 @@ class OdeSubmodel(DynamicSubmodel):
     def right_hand_side(self, time, new_species_populations, population_change_rates):
         """ Evaluate population change rates for species modeled by ODE; called by ODE solver
 
+        This is called by the CVODE ODE solver.
+
         Args:
             time (:obj:`float`): simulation time
             new_species_populations (:obj:`numpy.ndarray`): populations of all species at time `time`,
@@ -211,8 +218,10 @@ class OdeSubmodel(DynamicSubmodel):
         Returns:
             :obj:`int`: return 0 to indicate success, or 1 to indicate failure;
                 but the important side effects are the values in `population_change_rates`
+
+        Raises:
+            :obj:`DynamicMultialgorithmError`: if this method raises any exception
         """
-        # `right_hand_side` is called by the CVODE ODE solver
 
         try:
             self.compute_population_change_rates(time, new_species_populations, population_change_rates)
@@ -235,7 +244,7 @@ class OdeSubmodel(DynamicSubmodel):
 
         except Exception as e:
             print(f"OdeSubmodel {self.id}: solver.right_hand_side() failed: '{e}'")
-            raise MultialgorithmError(f"OdeSubmodel {self.id}: solver.right_hand_side() failed: '{e}'")
+            raise DynamicMultialgorithmError(self.time, f"OdeSubmodel {self.id}: solver.right_hand_side() failed: '{e}'")
             return 1
 
     def compute_population_change_rates(self, time, new_species_populations, population_change_rates):
@@ -275,7 +284,11 @@ class OdeSubmodel(DynamicSubmodel):
             self.populations[idx] = pops_dict[species_id]
 
     def run_ode_solver(self):
-        """ Run the ODE solver for one WC simulator time step and save the species populations changes """
+        """ Run the ODE solver for one WC simulator time step and save the species populations changes
+
+        Raises:
+            :obj:`DynamicMultialgorithmError`: if the CVODE ODE solver indicates an error
+        """
 
         if self.testing:
             # testing
@@ -290,8 +303,9 @@ class OdeSubmodel(DynamicSubmodel):
         self.current_species_populations()
         solution = self.solver.solve(solution_times, self.populations)
         if solution.flag != StatusEnum.SUCCESS:   # pragma: no cover
-            raise MultialgorithmError(f"OdeSubmodel {self.id}: solver step() error: '{solution.message}' "
-                                      f"for time step [{self.time}, {end_time})")
+            raise DynamicMultialgorithmError(self.time, f"OdeSubmodel {self.id}: solver step() error: "
+                                                        f"'{solution.message}' "
+                                                        f"for time step [{self.time}, {end_time})")
         if solution.errors.t:
             print('solution.errors.t:', solution.errors.t)
         if solution.errors.y:
