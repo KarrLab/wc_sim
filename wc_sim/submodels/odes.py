@@ -6,7 +6,6 @@
 :License: MIT
 """
 
-from pprint import pprint
 from scikits.odes import ode
 from scikits.odes.sundials.cvode import StatusEnum
 from scipy.constants import Avogadro
@@ -49,12 +48,6 @@ class OdeSubmodel(DynamicSubmodel):
             a list of its (coefficient, rate law) pairs
         adjustments (:obj:`dict`): pre-allocated adjustments for passing changes to LocalSpeciesPopulation
         num_species (:obj:`int`): number of species in `ode_species_ids`
-        num_right_hand_side_calls (:obj:`int`): number of calls to `right_hand_side` in a call to
-            the solver, `self.solver.solve()`
-        history_num_right_hand_side_calls (:obj:`list` of :obj:`tuple`): history of number of calls
-            to `right_hand_side`
-        _last_internal_step (:obj:`float`): the time of the last internal ODE step; for debugging
-        testing (:obj:`bool`, optional): if set, produce test output
     """
     ABS_ODE_SOLVER_TOLERANCE = config_multialgorithm['abs_ode_solver_tolerance']
     REL_ODE_SOLVER_TOLERANCE = config_multialgorithm['rel_ode_solver_tolerance']
@@ -68,7 +61,7 @@ class OdeSubmodel(DynamicSubmodel):
     using_solver = False
 
     def __init__(self, id, dynamic_model, reactions, species, dynamic_compartments,
-                 local_species_population, ode_time_step, testing=False, options=None):
+                 local_species_population, ode_time_step, options=None):
         """ Initialize an ODE submodel instance
 
         Args:
@@ -84,7 +77,6 @@ class OdeSubmodel(DynamicSubmodel):
                 ODE submodel's species population
             ode_time_step (:obj:`float`): time interval between ODE analyses
             num_steps (:obj:`int`): number of steps taken
-            testing (:obj:`bool`, optional): if set, produce test output
             options (:obj:`dict`, optional): ODE submodel options
         """
         super().__init__(id, dynamic_model, reactions, species, dynamic_compartments,
@@ -104,10 +96,6 @@ class OdeSubmodel(DynamicSubmodel):
             if 'rtol' in options['tolerances']:
                 ode_solver_options['rtol'] = options['tolerances']['rtol']
         self.solver = self.create_ode_solver(**ode_solver_options)
-        self.num_right_hand_side_calls = 0
-        self.history_num_right_hand_side_calls = []
-        self.testing = testing
-        self._last_internal_step = 0.
 
     def set_up_ode_submodel(self):
         """ Set up an ODE submodel, including its ODE solver """
@@ -140,14 +128,6 @@ class OdeSubmodel(DynamicSubmodel):
         self.rate_of_change_expressions = []
         for species_id in self.ode_species_ids:
             self.rate_of_change_expressions.append(tmp_coeffs_and_rate_laws[species_id])
-        '''
-        print('for each species, a list of its (coefficient, rate law) pairs')
-        for n, s_list in enumerate(self.rate_of_change_expressions):
-            p = []
-            for coeff, rl in s_list:
-                p.append(f'{coeff} * {rl.id}')
-            print(f'species: {n}', ' + '.join(p))
-        '''
 
     def set_up_optimizations(self):
         """ To improve performance, pre-compute and pre-allocate some data structures """
@@ -198,9 +178,6 @@ class OdeSubmodel(DynamicSubmodel):
         solver = ode(CVODE_SOLVER, self.right_hand_side, old_api=False, **options)
         if not isinstance(solver, ode):    # pragma: no cover
             raise MultialgorithmError(f"OdeSubmodel {self.id}: scikits.odes.ode() failed")
-        # todo: compare and report detailed results: define ODE log file
-        run_ode_solver_header = 'mode time time_change rhs_calls elapsed_rt population_0 population_1'.split()
-        # todo: compare and report detailed results: fix header & write it to ODE log file
         return solver
 
     def right_hand_side(self, time, new_species_populations, population_change_rates):
@@ -225,27 +202,14 @@ class OdeSubmodel(DynamicSubmodel):
 
         try:
             self.compute_population_change_rates(time, new_species_populations, population_change_rates)
-
-            self.num_right_hand_side_calls += 1
-            # todo: compare and report detailed results: remove 'and self.time == 0'; write summary to ODE debug log file
-            if self.testing and self.time == 0:
-                # testing
-                time_change = time - self._last_internal_step
-                summary = ['internal step',
-                           f'{time:.4e}',
-                           f'{time_change:.4e}',
-                           'N/A',
-                           'N/A']
-                summary.extend([f'{pop:.5e}' for pop in new_species_populations])
-                summary.extend([f'{pop_change_rate:.5e}' for pop_change_rate in population_change_rates])
-                print('\t'.join(summary))
-                self._last_internal_step = time
             return 0
 
         except Exception as e:
-            print(f"OdeSubmodel {self.id}: solver.right_hand_side() failed: '{e}'")
-            raise DynamicMultialgorithmError(self.time, f"OdeSubmodel {self.id}: solver.right_hand_side() failed: '{e}'")
-            return 1
+            # the CVODE ODE solver requires that RHS return 1 if it fails, but raising an
+            # exception will provide more error information
+            raise DynamicMultialgorithmError(self.time,
+                                             f"OdeSubmodel {self.id}: solver.right_hand_side() failed: '{e}'")
+            return 1    # pragma: no cover
 
     def compute_population_change_rates(self, time, new_species_populations, population_change_rates):
         """ Compute the rate of change of the populations of species used by this ODE
@@ -290,29 +254,16 @@ class OdeSubmodel(DynamicSubmodel):
             :obj:`DynamicMultialgorithmError`: if the CVODE ODE solver indicates an error
         """
 
-        if self.testing:
-            # testing
-            self._last_internal_step = self.time
-            start = time.perf_counter()
-
         ### run the ODE solver ###
         end_time = self.time + self.ode_time_step
         # advance one ode_time_step
         solution_times = [self.time, end_time]
-        self.num_right_hand_side_calls = 0
         self.current_species_populations()
         solution = self.solver.solve(solution_times, self.populations)
         if solution.flag != StatusEnum.SUCCESS:   # pragma: no cover
             raise DynamicMultialgorithmError(self.time, f"OdeSubmodel {self.id}: solver step() error: "
                                                         f"'{solution.message}' "
                                                         f"for time step [{self.time}, {end_time})")
-        if solution.errors.t:
-            print('solution.errors.t:', solution.errors.t)
-        if solution.errors.y:
-            print('solution.errors.y:', solution.errors.y)
-        SUCCESSFUL_RETURN_MSG = 'Successful function return.'
-        if solution.message != SUCCESSFUL_RETURN_MSG:   # pragma: no cover
-            print('solution.message:', solution.message)
 
         ### store results in local_species_population ###
         solution_time = solution.values.t[1]
@@ -320,31 +271,9 @@ class OdeSubmodel(DynamicSubmodel):
         population_changes = new_population - self.populations
         time_advance = solution_time - self.time
         population_change_rates = population_changes / time_advance
-
         for idx, species_id in enumerate(self.ode_species_ids):
             self.adjustments[species_id] = population_change_rates[idx]
-
-        if self.testing and self.time == 0:
-            print('time_advance:',time_advance)
-            print('population_changes:',population_changes)
-            print('population_change_rates:',population_change_rates)
-            print('self.ode_species_ids', self.ode_species_ids)
-            print('self.adjustments')
-            pprint(self.adjustments)
         self.local_species_population.adjust_continuously(self.time, self.adjustments)
-        self.history_num_right_hand_side_calls.append(self.num_right_hand_side_calls)
-        # todo: compare and report detailed results: write summary to ODE log
-        if self.testing:
-            end = time.perf_counter()
-            elapsed_rt = end - start
-            summary = ['external step',
-                       f'{self.time:.4e}',
-                       f'{time_advance:.4e}',
-                       f'{self.num_right_hand_side_calls}',
-                       f'{elapsed_rt:.2e}']
-            summary.extend([f'{pop:.2e}' for pop in new_population])
-            summary.extend([f'{pop_change_rate:.2e}' for pop_change_rate in population_change_rates])
-            print('\t'.join(summary))
 
     def get_info(self):
         """ Get info from CVODE
