@@ -530,9 +530,9 @@ class TestRunSSASimulation(unittest.TestCase):
 
     # @unittest.skip("performance scaling test; runs slowly")
     def test_performance(self):
-        end_sim_time = 100
+        end_sim_time = 5
         min_num_ssa_submodels = 2
-        max_num_ssa_submodels = 32
+        max_num_ssa_submodels = 4
         print()
         print("Performance test of SSA submodel simulation: 2 reactions per submodel; end simulation time: {}".format(end_sim_time))
         unprofiled_perf = ["\n#SSA submodels\t# events\trun time (s)\treactions/s".format()]
@@ -562,6 +562,10 @@ class TestRunSSASimulation(unittest.TestCase):
 
         performance_log = os.path.join(os.path.dirname(__file__), 'perf_results',
                                        'wc_sim_performance_log.txt')
+        
+        if not os.path.isdir(os.path.dirname(performance_log)):
+            os.makedirs(os.path.dirname(performance_log))
+
         with open(performance_log, 'a') as perf_log:
             today = datetime.today().strftime('%Y-%m-%d')
             print(f'Performance summary on {today}', end='', file=perf_log)
