@@ -530,9 +530,9 @@ class TestRunSSASimulation(unittest.TestCase):
 
     # @unittest.skip("performance scaling test; runs slowly")
     def test_performance(self):
-        end_sim_time = 5
+        end_sim_time = 100
         min_num_ssa_submodels = 2
-        max_num_ssa_submodels = 4
+        max_num_ssa_submodels = 32
         print()
         print("Performance test of SSA submodel simulation: 2 reactions per submodel; end simulation time: {}".format(end_sim_time))
         unprofiled_perf = ["\n#SSA submodels\t# events\trun time (s)\treactions/s".format()]
