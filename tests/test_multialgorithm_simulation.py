@@ -562,6 +562,10 @@ class TestRunSSASimulation(unittest.TestCase):
 
         performance_log = os.path.join(os.path.dirname(__file__), 'perf_results',
                                        'wc_sim_performance_log.txt')
+        
+        if not os.path.isdir(os.path.dirname(performance_log)):
+            os.makedirs(os.path.dirname(performance_log))
+
         with open(performance_log, 'a') as perf_log:
             today = datetime.today().strftime('%Y-%m-%d')
             print(f'Performance summary on {today}', end='', file=perf_log)
