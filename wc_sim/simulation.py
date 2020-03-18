@@ -11,7 +11,7 @@ import datetime
 import numpy
 
 from de_sim.errors import SimulatorError
-from de_sim.sim_metadata import SimulationMetadata, AuthorMetadata, RunMetadata
+from de_sim.simulation_metadata import SimulationMetadata, AuthorMetadata, RunMetadata
 from de_sim.simulation_engine import SimulationEngine
 from wc_lang import Model, Validator
 from wc_lang.io import Reader

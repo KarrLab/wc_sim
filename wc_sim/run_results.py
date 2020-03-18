@@ -13,7 +13,7 @@ import pickle
 from scipy.constants import Avogadro
 
 from de_sim.checkpoint import Checkpoint
-from de_sim.sim_metadata import SimulationMetadata
+from de_sim.simulation_metadata import SimulationMetadata
 from wc_lang import Species
 from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_utils.util.misc import as_dict

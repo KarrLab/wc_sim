@@ -1,4 +1,4 @@
-""" Classes to represent simulation configurations and import/export configurations to/from SED-ML.
+""" Classes to represent simulation configurations and import/export configurations to/from SED-ML
 
 :Author: Jonathan Karr <karr@mssm.edu>
 :Date: 2017-08-19
