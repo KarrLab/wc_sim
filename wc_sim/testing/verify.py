@@ -604,7 +604,7 @@ class CaseVerifier(object):
 
         # prepare for simulation
         self.tmp_results_dir = tmp_results_dir = tempfile.mkdtemp()
-        simul_kwargs = dict(end_time=settings['duration'],
+        simul_kwargs = dict(time_max=settings['duration'],
                             checkpoint_period=settings['duration']/settings['steps'],
                             results_dir=tmp_results_dir,
                             verbose= False)
@@ -1269,7 +1269,7 @@ class MultialgModelVerificationFuture(object):    # pragma: no cover
             return self.verification_test_reader.settings
 
         def get_simul_kwargs(self):
-            simul_kwargs = dict(end_time=self.get_settings()['duration'],
+            simul_kwargs = dict(time_max=self.get_settings()['duration'],
                 checkpoint_period=self.get_settings()['duration']/self.get_settings()['steps'],
                 verbose=False)
             return simul_kwargs

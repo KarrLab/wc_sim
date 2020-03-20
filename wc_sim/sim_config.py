@@ -1,6 +1,7 @@
-""" Classes to represent simulation configurations and import/export configurations to/from SED-ML
+""" Classes to represent WC simulation configurations and import/export configurations to/from SED-ML
 
 :Author: Jonathan Karr <karr@mssm.edu>
+:Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2017-08-19
 :Copyright: 2016-2018, Karr Lab
 :License: MIT
@@ -11,106 +12,98 @@
 # .. todo:: represent other stopping conditions e.g. cell divided
 # .. todo:: represent observables in SED-ML
 
+from dataclasses import dataclass
+from enum import Enum
+import dataclasses
 import libsedml
 import math
 import numpy
 import warnings
+
 import wc_lang.transform
-from enum import Enum
+from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_utils.util.misc import obj_to_str
 
 
-class SimulationConfig(object):
-    """ Represents and applies simulation configurations:
+@dataclass
+class WCSimulationConfig:
+    """ Whole-cell simulation configuration
 
-    - Simulation length (s)
-    - Time step (s)
+    - Random number generator seed
+    - ODE and dFBA timesteps
     - Model changes: Instructions to change parameter values and add or remove model
       components. These instructions are executed before the initial conditions are
       calculated
     - External perturbations: Instructions to set parameter values or state at specific
       time points or time ranges
-    - Random number generator seed
 
     Attributes:
-        time_init (:obj:`float`): initial simulation time (s)
-        time_max (:obj:`float`): simulation length (s)
-        ode_time_step (:obj:`float`): simulation timestep (s)
-        changes (:obj:`list`): list of desired model changes (e.g. modified parameter values, 
-            additional species/reactions, removed species/reactions)
-        perturbations (:obj:`list`): list of desired simulated perturbations (e.g. set state to a
-            value at a specified time or time range)
         random_seed (:obj:`int`): random number generator seed
+        ode_time_step (:obj:`float`, optional): ODE submodel timestep (s)
+        dfba_time_step (:obj:`float`, optional): dFBA submodel timestep (s)
+        changes (:obj:`list`, optional): list of desired model changes (e.g. modified parameter values,
+            additional species/reactions, removed species/reactions)
+        perturbations (:obj:`list`, optional): list of desired simulated perturbations (e.g. set state
+            to a value at a specified time or time range)
     """
-    ATTRIBUTES = ['time_init', 'time_max', 'ode_time_step', 'changes', 'perturbations', 'random_seed']
 
-    def __init__(self, time_init=0, time_max=3600, ode_time_step=1, changes=None, perturbations=None,
-        random_seed=None):
-        """ Construct simulation configuration
+    random_seed: int
+    ode_time_step: float = None
+    dfba_time_step: float = None
+    changes: list = None
+    perturbations: list = None
 
-        Args:
-            time_init (:obj:`float`, optional): initial simulation time (s)
-            time_max (:obj:`float`, optional): simulation length (s)
-            ode_time_step (:obj:`float`, optional): simulation timestep (s)
-            changes (:obj:`list`, optional): list of desired model changes (e.g. modified parameter
-                values, additional species/reactions, removed species/reactions)
-            perturbations (:obj:`list`, optional): list of desired simulated perturbations (e.g. set
-                state to a value at a specified time or time range)
-            random_seed (:obj:`int`, optional): random number generator seed
-        """
+    def __post_init__(self):
 
-        """ validate """
-        # time_init
-        try:
-            time_init = float(time_init)
-        except (TypeError, ValueError):
-            raise SimulationConfigError('time_init must be a float')
+        # if lists aren't set, make them empty
+        if self.changes is None:
+            self.changes = []
+        if self.perturbations is None:
+            self.perturbations = []
 
-        # time_max
-        try:
-            time_max = float(time_max)
-        except (TypeError, ValueError):
-            raise SimulationConfigError(f'time_max ({time_max}) must be a float')
+    def __setattr__(self, name, value):
+        object.__setattr__(self, name, value)
+        self.validate()
 
-        if time_max <= time_init:
-            raise SimulationConfigError('time_max must be greater than time_init')
+    def validate(self):
 
-        # ode_time_step
-        try:
-            ode_time_step = float(ode_time_step)
-        except (TypeError, ValueError):
-            raise SimulationConfigError('ode_time_step must be a float')
+        # validate types
+        for field in dataclasses.fields(self):
+            attr = getattr(self, field.name)
 
-        if ode_time_step <= 0:
-            raise SimulationConfigError('ode_time_step must be positive')
+            # accept int inputs to float fields
+            if isinstance(attr, int) and field.type is float:
+                attr = float(attr)
+                setattr(self, field.name, attr)
 
-        if (time_max - time_init) / ode_time_step % 1 != 0:
-            raise SimulationConfigError('(time_max - time_init) ({} - {}) must be a multiple of ode_time_step ({})'.format(
-                time_max, time_init, ode_time_step))
+            # dataclasses._MISSING_TYPE is the value used for default if no default is provided
+            if 'dataclasses._MISSING_TYPE' in str(field.default):
+                if not isinstance(attr, field.type):
+                    raise MultialgorithmError(f"{field.name} ('{attr}') must be a(n) {field.type.__name__}")
+            else:
+                if (field.default is None and attr is not None) or field.default is not None:
+                    if not isinstance(attr, field.type):
+                        raise MultialgorithmError(f"{field.name} ('{attr}') must be a(n) {field.type.__name__}")
 
-        # random_seed
-        if random_seed is not None:
-            try:
-                float(random_seed)
-            except (TypeError, ValueError):
-                raise SimulationConfigError('random_seed must be an int')
+        # additional validation
+        if self.ode_time_step is not None and self.ode_time_step <= 0:
+            raise MultialgorithmError(f'ode_time_step ({self.ode_time_step}) must be positive')
 
-            if math.floor(random_seed) != random_seed:
-                raise SimulationConfigError('random_seed must be an int')
+        if self.dfba_time_step is not None and self.dfba_time_step <= 0:
+            raise MultialgorithmError(f'dfba_time_step ({self.dfba_time_step}) must be positive')
 
-            random_seed = int(random_seed)
+        # FIX FOR DE-SIM CHANGES
+        # need access to DE sim config
+        '''
+        if (self.time_max - self.time_init) / self.ode_time_step % 1 != 0:
+            raise MultialgorithmError('(time_max - time_init) ({} - {}) must be a multiple of ode_time_step ({})'.format(
+                self.time_max, self.time_init, self.ode_time_step))
 
-        """ record values """
-        self.time_init = time_init
-        self.time_max = time_max
-        self.ode_time_step = ode_time_step
-        if changes is None:
-            changes = []
-        self.changes = changes
-        if perturbations is None:
-            perturbations = []
-        self.perturbations = perturbations
-        self.random_seed = random_seed
+        # dfba_time_step
+        if (self.time_max - self.time_init) / self.dfba_time_step % 1 != 0:
+            raise MultialgorithmError('(time_max - time_init) ({} - {}) must be a multiple of dfba_time_step ({})'.format(
+                self.time_max, self.time_init, self.dfba_time_step))
+        '''
 
     def apply_changes(self, model):
         """ Applies changes to model
@@ -140,46 +133,6 @@ class SimulationConfig(object):
             :obj:`int`: number of simulation timesteps
         """
         return int((self.time_max - self.time_init) / self.ode_time_step)
-
-    def __eq__(self, other):
-        """ Compare two `SimulationConfig` objects
-
-        Args:
-            other (:obj:`SimulationConfig`): other simulation config object
-
-        Returns:
-            :obj:`bool`: true if simulation config objects are semantically equal
-        """
-        if other.__class__ is not self.__class__:
-            return False
-
-        for attr in ['time_init', 'time_max', 'ode_time_step', 'random_seed']:
-            if getattr(other, attr) != getattr(self, attr):
-                return False
-
-        for attr in ['changes', 'perturbations']:
-            if getattr(other, attr) is None and getattr(self, attr) is not None:
-                return False
-            if getattr(other, attr) is not None and getattr(self, attr) is None:
-                return False
-            if isinstance(getattr(other, attr), list) and isinstance(getattr(self, attr), list):
-                other_list = getattr(other, attr)
-                self_list = getattr(self, attr)
-                if len(other_list) != len(self_list):
-                    return False
-                for other_obj, self_obj in zip(other_list, self_list):
-                    if other_obj != self_obj:
-                        return False
-
-        return True
-
-    def __str__(self):
-        """ Provide a readable representation of this `SimulationConfig`
-
-        Returns:
-            :obj:`str`: a readable representation of this `SimulationConfig`
-        """
-        return obj_to_str(self, self.ATTRIBUTES)
 
 
 Change = wc_lang.transform.ChangeValueTransform
@@ -239,11 +192,6 @@ class Perturbation(object):
         return True
 
 
-class SimulationConfigError(Exception):
-    """ Simulation configuration error """
-    pass
-
-
 class SedMl(object):
     """ Reads and writes simulation configurations to/from SED-ML."""
 
@@ -255,7 +203,7 @@ class SedMl(object):
             file_name (:obj:`str`): path to SED-ML file from which to import simulation configuration
 
         Returns:
-            :obj:`SimulationConfig`: simulation configuration
+            :obj:`WCSimulationConfig`: simulation configuration
         """
 
         # initialize optional configuration
@@ -400,7 +348,7 @@ class SedMl(object):
                 opt_config['random_seed'] = int(opt_config['random_seed'])
 
         """ build simulation configuration object """
-        cfg = SimulationConfig(time_init=time_init, time_max=time_max, ode_time_step=ode_time_step,
+        cfg = WCSimulationConfig(time_init=time_init, time_max=time_max, ode_time_step=ode_time_step,
                                changes=changes, perturbations=perturbations,
                                **opt_config)
         return cfg
@@ -410,7 +358,7 @@ class SedMl(object):
         """ Exports simulation configuration to SED-ML file
 
         Args:
-            cfg (:obj:`SimulationConfig`): simulation configuration
+            cfg (:obj:`WCSimulationConfig`): simulation configuration
             file_name (:obj:`str`): path to write SED-ML file
         """
 

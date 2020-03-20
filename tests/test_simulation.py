@@ -36,10 +36,10 @@ class TestSimulation(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.test_dir)
 
-    def run_simulation(self, simulation, end_time=100):
-        checkpoint_period = min(10, end_time)
+    def run_simulation(self, simulation, time_max=100):
+        checkpoint_period = min(10, time_max)
         with CaptureOutput(relay=False):
-            num_events, results_dir = simulation.run(end_time=end_time, results_dir=self.results_dir,
+            num_events, results_dir = simulation.run(time_max=time_max, results_dir=self.results_dir,
                                                      checkpoint_period=checkpoint_period)
         self.assertTrue(0 < num_events)
         self.assertTrue(os.path.isdir(results_dir))
@@ -57,7 +57,7 @@ class TestSimulation(unittest.TestCase):
             simulation._prepare()
 
     def test_simulation_model_in_file(self):
-        self.run_simulation(Simulation(TOY_MODEL_FILENAME), end_time=5)
+        self.run_simulation(Simulation(TOY_MODEL_FILENAME), time_max=5)
 
     def test_simulation_model_in_memory(self):
         model = MakeModel.make_test_model('2 species, 1 reaction', transform_prep_and_check=False)
@@ -70,13 +70,13 @@ class TestSimulation(unittest.TestCase):
 
     def test_simulate_wo_output_files(self):
         with CaptureOutput(relay=False):
-            num_events, results_dir = Simulation(TOY_MODEL_FILENAME).run(end_time=5)
+            num_events, results_dir = Simulation(TOY_MODEL_FILENAME).run(time_max=5)
         self.assertTrue(0 < num_events)
         self.assertEqual(results_dir, None)
 
     def test_run(self):
         with CaptureOutput(relay=False):
-            num_events, results_dir = Simulation(TOY_MODEL_FILENAME).run(end_time=5,
+            num_events, results_dir = Simulation(TOY_MODEL_FILENAME).run(time_max=5,
                                                                          results_dir=self.results_dir,
                                                                          checkpoint_period=1)
 
@@ -87,7 +87,7 @@ class TestSimulation(unittest.TestCase):
             self.assertTrue(ckpt.random_state != None)
 
         with self.assertRaisesRegex(MultialgorithmError, 'cannot be simulated .* it contains no submodels'):
-            Simulation(TOY_MODEL_FILENAME).run(end_time=5,
+            Simulation(TOY_MODEL_FILENAME).run(time_max=5,
                                                results_dir=tempfile.mkdtemp(dir=self.test_dir),
                                                checkpoint_period=1,
                                                submodels_to_skip=['test_submodel'])
@@ -100,7 +100,7 @@ class TestSimulation(unittest.TestCase):
         for seed in seeds:
             tmp_results_dir = tempfile.mkdtemp()
             with CaptureOutput(relay=False):
-                num_events, results_dir = Simulation(TOY_MODEL_FILENAME).run(end_time=5,
+                num_events, results_dir = Simulation(TOY_MODEL_FILENAME).run(time_max=5,
                                                                              results_dir=tmp_results_dir,
                                                                              checkpoint_period=5, seed=seed)
             results[seed] = {}
@@ -117,7 +117,7 @@ class TestSimulation(unittest.TestCase):
         for rep in range(2):
             tmp_results_dir = tempfile.mkdtemp()
             with CaptureOutput(relay=False):
-                num_events, results_dir = Simulation(TOY_MODEL_FILENAME).run(end_time=5,
+                num_events, results_dir = Simulation(TOY_MODEL_FILENAME).run(time_max=5,
                                                                              results_dir=tmp_results_dir,
                                                                              checkpoint_period=5, seed=seed)
             results[rep] = {}
@@ -136,7 +136,7 @@ class TestSimulation(unittest.TestCase):
         simulation = Simulation(model)
         self.assertEqual(simulation.get_simulation_engine(), None)
         with CaptureOutput(relay=False):
-            simulation.run(end_time=5)
+            simulation.run(time_max=5)
         self.assertTrue(isinstance(simulation.get_simulation_engine(), SimulationEngine))
 
     def test_provide_event_counts(self):
@@ -144,7 +144,7 @@ class TestSimulation(unittest.TestCase):
         simulation = Simulation(model)
         self.assertTrue('execute run() to obtain event counts' in simulation.provide_event_counts())
         with CaptureOutput(relay=False):
-            simulation.run(end_time=100)
+            simulation.run(time_max=100)
         self.assertTrue('Event type' in simulation.provide_event_counts())
 
 
@@ -160,7 +160,7 @@ class TestProcessAndValidateArgs(unittest.TestCase):
         self.args = dict(
             results_dir=self.results_dir,
             checkpoint_period=10,
-            end_time=100,
+            time_max=100,
             ode_time_step=5
         )
 
@@ -172,7 +172,7 @@ class TestProcessAndValidateArgs(unittest.TestCase):
         with self.assertRaises(MultialgorithmError):
             self.simulation._create_metadata()
 
-        self.simulation.sim_config = sim_config.SimulationConfig(time_max=self.args['end_time'],
+        self.simulation.sim_config = sim_config.SimulationConfig(time_max=self.args['time_max'],
                                                                  ode_time_step=self.args['ode_time_step'])
         simulation_metadata = self.simulation._create_metadata()
         for attr in SimulationMetadata.ATTRIBUTES:
@@ -180,7 +180,7 @@ class TestProcessAndValidateArgs(unittest.TestCase):
 
     def test_create_metadata_2(self):
         # no ode_time_step
-        self.simulation.sim_config = sim_config.SimulationConfig(time_max=self.args['end_time'])
+        self.simulation.sim_config = sim_config.SimulationConfig(time_max=self.args['time_max'])
         del self.args['ode_time_step']
         simulation_metadata = self.simulation._create_metadata()
         self.assertEqual(simulation_metadata.simulation.ode_time_step, 1)
@@ -235,9 +235,9 @@ class TestProcessAndValidateArgs(unittest.TestCase):
     def test_process_and_validate_args5(self):
         # test error detection
         errors = dict(
-            end_time=[-3, 0],
-            checkpoint_period=[-2, 0, self.args['end_time'] + 1],
-            ode_time_step=[-2, 0, self.args['end_time'] + 1],
+            time_max=[-3, 0],
+            checkpoint_period=[-2, 0, self.args['time_max'] + 1],
+            ode_time_step=[-2, 0, self.args['time_max'] + 1],
         )
         for arg, error_vals in errors.items():
             for error_val in error_vals:
@@ -251,7 +251,7 @@ class TestProcessAndValidateArgs(unittest.TestCase):
                 shutil.rmtree(new_tmp_dir)
 
     def test_process_and_validate_args6(self):
-        del self.args['end_time']
+        del self.args['time_max']
         with self.assertRaises(MultialgorithmError):
             self.simulation.process_and_validate_args(self.args)
 

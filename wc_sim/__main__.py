@@ -49,12 +49,13 @@ class SimController(cement.Controller):
             (['model_file'], dict(
                 type=str,
                 help="an Excel file containing a model, or a glob matching tab- or comma-delimited files storing a model")),
-            (['end_time'], dict(
+            (['time_max'], dict(
                 type=float,
-                help="end time for the simulation (sec)")),
+                help="maximum time for the simulation (sec)")),
             (['--results-dir'], dict(
                 type=str,
-                help="store simulation results; a timestamped sub-directory of end_time-dir will hold results, "
+                # FIX FOR DE-SIM CHANGES 
+                help="store simulation results; a timestamped sub-directory of time_max-dir will hold results, "
                 "including an HDF5 file combining all run results")),
             (['--checkpoint-period'], dict(
                 type=float,
@@ -70,7 +71,7 @@ class SimController(cement.Controller):
     def _default(self):
         args = self.app.pargs
         simulation = Simulation(args.model_file)
-        simulation.run(end_time=args.end_time, results_dir=args.results_dir,
+        simulation.run(time_max=args.time_max, results_dir=args.results_dir,
             checkpoint_period=args.checkpoint_period)
 
 

@@ -368,7 +368,7 @@ class TestMultialgorithmSimulationDynamically(unittest.TestCase):
 
         # test dynamics
         simulation = Simulation(model)
-        _, results_dir = simulation.run(end_time=20, **self.args)
+        _, results_dir = simulation.run(time_max=20, **self.args)
 
 
 class TestRunSSASimulation(unittest.TestCase):

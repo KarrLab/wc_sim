@@ -176,13 +176,13 @@ class TwoSpeciesTestCase(unittest.TestCase):
 
         return model
 
-    def simulate(self, model, end_time=100.):
+    def simulate(self, model, time_max=100.):
         # simulate
         env = EnvironmentVarGuard()
         env.set('CONFIG__DOT__wc_lang__DOT__validation__DOT__validate_element_charge_balance', '0')
         with env:
             simulation = Simulation(model)
-        _, results_dirname = simulation.run(end_time=end_time,
+        _, results_dirname = simulation.run(time_max=time_max,
                                             ode_time_step=1.,
                                             checkpoint_period=1.,
                                             results_dir=self.tempdir)
@@ -216,7 +216,7 @@ class TwoSpeciesTestCase(unittest.TestCase):
         self.k_deg_dynamic.value = 2e-2
 
         # simulate
-        time, pop_constant, pop_dynamic, comp_mass, comp_vol = self.simulate(self.model, end_time=200.)
+        time, pop_constant, pop_dynamic, comp_mass, comp_vol = self.simulate(self.model, time_max=200.)
 
         # verify results
         numpy.testing.assert_equal(pop_constant, numpy.full((201,),
@@ -247,7 +247,7 @@ class TwoSpeciesTestCase(unittest.TestCase):
         self.k_deg_dynamic.value = 5e-2
 
         # simulate
-        time, pop_constant, pop_dynamic, comp_mass, comp_vol = self.simulate(self.model, end_time=200.)
+        time, pop_constant, pop_dynamic, comp_mass, comp_vol = self.simulate(self.model, time_max=200.)
 
         # verify results
         numpy.testing.assert_equal(pop_constant, numpy.full((201,),
@@ -292,7 +292,7 @@ class TwoSpeciesTestCase(unittest.TestCase):
         self.k_deg_dynamic.value = 5e-2
 
         # simulate
-        time, pop_constant, pop_dynamic, comp_mass, comp_vol = self.simulate(self.model, end_time=200.)
+        time, pop_constant, pop_dynamic, comp_mass, comp_vol = self.simulate(self.model, time_max=200.)
 
         # verify results
         numpy.testing.assert_equal(pop_constant,
@@ -388,8 +388,8 @@ class TwoSpeciesTestCase(unittest.TestCase):
         std_spec_dynamic_ss_conc = std_spec_dynamic_ss_pop / (vol_ss * NA)
 
         # simulate
-        end_time = 1000.
-        time, pop_constant, pop_dynamic, comp_mass, comp_vol = self.simulate(self.model, end_time=end_time)
+        time_max = 1000.
+        time, pop_constant, pop_dynamic, comp_mass, comp_vol = self.simulate(self.model, time_max=time_max)
         conc_dynamic = pop_dynamic / comp_vol / NA
 
         # verify results
@@ -397,7 +397,7 @@ class TwoSpeciesTestCase(unittest.TestCase):
         self.assertEqual(self.density.value, init_density)
         # confirm that density remains constant
         comp_density = comp_mass / comp_vol
-        numpy.testing.assert_allclose(list(comp_density.to_numpy()), [self.density.value]*int(end_time + 1))
+        numpy.testing.assert_allclose(list(comp_density.to_numpy()), [self.density.value]*int(time_max + 1))
 
         fig, axes = pyplot.subplots(nrows=2, ncols=3)
 
@@ -434,7 +434,7 @@ class TwoSpeciesTestCase(unittest.TestCase):
         fig.savefig(filename)
         pyplot.close(fig)
 
-        mid_point = (end_time / 2) + 1
+        mid_point = (time_max / 2) + 1
         self.assertGreater(numpy.mean(comp_mass[mid_point:]), mass_ss - 3 * std_mass_ss)
         self.assertLess(numpy.mean(comp_mass[mid_point:]), mass_ss + 3 * std_mass_ss)
 
@@ -446,7 +446,7 @@ class TwoSpeciesTestCase(unittest.TestCase):
         self.assertLess(numpy.mean(conc_dynamic[mid_point:]),
                         spec_dynamic_ss_conc + 3 * std_spec_dynamic_ss_conc)
 
-        third_quarter = int((3 * end_time / 4) + 1)
+        third_quarter = int((3 * time_max / 4) + 1)
         self.assertGreater(numpy.mean(pop_dynamic[third_quarter:]),
                            spec_dynamic_ss_pop - 3 * std_spec_dynamic_ss_pop)
         self.assertLess(numpy.mean(pop_dynamic[third_quarter:]),
@@ -465,7 +465,7 @@ class MetabolismAndGeneExpressionTestCase(unittest.TestCase):
         model = wc_lang.io.Reader().run(model_filename)[wc_lang.Model][0]
 
         simulation = Simulation(model)
-        _, results_dirname = simulation.run(end_time=8 * 3600,
+        _, results_dirname = simulation.run(time_max=8 * 3600,
                                             ode_time_step=1.,
                                             checkpoint_period=100.,
                                             results_dir=self.tempdir)

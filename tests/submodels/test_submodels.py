@@ -206,19 +206,19 @@ class TestSkeletonSubmodel(unittest.TestCase):
         for conc in self.model.distribution_init_concentrations:
             conc.std = 0
 
-        end_time = 100
+        time_max = 100
         skeleton_submodel = self.make_sim_w_skeleton_submodel(lang_submodel, behavior)
-        self.assertEqual(self.simulator.simulate(end_time),
-                         end_time / behavior[SkeletonSubmodel.INTER_REACTION_TIME])
+        self.assertEqual(self.simulator.simulate(time_max),
+                         time_max / behavior[SkeletonSubmodel.INTER_REACTION_TIME])
 
         behavior = {SkeletonSubmodel.INTER_REACTION_TIME: 2,
                     SkeletonSubmodel.REACTION_TO_EXECUTE: 0}    # reaction #0 makes one more 'species_1[c]'
         skeleton_submodel = self.make_sim_w_skeleton_submodel(lang_submodel, behavior)
         interval = 10
         pop_before = skeleton_submodel.local_species_population.read_one(0, 'species_1[c]')
-        for end_time in range(interval, 5 * interval, interval):
-            self.simulator.simulate(end_time)
-            pop_after = skeleton_submodel.local_species_population.read_one(end_time, 'species_1[c]')
+        for time_max in range(interval, 5 * interval, interval):
+            self.simulator.simulate(time_max)
+            pop_after = skeleton_submodel.local_species_population.read_one(time_max, 'species_1[c]')
             delta = pop_after - pop_before
             self.assertEqual(delta, interval / behavior[SkeletonSubmodel.INTER_REACTION_TIME])
             pop_before = pop_after
@@ -317,5 +317,5 @@ class TestDsaSubmodel(unittest.TestCase):
         model = MakeModel.make_test_model('1 species, 1 reaction')
         self.transform_model_for_dsa_simulation(model)
         simulation = Simulation(model)
-        num_events, _ = simulation.run(end_time=100)
+        num_events, _ = simulation.run(time_max=100)
         self.assertGreater(num_events, 0)

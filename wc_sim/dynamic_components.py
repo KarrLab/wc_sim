@@ -934,6 +934,8 @@ class DynamicModel(object):
                     if dynamic_stop_condition.eval(time):
                         return True
                 return False
+            # FIX FOR DE-SIM CHANGES
+            # create a SimulationConfig, and add all_stop_conditions to it
             simulation.set_stop_condition(all_stop_conditions)
 
     def get_species_count_array(self, now):     # pragma no cover, not used

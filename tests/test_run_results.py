@@ -37,7 +37,7 @@ class TestRunResults(unittest.TestCase):
         cls.max_time = 30
 
         with CaptureOutput(relay=False):
-            _, cls.results_dir_1_cmpt = simulation.run(end_time=cls.max_time,
+            _, cls.results_dir_1_cmpt = simulation.run(time_max=cls.max_time,
                                                         results_dir=tempfile.mkdtemp(dir=cls.temp_dir),
                                                         checkpoint_period=cls.checkpoint_period)
 
@@ -51,7 +51,7 @@ class TestRunResults(unittest.TestCase):
         comp_e.biological_type = comp_c.biological_type
         simulation = Simulation(model)
         with CaptureOutput(relay=False):
-            _, cls.results_dir_dyn_aggr = simulation.run(end_time=cls.max_time,
+            _, cls.results_dir_dyn_aggr = simulation.run(time_max=cls.max_time,
                                                         results_dir=tempfile.mkdtemp(dir=cls.temp_dir),
                                                         checkpoint_period=cls.checkpoint_period)
 
