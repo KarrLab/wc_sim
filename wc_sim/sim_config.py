@@ -20,15 +20,17 @@ import math
 import numpy
 import warnings
 
-import wc_lang.transform
+from de_sim.simulation_config import SimulationConfig, ValidatedDataClass
 from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_utils.util.misc import obj_to_str
+import wc_lang.transform
 
 
 @dataclass
-class WCSimulationConfig:
+class WCSimulationConfig(ValidatedDataClass):
     """ Whole-cell simulation configuration
 
+    - A simulation configuration for DE-Sim
     - Random number generator seed
     - ODE and dFBA timesteps
     - Model changes: Instructions to change parameter values and add or remove model
@@ -38,6 +40,7 @@ class WCSimulationConfig:
       time points or time ranges
 
     Attributes:
+        de_simulation_config (:obj:`SimulationConfig`): a simulation configuration for DE-Sim
         random_seed (:obj:`int`): random number generator seed
         ode_time_step (:obj:`float`, optional): ODE submodel timestep (s)
         dfba_time_step (:obj:`float`, optional): dFBA submodel timestep (s)
@@ -47,6 +50,7 @@ class WCSimulationConfig:
             to a value at a specified time or time range)
     """
 
+    de_simulation_config: object
     random_seed: int
     ode_time_step: float = None
     dfba_time_step: float = None
@@ -62,28 +66,21 @@ class WCSimulationConfig:
             self.perturbations = []
 
     def __setattr__(self, name, value):
-        object.__setattr__(self, name, value)
-        self.validate()
+        """ Validate an attribute when it is changed """
+        try:
+            super().__setattr__(name, value)
+        except TypeError as e:
+            raise MultialgorithmError(e)
 
-    def validate(self):
+    def validate_individual_fields(self):
+        """ Validate individual fields in a `WCSimulationConfig` instance
 
-        # validate types
-        for field in dataclasses.fields(self):
-            attr = getattr(self, field.name)
+        Returns:
+            :obj:`None`: if no error is found
 
-            # accept int inputs to float fields
-            if isinstance(attr, int) and field.type is float:
-                attr = float(attr)
-                setattr(self, field.name, attr)
-
-            # dataclasses._MISSING_TYPE is the value used for default if no default is provided
-            if 'dataclasses._MISSING_TYPE' in str(field.default):
-                if not isinstance(attr, field.type):
-                    raise MultialgorithmError(f"{field.name} ('{attr}') must be a(n) {field.type.__name__}")
-            else:
-                if (field.default is None and attr is not None) or field.default is not None:
-                    if not isinstance(attr, field.type):
-                        raise MultialgorithmError(f"{field.name} ('{attr}') must be a(n) {field.type.__name__}")
+        Raises:
+            :obj:`MultialgorithmError`: if an attribute fails validation
+        """
 
         # additional validation
         if self.ode_time_step is not None and self.ode_time_step <= 0:
@@ -92,18 +89,31 @@ class WCSimulationConfig:
         if self.dfba_time_step is not None and self.dfba_time_step <= 0:
             raise MultialgorithmError(f'dfba_time_step ({self.dfba_time_step}) must be positive')
 
-        # FIX FOR DE-SIM CHANGES
-        # need access to DE sim config
-        '''
-        if (self.time_max - self.time_init) / self.ode_time_step % 1 != 0:
+    def validate(self):
+        """ Fully validate a `WCSimulationConfig` instance
+
+        Returns:
+            :obj:`None`: if no error is found
+
+        Raises:
+            :obj:`MultialgorithmError`: if validation fails
+        """
+
+        self.validate_individual_fields()
+
+        de_sim_config = self.de_simulation_config
+
+        # ode_time_step
+        if self.ode_time_step is not None and \
+            (de_sim_config.time_max - de_sim_config.time_init) / self.ode_time_step % 1 != 0:
             raise MultialgorithmError('(time_max - time_init) ({} - {}) must be a multiple of ode_time_step ({})'.format(
-                self.time_max, self.time_init, self.ode_time_step))
+                de_sim_config.time_max, de_sim_config.time_init, self.ode_time_step))
 
         # dfba_time_step
-        if (self.time_max - self.time_init) / self.dfba_time_step % 1 != 0:
+        if self.dfba_time_step is not None and \
+            (de_sim_config.time_max - de_sim_config.time_init) / self.dfba_time_step % 1 != 0:
             raise MultialgorithmError('(time_max - time_init) ({} - {}) must be a multiple of dfba_time_step ({})'.format(
-                self.time_max, self.time_init, self.dfba_time_step))
-        '''
+                de_sim_config.time_max, de_sim_config.time_init, self.dfba_time_step))
 
     def apply_changes(self, model):
         """ Applies changes to model
@@ -132,7 +142,7 @@ class WCSimulationConfig:
         Returns:
             :obj:`int`: number of simulation timesteps
         """
-        return int((self.time_max - self.time_init) / self.ode_time_step)
+        return int((self.de_simulation_config.time_max - self.de_simulation_config.time_init) / self.ode_time_step)
 
 
 Change = wc_lang.transform.ChangeValueTransform

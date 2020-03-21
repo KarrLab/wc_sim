@@ -16,6 +16,7 @@ import tempfile
 import unittest
 import warnings
 
+from de_sim.simulation_config import SimulationConfig
 from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_sim.sim_config import WCSimulationConfig, Change, Perturbation, SedMl, SedMlError, SedMlWarning
 from wc_utils.util.units import unit_registry
@@ -24,13 +25,16 @@ import wc_lang
 
 class TestWCSimulationConfig(unittest.TestCase):
 
+    def setUp(self):
+        self.de_simulation_config = SimulationConfig(time_max=10)
+
     def test_simulation_configuration(self):
         """ Test simulation configuration correctly represented """
 
         # create configuration
         random_seed = 3
         ode_time_step = 2
-        dfba_time_step = 4
+        dfba_time_step = 5
         changes = [
             Change([
                 ['reactions', {'id': 'rxn-1'}],
@@ -59,9 +63,9 @@ class TestWCSimulationConfig(unittest.TestCase):
                 'mean',
             ], 4), start_time=0, end_time=10),
         ]
-        cfg = WCSimulationConfig(random_seed=random_seed, ode_time_step=ode_time_step,
-                                 dfba_time_step=dfba_time_step, changes=changes,
-                                 perturbations=perturbations)
+        cfg = WCSimulationConfig(de_simulation_config=self.de_simulation_config, random_seed=random_seed,
+                                 ode_time_step=ode_time_step, dfba_time_step=dfba_time_step,
+                                 changes=changes, perturbations=perturbations)
         self.assertEqual(None, cfg.validate())
         # test __setattr__
         self.assertEqual(None, setattr(cfg, 'random_seed', 3))
@@ -72,56 +76,50 @@ class TestWCSimulationConfig(unittest.TestCase):
         self.assertEqual(dfba_time_step + 0.0, cfg.dfba_time_step)
 
         # no lists
-        cfg = WCSimulationConfig(random_seed=1)
+        cfg = WCSimulationConfig(self.de_simulation_config, 1)
         self.assertEqual([], cfg.changes)
         self.assertEqual([], cfg.perturbations)
 
     def test_simulation_configuration_validation(self):
 
         # random seed not an integer
-        WCSimulationConfig(random_seed=1)
+        WCSimulationConfig(self.de_simulation_config, random_seed=1)
         with self.assertRaises(MultialgorithmError):
-            cfg = WCSimulationConfig(random_seed='a')
-            cfg.validate()
+            WCSimulationConfig(self.de_simulation_config, random_seed='a')
         with self.assertRaises(MultialgorithmError):
-            cfg = WCSimulationConfig(random_seed=1.5)
-            cfg.validate()
+            WCSimulationConfig(self.de_simulation_config, random_seed=1.5)
 
         # time steps not numbers
-        WCSimulationConfig(random_seed=1, ode_time_step=0.1)
         with self.assertRaises(MultialgorithmError):
-            cfg = WCSimulationConfig(random_seed=1, ode_time_step=set())
-            cfg.validate()
+            WCSimulationConfig(self.de_simulation_config, random_seed=1, ode_time_step=set())
 
-        WCSimulationConfig(random_seed=1, dfba_time_step=0.1)
         with self.assertRaises(MultialgorithmError):
-            cfg = WCSimulationConfig(random_seed=1, dfba_time_step={})
-            cfg.validate()
+            WCSimulationConfig(self.de_simulation_config, random_seed=1, dfba_time_step={})
 
         # negative time steps
-        WCSimulationConfig(random_seed=1, ode_time_step=0.1)
+        cfg = WCSimulationConfig(self.de_simulation_config, random_seed=1, ode_time_step=0.1)
+        cfg.validate_individual_fields()
         with self.assertRaises(MultialgorithmError):
-            cfg = WCSimulationConfig(random_seed=1, ode_time_step=-0.1)
-            cfg.validate()
+            cfg = WCSimulationConfig(self.de_simulation_config, random_seed=1, ode_time_step=-0.1)
+            cfg.validate_individual_fields()
 
-        WCSimulationConfig(random_seed=1, dfba_time_step=0.1)
+        cfg = WCSimulationConfig(self.de_simulation_config, random_seed=1, dfba_time_step=0.1)
+        cfg.validate_individual_fields()
         with self.assertRaises(MultialgorithmError):
-            cfg = WCSimulationConfig(random_seed=1, dfba_time_step=-0.1)
-            cfg.validate()
+            cfg = WCSimulationConfig(self.de_simulation_config, random_seed=1, dfba_time_step=-0.1)
+            cfg.validate_individual_fields()
 
         # simulation time not multiple of steps
-        '''
-        WCSimulationConfig(random_seed=1, time_max=1.0, ode_time_step=0.1)
         with self.assertRaises(MultialgorithmError):
-            WCSimulationConfig(random_seed=1, time_max=1.0, ode_time_step=3.0)
+            cfg = WCSimulationConfig(self.de_simulation_config, random_seed=1, ode_time_step=3.0)
+            cfg.validate()
 
-        WCSimulationConfig(random_seed=1, time_max=3, dfba_time_step=1)
         with self.assertRaises(MultialgorithmError):
-            WCSimulationConfig(random_seed=1, time_max=10, dfba_time_step=3.0)
-        '''
+            cfg = WCSimulationConfig(self.de_simulation_config, random_seed=1, dfba_time_step=3.0)
+            cfg.validate()
 
     def test_apply_changes(self):
-        cfg = WCSimulationConfig(random_seed=1, ode_time_step=2)
+        cfg = WCSimulationConfig(self.de_simulation_config, random_seed=1, ode_time_step=2)
         cfg.changes.append(Change([
             ['reactions', {'id': 'rxn_1'}],
             ['rate_laws', {'direction': wc_lang.RateLawDirection.forward}],
@@ -178,16 +176,15 @@ class TestWCSimulationConfig(unittest.TestCase):
     # @unittest.skip('Not yet implemented')
     def test_apply_perturbations(self):
         # todo: implement
-        cfg = WCSimulationConfig(random_seed=1, ode_time_step=2)
+        cfg = WCSimulationConfig(self.de_simulation_config, random_seed=1, ode_time_step=2)
         cfg.apply_perturbations(None)
 
-    @unittest.skip('Not yet implemented')
     def test_get_num_time_steps(self):
-        cfg = WCSimulationConfig(random_seed=1, ode_time_step=2)
-        self.assertEqual(cfg.get_num_time_steps(), 50)
+        cfg = WCSimulationConfig(self.de_simulation_config, random_seed=1, ode_time_step=2)
+        self.assertEqual(cfg.get_num_time_steps(), 5)
 
 # FIX FOR DE-SIM CHANGES
-# @unittest.skip('Not yet implemented')
+@unittest.skip('Not yet implemented')
 class TestSedMlImportExport(unittest.TestCase):
 
     def test_sedml_import_export(self):
@@ -226,7 +223,7 @@ class TestSedMlImportExport(unittest.TestCase):
             ], 4,
             ), start_time=0, end_time=10),
         ]
-        cfg = WCSimulationConfig(random_seed=random_seed, ode_time_step=ode_time_step, changes=changes,
+        cfg = WCSimulationConfig(self.de_simulation_config, random_seed=random_seed, ode_time_step=ode_time_step, changes=changes,
                                  perturbations=perturbations)
 
         # generate temporary file
@@ -265,7 +262,7 @@ class TestSedMlImportExport(unittest.TestCase):
         SedMlWarning('msg')
 
 
-# @unittest.skip('Not yet implemented')
+@unittest.skip('Not yet implemented')
 class TestSedMlValidation(unittest.TestCase):
 
     def setUp(self):
