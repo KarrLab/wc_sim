@@ -109,7 +109,13 @@ class TestWCSimulationConfig(unittest.TestCase):
             cfg = WCSimulationConfig(self.de_simulation_config, random_seed=1, dfba_time_step=-0.1)
             cfg.validate_individual_fields()
 
-        # simulation time not multiple of steps
+        cfg = WCSimulationConfig(self.de_simulation_config, random_seed=1, checkpoint_period=0.1)
+        cfg.validate_individual_fields()
+        with self.assertRaises(MultialgorithmError):
+            cfg = WCSimulationConfig(self.de_simulation_config, random_seed=1, checkpoint_period=-10)
+            cfg.validate_individual_fields()
+
+        # simulation duration not multiple of steps
         with self.assertRaises(MultialgorithmError):
             cfg = WCSimulationConfig(self.de_simulation_config, random_seed=1, ode_time_step=3.0)
             cfg.validate()
@@ -262,6 +268,7 @@ class TestSedMlImportExport(unittest.TestCase):
         SedMlWarning('msg')
 
 
+# FIX FOR DE-SIM CHANGES
 @unittest.skip('Not yet implemented')
 class TestSedMlValidation(unittest.TestCase):
 

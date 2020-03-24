@@ -33,6 +33,8 @@ class WCSimulationConfig(ValidatedDataClass):
     - A simulation configuration for DE-Sim
     - Random number generator seed
     - ODE and dFBA timesteps
+    - Checkpoint period
+    - Submodels to skip
     - Model changes: Instructions to change parameter values and add or remove model
       components. These instructions are executed before the initial conditions are
       calculated
@@ -44,6 +46,9 @@ class WCSimulationConfig(ValidatedDataClass):
         random_seed (:obj:`int`): random number generator seed
         ode_time_step (:obj:`float`, optional): ODE submodel timestep (s)
         dfba_time_step (:obj:`float`, optional): dFBA submodel timestep (s)
+        checkpoint_period (:obj:`float`, optional): checkpointing timestep (s)
+        submodels_to_skip (:obj:`list` of :obj:`str`, optional): submodels that should not be run,
+            identified by their ids
         changes (:obj:`list`, optional): list of desired model changes (e.g. modified parameter values,
             additional species/reactions, removed species/reactions)
         perturbations (:obj:`list`, optional): list of desired simulated perturbations (e.g. set state
@@ -54,6 +59,8 @@ class WCSimulationConfig(ValidatedDataClass):
     random_seed: int
     ode_time_step: float = None
     dfba_time_step: float = None
+    checkpoint_period: float = None
+    submodels_to_skip: list = None
     changes: list = None
     perturbations: list = None
 
@@ -64,6 +71,8 @@ class WCSimulationConfig(ValidatedDataClass):
             self.changes = []
         if self.perturbations is None:
             self.perturbations = []
+        if self.submodels_to_skip is None:
+            self.submodels_to_skip = []
 
     def __setattr__(self, name, value):
         """ Validate an attribute when it is changed """
@@ -89,6 +98,9 @@ class WCSimulationConfig(ValidatedDataClass):
         if self.dfba_time_step is not None and self.dfba_time_step <= 0:
             raise MultialgorithmError(f'dfba_time_step ({self.dfba_time_step}) must be positive')
 
+        if self.checkpoint_period is not None and self.checkpoint_period <= 0:
+            raise MultialgorithmError(f'checkpoint_period ({self.checkpoint_period}) must be positive')
+
     def validate(self):
         """ Fully validate a `WCSimulationConfig` instance
 
@@ -103,17 +115,37 @@ class WCSimulationConfig(ValidatedDataClass):
 
         de_sim_config = self.de_simulation_config
 
-        # ode_time_step
-        if self.ode_time_step is not None and \
-            (de_sim_config.time_max - de_sim_config.time_init) / self.ode_time_step % 1 != 0:
-            raise MultialgorithmError('(time_max - time_init) ({} - {}) must be a multiple of ode_time_step ({})'.format(
-                de_sim_config.time_max, de_sim_config.time_init, self.ode_time_step))
+        # Max time must be positive
+        if de_sim_config.time_max <= 0:
+            raise MultialgorithmError("Maximum time ({de_sim_config.time_max}) must be positive")
 
-        # dfba_time_step
-        if self.dfba_time_step is not None and \
-            (de_sim_config.time_max - de_sim_config.time_init) / self.dfba_time_step % 1 != 0:
-            raise MultialgorithmError('(time_max - time_init) ({} - {}) must be a multiple of dfba_time_step ({})'.format(
-                de_sim_config.time_max, de_sim_config.time_init, self.dfba_time_step))
+        if de_sim_config.data_dir is None and self.checkpoint_period is not None:
+            raise MultialgorithmError(f"a data directory (self.de_simulation_configdata_dir) must be "
+                                      f"provided when a checkpoint_period ({self.checkpoint_period}) is provided")
+
+        # Check that timesteps divide evenly into the simulation duration
+        self.check_periodic_timestep('ode_time_step')
+        self.check_periodic_timestep('dfba_time_step')
+        self.check_periodic_timestep('checkpoint_period')
+
+    def check_periodic_timestep(self, periodic_attr):
+        """ Check that simulation duration is an integral multiple of a periodic activity's timestep
+
+        Args:
+            periodic_attr (:obj:`str`): name of an attribute storing the duration of a periodic activity
+
+        Returns:
+            :obj:`None`: if no error is found
+
+        Raises:
+            :obj:`MultialgorithmError`: if the simulation duration is not an integral multiple of the
+                periodic activity's timestep
+        """
+        de_sim_cfg = self.de_simulation_config
+        if getattr(self, periodic_attr) is not None and \
+            (de_sim_cfg.time_max - de_sim_cfg.time_init) / getattr(self, periodic_attr) % 1 != 0:
+            raise MultialgorithmError(f'(time_max - time_init) ({de_sim_cfg.time_max} - {de_sim_cfg.time_init})'
+                                      f'must be a multiple of ({getattr(self, periodic_attr)})')
 
     def apply_changes(self, model):
         """ Applies changes to model
