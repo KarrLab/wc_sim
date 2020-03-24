@@ -19,6 +19,7 @@ import tempfile
 import time
 import unittest
 
+from de_sim.simulation_config import SimulationConfig
 from wc_lang import Model
 from wc_lang.io import Reader
 from wc_lang.transform import PrepForWcSimTransform
@@ -29,6 +30,7 @@ from wc_sim.multialgorithm_errors import (DynamicSpeciesPopulationError, Multial
                                           SpeciesPopulationError)
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.run_results import RunResults
+from wc_sim.sim_config import WCSimulationConfig
 from wc_sim.simulation import Simulation
 from wc_sim.species_populations import LocalSpeciesPopulation
 from wc_sim.submodels.fba import DfbaSubmodel
@@ -83,9 +85,9 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
         for conc in self.model.distribution_init_concentrations:
             conc.std = 0.
         PrepForWcSimTransform().run(self.model)
-        self.args = dict(dfba_time_step=1,
-                         results_dir=None)
-        self.multialgorithm_simulation = MultialgorithmSimulation(self.model, self.args)
+        de_simulation_config = SimulationConfig(time_max=10)
+        self.wc_sim_config = WCSimulationConfig(de_simulation_config, dfba_time_step=1)
+        self.multialgorithm_simulation = MultialgorithmSimulation(self.model, self.wc_sim_config)
         self.test_dir = tempfile.mkdtemp()
         self.results_dir = tempfile.mkdtemp(dir=self.test_dir)
 
@@ -95,21 +97,21 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
     def test_init(self):
         self.model.submodels = []
         with self.assertRaises(MultialgorithmError):
-            MultialgorithmSimulation(self.model, None)
+            MultialgorithmSimulation(self.model, self.wc_sim_config)
 
     def test_prepare_skipped_submodels(self):
-        multialgorithm_simulation = MultialgorithmSimulation(self.model, self.args)
+        multialgorithm_simulation = MultialgorithmSimulation(self.model, self.wc_sim_config)
         self.assertEqual(multialgorithm_simulation.skipped_submodels(), set())
         submodels_to_skip = ['submodel_1']
-        self.args['submodels_to_skip'] = submodels_to_skip
-        multialgorithm_simulation = MultialgorithmSimulation(self.model, self.args)
+        self.wc_sim_config.submodels_to_skip = submodels_to_skip
+        multialgorithm_simulation = MultialgorithmSimulation(self.model, self.wc_sim_config)
         self.assertEqual(multialgorithm_simulation.skipped_submodels(), set(submodels_to_skip))
 
         submodels_to_skip = ['no_such_submodel']
-        self.args['submodels_to_skip'] = submodels_to_skip
+        self.wc_sim_config.submodels_to_skip = submodels_to_skip
         with self.assertRaisesRegex(MultialgorithmError,
                                     "'submodels_to_skip' contains submodels that aren't in the model:"):
-            MultialgorithmSimulation(self.model, self.args)
+            MultialgorithmSimulation(self.model, self.wc_sim_config)
 
     def test_molecular_weights_for_species(self):
         multi_alg_sim = self.multialgorithm_simulation
@@ -216,10 +218,9 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
         self.multialgorithm_simulation.initialize_infrastructure()
         self.assertTrue(isinstance(self.multialgorithm_simulation.dynamic_model, DynamicModel))
 
-        args = dict(dfba_time_step=1,
-                    results_dir=self.results_dir,
-                    checkpoint_period=10)
-        multialg_sim = MultialgorithmSimulation(self.model, args)
+        de_simulation_config = SimulationConfig(time_max=10, data_dir=self.results_dir)
+        wc_sim_config = WCSimulationConfig(de_simulation_config, dfba_time_step=1, checkpoint_period=10)
+        multialg_sim = MultialgorithmSimulation(self.model, wc_sim_config)
         multialg_sim.initialize_components()
         multialg_sim.initialize_infrastructure()
         self.assertEqual(multialg_sim.checkpointing_sim_obj.checkpoint_dir, self.results_dir)
@@ -228,10 +229,9 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
         self.assertTrue(isinstance(multialg_sim.dynamic_model, DynamicModel))
 
     def test_build_simulation(self):
-        args = dict(dfba_time_step=1,
-                    results_dir=self.results_dir,
-                    checkpoint_period=10)
-        multialgorithm_simulation = MultialgorithmSimulation(self.model, args)
+        de_simulation_config = SimulationConfig(time_max=10, data_dir=self.results_dir)
+        wc_sim_config = WCSimulationConfig(de_simulation_config, dfba_time_step=1, checkpoint_period=10)
+        multialgorithm_simulation = MultialgorithmSimulation(self.model, wc_sim_config)
         simulation_engine, _ = multialgorithm_simulation.build_simulation()
         # 3 objects: 2 submodels, and the checkpointing obj:
         expected_sim_objs = set(['CHECKPOINTING_SIM_OBJ', 'submodel_1', 'submodel_2'])
@@ -239,7 +239,6 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
         self.assertEqual(type(multialgorithm_simulation.checkpointing_sim_obj),
                          MultialgorithmicCheckpointingSimObj)
         self.assertEqual(multialgorithm_simulation.dynamic_model.get_num_submodels(), 2)
-        self.assertTrue(callable(simulation_engine.stop_condition))
 
         # check that submodels receive options
         dfba_options = dict(dfba='fast but inaccurate')
@@ -247,7 +246,7 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
         options = {'DfbaSubmodel': dict(options=dfba_options),
                    'SsaSubmodel': dict(options=ssa_options)
                   }
-        multialgorithm_simulation = MultialgorithmSimulation(self.model, args, options)
+        multialgorithm_simulation = MultialgorithmSimulation(self.model, wc_sim_config, options)
         multialgorithm_simulation.build_simulation()
         dfba_submodel = multialgorithm_simulation.dynamic_model.dynamic_submodels['submodel_1']
         ssa_submodel = multialgorithm_simulation.dynamic_model.dynamic_submodels['submodel_2']
@@ -256,8 +255,8 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
 
         # test skipped submodel
         submodels_to_skip = ['submodel_2']
-        self.args['submodels_to_skip'] = submodels_to_skip
-        ma_sim = MultialgorithmSimulation(self.model, self.args)
+        self.wc_sim_config.submodels_to_skip = submodels_to_skip
+        ma_sim = MultialgorithmSimulation(self.model, self.wc_sim_config)
         _, dynamic_model = ma_sim.build_simulation()
         expected_dynamic_submodels = set([sm.id for sm in self.model.get_submodels()]) - ma_sim.skipped_submodels()
         self.assertEqual(expected_dynamic_submodels, set(dynamic_model.dynamic_submodels))
@@ -303,8 +302,8 @@ class TestMultialgorithmSimulationDynamically(unittest.TestCase):
         self.results_dir = tempfile.mkdtemp(dir=self.tmp_dir)
         self.models = ['static', 'one_reaction_linear', 'one_rxn_exponential', 'one_exchange_rxn_compt_growth',
                        'stop_conditions']
-        self.args = dict(results_dir=tempfile.mkdtemp(dir=self.tmp_dir),
-                         checkpoint_period=1)
+        de_simulation_config = SimulationConfig(time_max=20, data_dir=tempfile.mkdtemp(dir=self.tmp_dir))
+        self.wc_sim_config = WCSimulationConfig(de_simulation_config, checkpoint_period=1)
 
     def tearDown(self):
         shutil.rmtree(self.tmp_dir)
@@ -338,6 +337,9 @@ class TestMultialgorithmSimulationDynamically(unittest.TestCase):
     def test_independently_solved_models(self):
         for model_name in self.models:
             model_filename = os.path.join(os.path.dirname(__file__), 'fixtures', 'dynamic_tests', f'{model_name}.xlsx')
+            print('model_filename',model_filename)
+        for model_name in self.models:
+            model_filename = os.path.join(os.path.dirname(__file__), 'fixtures', 'dynamic_tests', f'{model_name}.xlsx')
             verify_independently_solved_model(self, model_filename, self.results_dir)
 
     def test_one_reaction_constant_species_pop(self):
@@ -362,22 +364,17 @@ class TestMultialgorithmSimulationDynamically(unittest.TestCase):
                                           molecular_weight=molecular_weight,
                                           default_species_copy_number=default_species_copy_number,
                                           default_species_std=0)
-        multialgorithm_simulation = MultialgorithmSimulation(model, self.args)
+        multialgorithm_simulation = MultialgorithmSimulation(model, self.wc_sim_config)
         _, dynamic_model = multialgorithm_simulation.build_simulation()
         check_simul_results(self, dynamic_model, None, expected_initial_values=expected_initial_values)
-
-        # test dynamics
-        simulation = Simulation(model)
-        _, results_dir = simulation.run(time_max=20, **self.args)
 
 
 class TestRunSSASimulation(unittest.TestCase):
 
     def setUp(self):
         self.results_dir = tempfile.mkdtemp()
-        self.args = dict(dfba_time_step=1,
-                         results_dir=self.results_dir,
-                         checkpoint_period=10)
+        de_simulation_config = SimulationConfig(time_max=10, data_dir=self.results_dir)
+        self.wc_sim_config = WCSimulationConfig(de_simulation_config, dfba_time_step=1, checkpoint_period=10)
         self.out_dir = tempfile.mkdtemp()
 
     def tearDown(self):
@@ -394,19 +391,18 @@ class TestRunSSASimulation(unittest.TestCase):
                                           species_copy_numbers=species_copy_numbers,
                                           species_stds=species_stds,
                                           init_vols=init_vols)
-        multialgorithm_simulation = MultialgorithmSimulation(model, self.args)
+        multialgorithm_simulation = MultialgorithmSimulation(model, self.wc_sim_config)
         simulation_engine, _ = multialgorithm_simulation.build_simulation()
         return (model, multialgorithm_simulation, simulation_engine)
 
     def checkpoint_times(self, run_time):
         """ Provide expected checkpoint times for a simulation
         """
-        checkpoint_period = self.args['checkpoint_period']
         checkpoint_times = []
         t = 0
         while t <= run_time:
             checkpoint_times.append(t)
-            t += checkpoint_period
+            t += self.wc_sim_config.checkpoint_period
         return checkpoint_times
 
     def perform_ssa_test_run(self, model_type, run_time, initial_species_copy_numbers, initial_species_stds,

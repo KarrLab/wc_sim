@@ -9,11 +9,11 @@
 from pprint import pprint
 import numpy.random
 import warnings
-
 from de_sim.simulation_object import SimObjClassPriority
 from wc_lang import Model, Compartment, Species
 from wc_sim.config import core as config_core_multialgorithm
 from wc_sim.dynamic_components import DynamicModel, DynamicCompartment
+from wc_sim.sim_config import WCSimulationConfig
 from de_sim.simulation_engine import SimulationEngine
 from wc_sim.model_utilities import ModelUtilities
 from wc_sim.multialgorithm_checkpointing import MultialgorithmicCheckpointingSimObj
@@ -118,11 +118,11 @@ class MultialgorithmSimulation(object):
         _skipped_submodels (:obj:`set` of :obj:`str`): submodels that won't be run, identified by their ids
     """
 
-    def __init__(self, model, args, options=None):
+    def __init__(self, model, wc_sim_config, options=None):
         """
         Args:
             model (:obj:`Model`): the model being simulated
-            args (:obj:`dict`): parameters for the simulation
+            wc_sim_config (:obj:`WCSimulationConfig`): a whole-cell simulation configuration
             options (:obj:`dict`, optional): options for submodels, keyed by submodel class name
         """
         # initialize simulation infrastructure
@@ -131,7 +131,7 @@ class MultialgorithmSimulation(object):
 
         # create simulation attributes
         self.model = model
-        self.args = args or []
+        self.wc_sim_config = wc_sim_config
         self.options = options
 
         self._skipped_submodels = self.prepare_skipped_submodels()
@@ -148,8 +148,8 @@ class MultialgorithmSimulation(object):
         Returns:
             :obj:`set` of :obj:`str`: the IDs of submodels that will not run
         """
-        if 'submodels_to_skip' in self.args:
-            submodels_to_skip = set(self.args['submodels_to_skip'])
+        if self.wc_sim_config.submodels_to_skip:
+            submodels_to_skip = set(self.wc_sim_config.submodels_to_skip)
             submodel_ids = set([submodel.id for submodel in self.model.get_submodels()])
             if submodels_to_skip - submodel_ids:
                 raise MultialgorithmError(f"'submodels_to_skip' contains submodels that aren't in the model: "
@@ -194,11 +194,10 @@ class MultialgorithmSimulation(object):
         self.temp_dynamic_compartments = None
         for comp in self.dynamic_model.dynamic_compartments.values():
             comp.dynamic_model = self.dynamic_model
-        self.dynamic_model.set_stop_condition(self.simulation)
-        if 'results_dir' in self.args and self.args['results_dir']:
+        if self.wc_sim_config.de_simulation_config.data_dir is not None:
             self.checkpointing_sim_obj = self.create_multialgorithm_checkpointing(
-                self.args['results_dir'],
-                self.args['checkpoint_period'])
+                self.wc_sim_config.de_simulation_config.data_dir,
+                self.wc_sim_config.checkpoint_period)
         self.dynamic_model.dynamic_submodels = self.create_dynamic_submodels()
 
     def molecular_weights_for_species(self, species=None):
@@ -375,7 +374,7 @@ class MultialgorithmSimulation(object):
                     lang_submodel.get_children(kind='submodel', __type=Species),
                     self.get_dynamic_compartments(lang_submodel),
                     self.local_species_population,
-                    self.args['dfba_time_step'],
+                    self.wc_sim_config.dfba_time_step,
                     **get_options(self, 'DfbaSubmodel')
                 )
 
@@ -387,7 +386,7 @@ class MultialgorithmSimulation(object):
                     lang_submodel.get_children(kind='submodel', __type=Species),
                     self.get_dynamic_compartments(lang_submodel),
                     self.local_species_population,
-                    self.args['ode_time_step'],
+                    self.wc_sim_config.ode_time_step,
                     **get_options(self, 'OdeSubmodel')
                 )
 
