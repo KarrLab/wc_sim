@@ -56,7 +56,7 @@ class WCSimulationConfig(ValidatedDataClass):
     """
 
     de_simulation_config: object
-    random_seed: int
+    random_seed: int = None
     ode_time_step: float = None
     dfba_time_step: float = None
     checkpoint_period: float = None

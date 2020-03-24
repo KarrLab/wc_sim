@@ -75,6 +75,10 @@ class TestWCSimulationConfig(unittest.TestCase):
         self.assertEqual(ode_time_step + 0.0, cfg.ode_time_step)
         self.assertEqual(dfba_time_step + 0.0, cfg.dfba_time_step)
 
+        # no random_seed
+        cfg = WCSimulationConfig(de_simulation_config=self.de_simulation_config)
+        self.assertEqual(None, cfg.random_seed)
+
         # no lists
         cfg = WCSimulationConfig(self.de_simulation_config, 1)
         self.assertEqual([], cfg.changes)
