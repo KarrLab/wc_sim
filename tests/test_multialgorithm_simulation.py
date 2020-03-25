@@ -23,6 +23,7 @@ from de_sim.simulation_config import SimulationConfig
 from wc_lang import Model
 from wc_lang.io import Reader
 from wc_lang.transform import PrepForWcSimTransform
+from wc_onto import onto
 from wc_sim.dynamic_components import DynamicModel
 from wc_sim.multialgorithm_checkpointing import (MultialgorithmicCheckpointingSimObj,
                                                  MultialgorithmCheckpoint)
@@ -260,6 +261,13 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
         _, dynamic_model = ma_sim.build_simulation()
         expected_dynamic_submodels = set([sm.id for sm in self.model.get_submodels()]) - ma_sim.skipped_submodels()
         self.assertEqual(expected_dynamic_submodels, set(dynamic_model.dynamic_submodels))
+
+        submodel_1 = self.model.submodels.get(id='submodel_1')[0]
+        # WC:modeling_framework is not an instance of a modeling framework
+        submodel_1.framework = onto['WC:modeling_framework']
+        ma_sim = MultialgorithmSimulation(self.model, self.wc_sim_config)
+        with self.assertRaisesRegex(MultialgorithmError, 'Unsupported lang_submodel framework'):
+            ma_sim.build_simulation()
 
     def test_get_dynamic_compartments(self):
         expected_compartments = dict(
