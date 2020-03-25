@@ -195,19 +195,6 @@ class TestOdeSubmodel(unittest.TestCase):
         with self.assertRaises(DynamicMultialgorithmError):
             self.ode_submodel_1.run_ode_solver()
 
-    @unittest.skip("todo: needs ODE_TEST_CASES")
-    def test_run_ode_solver_2(self):
-        '''
-        case_00001_ode_submodel = self.make_ode_submodel(self.case_00001_model)
-        case_00001_ode_submodel.increment_time_step_count()
-        case_00001_ode_submodel.run_ode_solver()
-        '''
-
-        case_00001_ode_submodel = self.make_ode_submodel(self.case_00001_model)
-        # odes outputs '[CVODE ERROR]  CVode\n  tout too close to t0 to start integration.'
-        with self.assertRaisesRegexp(DynamicMultialgorithmError, re.escape('solver step() error')):
-            case_00001_ode_submodel.run_ode_solver()
-
     # test event scheduling and handling
     @unittest.skip("not good test")
     def test_schedule_next_ode_analysis(self):
