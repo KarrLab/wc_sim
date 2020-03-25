@@ -345,9 +345,6 @@ class TestMultialgorithmSimulationDynamically(unittest.TestCase):
     def test_independently_solved_models(self):
         for model_name in self.models:
             model_filename = os.path.join(os.path.dirname(__file__), 'fixtures', 'dynamic_tests', f'{model_name}.xlsx')
-            print('model_filename',model_filename)
-        for model_name in self.models:
-            model_filename = os.path.join(os.path.dirname(__file__), 'fixtures', 'dynamic_tests', f'{model_name}.xlsx')
             verify_independently_solved_model(self, model_filename, self.results_dir)
 
     def test_one_reaction_constant_species_pop(self):

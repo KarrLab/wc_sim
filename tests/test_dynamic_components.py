@@ -17,6 +17,7 @@ import timeit
 import unittest
 import warnings
 
+from de_sim.simulation_config import SimulationConfig
 from obj_tables.math.expression import Expression
 from wc_lang import (Model, Compartment, Species, Parameter,
                      DistributionInitConcentration,
@@ -29,12 +30,14 @@ from wc_sim.dynamic_components import (SimTokCodes, WcSimToken, DynamicComponent
                                        DynamicCompartment, DynamicStopCondition)
 from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
+from wc_sim.sim_config import WCSimulationConfig
 from wc_sim.species_populations import LocalSpeciesPopulation, MakeTestLSP
 from wc_sim.testing.utils import read_model_for_test
 from wc_utils.util.rand import RandomStateManager
 from wc_utils.util.units import unit_registry
 import obj_tables
 import obj_tables.io
+
 
 # Almost all machines map Python floats to IEEE-754 64-bit “double precision”, which provides 15 to
 # 17 decimal digits. Places for comparing values that should be equal to within the precision of floats
@@ -46,7 +49,9 @@ class TestInitialDynamicComponentsComprehensively(unittest.TestCase):
     def setUp(self):
         self.model_file = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_dynamic_expressions.xlsx')
         self.model = Reader().run(self.model_file)[Model][0]
-        multialgorithm_simulation = MultialgorithmSimulation(self.model, None)
+        de_simulation_config = SimulationConfig(time_max=10)
+        wc_sim_config = WCSimulationConfig(de_simulation_config)
+        multialgorithm_simulation = MultialgorithmSimulation(self.model, wc_sim_config)
         _, self.dynamic_model = multialgorithm_simulation.build_simulation()
 
     def test(self):
@@ -565,7 +570,9 @@ class TestDynamicModel(unittest.TestCase):
     def make_dynamic_model(self, model_filename):
         # read and initialize a model
         self.model = TestDynamicModel.models[model_filename]
-        multialgorithm_simulation = MultialgorithmSimulation(self.model, None)
+        de_simulation_config = SimulationConfig(time_max=10)
+        wc_sim_config = WCSimulationConfig(de_simulation_config)
+        multialgorithm_simulation = MultialgorithmSimulation(self.model, wc_sim_config)
         multialgorithm_simulation.initialize_components()
         self.dynamic_model = DynamicModel(self.model, multialgorithm_simulation.local_species_population,
                                           multialgorithm_simulation.temp_dynamic_compartments)
@@ -601,11 +608,14 @@ class TestDynamicModel(unittest.TestCase):
         model = TestDynamicModel.models[self.MODEL_FILENAME]
         for compartment in self.model.get_compartments():
             compartment.biological_type = onto['WC:extracellular_compartment']
-        multialgorithm_simulation = MultialgorithmSimulation(model, None)
+        de_simulation_config = SimulationConfig(time_max=10)
+        wc_sim_config = WCSimulationConfig(de_simulation_config)
+        multialgorithm_simulation = MultialgorithmSimulation(model, wc_sim_config)
         multialgorithm_simulation.initialize_components()
         with self.assertRaisesRegex(MultialgorithmError, 'must have at least 1 cellular compartment'):
             DynamicModel(model, multialgorithm_simulation.local_species_population,
                          multialgorithm_simulation.temp_dynamic_compartments)
+
 
     def test_dynamic_components(self):
         # test agregate properties like mass and volume against independent calculations of their values
@@ -614,7 +624,9 @@ class TestDynamicModel(unittest.TestCase):
         # read model while ignoring missing models
         model = read_model_for_test(self.MODEL_FILENAME)
         # create dynamic model
-        multialgorithm_simulation = MultialgorithmSimulation(model, None)
+        de_simulation_config = SimulationConfig(time_max=10)
+        wc_sim_config = WCSimulationConfig(de_simulation_config)
+        multialgorithm_simulation = MultialgorithmSimulation(model, wc_sim_config)
         multialgorithm_simulation.initialize_components()
         dynamic_model = DynamicModel(model, multialgorithm_simulation.local_species_population,
             multialgorithm_simulation.temp_dynamic_compartments)

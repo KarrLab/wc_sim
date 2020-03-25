@@ -20,9 +20,9 @@ import math
 import numpy
 import warnings
 
-from de_sim.simulation_config import SimulationConfig, ValidatedDataClass
+from de_sim.simulation_config import SimulationConfig
 from wc_sim.multialgorithm_errors import MultialgorithmError
-from wc_utils.util.misc import obj_to_str
+from wc_utils.util.misc import obj_to_str, ValidatedDataClass
 import wc_lang.transform
 
 

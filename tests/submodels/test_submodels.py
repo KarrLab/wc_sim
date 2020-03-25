@@ -44,7 +44,10 @@ def prepare_model(model):
 # TODO(Arthur): make more reliable and comprehensive tests using approach in
 # TestDsaSubmodel instead of make_dynamic_submodel_params
 def make_dynamic_submodel_params(model, lang_submodel):
-    multialgorithm_simulation = MultialgorithmSimulation(model, None)
+
+    de_simulation_config = SimulationConfig(time_max=10)
+    wc_sim_config = WCSimulationConfig(de_simulation_config)
+    multialgorithm_simulation = MultialgorithmSimulation(model, wc_sim_config)
     multialgorithm_simulation.initialize_components()
     multialgorithm_simulation.dynamic_model = \
         DynamicModel(multialgorithm_simulation.model,

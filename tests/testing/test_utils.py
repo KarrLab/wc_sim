@@ -25,6 +25,8 @@ class TestTestingUtils(unittest.TestCase):
     def setUp(self):
         self.tmp_dir = tempfile.mkdtemp()
         self.results_dir = tempfile.mkdtemp(dir=self.tmp_dir)
+        self.args = dict(results_dir=tempfile.mkdtemp(dir=self.tmp_dir),
+                         checkpoint_period=1)
         de_simulation_config = SimulationConfig(time_max=10, output_dir=tempfile.mkdtemp(dir=self.tmp_dir))
         self.wc_sim_config = WCSimulationConfig(de_simulation_config, checkpoint_period=1)
 

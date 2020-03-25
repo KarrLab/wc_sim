@@ -576,7 +576,6 @@ class TestCaseVerifier(unittest.TestCase):
             expected_predictions_df.loc[:, 'X-mean'] *= 2
 
 
-@unittest.skip("too slow")
 class TestVerificationSuite(unittest.TestCase):
 
     def setUp(self):
@@ -776,9 +775,10 @@ class TestVerificationSuite(unittest.TestCase):
         for diff_mean in last_result.quant_diff.values():
             self.assertTrue(isinstance(diff_mean, float))
 
+
 SsaTestCase = namedtuple('SsaTestCase', 'case_num, num_ssa_runs')
 
-@unittest.skip("too slow")
+
 class RunVerificationSuite(unittest.TestCase):
 
     def setUp(self):

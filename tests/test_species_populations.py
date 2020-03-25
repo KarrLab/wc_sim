@@ -19,6 +19,7 @@ import unittest
 import unittest
 
 from de_sim.errors import SimulatorError
+from de_sim.simulation_config import SimulationConfig
 from de_sim.simulation_engine import SimulationEngine
 from de_sim.simulation_message import SimulationMessage
 from de_sim.simulation_object import SimulationObject
@@ -31,6 +32,7 @@ from wc_sim.dynamic_components import DynamicModel
 from wc_sim.multialgorithm_errors import (DynamicSpeciesPopulationError, DynamicNegativePopulationError,
                                           SpeciesPopulationError)
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
+from wc_sim.sim_config import WCSimulationConfig
 from wc_sim.species_populations import (LOCAL_POP_STORE, DynamicSpeciesState, SpeciesPopSimObject,
                                         SpeciesPopulationCache, LocalSpeciesPopulation, TempPopulationsLSP,
                                         MakeTestLSP, AccessSpeciesPopulations)
@@ -422,7 +424,9 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         model = read_model_for_test(self.MODEL_FILENAME)
 
         # create dynamic model
-        self.multialgorithm_simulation = MultialgorithmSimulation(model, None)
+        de_simulation_config = SimulationConfig(time_max=10)
+        wc_sim_config = WCSimulationConfig(de_simulation_config)
+        self.multialgorithm_simulation = MultialgorithmSimulation(model, wc_sim_config)
         self.multialgorithm_simulation.initialize_components()
         self.local_species_population = self.multialgorithm_simulation.local_species_population
         dynamic_model = DynamicModel(model, self.local_species_population,

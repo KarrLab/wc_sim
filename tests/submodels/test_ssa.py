@@ -8,10 +8,12 @@
 
 import unittest
 
+from de_sim.simulation_config import SimulationConfig
 from wc_lang import Species
 from wc_lang.transform import PrepForWcSimTransform
 from wc_sim.multialgorithm_errors import DynamicFrozenSimulationError
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
+from wc_sim.sim_config import WCSimulationConfig
 from wc_sim.submodels.ssa import SsaSubmodel
 from wc_sim.testing.make_models import MakeModel
 
@@ -20,7 +22,9 @@ class TestSsaSubmodel(unittest.TestCase):
 
     def make_ssa_submodel(self, model, default_center_of_mass=None):
         PrepForWcSimTransform().run(model)
-        multialgorithm_simulation = MultialgorithmSimulation(model, None)
+        de_simulation_config = SimulationConfig(time_max=10)
+        wc_sim_config = WCSimulationConfig(de_simulation_config)
+        multialgorithm_simulation = MultialgorithmSimulation(model, wc_sim_config)
         multialgorithm_simulation.build_simulation()
         wc_lang_ssa_submodel = model.submodels[0]
 
