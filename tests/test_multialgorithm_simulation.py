@@ -219,7 +219,7 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
         self.multialgorithm_simulation.initialize_infrastructure()
         self.assertTrue(isinstance(self.multialgorithm_simulation.dynamic_model, DynamicModel))
 
-        de_simulation_config = SimulationConfig(time_max=10, data_dir=self.results_dir)
+        de_simulation_config = SimulationConfig(time_max=10, output_dir=self.results_dir)
         wc_sim_config = WCSimulationConfig(de_simulation_config, dfba_time_step=1, checkpoint_period=10)
         multialg_sim = MultialgorithmSimulation(self.model, wc_sim_config)
         multialg_sim.initialize_components()
@@ -230,7 +230,7 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
         self.assertTrue(isinstance(multialg_sim.dynamic_model, DynamicModel))
 
     def test_build_simulation(self):
-        de_simulation_config = SimulationConfig(time_max=10, data_dir=self.results_dir)
+        de_simulation_config = SimulationConfig(time_max=10, output_dir=self.results_dir)
         wc_sim_config = WCSimulationConfig(de_simulation_config, dfba_time_step=1, checkpoint_period=10)
         multialgorithm_simulation = MultialgorithmSimulation(self.model, wc_sim_config)
         simulation_engine, _ = multialgorithm_simulation.build_simulation()
@@ -310,7 +310,7 @@ class TestMultialgorithmSimulationDynamically(unittest.TestCase):
         self.results_dir = tempfile.mkdtemp(dir=self.tmp_dir)
         self.models = ['static', 'one_reaction_linear', 'one_rxn_exponential', 'one_exchange_rxn_compt_growth',
                        'stop_conditions']
-        de_simulation_config = SimulationConfig(time_max=20, data_dir=tempfile.mkdtemp(dir=self.tmp_dir))
+        de_simulation_config = SimulationConfig(time_max=20, output_dir=tempfile.mkdtemp(dir=self.tmp_dir))
         self.wc_sim_config = WCSimulationConfig(de_simulation_config, checkpoint_period=1)
 
     def tearDown(self):
@@ -381,7 +381,7 @@ class TestRunSSASimulation(unittest.TestCase):
 
     def setUp(self):
         self.results_dir = tempfile.mkdtemp()
-        de_simulation_config = SimulationConfig(time_max=10, data_dir=self.results_dir)
+        de_simulation_config = SimulationConfig(time_max=10, output_dir=self.results_dir)
         self.wc_sim_config = WCSimulationConfig(de_simulation_config, dfba_time_step=1, checkpoint_period=10)
         self.out_dir = tempfile.mkdtemp()
 

@@ -12,7 +12,9 @@ import shutil
 import tempfile
 import unittest
 
+from de_sim.simulation_config import SimulationConfig
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
+from wc_sim.sim_config import WCSimulationConfig
 from wc_sim.simulation import Simulation
 from wc_sim.testing.make_models import MakeModel
 from wc_sim.testing.utils import check_simul_results, plot_expected_vs_simulated
@@ -23,8 +25,8 @@ class TestTestingUtils(unittest.TestCase):
     def setUp(self):
         self.tmp_dir = tempfile.mkdtemp()
         self.results_dir = tempfile.mkdtemp(dir=self.tmp_dir)
-        self.args = dict(results_dir=tempfile.mkdtemp(dir=self.tmp_dir),
-                         checkpoint_period=1)
+        de_simulation_config = SimulationConfig(time_max=10, output_dir=tempfile.mkdtemp(dir=self.tmp_dir))
+        self.wc_sim_config = WCSimulationConfig(de_simulation_config, checkpoint_period=1)
 
     def tearDown(self):
         shutil.rmtree(self.tmp_dir)
@@ -53,7 +55,7 @@ class TestTestingUtils(unittest.TestCase):
                                         default_species_copy_number=default_species_copy_number,
                                         default_species_std=0,
                                         submodel_framework='WC:deterministic_simulation_algorithm')
-        multialgorithm_simulation = MultialgorithmSimulation(model, self.args)
+        multialgorithm_simulation = MultialgorithmSimulation(model, self.wc_sim_config)
         _, dynamic_model = multialgorithm_simulation.build_simulation()
         check_simul_results(self, dynamic_model, None, expected_initial_values=expected_initial_values)
 

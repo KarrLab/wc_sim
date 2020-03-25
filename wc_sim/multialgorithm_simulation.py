@@ -194,9 +194,9 @@ class MultialgorithmSimulation(object):
         self.temp_dynamic_compartments = None
         for comp in self.dynamic_model.dynamic_compartments.values():
             comp.dynamic_model = self.dynamic_model
-        if self.wc_sim_config.de_simulation_config.data_dir is not None:
+        if self.wc_sim_config.de_simulation_config.output_dir is not None:
             self.checkpointing_sim_obj = self.create_multialgorithm_checkpointing(
-                self.wc_sim_config.de_simulation_config.data_dir,
+                self.wc_sim_config.de_simulation_config.output_dir,
                 self.wc_sim_config.checkpoint_period)
         self.dynamic_model.dynamic_submodels = self.create_dynamic_submodels()
 

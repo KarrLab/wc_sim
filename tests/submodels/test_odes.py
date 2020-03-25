@@ -12,6 +12,7 @@ import re
 import scikits
 import unittest
 
+from de_sim.simulation_config import SimulationConfig
 from wc_lang.core import ReactionParticipantAttribute
 from wc_lang.io import Reader
 from wc_onto import onto
@@ -19,6 +20,7 @@ from wc_sim.dynamic_components import DynamicRateLaw
 from wc_sim.message_types import RunOde
 from wc_sim.multialgorithm_errors import DynamicMultialgorithmError, MultialgorithmError
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
+from wc_sim.sim_config import WCSimulationConfig
 from wc_sim.submodels.odes import OdeSubmodel
 from wc_sim.testing.make_models import MakeModel
 from wc_sim.testing.utils import read_model_for_test
@@ -51,8 +53,9 @@ class TestOdeSubmodel(unittest.TestCase):
         # assume a single submodel
         # todo: test concurrent OdeSubmodels, perhaps
         self.ode_time_step = ode_time_step
-        args = dict(ode_time_step=self.ode_time_step)
-        multialgorithm_simulation = MultialgorithmSimulation(model, args)
+        de_simulation_config = SimulationConfig(time_max=10)
+        wc_sim_config = WCSimulationConfig(de_simulation_config, ode_time_step=ode_time_step)
+        multialgorithm_simulation = MultialgorithmSimulation(model, wc_sim_config)
         simulation_engine, dynamic_model = multialgorithm_simulation.build_simulation()
         simulation_engine.initialize()
         submodel_1 = dynamic_model.dynamic_submodels[submodel_name]

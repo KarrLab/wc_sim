@@ -119,8 +119,8 @@ class WCSimulationConfig(ValidatedDataClass):
         if de_sim_config.time_max <= 0:
             raise MultialgorithmError("Maximum time ({de_sim_config.time_max}) must be positive")
 
-        if de_sim_config.data_dir is None and self.checkpoint_period is not None:
-            raise MultialgorithmError(f"a data directory (self.de_simulation_configdata_dir) must be "
+        if de_sim_config.output_dir is None and self.checkpoint_period is not None:
+            raise MultialgorithmError(f"a data directory (self.de_simulation_config.output_dir) must be "
                                       f"provided when a checkpoint_period ({self.checkpoint_period}) is provided")
 
         # Check that timesteps divide evenly into the simulation duration

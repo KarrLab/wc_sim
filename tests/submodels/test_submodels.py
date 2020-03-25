@@ -12,6 +12,7 @@ import os
 import unittest
 import warnings
 
+from de_sim.simulation_config import SimulationConfig
 from de_sim.simulation_engine import SimulationEngine
 from obj_tables.utils import get_component_by_id
 from wc_lang import Model, Species, Validator
@@ -22,6 +23,7 @@ from wc_sim.dynamic_components import DynamicModel
 from wc_sim.model_utilities import ModelUtilities
 from wc_sim.multialgorithm_errors import DynamicMultialgorithmError, MultialgorithmError
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
+from wc_sim.sim_config import WCSimulationConfig
 from wc_sim.simulation import Simulation
 from wc_sim.submodels.dynamic_submodel import DynamicSubmodel
 from wc_sim.submodels.testing.deterministic_simulation_algorithm import DsaSubmodel, ExecuteDsaReaction
@@ -101,7 +103,9 @@ class TestDynamicSubmodelStatically(unittest.TestCase):
     def test_calc_reaction_rates(self):
         # set standard deviation of initial conc. to 0
         self.setUp(std_init_concentrations=0.)
-        multialgorithm_simulation = MultialgorithmSimulation(self.model, {'dfba_time_step': 1})
+        de_simulation_config = SimulationConfig(time_max=10)
+        wc_sim_config = WCSimulationConfig(de_simulation_config, dfba_time_step=1)
+        multialgorithm_simulation = MultialgorithmSimulation(self.model, wc_sim_config)
         _, dynamic_model = multialgorithm_simulation.build_simulation()
 
         # rate law for reaction_4-forward: k_cat_4_for * max(species_4[c], p_4)
@@ -248,7 +252,9 @@ class TestDsaSubmodel(unittest.TestCase):
     def test_deterministic_simulation_algorithm_submodel_statics(self):
         self.transform_model_for_dsa_simulation(self.model)
         prepare_model(self.model)
-        multialgorithm_simulation = MultialgorithmSimulation(self.model, dict(dfba_time_step=1))
+        de_simulation_config = SimulationConfig(time_max=10)
+        wc_sim_config = WCSimulationConfig(de_simulation_config, dfba_time_step=1)
+        multialgorithm_simulation = MultialgorithmSimulation(self.model, wc_sim_config)
         simulation_engine, _ = multialgorithm_simulation.build_simulation()
         simulation_engine.initialize()
         dsa_submodel_name = 'submodel_2'
@@ -308,7 +314,9 @@ class TestDsaSubmodel(unittest.TestCase):
         options = {'DsaSubmodel': {'options': expected
                                   }
                   }
-        multialgorithm_simulation = MultialgorithmSimulation(self.model, dict(dfba_time_step=1), options)
+        de_simulation_config = SimulationConfig(time_max=10)
+        wc_sim_config = WCSimulationConfig(de_simulation_config, dfba_time_step=1)
+        multialgorithm_simulation = MultialgorithmSimulation(self.model, wc_sim_config, options)
         multialgorithm_simulation.build_simulation()
         dsa_submodel = multialgorithm_simulation.dynamic_model.dynamic_submodels['submodel_2']
         self.assertEqual(dsa_submodel.options, expected)
