@@ -8,6 +8,7 @@
 
 from capturer import CaptureOutput
 from scipy.constants import Avogadro
+import h5py
 import math
 import numpy
 import os
@@ -36,10 +37,11 @@ class TestRunResults(unittest.TestCase):
         cls.checkpoint_period = 5
         cls.max_time = 30
 
-        with CaptureOutput(relay=False):
+        with CaptureOutput(relay=True):
             _, cls.results_dir_1_cmpt = simulation.run(time_max=cls.max_time,
-                                                        results_dir=tempfile.mkdtemp(dir=cls.temp_dir),
-                                                        checkpoint_period=cls.checkpoint_period)
+                                                       results_dir=tempfile.mkdtemp(dir=cls.temp_dir),
+                                                       checkpoint_period=cls.checkpoint_period,
+                                                       verbose=True)
 
         # run a simulation whose aggregate states vary over time
         exchange_rxn_model = os.path.join(os.path.dirname(__file__), 'fixtures', 'dynamic_tests',
@@ -89,7 +91,8 @@ class TestRunResults(unittest.TestCase):
         for component in RunResults.COMPONENTS:
             self.assertTrue(self.run_results_1_cmpt.get(component).equals(run_results_2.get(component)))
 
-        expected_times = pandas.Float64Index(numpy.linspace(0, self.max_time, int(1 + self.max_time/self.checkpoint_period)))
+        expected_times = pandas.Float64Index(numpy.linspace(0, self.max_time,
+                                                            int(1 + self.max_time/self.checkpoint_period)))
         for component in ['populations', 'observables', 'functions', 'aggregate_states', 'random_states']:
             component_data = self.run_results_1_cmpt.get(component)
             self.assertFalse(component_data.empty)
@@ -100,9 +103,6 @@ class TestRunResults(unittest.TestCase):
         pop_sum = populations.sum(axis='columns')
         for time in expected_times:
             self.assertEqual(pop_sum[time], pop_sum[0.])
-
-        metadata = self.run_results_1_cmpt.get('metadata')
-        self.assertEqual(metadata['simulation']['time_max'], self.max_time)
 
         volumes = self.run_results_1_cmpt.get('volumes')
         numpy.testing.assert_array_equal(volumes, self.run_results_1_cmpt.get_volumes())
@@ -188,6 +188,20 @@ class TestRunResults(unittest.TestCase):
 
         numpy.testing.assert_array_equal(self.run_results_1_cmpt.get_masses('compt_1'),
                                          self.run_results_1_cmpt.get_masses().squeeze())
+
+    def test_convert_metadata(self):
+        metadata_file = self.run_results_1_cmpt._hdf_file()
+        hdf5_file = h5py.File(metadata_file, 'r')
+        metadata_attrs = hdf5_file[RunResults.METADATA_GROUP].attrs
+        self.assertEqual(metadata_attrs['wc_sim_metadata.wc_sim_config.checkpoint_period'],
+                         self.checkpoint_period)
+        self.assertEqual(metadata_attrs['de_sim_metadata.simulation_config.time_max'], self.max_time)
+
+    def test_get_metadata(self):
+        sim_metadata = self.run_results_1_cmpt.get_metadata()
+        self.assertEqual(sim_metadata['wc_sim_metadata']['wc_sim_config']['checkpoint_period'],
+                         self.checkpoint_period)
+        self.assertEqual(sim_metadata['de_sim_metadata']['simulation_config']['time_max'], self.max_time)
 
     def test_performance(self):
 

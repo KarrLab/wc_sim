@@ -1,4 +1,4 @@
-""" Test simple simulation
+""" Test simulation
 
 :Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2018-05-26
@@ -16,7 +16,6 @@ import time
 import unittest
 
 from de_sim.checkpoint import Checkpoint
-from de_sim.simulation_metadata import SimulationMetadata
 from de_sim.simulation_engine import SimulationEngine
 from wc_sim import sim_config
 from wc_sim.multialgorithm_errors import MultialgorithmError
@@ -146,121 +145,3 @@ class TestSimulation(unittest.TestCase):
         with CaptureOutput(relay=False):
             simulation.run(time_max=100)
         self.assertTrue('Event type' in simulation.provide_event_counts())
-
-
-class TestProcessAndValidateArgs(unittest.TestCase):
-
-    def setUp(self):
-        self.results_dir = tempfile.mkdtemp()
-        self.tmp = os.path.expanduser('~/tmp/test_dir/checkpoints_dir')
-        if not os.path.exists(self.tmp):
-            os.makedirs(self.tmp)
-        self.user_tmp_dir = tempfile.mkdtemp(dir=self.tmp)
-        self.simulation = Simulation(TOY_MODEL_FILENAME)
-        self.args = dict(
-            results_dir=self.results_dir,
-            checkpoint_period=10,
-            time_max=100,
-            ode_time_step=5
-        )
-
-    def tearDown(self):
-        shutil.rmtree(self.results_dir)
-        shutil.rmtree(self.user_tmp_dir)
-
-    def test_create_metadata_1(self):
-        with self.assertRaises(MultialgorithmError):
-            self.simulation._create_metadata()
-
-        self.simulation.sim_config = sim_config.SimulationConfig(time_max=self.args['time_max'],
-                                                                 ode_time_step=self.args['ode_time_step'])
-        simulation_metadata = self.simulation._create_metadata()
-        for attr in SimulationMetadata.ATTRIBUTES:
-            self.assertTrue(getattr(simulation_metadata, attr) is not None)
-
-    def test_create_metadata_2(self):
-        # no ode_time_step
-        self.simulation.sim_config = sim_config.SimulationConfig(time_max=self.args['time_max'])
-        del self.args['ode_time_step']
-        simulation_metadata = self.simulation._create_metadata()
-        self.assertEqual(simulation_metadata.simulation.ode_time_step, 1)
-
-    def test_ckpt_dir_processing_1(self):
-        # checkpoints_dir gets created because it does not exist
-        self.args['results_dir'] = os.path.join(self.results_dir, 'no_such_dir', 'no_such_sub_dir')
-        self.simulation.process_and_validate_args(self.args)
-        self.assertTrue(os.path.isdir(self.args['results_dir']))
-
-    def test_ckpt_dir_processing_2(self):
-        # checkpoints_dir is a file
-        path = os.path.join(self.args['results_dir'], 'new_file')
-        self.args['results_dir'] = path
-        with open(path, 'w'):
-            pass
-        with self.assertRaises(MultialgorithmError):
-            self.simulation.process_and_validate_args(self.args)
-
-    def test_ckpt_dir_processing_3(self):
-        # checkpoints_dir is not empty
-        path = os.path.join(self.args['results_dir'], 'new_file')
-        with open(path, 'w'):
-            pass
-        with self.assertRaises(MultialgorithmError):
-            self.simulation.process_and_validate_args(self.args)
-
-    def test_process_and_validate_args1(self):
-        original_args = copy(self.args)
-        self.simulation.process_and_validate_args(self.args)
-        self.assertTrue(self.args['results_dir'].startswith(original_args['results_dir']))
-
-    def test_process_and_validate_args2(self):
-        # test files specified relative to home directory
-        relative_tmp_dir = os.path.join('~/tmp/', os.path.basename(self.user_tmp_dir))
-        self.args['results_dir'] = relative_tmp_dir
-        self.simulation.process_and_validate_args(self.args)
-        self.assertIn(relative_tmp_dir.replace('~', ''), self.args['results_dir'])
-
-    def test_process_and_validate_args3(self):
-        self.args['checkpoint_period'] = 7
-        with self.assertRaises(MultialgorithmError):
-            self.simulation.process_and_validate_args(self.args)
-
-    def test_process_and_validate_args4(self):
-        # test no results dir
-        del self.args['results_dir']
-        original_args = copy(self.args)
-        self.simulation.process_and_validate_args(self.args)
-        self.assertEqual(self.args, original_args)
-
-    def test_process_and_validate_args5(self):
-        # test error detection
-        errors = dict(
-            time_max=[-3, 0],
-            checkpoint_period=[-2, 0, self.args['time_max'] + 1],
-            ode_time_step=[-2, 0, self.args['time_max'] + 1],
-        )
-        for arg, error_vals in errors.items():
-            for error_val in error_vals:
-                bad_args = copy(self.args)
-                bad_args[arg] = error_val
-                # need a good, empty checkpoints_dir for each call to process_and_validate_args
-                new_tmp_dir = tempfile.mkdtemp()
-                bad_args['results_dir'] = new_tmp_dir
-                with self.assertRaises(MultialgorithmError):
-                    self.simulation.process_and_validate_args(bad_args)
-                shutil.rmtree(new_tmp_dir)
-
-    def test_process_and_validate_args6(self):
-        del self.args['time_max']
-        with self.assertRaises(MultialgorithmError):
-            self.simulation.process_and_validate_args(self.args)
-
-    def test_process_and_validate_args7(self):
-        del self.args['ode_time_step']
-        no_exception = False
-        try:
-            self.simulation.process_and_validate_args(self.args)
-            no_exception = True
-        except:
-            pass
-        self.assertTrue(no_exception)

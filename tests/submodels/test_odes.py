@@ -28,9 +28,6 @@ from wc_sim.testing.utils import read_model_for_test
 
 class TestOdeSubmodel(unittest.TestCase):
 
-    # todo: install
-    # ODE_TEST_CASES = os.path.join(os.path.dirname(__file__), '..', 'fixtures', 'verification', 'testing', 'semantic')
-
     def setUp(self):
         self.default_species_copy_number = 1000000000.123
         self.mdl_1_spec = \
@@ -40,13 +37,6 @@ class TestOdeSubmodel(unittest.TestCase):
                                       default_species_std=0,
                                       submodel_framework='WC:ordinary_differential_equations')
         self.ode_submodel_1 = self.make_ode_submodel(self.mdl_1_spec)
-        '''
-        # todo: install SBML tests
-        test_case = '00001'
-        self.sbml_case_00001_file = os.path.join(self.ODE_TEST_CASES, test_case,
-                                                 "{}-wc_lang.xlsx".format(test_case))
-        self.case_00001_model = Reader().run(self.sbml_case_00001_file, strict=False)
-        '''
 
     def make_ode_submodel(self, model, ode_time_step=1.0, submodel_name='submodel_1'):
         """ Make a MultialgorithmSimulation from a wc lang model """

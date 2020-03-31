@@ -6,18 +6,19 @@
 :License: MIT
 """
 
-from pprint import pprint
 import numpy.random
 import warnings
+
+from de_sim.simulation_engine import SimulationEngine
 from de_sim.simulation_object import SimObjClassPriority
 from wc_lang import Model, Compartment, Species
+from wc_onto import onto
 from wc_sim.config import core as config_core_multialgorithm
 from wc_sim.dynamic_components import DynamicModel, DynamicCompartment
-from wc_sim.sim_config import WCSimulationConfig
-from de_sim.simulation_engine import SimulationEngine
 from wc_sim.model_utilities import ModelUtilities
 from wc_sim.multialgorithm_checkpointing import MultialgorithmicCheckpointingSimObj
 from wc_sim.multialgorithm_errors import MultialgorithmError, MultialgorithmWarning
+from wc_sim.sim_config import WCSimulationConfig
 from wc_sim.species_populations import LocalSpeciesPopulation
 from wc_sim.submodels.dynamic_submodel import DynamicSubmodel
 from wc_sim.submodels.fba import DfbaSubmodel
@@ -27,7 +28,6 @@ from wc_sim.submodels.testing.deterministic_simulation_algorithm import DsaSubmo
 from wc_utils.util.list import det_dedupe
 from wc_utils.util.misc import obj_to_str
 from wc_utils.util.ontology import are_terms_equivalent
-from wc_onto import onto
 from wc_utils.util.rand import RandomStateManager
 
 config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']

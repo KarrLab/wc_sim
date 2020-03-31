@@ -117,6 +117,15 @@ class TestInitialDynamicComponentsComprehensively(unittest.TestCase):
             expected_value = float(self.model.get_species(id=id)[0].comments)
             numpy.testing.assert_approx_equal(dynamic_species.eval(0), expected_value)
 
+    # FIX FOR DE-SIM CHANGES: need to make a few dynamic models to test all branches of get_stop_condition()
+    # a dynamic model with no stop concitions
+    # a dynamic model with stop condidtions that all evaluate false
+    # a dynamic model with at least one stop condidtions that evaluates true
+    def test_get_stop_condition(self):
+        all_stop_conditions = self.dynamic_model.get_stop_condition()
+        self.assertTrue(callable(all_stop_conditions))
+        self.assertTrue(all_stop_conditions(0))
+
 
 class TestDynamicComponentAndDynamicExpressions(unittest.TestCase):
 
@@ -615,7 +624,6 @@ class TestDynamicModel(unittest.TestCase):
         with self.assertRaisesRegex(MultialgorithmError, 'must have at least 1 cellular compartment'):
             DynamicModel(model, multialgorithm_simulation.local_species_population,
                          multialgorithm_simulation.temp_dynamic_compartments)
-
 
     def test_dynamic_components(self):
         # test agregate properties like mass and volume against independent calculations of their values

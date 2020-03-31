@@ -54,9 +54,7 @@ class SimController(cement.Controller):
                 help="maximum time for the simulation (sec)")),
             (['--results-dir'], dict(
                 type=str,
-                # FIX FOR DE-SIM CHANGES 
-                help="store simulation results; a timestamped sub-directory of time_max-dir will hold results, "
-                "including an HDF5 file combining all run results")),
+                help="store simulation results in results-dir, including an HDF5 file combining all run results")),
             (['--checkpoint-period'], dict(
                 type=float,
                 default=config['checkpoint_period'],

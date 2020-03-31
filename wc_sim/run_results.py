@@ -6,21 +6,29 @@
 :Copyright: 2018-2019, Karr Lab
 :License: MIT
 """
+
+from scipy.constants import Avogadro
+import dataclasses
+import h5py
 import numpy
 import os
 import pandas
 import pickle
-from scipy.constants import Avogadro
 
 from de_sim.checkpoint import Checkpoint
 from de_sim.simulation_metadata import SimulationMetadata
 from wc_lang import Species
+from wc_sim.metadata import WCSimulationMetadata
 from wc_sim.multialgorithm_errors import MultialgorithmError
-from wc_utils.util.misc import as_dict
+from wc_utils.util.dict import DictUtil
 
 
 class RunResults(object):
     """ Store and retrieve combined results of a multialgorithmic simulation run
+
+    HDF5 uses attributes to store “self-describing” data. The official HDF5 way to store metadata is in the
+    *attribute* field attached to each data object. Since a simulation's metadata applies to all :obj:`RunResults`
+    components, it is stored in a `metadata` `Group` object in the HDF5 file.
 
     Attributes:
         results_dir (:obj:`str`): pathname of a directory containing a simulation run's checkpoints and/or
@@ -34,7 +42,6 @@ class RunResults(object):
         'observables',          # predicted values of all observables over the simulation
         'functions',            # predicted values of all functions over the simulation
         'random_states',        # states of the simulation's random number geerators over the simulation
-        'metadata',             # the simulation's global metadata
     }
 
     # components computed from stored components; map from component name to the method that computes it
@@ -44,6 +51,9 @@ class RunResults(object):
     }
 
     HDF5_FILENAME = 'run_results.h5'
+    METADATA_GROUP = 'metadata'
+    METADATA_CLASS_TO_NAME = {SimulationMetadata: 'de_sim_metadata',
+                              WCSimulationMetadata: 'wc_sim_metadata'}
 
     def __init__(self, results_dir):
         """ Create a `RunResults`
@@ -83,8 +93,8 @@ class RunResults(object):
             random_states_s.to_hdf(self._hdf_file(), 'random_states')
 
             # metadata
-            metadata_s = self.convert_metadata()
-            metadata_s.to_hdf(self._hdf_file(), 'metadata')
+            self.convert_metadata(SimulationMetadata)
+            self.convert_metadata(WCSimulationMetadata)
 
         # load the data in the HDF file containing the run results
         self._load_hdf_file()
@@ -138,8 +148,9 @@ class RunResults(object):
             component (:obj:`str`): the name of the component to return
 
         Returns:
-            :obj:`pandas.DataFrame`, or `pandas.Series`: a pandas object containing a component of
-                this `RunResults`, as specified by `component`
+            :obj:`object`: an object containing a component of this `RunResults`, as specified by `component`;
+                simulation time series data are :obj:`pandas.DataFrame` or `pandas.Series` instances;
+                simulation metadata are :obj:`dict` instances.
 
         Raises:
             :obj:`MultialgorithmError`: if `component` is not an element of `RunResults.COMPONENTS`
@@ -259,14 +270,54 @@ class RunResults(object):
         masses = aggregate_states.loc[:, aggregate_states.columns.get_level_values('property') == 'mass']
         return masses
 
-    def convert_metadata(self):
-        """ Convert the saved simulation metadata into a pandas series
+    def convert_metadata(self, metadata_class):
+        """ Convert the saved simulation metadata into HDF5 attributes on a `metadata` Group
+
+        Args:
+            metadata_class (:obj:`EnhancedDataClass`): the class that stored the metadata
+        """
+        metadata = metadata_class.read_dataclass(self.results_dir)
+
+        # open the metadata file
+        metadata_file = self._hdf_file()
+        with h5py.File(metadata_file, 'a') as hdf5_file:
+            # open or make a group in metadata_file called 'metadata'
+            if self.METADATA_GROUP in hdf5_file:
+                metadata_group = hdf5_file[self.METADATA_GROUP]
+            else:
+                metadata_group = hdf5_file.create_group(self.METADATA_GROUP)
+
+            # make a nested dict of the metadata
+            metadata_as_dict = dataclasses.asdict(metadata)
+            metadata_class_name = self.METADATA_CLASS_TO_NAME[metadata_class]
+            flat_metadata_as_dict = DictUtil.flatten_dict(metadata_as_dict)
+
+            for key, value in flat_metadata_as_dict.items():
+                # make a dotted string for each value in the metadata
+                # metadata_as_dict keys cannot contain '.' because they're attribute names
+                separator = '.'
+                name = f'{metadata_class_name}{separator}{separator.join(key)}'
+
+                # make an attribute for each value
+                if value is None:
+                    value = 'NA'
+                if not isinstance(value, (int, float, str)):
+                    value = str(value)
+                metadata_group.attrs[name] = value
+
+    def get_metadata(self):
+        """ Get simulation metadata from the HDF5 file
 
         Returns:
-            :obj:`pandas.Series`: the simulation metadata
+            :obj:`dict`: a nested dictionary of metadata corresponding to the attributes in
+                :obj:`SimulationMetadata` and :obj:`WCSimulationMetadata`
         """
-        simulation_metadata = SimulationMetadata.read_metadata(self.results_dir)
-        return pandas.Series(as_dict(simulation_metadata))
+        hdf5_file = h5py.File(self._hdf_file(), 'r')
+        metadata_attrs = hdf5_file[self.METADATA_GROUP].attrs
+        metadata_attrs_as_dict = {}
+        for key, value in metadata_attrs.items():
+            metadata_attrs_as_dict[key] = value
+        return DictUtil.expand_dict(metadata_attrs_as_dict)
 
     @staticmethod
     def get_state_components(state):

@@ -183,7 +183,6 @@ class TestWCSimulationConfig(unittest.TestCase):
 
         self.assertEqual(k_cat.value, 2.5)
 
-    # @unittest.skip('Not yet implemented')
     def test_apply_perturbations(self):
         # todo: implement
         cfg = WCSimulationConfig(self.de_simulation_config, random_seed=1, ode_time_step=2)
@@ -193,9 +192,11 @@ class TestWCSimulationConfig(unittest.TestCase):
         cfg = WCSimulationConfig(self.de_simulation_config, random_seed=1, ode_time_step=2)
         self.assertEqual(cfg.get_num_time_steps(), 5)
 
-# FIX FOR DE-SIM CHANGES
-@unittest.skip('Not yet implemented')
+
 class TestSedMlImportExport(unittest.TestCase):
+
+    def setUp(self):
+        self.de_simulation_config = SimulationConfig(time_max=10)
 
     def test_sedml_import_export(self):
         """ Test SED-ML import/export of simulation configurations """
@@ -233,7 +234,8 @@ class TestSedMlImportExport(unittest.TestCase):
             ], 4,
             ), start_time=0, end_time=10),
         ]
-        cfg = WCSimulationConfig(self.de_simulation_config, random_seed=random_seed, ode_time_step=ode_time_step, changes=changes,
+        cfg = WCSimulationConfig(self.de_simulation_config, random_seed=random_seed,
+                                 ode_time_step=ode_time_step, changes=changes,
                                  perturbations=perturbations)
 
         # generate temporary file
@@ -272,8 +274,6 @@ class TestSedMlImportExport(unittest.TestCase):
         SedMlWarning('msg')
 
 
-# FIX FOR DE-SIM CHANGES
-@unittest.skip('Not yet implemented')
 class TestSedMlValidation(unittest.TestCase):
 
     def setUp(self):

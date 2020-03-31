@@ -1,6 +1,7 @@
 callbacks
 cement >= 3.0.0
 cobra
+h5py
 matplotlib
 numpy
 pandas

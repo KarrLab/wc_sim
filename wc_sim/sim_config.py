@@ -22,12 +22,12 @@ import warnings
 
 from de_sim.simulation_config import SimulationConfig
 from wc_sim.multialgorithm_errors import MultialgorithmError
-from wc_utils.util.misc import obj_to_str, ValidatedDataClass
+from wc_utils.util.misc import EnhancedDataClass
 import wc_lang.transform
 
 
 @dataclass
-class WCSimulationConfig(ValidatedDataClass):
+class WCSimulationConfig(EnhancedDataClass):
     """ Whole-cell simulation configuration
 
     - A simulation configuration for DE-Sim
@@ -42,7 +42,8 @@ class WCSimulationConfig(ValidatedDataClass):
       time points or time ranges
 
     Attributes:
-        de_simulation_config (:obj:`SimulationConfig`): a simulation configuration for DE-Sim
+        de_simulation_config (:obj:`SimulationConfig`): a simulation configuration for DE-Sim, needed
+            for validation
         random_seed (:obj:`int`): random number generator seed
         ode_time_step (:obj:`float`, optional): ODE submodel timestep (s)
         dfba_time_step (:obj:`float`, optional): dFBA submodel timestep (s)
@@ -390,9 +391,12 @@ class SedMl(object):
                 opt_config['random_seed'] = int(opt_config['random_seed'])
 
         """ build simulation configuration object """
-        cfg = WCSimulationConfig(time_init=time_init, time_max=time_max, ode_time_step=ode_time_step,
-                               changes=changes, perturbations=perturbations,
-                               **opt_config)
+        de_simulation_config = SimulationConfig(time_max=time_max, time_init=time_init)
+        cfg = WCSimulationConfig(de_simulation_config=de_simulation_config,
+                                 ode_time_step=ode_time_step,
+                                 changes=changes, perturbations=perturbations,
+                                 **opt_config)
+
         return cfg
 
     @staticmethod
@@ -435,10 +439,11 @@ class SedMl(object):
 
         # simulation (maximum time, step size)
         sim = cfg_ml.createUniformTimeCourse()
-        sim.setInitialTime(cfg.time_init)
-        sim.setOutputStartTime(cfg.time_init)
-        sim.setOutputEndTime(cfg.time_max)
-        sim.setNumberOfPoints(int((cfg.time_max - cfg.time_init) / cfg.ode_time_step))
+        sim.setInitialTime(cfg.de_simulation_config.time_init)
+        sim.setOutputStartTime(cfg.de_simulation_config.time_init)
+        sim.setOutputEndTime(cfg.de_simulation_config.time_max)
+        duration = cfg.de_simulation_config.time_max - cfg.de_simulation_config.time_init
+        sim.setNumberOfPoints(int(duration / cfg.ode_time_step))
 
         # simulation algorithm
         alg = sim.createAlgorithm()

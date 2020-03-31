@@ -7,7 +7,6 @@
 """
 
 from datetime import datetime
-from pprint import pprint
 from scipy.constants import Avogadro
 import copy
 import cProfile
