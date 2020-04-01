@@ -28,8 +28,16 @@ class TestWCSimulationMetadata(unittest.TestCase):
         self.wc_sim_config = WCSimulationConfig(self.de_simulation_config)
         self.wc_simulation_metadata = WCSimulationMetadata(self.wc_sim_config)
 
+        # fixtures to test obtaining git metadata
+        self.test_repo_name = 'test_wc_sim_metadata'
+        self.github_repo = GitHubRepoForTests(self.test_repo_name)
+        self.repo_dir = tempfile.mkdtemp(dir=self.tempdir)
+        self.github_repo.make_test_repo(self.repo_dir)
+
     def tearDown(self):
         shutil.rmtree(self.tempdir)
+        # delete the repo
+        self.github_repo.delete_test_repo()
 
     def test_init(self):
         self.assertEqual(self.wc_simulation_metadata.wc_sim_config.de_simulation_config.time_max, self.time_max)
@@ -37,16 +45,25 @@ class TestWCSimulationMetadata(unittest.TestCase):
         with self.assertRaisesRegex(MultialgorithmError, 'must be a RepositoryMetadata'):
             self.wc_simulation_metadata.wc_simulator_repo = 1
 
-    def test_set_wc_model_repo(self):
-        test_repo_name = 'test_wc_sim_metadata'
-        github_repo = GitHubRepoForTests(test_repo_name)
-        repo = github_repo.make_test_repo(self.tempdir)
-
+    def test__get_repo_metadata(self):
         # test with model path in a git repo
-        file_in_git_repo = os.path.join(self.tempdir, 'README.md')
+        file_in_git_repo = os.path.join(self.repo_dir, 'README.md')
+        wc_simulation_metadata = WCSimulationMetadata(self.wc_sim_config)
+        metadata = wc_simulation_metadata._get_repo_metadata(file_in_git_repo)
+        self.assertIn(self.test_repo_name, metadata.url)
+
+        # test with model path not in a git repo
+        with warnings.catch_warnings(record=True) as w:
+            rv = wc_simulation_metadata._get_repo_metadata('/')
+            self.assertIn("Cannot obtain metadata for git repo containing model", str(w[-1].message))
+        self.assertEqual(rv, None)
+
+    def test_set_wc_model_repo(self):
+        # test with model path in a git repo
+        file_in_git_repo = os.path.join(self.repo_dir, 'README.md')
         wc_simulation_metadata = WCSimulationMetadata(self.wc_sim_config)
         wc_simulation_metadata.set_wc_model_repo(file_in_git_repo)
-        self.assertIn(test_repo_name, wc_simulation_metadata.wc_model_repo.url)
+        self.assertIn(self.test_repo_name, wc_simulation_metadata.wc_model_repo.url)
 
         # test with model path not in a git repo
         wc_simulation_metadata = WCSimulationMetadata(self.wc_sim_config)
@@ -54,9 +71,6 @@ class TestWCSimulationMetadata(unittest.TestCase):
             wc_simulation_metadata.set_wc_model_repo('/')
             self.assertIn("Cannot obtain metadata for git repo containing model", str(w[-1].message))
         self.assertEqual(wc_simulation_metadata.wc_model_repo, None)
-
-        # delete the repo
-        github_repo.delete_test_repo()
 
     def test_get_pathname(self):
         self.assertEqual(os.path.basename(WCSimulationMetadata.get_pathname(self.tempdir)),

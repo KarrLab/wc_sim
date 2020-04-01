@@ -40,25 +40,38 @@ class WCSimulationMetadata(EnhancedDataClass):
             raise MultialgorithmError(e)
 
     def __post_init__(self):
-        self.wc_simulator_repo, _ = get_repo_metadata(path=__file__,
-                                                      repo_type=RepoMetadataCollectionType.SCHEMA_REPO)
+        self.wc_simulator_repo = self._get_repo_metadata(__file__)
+
+    def _get_repo_metadata(self, pathname):
+        """ Get metadata about the repo that contains the file at `pathname`
+
+        Args:
+            pathname (:obj:`str`): path to a file in a Git repository
+
+        Warns:
+            :obj:`MultialgorithmWarning`: if obj:`pathname` is not a path in a Git repository,
+                or if the repository is not suitable for gathering metadata
+
+        Returns:
+            :obj:`RepositoryMetadata`: metadata about the repo that contains the file at `pathname`;
+                returns :obj:`None` if a warning is issued
+        """
+        try:
+            repo_metadata, _ = get_repo_metadata(path=pathname,
+                                                 repo_type=RepoMetadataCollectionType.SCHEMA_REPO)
+            return repo_metadata
+
+        except ValueError as e:
+            warnings.warn(f"Cannot obtain metadata for git repo containing model at '{pathname}': {e}",
+                          MultialgorithmWarning)
 
     def set_wc_model_repo(self, model_path):
         """ Set the value of `wc_model_repo` if it can be obtained from `model_path`
 
         Args:
             model_path (:obj:`str`): path to a file in the model's Git repository
-
-        Warns:
-            :obj:`MultialgorithmWarning`: if obj:`path` is not a path in a Git repository,
-                or if the repository is not suitable for gathering metadata
         """
-        try:
-            self.wc_model_repo, _ = get_repo_metadata(path=model_path,
-                                                      repo_type=RepoMetadataCollectionType.SCHEMA_REPO)
-        except ValueError as e:
-            warnings.warn(f"Cannot obtain metadata for git repo containing model at '{model_path}': {e}",
-                          MultialgorithmWarning)
+        self.wc_model_repo = self._get_repo_metadata(model_path)
 
     @staticmethod
     def get_pathname(dirname):
