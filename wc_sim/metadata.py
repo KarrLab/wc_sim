@@ -8,11 +8,13 @@
 
 import os
 from dataclasses import dataclass
+import warnings
 
 from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_sim.sim_config import WCSimulationConfig
 from wc_utils.util.git import get_repo_metadata, RepoMetadataCollectionType, RepositoryMetadata
 from wc_utils.util.misc import EnhancedDataClass
+from wc_sim.multialgorithm_errors import MultialgorithmWarning
 
 
 @dataclass
@@ -41,20 +43,22 @@ class WCSimulationMetadata(EnhancedDataClass):
         self.wc_simulator_repo, _ = get_repo_metadata(path=__file__,
                                                       repo_type=RepoMetadataCollectionType.SCHEMA_REPO)
 
-    # FIX FOR DE-SIM CHANGES
-    # todo: decide how to test this
     def set_wc_model_repo(self, model_path):
-        """ Get metadata about a Git repository
+        """ Set the value of `wc_model_repo` if it can be obtained from `model_path`
 
         Args:
             model_path (:obj:`str`): path to a file in the model's Git repository
 
-        Raises:
-            :obj:`ValueError`: if obj:`path` is not a path in a Git repository,
+        Warns:
+            :obj:`MultialgorithmWarning`: if obj:`path` is not a path in a Git repository,
                 or if the repository is not suitable for gathering metadata
         """
-        self.wc_model_repo, _ = get_repo_metadata(path=model_path,
-                                                  repo_type=RepoMetadataCollectionType.SCHEMA_REPO)
+        try:
+            self.wc_model_repo, _ = get_repo_metadata(path=model_path,
+                                                      repo_type=RepoMetadataCollectionType.SCHEMA_REPO)
+        except ValueError as e:
+            warnings.warn(f"Cannot obtain metadata for git repo containing model at '{model_path}': {e}",
+                          MultialgorithmWarning)
 
     @staticmethod
     def get_pathname(dirname):
