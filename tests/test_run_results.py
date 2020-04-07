@@ -145,6 +145,7 @@ class TestRunResults(unittest.TestCase):
                                      self.run_results_1_cmpt.get('populations')['spec_type_0[compt_1]'][0.0] /
                                         (self.run_results_1_cmpt.get_volumes('compt_1')[0.0] * Avogadro),
                                      rel_tol=1e-9))
+
         concentrations_in_c = self.run_results_dyn_aggr.get_concentrations('c')
         self.assertTrue(concentrations_in_c.columns.values, ['A[c]'])
 

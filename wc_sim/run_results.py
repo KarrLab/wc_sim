@@ -223,7 +223,7 @@ class RunResults(object):
         """ Get a compartment's aggregate state properties or property at checkpoint times
 
         Args:
-            compartment_id (:obj:`str`): the compartment's properties or property to return
+            compartment_id (:obj:`str`): the id of the compartment
             property (:obj:`str`, optional): if provided, the property to return; otherwise,
                 return all properties
 
@@ -348,7 +348,7 @@ class RunResults(object):
         properties = list(aggregate_state['compartments'][compartments[0]].keys())
         compartment_property_tuples = list(zip(compartments, properties))
         columns = pandas.MultiIndex.from_tuples(compartment_property_tuples, names=['compartment', 'property'])
-        aggregate_states_df = pandas.DataFrame(index=checkpoints, columns=columns)
+        aggregate_states_df = pandas.DataFrame(index=checkpoints, columns=columns, dtype=numpy.float64)
         random_states_s = pandas.Series(index=checkpoints)
 
         # load these pandas objects
