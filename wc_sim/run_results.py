@@ -336,13 +336,13 @@ class RunResults(object):
         species_pop, observables, functions, aggregate_state = self.get_state_components(first_checkpoint.state)
 
         species_ids = species_pop.keys()
-        population_df = pandas.DataFrame(index=checkpoints, columns=species_ids, dtype=numpy.float64)
+        population_make_df = MakeDataFrame(checkpoints, species_ids)
 
         observable_ids = observables.keys()
-        observables_df = pandas.DataFrame(index=checkpoints, columns=observable_ids, dtype=numpy.float64)
+        observables_make_df = MakeDataFrame(checkpoints, observable_ids)
 
         function_ids = functions.keys()
-        functions_df = pandas.DataFrame(index=checkpoints, columns=function_ids, dtype=numpy.float64)
+        function_make_df = MakeDataFrame(checkpoints, function_ids)
 
         compartments = list(aggregate_state['compartments'].keys())
         properties = list(aggregate_state['compartments'][compartments[0]].keys())
@@ -357,14 +357,11 @@ class RunResults(object):
             checkpoint = Checkpoint.get_checkpoint(self.results_dir, time=time)
             species_populations, observables, functions, aggregate_state = self.get_state_components(checkpoint.state)
 
-            for species_id, population in species_populations.items():
-                population_df.loc[time, species_id] = population
+            population_make_df.add(time, species_populations)
 
-            for observable_id, observable in observables.items():
-                observables_df.loc[time, observable_id] = observable
+            observables_make_df.add(time, observables)
 
-            for function_id, function in functions.items():
-                functions_df.loc[time, function_id] = function
+            function_make_df.add(time, functions)
 
             compartment_states = aggregate_state['compartments']
             for compartment_id, agg_states in compartment_states.items():
@@ -373,6 +370,47 @@ class RunResults(object):
 
             random_states_s[time] = pickle.dumps(checkpoint.random_state)
 
+        population_df = population_make_df.finish()
+        observables_df = observables_make_df.finish()
+        functions_df = function_make_df.finish()
         return (population_df, observables_df, functions_df, aggregate_states_df, random_states_s)
+
+
+class MakeDataFrame(object):
+    """ Efficiently make a Pandas dataframe that contains a 2D numpy.ndarray
+    """
+
+    def __init__(self, times, columns):
+        """ Initialize
+
+        Args:
+            times (:obj:`list`): the times of all checkpoints, in order
+            columns (:obj:`list`): the column names of the Pandas dataframe, in order
+        """
+        self.times = times
+        self.times_index = {time: i for i, time in enumerate(times)}
+        self.columns = columns
+        self.column_index = {column: i for i, column in enumerate(columns)}
+        self.ndarray = numpy.zeros((len(times), len(columns)), dtype=numpy.float64)
+
+    def add(self, time, iterator):
+        """ Add data from another checkpoint
+
+        Args:
+            time (:obj:`float`): time of the checkpoint
+            iterator (:obj:`dict`): `iterator.items()` iterates over (column, value) pairs for the data
+                at time `time`
+        """
+        for column, value in iterator.items():
+            self.ndarray[self.times_index[time]][self.column_index[column]] = value
+
+    def finish(self):
+        """ Efficiently make a Pandas dataframe from the `NumPy` array loaded by `add` calls
+
+        Returns:
+            :obj:`pandas.DataFrame`: a dataframe
+        """
+        return pandas.DataFrame(data=self.ndarray, index=self.times, columns=self.columns, dtype=numpy.float64)
+
 
 RunResults._prepare_computed_components()

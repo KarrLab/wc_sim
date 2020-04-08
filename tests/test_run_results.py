@@ -8,19 +8,26 @@
 
 from capturer import CaptureOutput
 from scipy.constants import Avogadro
+import cProfile
 import h5py
 import math
 import numpy
 import os
 import pandas
+import pstats
 import shutil
 import tempfile
 import timeit
 import unittest
 
+from de_sim.simulation_config import SimulationConfig
+from wc_lang import Species
+from wc_sim.metadata import WCSimulationMetadata
 from wc_sim.multialgorithm_errors import MultialgorithmError
+from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
+from wc_sim.run_results import RunResults, MakeDataFrame
+from wc_sim.sim_config import WCSimulationConfig
 from wc_sim.simulation import Simulation
-from wc_sim.run_results import RunResults
 from wc_sim.testing.make_models import MakeModel
 from wc_sim.testing.utils import read_model_for_test
 
@@ -210,7 +217,7 @@ class TestRunResults(unittest.TestCase):
         from wc_sim.run_results import RunResults
 
         # remove HDF5_FILENAME, so cost of making it can be measured
-        os.remove(os.path.join(self.results_dir_1_cmpt, RunResults.HDF5_FILENAME))
+        os.remove(self.run_results_1_cmpt._hdf_file())
 
         print()
         iterations = 5
@@ -229,3 +236,90 @@ class TestRunResults(unittest.TestCase):
         total_time = timeit.timeit('run_results._load_hdf_file()', globals=locals(), number=iterations)
         mean_time = total_time / iterations
         print(f"mean time of {iterations} runs of '_load_hdf_file()': {mean_time:.2g} (s)")
+
+
+class TestMakeDataFrame(unittest.TestCase):
+
+    def test(self):
+        n_times = 1000
+        times = numpy.arange(n_times)
+        n_cols = 1000
+        cols = [f"col_{i}" for i in range(n_cols)]
+        array = 10. * numpy.random.rand(n_times, n_cols)
+        array = numpy.rint(array)
+
+        make_df = MakeDataFrame(times, cols)
+        for row_num, time in enumerate(times):
+            iterator = dict(zip(cols, array[row_num][:]))
+            make_df.add(time, iterator)
+
+        self.assertTrue(numpy.array_equal(array, make_df.ndarray))
+        df = make_df.finish()
+        self.assertTrue(numpy.array_equal(df.values, array))
+        self.assertEqual(list(df.index), list(times))
+        self.assertEqual(list(df.columns), list(cols))
+
+
+class TestProfileRunResults(unittest.TestCase):
+
+    def setUp(self):
+        self.temp_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.temp_dir)
+
+    def run_performance_profile(self, num_species, species_pop, species_mw, num_checkpoints):
+        """ Run a performance profile of `RunResults()`
+
+        Args:
+            num_species (:obj:`int`): number species in the model
+            species_pop (:obj:`int`): default species population
+            species_mw (:obj:`int`): default species molecular weight
+            num_checkpoints (:obj:`int`): number checkpoints in the simulation
+        """
+        # make RunResults local
+        from wc_sim.run_results import RunResults
+
+        print()
+        print(f"# species: {num_species}\n# checkpoints: {num_checkpoints}")
+        run_results_dir = os.path.join(tempfile.mkdtemp(dir=self.temp_dir), 'run_results_dir')
+        os.mkdir(run_results_dir)
+
+        de_simulation_config = SimulationConfig(time_max=num_checkpoints-1, output_dir=run_results_dir)
+        de_simulation_config.validate()
+        wc_sim_config = WCSimulationConfig(de_simulation_config, checkpoint_period=1)
+        wc_sim_config.validate()
+
+        model = MakeModel.make_test_model('1 species, 1 reaction')
+        multialgorithm_simulation = MultialgorithmSimulation(model, wc_sim_config)
+        simulation_engine, _ = multialgorithm_simulation.build_simulation()
+        # add remaining additional species
+        comp_id = model.compartments[0].id
+        local_species_population = multialgorithm_simulation.local_species_population
+        for i in range(num_species-1):
+            new_species_id = Species._gen_id(f"extra_species_{i}", comp_id)
+            # todo: change init_cell_state_species so it allows molecular weight
+            local_species_population.init_cell_state_species(new_species_id,
+                                                             species_pop)
+            local_species_population._molecular_weights[new_species_id] = species_mw
+        wc_simulation_metadata = WCSimulationMetadata(wc_sim_config)
+        simulation_engine.initialize()
+        num_events = simulation_engine.simulate(sim_config=de_simulation_config)
+        print(simulation_engine.provide_event_counts())
+        WCSimulationMetadata.write_dataclass(wc_simulation_metadata, run_results_dir)
+
+        out_file = os.path.join(tempfile.mkdtemp(dir=self.temp_dir), 'profile.out')
+        # profile RunResults__init__() & RunResults.convert_checkpoints()
+        cProfile.runctx('RunResults(run_results_dir)', locals(), {}, filename=out_file)
+        profile = pstats.Stats(out_file)
+        print(f"Profile for RunResults() of {num_species} species and {num_checkpoints} checkpoints")
+        profile.sort_stats('cumulative').print_stats(20)
+
+    def test_performance_profile(self):
+
+        # test arbitrarily many species and checkpoints
+        MAX_SPECIES = 1000
+        MAX_CHECKPOINTS = 100
+        DEFAULT_POPULATION = 1000
+        DEFAULT_MOLECULAR_WEIGHT = 100
+        self.run_performance_profile(MAX_SPECIES, DEFAULT_POPULATION, DEFAULT_MOLECULAR_WEIGHT, MAX_CHECKPOINTS)

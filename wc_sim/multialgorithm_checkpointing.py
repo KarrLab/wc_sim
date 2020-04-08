@@ -40,6 +40,9 @@ class AccessState(AccessStateObjectInterface):
     def get_checkpoint_state(self, time):
         """ Obtain a checkpoint of the biological state
 
+        Args:
+            time (:obj:`float`): the simulation time of the checkpoing being created
+
         Returns:
             :obj:`dict` of `dict`: dictionaries containing the simulation's state: `population` has
                 the simulation's species populations, `aggregate_state` contains its aggregrate compartment

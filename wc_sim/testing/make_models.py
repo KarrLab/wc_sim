@@ -281,7 +281,7 @@ class MakeModel(object):
                 between compartments; to be implemented
             transform_prep_and_check (:obj:`bool`, optional): whether to transform, prepare and check
                 the model
-            submodel_framework (:obj:`str`): the integration fraemwork for submodels; default is
+            submodel_framework (:obj:`str`, optional): the integration fraemwork for submodels; default is
                 `WC:stochastic_simulation_algorithm`
 
         Returns:
