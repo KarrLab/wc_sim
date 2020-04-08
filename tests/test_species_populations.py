@@ -297,23 +297,26 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
     def test_init(self):
         self.assertEqual(self.local_species_pop_no_init_pop_slope._all_species(), set(self.species_ids))
         an_LSP = LocalSpeciesPopulation('test', {}, {}, retain_history=False)
-        an_LSP.init_cell_state_species('s1', 2)
-        self.assertEqual(an_LSP.read(0, {'s1'}), {'s1': 2})
+        s1_id = 's1'
+        mw = 1.5
+        an_LSP.init_cell_state_species(s1_id, 2, mw)
+        self.assertEqual(an_LSP.read(0, {s1_id}), {s1_id: 2})
+        self.assertEqual(an_LSP._molecular_weights[s1_id], mw)
 
         # test initial_population_slope == 0
         an_LSP_2 = LocalSpeciesPopulation('test', {}, {}, random_state=RandomStateManager.instance(),
                                           retain_history=False)
         init_pop = 3
-        an_LSP_2.init_cell_state_species('s1', init_pop, initial_population_slope=0)
+        an_LSP_2.init_cell_state_species(s1_id, init_pop, mw, initial_population_slope=0)
         time = 1
         slope = 2
-        an_LSP_2.adjust_continuously(time, {'s1': slope})
+        an_LSP_2.adjust_continuously(time, {s1_id: slope})
         time_delta = 1
-        self.assertEqual(an_LSP_2.read(time + time_delta, {'s1'}), {'s1': init_pop + time_delta * slope})
+        self.assertEqual(an_LSP_2.read(time + time_delta, {s1_id}), {s1_id: init_pop + time_delta * slope})
 
         with self.assertRaisesRegex(SpeciesPopulationError,
-                                    "species_id 's1' already stored by this LocalSpeciesPopulation"):
-            an_LSP.init_cell_state_species('s1', 2)
+                                    f"species_id '{s1_id}' already stored by this LocalSpeciesPopulation"):
+            an_LSP.init_cell_state_species(s1_id, 2, mw)
 
         with self.assertRaisesRegex(SpeciesPopulationError, "history not recorded"):
             an_LSP.report_history()
@@ -324,7 +327,7 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         with self.assertRaisesRegex(SpeciesPopulationError,
                                     "Cannot init LocalSpeciesPopulation .* species are missing weights"):
             LocalSpeciesPopulation('test',
-                                   {'s1': 2, 's2': 1}, {}, random_state=RandomStateManager.instance())
+                                   {s1_id: 2, 's2': 1}, {}, random_state=RandomStateManager.instance())
 
     def test_optional_species_argument(self):
         self.assertEqual(self.local_species_pop_no_init_pop_slope.read(0), self.init_populations)

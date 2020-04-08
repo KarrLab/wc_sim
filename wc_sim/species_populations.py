@@ -565,6 +565,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self.name = name
         self.time = initial_time
         self._population = {}
+        self._molecular_weights = {}
         self.last_access_time = {}
         self.random_state = random_state
         self._concentrations_api = False
@@ -572,20 +573,21 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         if retain_history:
             self._initialize_history()
 
-        for species_id in initial_population:
-            if initial_population_slopes is not None and species_id in initial_population_slopes:
-                self.init_cell_state_species(species_id, initial_population[species_id],
-                                             initial_population_slopes[species_id])
-            else:
-                self.init_cell_state_species(species_id, initial_population[species_id])
-
         unknown_weights = set(initial_population.keys()) - set(molecular_weights.keys())
         if unknown_weights:
             # raise exception if any species are missing weights
             raise SpeciesPopulationError("Cannot init LocalSpeciesPopulation because some species "
                                          "are missing weights: {}".format(
                                              ', '.join([f"'{str(uw)}'" for uw in unknown_weights])))
-        self._molecular_weights = molecular_weights
+
+        for species_id in initial_population:
+            if initial_population_slopes is not None and species_id in initial_population_slopes:
+                self.init_cell_state_species(species_id, initial_population[species_id],
+                                             molecular_weights[species_id],
+                                             initial_population_slopes[species_id])
+            else:
+                self.init_cell_state_species(species_id, initial_population[species_id],
+                                             molecular_weights[species_id])
 
         # log initialization data
         self.fast_debug_file_logger = FastLogger(debug_logs.get_log('wc.debug.file'), 'debug')
@@ -594,7 +596,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self.fast_debug_file_logger.fast_log("initial_population_slopes: {}".format(
                         DictUtil.to_string_sorted_by_key(initial_population_slopes)), sim_time=self.time)
 
-    def init_cell_state_species(self, species_id, population, initial_population_slope=None):
+    def init_cell_state_species(self, species_id, population, molecular_weight, initial_population_slope=None):
         """ Initialize a species with the given population and population slope
 
         Add a species to the cell state. The species' population is set at the current time.
@@ -602,6 +604,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         Args:
             species_id (:obj:`str`): the species' globally unique identifier
             population (:obj:`float`): initial population of the species
+            molecular_weight (:obj:`float`): molecular weight of the species
             initial_population_slope (:obj:`float`, optional): an initial rate of change for the species
 
         Raises:
@@ -613,6 +616,8 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         modeled_continuously = initial_population_slope is not None
         self._population[species_id] = DynamicSpeciesState(species_id, self.random_state, population,
                                                            modeled_continuously=modeled_continuously)
+        self._molecular_weights[species_id] = molecular_weight
+
         if modeled_continuously:
             self._population[species_id].continuous_adjustment(self.time, initial_population_slope)
         self.last_access_time[species_id] = self.time

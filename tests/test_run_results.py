@@ -298,10 +298,9 @@ class TestProfileRunResults(unittest.TestCase):
         local_species_population = multialgorithm_simulation.local_species_population
         for i in range(num_species-1):
             new_species_id = Species._gen_id(f"extra_species_{i}", comp_id)
-            # todo: change init_cell_state_species so it allows molecular weight
             local_species_population.init_cell_state_species(new_species_id,
-                                                             species_pop)
-            local_species_population._molecular_weights[new_species_id] = species_mw
+                                                             species_pop,
+                                                             species_mw)
         wc_simulation_metadata = WCSimulationMetadata(wc_sim_config)
         simulation_engine.initialize()
         num_events = simulation_engine.simulate(sim_config=de_simulation_config)
