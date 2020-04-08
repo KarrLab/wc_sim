@@ -193,6 +193,26 @@ class TestWCSimulationConfig(unittest.TestCase):
         self.assertEqual(cfg.get_num_time_steps(), 5)
 
 
+class TestPerturbation(unittest.TestCase):
+
+    def test_perturbation(self):
+        change = Change([['species', {'id': 'species_1[compartment_1]'}],
+                          'distribution_init_concentration',
+                          'mean',
+                         ], 4)
+        perturbation_0 = Perturbation(change, start_time=2, end_time=10)
+        perturbation_1 = Perturbation(change, start_time=0, end_time=10)
+        perturbation_2 = Perturbation(change, start_time=0, end_time=float('nan'))
+        perturbation_3 = Perturbation(change, start_time=0, end_time=11)
+        self.assertNotEqual(perturbation_1, 7)
+        self.assertNotEqual(perturbation_0, perturbation_1)
+        self.assertNotEqual(perturbation_1, perturbation_2)
+        self.assertNotEqual(perturbation_2, perturbation_1)
+        self.assertNotEqual(perturbation_1, perturbation_3)
+        self.assertEqual(perturbation_1, perturbation_1)
+        self.assertEqual(perturbation_2, perturbation_2)
+
+
 class TestSedMlImportExport(unittest.TestCase):
 
     def setUp(self):
