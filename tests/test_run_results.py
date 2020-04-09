@@ -318,7 +318,7 @@ class TestProfileRunResults(unittest.TestCase):
 
         # test arbitrarily many species and checkpoints
         MAX_SPECIES = 1000
-        MAX_CHECKPOINTS = 100
+        MAX_CHECKPOINTS = 300
         DEFAULT_POPULATION = 1000
         DEFAULT_MOLECULAR_WEIGHT = 100
         self.run_performance_profile(MAX_SPECIES, DEFAULT_POPULATION, DEFAULT_MOLECULAR_WEIGHT, MAX_CHECKPOINTS)

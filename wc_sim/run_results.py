@@ -15,7 +15,7 @@ import os
 import pandas
 import pickle
 
-from de_sim.checkpoint import Checkpoint
+from de_sim.checkpoint import Checkpoint, AccessCheckpoints
 from de_sim.simulation_metadata import SimulationMetadata
 from wc_lang import Species
 from wc_sim.metadata import WCSimulationMetadata
@@ -331,8 +331,9 @@ class RunResults(object):
                 population_df, observables_df, functions_df, aggregate_states_df, random_states_s
         """
         # create pandas objects for species populations, aggregate states and simulation random states
-        checkpoints = Checkpoint.list_checkpoints(self.results_dir)
-        first_checkpoint = Checkpoint.get_checkpoint(self.results_dir, time=0)
+        access_checkpoints = AccessCheckpoints(self.results_dir)
+        checkpoints = access_checkpoints.list_checkpoints()
+        first_checkpoint = access_checkpoints.get_checkpoint(time=checkpoints[0])
         species_pop, observables, functions, aggregate_state = self.get_state_components(first_checkpoint.state)
 
         species_ids = species_pop.keys()
@@ -352,9 +353,9 @@ class RunResults(object):
         random_states_s = pandas.Series(index=checkpoints)
 
         # load these pandas objects
-        for time in Checkpoint.list_checkpoints(self.results_dir):
+        for time in access_checkpoints.list_checkpoints():
 
-            checkpoint = Checkpoint.get_checkpoint(self.results_dir, time=time)
+            checkpoint = access_checkpoints.get_checkpoint(time=time)
             species_populations, observables, functions, aggregate_state = self.get_state_components(checkpoint.state)
 
             population_make_df.add(time, species_populations)

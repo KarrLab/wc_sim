@@ -15,7 +15,7 @@ import tempfile
 import time
 import unittest
 
-from de_sim.checkpoint import Checkpoint
+from de_sim.checkpoint import Checkpoint, AccessCheckpoints
 from de_sim.simulation_engine import SimulationEngine
 from wc_sim import sim_config
 from wc_sim.multialgorithm_errors import MultialgorithmError
@@ -80,8 +80,9 @@ class TestSimulation(unittest.TestCase):
                                                                          checkpoint_period=1)
 
         # check time, and simulation config in checkpoints
-        for time in Checkpoint.list_checkpoints(results_dir):
-            ckpt = Checkpoint.get_checkpoint(results_dir, time=time)
+        access_checkpoints = AccessCheckpoints(results_dir)
+        for time in access_checkpoints.list_checkpoints():
+            ckpt = access_checkpoints.get_checkpoint(time=time)
             self.assertEqual(time, ckpt.time)
             self.assertTrue(ckpt.random_state != None)
 
