@@ -10,6 +10,7 @@ from capturer import CaptureOutput
 from copy import copy
 import os
 import pandas
+import pstats
 import shutil
 import tempfile
 import time
@@ -75,7 +76,7 @@ class TestSimulation(unittest.TestCase):
 
     def test_run(self):
         with CaptureOutput(relay=False):
-            num_events, results_dir = Simulation(TOY_MODEL_FILENAME).run(time_max=5,
+            num_events, results_dir = Simulation(TOY_MODEL_FILENAME).run(time_max=2,
                                                                          results_dir=self.results_dir,
                                                                          checkpoint_period=1)
 
@@ -85,6 +86,25 @@ class TestSimulation(unittest.TestCase):
             ckpt = access_checkpoints.get_checkpoint(time=time)
             self.assertEqual(time, ckpt.time)
             self.assertTrue(ckpt.random_state != None)
+
+        # test performance profiling
+        with CaptureOutput(relay=False) as capturer:
+            stats, _ = Simulation(TOY_MODEL_FILENAME).run(time_max=2,
+                                                       results_dir=tempfile.mkdtemp(dir=self.test_dir),
+                                                       checkpoint_period=1,
+                                                       profile=True,
+                                                       verbose=False)
+            expected_profile_text =['function calls', 'filename:lineno(function)']
+            for text in expected_profile_text:
+                self.assertIn(text, capturer.get_text())
+            self.assertTrue(isinstance(stats, pstats.Stats))
+
+        with self.assertRaises(MultialgorithmError):
+            Simulation(TOY_MODEL_FILENAME).run(time_max=2,
+                                               results_dir=tempfile.mkdtemp(dir=self.test_dir),
+                                               checkpoint_period=1,
+                                               profile=True,
+                                               verbose=True)
 
         with self.assertRaisesRegex(MultialgorithmError, 'cannot be simulated .* it contains no submodels'):
             Simulation(TOY_MODEL_FILENAME).run(time_max=5,

@@ -23,9 +23,10 @@ class WCSimulationMetadata(EnhancedDataClass):
 
     Attributes:
         wc_sim_config (:obj:`WCSimulationConfig`): a Whole-cell simulation configuration
-        wc_simulator_repo (:obj:`RepositoryMetadata`): Git repository repo metadata about the WC simulator
-        wc_model_repo (:obj:`RepositoryMetadata`): Git repository repo metadata about the WC repo storing
-            the WC model being simulated
+        wc_simulator_repo (:obj:`RepositoryMetadata`, optional): Git repository repo metadata about
+            the WC simulator
+        wc_model_repo (:obj:`RepositoryMetadata`, optional): Git repository repo metadata about
+            the WC repo storing the WC model being simulated
     """
 
     wc_sim_config: WCSimulationConfig

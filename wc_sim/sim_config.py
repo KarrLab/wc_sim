@@ -35,6 +35,7 @@ class WCSimulationConfig(EnhancedDataClass):
     - ODE and dFBA timesteps
     - Checkpoint period
     - Submodels to skip
+    - Whether to produce verbose output
     - Model changes: Instructions to change parameter values and add or remove model
       components. These instructions are executed before the initial conditions are
       calculated
@@ -50,6 +51,7 @@ class WCSimulationConfig(EnhancedDataClass):
         checkpoint_period (:obj:`float`, optional): checkpointing timestep (s)
         submodels_to_skip (:obj:`list` of :obj:`str`, optional): submodels that should not be run,
             identified by their ids
+        verbose (:obj:`bool`, optional): whether to produce verbose output
         changes (:obj:`list`, optional): list of desired model changes (e.g. modified parameter values,
             additional species/reactions, removed species/reactions)
         perturbations (:obj:`list`, optional): list of desired simulated perturbations (e.g. set state
@@ -62,6 +64,7 @@ class WCSimulationConfig(EnhancedDataClass):
     dfba_time_step: float = None
     checkpoint_period: float = None
     submodels_to_skip: list = None
+    verbose: bool = False
     changes: list = None
     perturbations: list = None
 
@@ -128,6 +131,10 @@ class WCSimulationConfig(EnhancedDataClass):
         self.check_periodic_timestep('ode_time_step')
         self.check_periodic_timestep('dfba_time_step')
         self.check_periodic_timestep('checkpoint_period')
+
+        # verbose and profile should not both be set
+        if self.verbose and de_sim_config.profile:
+            raise MultialgorithmError(f"verbose and profile cannot both be true")
 
     def check_periodic_timestep(self, periodic_attr):
         """ Check that simulation duration is an integral multiple of a periodic activity's timestep

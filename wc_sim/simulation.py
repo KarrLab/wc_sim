@@ -89,8 +89,8 @@ class Simulation(object):
             raise MultialgorithmError(indent_forest(['The model is invalid:', [errors]]))
 
     def run(self, time_max, results_dir=None, progress_bar=True, checkpoint_period=None,
-            seed=None, ode_time_step=1, dfba_time_step=1, submodels_to_skip=None, verbose=True,
-            options=None):
+            seed=None, ode_time_step=1, dfba_time_step=1, profile=False, submodels_to_skip=None,
+            verbose=True, options=None):
         """ Run one simulation
 
         Args:
@@ -102,6 +102,8 @@ class Simulation(object):
             checkpoint_period (:obj:`float`, optional): the period between simulation state checkpoints (sec)
             ode_time_step (:obj:`float`, optional): time step length of ODE submodel (sec)
             dfba_time_step (:obj:`float`, optional): time step length of dFBA submodel (sec)
+            profile (:obj:`bool`, optional): whether to output a profile of the simulation's performance
+                created by a Python profiler
             seed (:obj:`object`, optional): a seed for the simulation's `numpy.random.RandomState`;
                 if provided, `seed` will reseed the simulator's PRNG
             submodels_to_skip (:obj:`list` of :obj:`str`, optional): submodels that should not be run,
@@ -121,7 +123,8 @@ class Simulation(object):
 
         # create simulation configurations
         # create and validate DE sim configuration
-        self.de_sim_config = SimulationConfig(time_max, output_dir=results_dir, progress=progress_bar)
+        self.de_sim_config = SimulationConfig(time_max, output_dir=results_dir, progress=progress_bar,
+                                              profile=profile)
         self.de_sim_config.validate()
 
         # create and validate WC configuration
@@ -130,7 +133,8 @@ class Simulation(object):
                                                 ode_time_step=ode_time_step,
                                                 dfba_time_step=dfba_time_step,
                                                 checkpoint_period=checkpoint_period,
-                                                submodels_to_skip=submodels_to_skip)
+                                                submodels_to_skip=submodels_to_skip,
+                                                verbose=verbose)
         self.wc_sim_config.validate()
 
         # create author metadata for DE sim
@@ -160,11 +164,16 @@ class Simulation(object):
         # run simulation
         try:
             # provide DE config and author metadata to DE sim
-            num_events = self.simulation_engine.simulate(sim_config=self.de_sim_config,
-                                                         author_metadata=self.author_metadata)
+            simulate_rv = self.simulation_engine.simulate(sim_config=self.de_sim_config,
+                                                          author_metadata=self.author_metadata)
+
+            if profile:
+                stats = simulate_rv
+                return stats, None
+            else:
+                num_events = simulate_rv
 
             # add WC sim metadata to the output after the simulation, which requires an empty output dir
-            # FIX FOR DE-SIM CHANGES
             # TODO: have simulation_engine.simulate() allow certain files in self.de_sim_config.output_dir, and move
             # this code above
             if self.de_sim_config.output_dir is not None:
