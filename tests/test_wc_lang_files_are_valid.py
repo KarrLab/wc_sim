@@ -41,6 +41,7 @@ class ValidateWcLangFilesTestCase(unittest.TestCase):
          'ignore_extra_models': True},
         {'path': 'tests/fixtures/dynamic_tests/static.xlsx',
          'ignore_extra_models': True},
+        {'path': 'tests/submodels/fixtures/test_next_reaction_method_submodel.xlsx'},
         {'path': 'tests/submodels/fixtures/test_submodel.xlsx'},
         {'path': 'tests/submodels/fixtures/test_submodel_no_shared_species.xlsx'},
         {'path': 'tests/fixtures/verification/cases/multialgorithmic/00001/00001-wc_lang.xlsx'},

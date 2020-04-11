@@ -1,4 +1,4 @@
-""" A Flux Balance Analysis (FBA) sub-model that represents a set of reactions
+""" A Flux Balance Analysis (FBA) submodel that represents a set of reactions
 
 :Author: Jonathan Karr <karr@mssm.edu>
 :Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>

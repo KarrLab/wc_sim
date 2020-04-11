@@ -1,4 +1,4 @@
-""" A sub-model that employs Gillespie's Stochastic Simulation Algorithm (SSA) to model a set of reactions.
+""" A submodel that employs Gillespie's Stochastic Simulation Algorithm (SSA) to model a set of reactions.
 
 :Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2016-07-14
@@ -11,15 +11,14 @@ import math
 import numpy as np
 from scipy.constants import Avogadro
 
-from wc_utils.util.rand import RandomStateManager
-from wc_utils.util.stats import ExponentialMovingAverage
-
-from de_sim.simulation_object import SimulationObject
 from de_sim.event import Event
+from de_sim.simulation_object import SimulationObject
 from wc_sim import message_types
 from wc_sim.config import core as config_core_multialgorithm
-from wc_sim.submodels.dynamic_submodel import DynamicSubmodel
 from wc_sim.multialgorithm_errors import MultialgorithmError, DynamicFrozenSimulationError
+from wc_sim.submodels.dynamic_submodel import DynamicSubmodel
+from wc_utils.util.rand import RandomStateManager
+from wc_utils.util.stats import ExponentialMovingAverage
 
 config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 

@@ -117,8 +117,6 @@ class GivePopulation(SimulationMessage):
     """
     attributes = ['population']
 
-# TODO(Arthur): make a pair of messages that Get and Give the population of one species
-
 
 class AggregateProperty(SimulationMessage):
     """ A WC simulator message sent to aggregate a property
@@ -174,7 +172,7 @@ class GiveProperty(SimulationMessage):
 
 
 class ExecuteSsaReaction(SimulationMessage):
-    """ A WC simulator message sent by a SsaSubmodel to itself to schedule an SSA reaction execution.
+    """ A WC simulator message sent by an SsaSubmodel to itself to schedule an SSA reaction execution.
 
     Attributes:
         reaction_index (int): the index of the selected reaction in `SsaSubmodel.reactions`.
@@ -183,7 +181,7 @@ class ExecuteSsaReaction(SimulationMessage):
 
 
 class SsaWait(SimulationMessage):
-    """ A WC simulator message sent by a SsaSubmodel to itself to temporarily suspend activity
+    """ A WC simulator message sent by an SsaSubmodel to itself to temporarily suspend activity
     because no reactions are runnable.
     """
 
@@ -194,8 +192,18 @@ class RunFba(SimulationMessage):
 
 
 class RunOde(SimulationMessage):
-    """ A WC sent by a OdeSubmodel to itself to schedule the next solution of the ODE equations.
+    """ A WC simulator message sent by an OdeSubmodel to itself to schedule the next solution of the
+    ODE equations.
     """
+
+
+class ExecuteAndScheduleNrmReaction(SimulationMessage):
+    """ A WC simulator message sent by an NrmSubmodel to itself to execute a scheduled reaction and schedule the next reaction.
+
+    Attributes:
+        reaction_index (int): the index of the selected reaction in `NrmSubmodel.reactions`.
+    """
+    attributes = ['reaction_index']
 
 
 ALL_MESSAGE_TYPES = [
@@ -205,11 +213,12 @@ ALL_MESSAGE_TYPES = [
                                         # species population simulation object.
     GivePopulation,                     # A species population simulation object provides
                                         # populations to a submodel.
+    ExecuteAndScheduleNrmReaction,      # An NrmSubmodel execute a scheduled reaction and schedule its next reaction
     ExecuteSsaReaction,                 # An SSA submodel schedules its next reaction.
     SsaWait,                            # An SSA submodel with 0 total propensity schedules
                                         # a future effort to schedule a reaction.
     RunFba,                             # An FBA submodel schedules its next computation.
     AggregateProperty,                  # Aggregate a property
-    GetCurrentProperty,                 # get the value of a property at the current simulation time
-    GetHistoricalProperty,              # get a property's value at a time <= the current simulation time
+    GetCurrentProperty,                 # Get the value of a property at the current simulation time
+    GetHistoricalProperty,              # Get a property's value at a time <= the current simulation time
     GiveProperty]                       # Provide a property to a requestor
