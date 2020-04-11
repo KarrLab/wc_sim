@@ -167,17 +167,17 @@ class Simulation(object):
             simulate_rv = self.simulation_engine.simulate(sim_config=self.de_sim_config,
                                                           author_metadata=self.author_metadata)
 
-            if profile:
-                stats = simulate_rv
-                return stats, None
-            else:
-                num_events = simulate_rv
-
             # add WC sim metadata to the output after the simulation, which requires an empty output dir
             # TODO: have simulation_engine.simulate() allow certain files in self.de_sim_config.output_dir, and move
             # this code above
             if self.de_sim_config.output_dir is not None:
                 WCSimulationMetadata.write_dataclass(wc_simulation_metadata, self.de_sim_config.output_dir)
+
+            if profile:
+                stats = simulate_rv
+                return stats, None
+            else:
+                num_events = simulate_rv
 
         except SimulatorError as e:     # pragma: no cover
             raise MultialgorithmError(f'Simulation terminated with simulator error:\n{e}')

@@ -88,9 +88,10 @@ class TestSimulation(unittest.TestCase):
             self.assertTrue(ckpt.random_state != None)
 
         # test performance profiling
+        results_dir = tempfile.mkdtemp(dir=self.test_dir)
         with CaptureOutput(relay=False) as capturer:
             stats, _ = Simulation(TOY_MODEL_FILENAME).run(time_max=2,
-                                                       results_dir=tempfile.mkdtemp(dir=self.test_dir),
+                                                       results_dir=results_dir,
                                                        checkpoint_period=1,
                                                        profile=True,
                                                        verbose=False)
@@ -98,6 +99,7 @@ class TestSimulation(unittest.TestCase):
             for text in expected_profile_text:
                 self.assertIn(text, capturer.get_text())
             self.assertTrue(isinstance(stats, pstats.Stats))
+        self.assertTrue(isinstance(RunResults(results_dir), RunResults))
 
         with self.assertRaises(MultialgorithmError):
             Simulation(TOY_MODEL_FILENAME).run(time_max=2,
