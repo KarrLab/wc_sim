@@ -8,6 +8,7 @@
 
 import os
 import unittest
+import numpy as np
 
 from de_sim.simulation_config import SimulationConfig
 from wc_sim.multialgorithm_errors import DynamicFrozenSimulationError
@@ -51,3 +52,23 @@ class TestNrmSubmodel(unittest.TestCase):
         from pprint import pprint
         dependencies = self.nrm_submodel.determine_dependencies()
         self.assertEqual(dependencies, expected_dependencies)
+
+    def test_initialize_propensities(self):
+        propensities = self.nrm_submodel.initialize_propensities()
+        self.assertEqual(len(propensities), len(self.nrm_submodel.reactions))
+        self.assertTrue(np.all(np.less_equal(0.0, propensities)))
+
+    def test_initialize_execution_time_priorities(self):
+        self.nrm_submodel.propensities = self.nrm_submodel.initialize_propensities()
+        self.nrm_submodel.initialize_execution_time_priorities()
+        time_prev = 0.
+        reactions = set()
+        while len(self.nrm_submodel.execution_time_priority_queue):
+            self.nrm_submodel.execution_time_priority_queue.topitem()
+            rxn_first, time_first = self.nrm_submodel.execution_time_priority_queue.topitem()
+            self.assertGreater(time_first, time_prev)
+            time_prev = time_first
+            self.assertNotIn(rxn_first, reactions)
+            reactions.add(rxn_first)
+            self.nrm_submodel.execution_time_priority_queue.pop()
+        self.assertEqual(reactions, set(range(len(self.nrm_submodel.reactions))))

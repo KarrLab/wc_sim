@@ -248,7 +248,7 @@ class SsaSubmodel(DynamicSubmodel):
         """ Schedule the next events for this submodel
         """
 
-        # schedule next SSA reaction, or a SSA wait if no reaction is ready to fire
+        # schedule next SSA reaction, or an SSA wait if no reaction is ready to fire
         time_to_next_reaction = self.schedule_next_SSA_reaction()
         return
 
@@ -262,7 +262,7 @@ class SsaSubmodel(DynamicSubmodel):
         """ Execute a reaction now.
 
         Args:
-            event (:obj:`Event`): a simulation event
+            reaction_index (:obj:`int`): index of the reaction to execute
         """
         self.log_with_time("submodel: {} "
             "executing reaction {}".format(self.id, self.reactions[reaction_index].id))

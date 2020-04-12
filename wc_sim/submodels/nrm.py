@@ -7,11 +7,13 @@
 """
 
 from pprint import pprint
+
+from pqdict import PQDict
+from scipy.constants import Avogadro
 import collections
-import sys
 import math
 import numpy as np
-from scipy.constants import Avogadro
+import sys
 
 from de_sim.event import Event
 from de_sim.simulation_object import SimulationObject
@@ -30,7 +32,11 @@ class NrmSubmodel(DynamicSubmodel):
     Attributes:
         dependencies (:obj:`list` of :obj:`tuple`): entry i provides the indices of reactions whose
             rate laws depend on the execution of reaction i
-        random_state (:obj:`numpy.random.RandomState`): the random state that is shared across the
+        execution_time_priority_queue (:obj:`PQDict`): NRM indexed priority queue of reactions, with
+            the earliest scheduled reaction at the front of the queue
+        propensities (:obj:`np.ndarray`): the most recently calculated propensities of the reactions
+            modeled by this NRM submodel
+        random_state (:obj:`np.random.RandomState`): the random state that is shared across the
             simulation, which enables reproducible checkpoint and restore of a simulation
     """
 
@@ -69,9 +75,11 @@ class NrmSubmodel(DynamicSubmodel):
                          local_species_population)
         self.options = options
         self.random_state = RandomStateManager.instance()
+        self.execution_time_priority_queue = PQDict()
 
     def prepare(self):
         self.dependencies = self.determine_dependencies()
+        self.propensities = self.initialize_propensities()
 
     def determine_dependencies(self):
         """ Determine the dependencies that rate laws have on executed reactions
@@ -141,18 +149,57 @@ class NrmSubmodel(DynamicSubmodel):
         for antecedent_rxn, dependent_rxns in dependencies.items():
             dependencies_list[antecedent_rxn] = tuple(dependent_rxns)
 
-        print('dependencies_list':)
+        print('dependencies_list:')
         pprint(dependencies_list)
         return dependencies_list
 
-    def initial_propensities(self):
-        """ Determine the dependencies that rate laws have on executed reactions
+    def initialize_propensities(self):
+        """ Get the initial propensities of all reactions that have enough species counts to execute
+
+        Propensities of reactions with inadequate species counts are set to 0.
 
         Returns:
-            :obj:`list` of :obj:`set`: dependencies between reactions; map of each reaction index
-                to the rate laws that depend on its execution
+            :obj:`np.ndarray`: the propensities of the reactions modeled by this NRM submodel which
+                have adequate species counts to execute
         """
-        pass
+        # TODO: raise exception if any propensities are < 0
+        propensities = self.calc_reaction_rates()
+
+        # avoid reactions with inadequate species counts
+        enabled_reactions = self.identify_enabled_reactions()
+        propensities = enabled_reactions * propensities
+        return propensities
+
+    def initialize_execution_time_priorities(self):
+        """ Initialize the NRM indexed priority queue of reactions
+        """
+        taus = self.random_state.exponential(1.0/self.propensities)
+        for reaction_idx, tau in enumerate(taus):
+            self.execution_time_priority_queue[reaction_idx] = self.time + tau
+
+    def execute_nrm_reaction(self, reaction_index):
+        """ Execute a reaction now
+
+        Args:
+            reaction_index (:obj:`int`): index of the reaction to execute
+        """
+        self.execute_reaction(self.reactions[reaction_index])
+
+    def schedule_next_reaction(self):
+        """ Schedule the next reaction
+
+        Args:
+            reaction_index (:obj:`int`): index of the reaction that just executed
+        """
+        # for reaction reaction_index and each reaction whose rate law depends on its execution
+        # or depends on species whose populations may have been changed by other submodels:
+        # 1. compute propensity
+        # 2. compute new tau
+        # 3. update the reaction's order in the indexed priority queue
+
+        # for all other reactions
+        # 1. adjust tau, as per the NRM
+        # 2. update the reaction's order in the indexed priority queue
 
     def handle_ExecuteAndScheduleNrmReaction_msg(self, event):
         """ Handle an event containing a :obj:`ExecuteSsaReaction` message
@@ -160,4 +207,7 @@ class NrmSubmodel(DynamicSubmodel):
         Args:
             event (:obj:`Event`): a simulation event
         """
-        pass
+        # execute reaction
+        reaction_index = event.message.reaction_index
+        self.execute_nrm_reaction(reaction_index)
+        self.schedule_next_reaction(reaction_index)

@@ -5,6 +5,7 @@ h5py
 matplotlib
 numpy
 pandas
+pqdict
 pint >= 0.10
 python_libsedml
 recordtype
