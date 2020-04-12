@@ -6,6 +6,8 @@
 :License: MIT
 """
 
+from pprint import pprint
+import collections
 import sys
 import math
 import numpy as np
@@ -26,8 +28,8 @@ class NrmSubmodel(DynamicSubmodel):
     """ Use the Next Reaction Method to predict the dynamics of chemical species in a container
 
     Attributes:
-        dependencies (:obj:`list` of :obj:`set`): dependencies between reactions; maps each reaction index
-            to the rate laws that depend on its execution
+        dependencies (:obj:`list` of :obj:`tuple`): entry i provides the indices of reactions whose
+            rate laws depend on the execution of reaction i
         random_state (:obj:`numpy.random.RandomState`): the random state that is shared across the
             simulation, which enables reproducible checkpoint and restore of a simulation
     """
@@ -75,37 +77,58 @@ class NrmSubmodel(DynamicSubmodel):
         """ Determine the dependencies that rate laws have on executed reactions
 
         Returns:
-            :obj:`list` of :obj:`set`: dependencies between reactions; map of each reaction index
-                to the rate laws that depend on its execution
+            :obj:`list` of :obj:`tuple`: entry i provides the indices of reactions whose
+                rate laws depend on the execution of reaction i
         """
-        # in a multi-algorithmic simulation, two types of dependencies arise:
-        # 1) ones identified by NRM -- rate laws that use species whose populations are updated by the reaction
+        # in a multi-algorithmic simulation, two types of dependencies arise when a reaction executes:
+        # 1) ones used by NRM: rate laws that use species whose populations are updated by the reaction
         # 2) rate laws that use species whose populations might be updated by other submodels
 
-        # dependencies[i] contains the indices of rate laws that depend on reaction i
+        # dependencies[i] will contain the indices of rate laws that depend on reaction i
         dependencies = {i: set() for i in range(len(self.reactions))}
 
-        # updated_species[i] contains the ids of species whose populations are updated by reaction i
+        # updated_species[i] will contain the ids of species whose populations are updated by reaction i
         updated_species = {i: set() for i in range(len(self.reactions))}
 
-        # used_species[species_id] contains the indices of rate laws (reactions) that use species with id species_id
+        # used_species[species_id] will contain the indices of rate laws (rxns) that use species with id species_id
         used_species = {species.gen_id(): set() for species in self.species}
 
         # initialize reaction -> species -> reaction dependency dictionaries
         for reaction_idx, rxn in enumerate(self.reactions):
+            print(rxn.id)
+            net_stoichiometric_coefficients = collections.defaultdict(float)
             for participant in rxn.participants:
-                if participant.coefficient != 0:
-                    species_id = participant.species.gen_id()
+                species_id = participant.species.gen_id()
+                net_stoichiometric_coefficients[species_id] += participant.coefficient
+                print(participant.species.gen_id(), participant.coefficient) 
+            pprint(net_stoichiometric_coefficients)
+            for species_id, net_stoich_coeff in net_stoichiometric_coefficients.items():
+                if net_stoich_coeff < 0 or 0 < net_stoich_coeff:
                     updated_species[reaction_idx].add(species_id)
             rate_law = rxn.rate_laws[0]
             for species in rate_law.expression.species:
                 species_id = species.gen_id()
                 used_species[species_id].add(reaction_idx)
-        # TODO: add species updated by other submodels to updated_species
-        '''
-        get shared species from self.local_species_population
-        '''
+        print('updated_species:')
+        pprint(updated_species)
+
+        # Sequential case, with one instance each of an SSA, ODE, dFBA submodels:
+        # NRM must recompute all rate laws that depend on species in a continuous submodels
         # TODO: possible optimization: compute #2 dynamically, based on the time of the last update of the species
+        # will be: self.local_species_population.get_continuous_species()
+        # TODO: move this code to LocalSpeciesPopulation and test
+        # get shared species from self.local_species_population
+        continuously_modeled_species = set()
+        for species_id, dynamic_species_state in self.local_species_population._population.items():
+            if dynamic_species_state.modeled_continuously:
+                continuously_modeled_species.add(species_id)
+        print('continuously_modeled_species:')
+        pprint(continuously_modeled_species)
+        for updated_species_set in updated_species.values():
+            updated_species_set |= continuously_modeled_species
+
+        # Parallel case (to be addressed later), with multiple instances each of an SSA, ODE and dFBA submodels:
+        # NRM must recompute all rate laws that depend on species shared with any other submodel
 
         # compute reaction to rate laws dependencies
         for reaction_idx, rxn in enumerate(self.reactions):
@@ -113,8 +136,23 @@ class NrmSubmodel(DynamicSubmodel):
                 for rate_law_idx in used_species[species_id]:
                     dependencies[reaction_idx].add(rate_law_idx)
 
-        # todo: convert dependencies into list of tuples
-        return dependencies
+        # convert dependencies into more compact and faster list of tuples
+        dependencies_list = [None] * len(self.reactions)
+        for antecedent_rxn, dependent_rxns in dependencies.items():
+            dependencies_list[antecedent_rxn] = tuple(dependent_rxns)
+
+        print('dependencies_list':)
+        pprint(dependencies_list)
+        return dependencies_list
+
+    def initial_propensities(self):
+        """ Determine the dependencies that rate laws have on executed reactions
+
+        Returns:
+            :obj:`list` of :obj:`set`: dependencies between reactions; map of each reaction index
+                to the rate laws that depend on its execution
+        """
+        pass
 
     def handle_ExecuteAndScheduleNrmReaction_msg(self, event):
         """ Handle an event containing a :obj:`ExecuteSsaReaction` message

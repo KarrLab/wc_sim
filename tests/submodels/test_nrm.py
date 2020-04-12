@@ -33,7 +33,6 @@ class TestNrmSubmodel(unittest.TestCase):
     def setUp(self):
         self.MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures',
                                            'test_next_reaction_method_submodel.xlsx')
-        print(self.MODEL_FILENAME)
         self.model = wc_lang.io.Reader().run(self.MODEL_FILENAME)[wc_lang.Model][0]
         self.nrm_submodel = self.make_nrm_submodel(self.model)
 
@@ -42,24 +41,13 @@ class TestNrmSubmodel(unittest.TestCase):
 
     def test_determine_dependencies(self):
         expected_dependencies = [
-            [1, 2],
-            [2, 3],
-            [3, 4],
-            [1, 4],
-            [4]
+            (0, 1,),
+            (1, 2,),
+            (2, 3,),
+            (0, 3,),
+            (3, 5,),
+            (3, 5,),
         ]
-        expected_dependencies = {
-            0: {0, 1},
-            1: {1, 2},
-            2: {2, 3},
-            3: {0, 3},
-            4: {3}
-        }
         from pprint import pprint
         dependencies = self.nrm_submodel.determine_dependencies()
         self.assertEqual(dependencies, expected_dependencies)
-
-
-
-
-
