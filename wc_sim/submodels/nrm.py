@@ -31,8 +31,8 @@ class NrmSubmodel(DynamicSubmodel):
     """ Use the Next Reaction Method to predict the dynamics of chemical species in a container
 
     Attributes:
-        dependencies (:obj:`list` of :obj:`tuple`): entry i provides the indices of reactions whose
-            rate laws depend on the execution of reaction i
+        dependencies (:obj:`list` of :obj:`tuple`): dependencies that rate laws have on executed
+            reactions; entry i provides the indices of reactions whose rate laws depend on reaction i
         execution_time_priority_queue (:obj:`PQDict`): NRM indexed priority queue of reactions, with
             the earliest scheduled reaction at the front of the queue
         propensities (:obj:`np.ndarray`): the most recently calculated propensities of the reactions
@@ -105,13 +105,10 @@ class NrmSubmodel(DynamicSubmodel):
 
         # initialize reaction -> species -> reaction dependency dictionaries
         for reaction_idx, rxn in enumerate(self.reactions):
-            print(rxn.id)
             net_stoichiometric_coefficients = collections.defaultdict(float)
             for participant in rxn.participants:
                 species_id = participant.species.gen_id()
                 net_stoichiometric_coefficients[species_id] += participant.coefficient
-                print(participant.species.gen_id(), participant.coefficient) 
-            pprint(net_stoichiometric_coefficients)
             for species_id, net_stoich_coeff in net_stoichiometric_coefficients.items():
                 if net_stoich_coeff < 0 or 0 < net_stoich_coeff:
                     updated_species[reaction_idx].add(species_id)
@@ -119,8 +116,6 @@ class NrmSubmodel(DynamicSubmodel):
             for species in rate_law.expression.species:
                 species_id = species.gen_id()
                 used_species[species_id].add(reaction_idx)
-        print('updated_species:')
-        pprint(updated_species)
 
         # Sequential case, with one instance each of an SSA, ODE, dFBA submodels:
         # NRM must recompute all rate laws that depend on species in a continuous submodels
@@ -179,7 +174,7 @@ class NrmSubmodel(DynamicSubmodel):
         for reaction_idx, tau in enumerate(taus):
             self.execution_time_priority_queue[reaction_idx] = self.time + tau
 
-    def schedule_nrm_reaction(self, execution_time, reaction_index):
+    def register_nrm_reaction(self, execution_time, reaction_index):
         """ Schedule a NRM reaction event with the simulator
 
         Args:
@@ -189,34 +184,55 @@ class NrmSubmodel(DynamicSubmodel):
         self.send_event_absolute(execution_time, self,
                                  message_types.ExecuteAndScheduleNrmReaction(reaction_index))
 
-    def schedule_first_reaction(self):
-        """ Schedule the first reaction to execute
+    def schedule_reaction(self):
+        """ Schedule the next reaction
         """
-        rxn_first, time_first = self.execution_time_priority_queue.topitem()
-        self.schedule_nrm_reaction(time_first, rxn_first)
+        next_rxn, next_time = self.execution_time_priority_queue.topitem()
+        print(f"next_rxn: {next_rxn}; next_time: {next_time}")
+        self.register_nrm_reaction(next_time, next_rxn)
 
     def send_initial_events(self):
-        """ Schedule a NRM submodel's the first reaction
+        """ Schedule this NRM submodel's the first reaction
 
-        This overrides a :obj:`DynamicSubmodel` method.
+        This implements a :obj:`DynamicSubmodel` method that must be overridden.
         """
-        self.schedule_first_reaction()
+        self.schedule_reaction()
 
     def schedule_next_reaction(self, reaction_index):
-        """ Schedule the next reaction
+        """ Schedule the next reaction after a reaction executes
 
         Args:
             reaction_index (:obj:`int`): index of the reaction that just executed
         """
-        # for reaction reaction_index and each reaction whose rate law depends on its execution
-        # or depends on species whose populations may have been changed by other submodels:
-        # 1. compute propensity
-        # 2. compute new tau
-        # 3. update the reaction's order in the indexed priority queue
+        # reschedule each reaction whose rate law depends on the execution of reaction reaction_index
+        # or depends on species whose populations may have been changed by other submodels
+        for reaction_to_reschedule in self.dependencies[reaction_index]:
+            if reaction_to_reschedule != reaction_index:
 
-        # for all other reactions
-        # 1. adjust tau, as per the NRM
-        # 2. update the reaction's order in the indexed priority queue
+                # 1. compute new propensity
+                propensity_new = self.calc_reaction_rate(self.reactions[reaction_to_reschedule])
+
+                # 2. compute new tau from old tau
+                tau_old = self.execution_time_priority_queue[reaction_to_reschedule]
+                propensity_old = self.propensities[reaction_to_reschedule]
+                tau_new = (propensity_old/propensity_new) * (tau_old - self.time) + self.time
+                self.propensities[reaction_to_reschedule] = propensity_new
+
+                # 3. update the reaction's order in the indexed priority queue
+                self.execution_time_priority_queue[reaction_to_reschedule] = tau_new
+
+        # reschedule reaction reaction_index
+        # 1. compute new propensity
+        propensity_new = self.calc_reaction_rate(self.reactions[reaction_index])
+
+        # 2. compute new tau
+        tau_new = self.random_state.exponential(1.0/propensity_new) + self.time
+
+        # 3. update the reaction's order in the indexed priority queue
+        self.execution_time_priority_queue[reaction_index] = tau_new
+
+        # schedule the next reaction
+        self.schedule_reaction()
 
     def execute_nrm_reaction(self, reaction_index):
         """ Execute a reaction now

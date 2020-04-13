@@ -81,6 +81,7 @@ class TestNrmSubmodel(unittest.TestCase):
     def test_simulate(self):
         self.nrm_submodel.prepare()
         self.simulation_engine.initialize()
-        run_time = 2
-        # execute the 1st event
-        self.assertEqual(1, self.simulation_engine.simulate(run_time))
+        run_time = 5
+        # expect about 6 reactions per second
+        num_events = self.simulation_engine.simulate(run_time)
+        self.assertGreater(num_events, 10)
