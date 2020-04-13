@@ -61,7 +61,7 @@ class DynamicSubmodel(ApplicationSimulationObject):
         self.local_species_population = local_species_population
         self.fast_debug_file_logger = FastLogger(debug_logs.get_log('wc.debug.file'), 'debug')
 
-    # The next 3 methods implement the abstract methods in ApplicationSimulationObject
+    # The next 2 methods implement the abstract methods in ApplicationSimulationObject
     def send_initial_events(self):
         pass    # pragma: no cover
 

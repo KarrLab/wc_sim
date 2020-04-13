@@ -31,7 +31,7 @@ class SkeletonSubmodel(DynamicSubmodel):
         super().__init__(id, dynamic_model, reactions, species, dynamic_compartments,
             local_species_population)
 
-    # The next three methods override DynamicSubmodel methods.
+    # this method overrides a DynamicSubmodel method
     def send_initial_events(self):
         self.schedule_the_next_reaction()
 

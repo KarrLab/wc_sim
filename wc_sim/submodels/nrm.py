@@ -16,6 +16,7 @@ import numpy as np
 import sys
 
 from de_sim.event import Event
+from de_sim.simulation_object import Event
 from de_sim.simulation_object import SimulationObject
 from wc_sim import message_types
 from wc_sim.config import core as config_core_multialgorithm
@@ -80,6 +81,7 @@ class NrmSubmodel(DynamicSubmodel):
     def prepare(self):
         self.dependencies = self.determine_dependencies()
         self.propensities = self.initialize_propensities()
+        self.initialize_execution_time_priorities()
 
     def determine_dependencies(self):
         """ Determine the dependencies that rate laws have on executed reactions
@@ -177,15 +179,30 @@ class NrmSubmodel(DynamicSubmodel):
         for reaction_idx, tau in enumerate(taus):
             self.execution_time_priority_queue[reaction_idx] = self.time + tau
 
-    def execute_nrm_reaction(self, reaction_index):
-        """ Execute a reaction now
+    def schedule_nrm_reaction(self, execution_time, reaction_index):
+        """ Schedule a NRM reaction event with the simulator
 
         Args:
+            execution_time (:obj:`float`): simulation time at which the reaction will execute
             reaction_index (:obj:`int`): index of the reaction to execute
         """
-        self.execute_reaction(self.reactions[reaction_index])
+        self.send_event_absolute(execution_time, self,
+                                 message_types.ExecuteAndScheduleNrmReaction(reaction_index))
 
-    def schedule_next_reaction(self):
+    def schedule_first_reaction(self):
+        """ Schedule the first reaction to execute
+        """
+        rxn_first, time_first = self.execution_time_priority_queue.topitem()
+        self.schedule_nrm_reaction(time_first, rxn_first)
+
+    def send_initial_events(self):
+        """ Schedule a NRM submodel's the first reaction
+
+        This overrides a :obj:`DynamicSubmodel` method.
+        """
+        self.schedule_first_reaction()
+
+    def schedule_next_reaction(self, reaction_index):
         """ Schedule the next reaction
 
         Args:
@@ -201,13 +218,23 @@ class NrmSubmodel(DynamicSubmodel):
         # 1. adjust tau, as per the NRM
         # 2. update the reaction's order in the indexed priority queue
 
+    def execute_nrm_reaction(self, reaction_index):
+        """ Execute a reaction now
+
+        Args:
+            reaction_index (:obj:`int`): index of the reaction to execute
+        """
+        self.execute_reaction(self.reactions[reaction_index])
+
     def handle_ExecuteAndScheduleNrmReaction_msg(self, event):
-        """ Handle an event containing a :obj:`ExecuteSsaReaction` message
+        """ Handle an event containing an :obj:`ExecuteAndScheduleNrmReaction` message
 
         Args:
             event (:obj:`Event`): a simulation event
         """
-        # execute reaction
+        # execute the reaction
         reaction_index = event.message.reaction_index
         self.execute_nrm_reaction(reaction_index)
+
+        # schedule the next reaction
         self.schedule_next_reaction(reaction_index)

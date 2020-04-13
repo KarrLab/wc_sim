@@ -6,6 +6,7 @@
 :License: MIT
 """
 
+from pprint import pprint
 import os
 import unittest
 import numpy as np
@@ -28,17 +29,23 @@ class TestNrmSubmodel(unittest.TestCase):
         de_simulation_config = SimulationConfig(time_max=10)
         wc_sim_config = WCSimulationConfig(de_simulation_config)
         multialgorithm_simulation = MultialgorithmSimulation(model, wc_sim_config)
-        simulation, dynamic_model = multialgorithm_simulation.build_simulation()
-        return dynamic_model.dynamic_submodels['nrm_submodel']
+        return multialgorithm_simulation.build_simulation()
 
     def setUp(self):
         self.MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures',
                                            'test_next_reaction_method_submodel.xlsx')
         self.model = wc_lang.io.Reader().run(self.MODEL_FILENAME)[wc_lang.Model][0]
-        self.nrm_submodel = self.make_nrm_submodel(self.model)
+        self.simulation_engine, self.dynamic_model = self.make_nrm_submodel(self.model)
+        self.nrm_submodel = self.dynamic_model.dynamic_submodels['nrm_submodel']
 
     def test_init(self):
         pass
+
+    def test_prepare(self):
+        attributes_prepared = ['dependencies', 'propensities', 'execution_time_priority_queue']
+        self.nrm_submodel.prepare()
+        for attr in attributes_prepared:
+            self.assertTrue(len(getattr(self.nrm_submodel, attr)))
 
     def test_determine_dependencies(self):
         expected_dependencies = [
@@ -49,7 +56,6 @@ class TestNrmSubmodel(unittest.TestCase):
             (3, 5,),
             (3, 5,),
         ]
-        from pprint import pprint
         dependencies = self.nrm_submodel.determine_dependencies()
         self.assertEqual(dependencies, expected_dependencies)
 
@@ -64,7 +70,6 @@ class TestNrmSubmodel(unittest.TestCase):
         time_prev = 0.
         reactions = set()
         while len(self.nrm_submodel.execution_time_priority_queue):
-            self.nrm_submodel.execution_time_priority_queue.topitem()
             rxn_first, time_first = self.nrm_submodel.execution_time_priority_queue.topitem()
             self.assertGreater(time_first, time_prev)
             time_prev = time_first
@@ -72,3 +77,10 @@ class TestNrmSubmodel(unittest.TestCase):
             reactions.add(rxn_first)
             self.nrm_submodel.execution_time_priority_queue.pop()
         self.assertEqual(reactions, set(range(len(self.nrm_submodel.reactions))))
+
+    def test_simulate(self):
+        self.nrm_submodel.prepare()
+        self.simulation_engine.initialize()
+        run_time = 2
+        # execute the 1st event
+        self.assertEqual(1, self.simulation_engine.simulate(run_time))
