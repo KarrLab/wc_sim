@@ -27,6 +27,7 @@ import warnings
 from wc_lang import Species
 from wc_lang.core import ReactionParticipantAttribute, Model
 from wc_lang.io import Reader
+from wc_onto import onto
 from wc_sim.config import core as config_core_multialgorithm
 from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_sim.run_results import RunResults
@@ -34,6 +35,7 @@ from wc_sim.simulation import Simulation
 from wc_sim.testing.make_models import MakeModel
 from wc_utils.util.dict import DictUtil
 from wc_utils.util.misc import geometric_iterator
+from wc_utils.util.ontology import are_terms_equivalent
 
 config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 
@@ -471,6 +473,12 @@ class SsaEnsemble(object):
     """
 
     @staticmethod
+    def convert_ssa_submodels_to_nrm(model):
+        for submodel in model.submodels:
+            if are_terms_equivalent(submodel.framework, onto['WC:stochastic_simulation_algorithm']):
+                submodel.framework = framework=onto['WC:next_reaction_method']
+
+    @staticmethod
     def run(model, simul_kwargs, tmp_results_dir, num_runs):
         """ Simulate a stochastic model for multiple runs
 
@@ -483,6 +491,8 @@ class SsaEnsemble(object):
         Returns:
             :obj:`list`: of :obj:`RunResults`: a :obj:`RunResults` for each simulation run
         """
+        # TODO: provide run-time control over whether this is called
+        SsaEnsemble.convert_ssa_submodels_to_nrm(model)
         simulation_run_results = []
         progress_factor = 1
         for i in range(num_runs):
