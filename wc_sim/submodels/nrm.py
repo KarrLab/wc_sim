@@ -125,13 +125,8 @@ class NrmSubmodel(DynamicSubmodel):
         # Sequential case, with one instance each of an SSA, ODE, dFBA submodels:
         # NRM must recompute all rate laws that depend on species in a continuous submodels
         # TODO: possible optimization: compute #2 dynamically, based on the time of the last update of the species
-        # will be: self.local_species_population.get_continuous_species()
-        # TODO: move this code to LocalSpeciesPopulation and test
         # get shared species from self.local_species_population
-        continuously_modeled_species = set()
-        for species_id, dynamic_species_state in self.local_species_population._population.items():
-            if dynamic_species_state.modeled_continuously:
-                continuously_modeled_species.add(species_id)
+        continuously_modeled_species = self.local_species_population.get_continuous_species()
         # print('continuously_modeled_species:', continuously_modeled_species)
         for updated_species_set in updated_species.values():
             updated_species_set |= continuously_modeled_species

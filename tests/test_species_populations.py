@@ -375,10 +375,19 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
                 self.assertIn(species_id, str(the_local_species_pop))
 
     def test_discrete_and_hybrid(self):
-
         for (local_species_pop, population_slope) in [(self.local_species_pop, self.population_slope),
                                                       (self.local_species_pop_no_init_pop_slope, None)]:
             self.reusable_assertions(local_species_pop, population_slope)
+
+    def test_get_continuous_species(self):
+        self.assertEqual(self.local_species_pop.get_continuous_species(), set(self.species_ids))
+
+        # test LSP with no continuous species
+        local_species_pop = LocalSpeciesPopulation('test',
+                                                   self.init_populations,
+                                                   self.molecular_weights,
+                                                   random_state=RandomStateManager.instance())
+        self.assertEqual(local_species_pop.get_continuous_species(), set())
 
     def test_adjustment_exceptions(self):
         time = 1.0

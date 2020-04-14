@@ -703,6 +703,20 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
                     dynamic_model.dynamic_compartments[compartment_id].accounted_volume()
         return volumes
 
+    def get_continuous_species(self):
+        """ Get the species that are modeled continuously
+
+        This is used to compute dependencies in the Next Reaction Method submodel.
+
+        Returns:
+            :obj:`set` of :obj:`str`: IDs of the species that are modeled continuously
+        """
+        continuously_modeled_species = set()
+        for species_id, dynamic_species_state in self._population.items():
+            if dynamic_species_state.modeled_continuously:
+                continuously_modeled_species.add(species_id)
+        return continuously_modeled_species
+
     def populations_to_concentrations(self, time, species, populations, dynamic_model, concentrations,
                                       volumes=None):
         """ Convert species populations, in molecules, to concentrations, in molar
