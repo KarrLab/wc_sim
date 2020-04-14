@@ -827,28 +827,34 @@ class RunVerificationSuite(unittest.TestCase):
 
     def run_verification_cases(self, case_type, verification_cases, testing=False):
 
+        failures = []
+        successes = []
+
+        def record_results(verification_suite):
+            for result in verification_suite.get_results():
+                if result.error:
+                    failure_msg = "{} {}\n".format(result.case_num, result.result_type.name) + \
+                        "{}".format(result.error)
+                    failures.append(failure_msg)
+                else:
+                    successes.append("{} {}".format(result.case_num, result.result_type.name))
+
         if case_type == 'DISCRETE_STOCHASTIC':
             for ssa_test_case in verification_cases:
                 self.verification_suite.run(case_type, [ssa_test_case.case_num],
                                             num_stochastic_runs=ssa_test_case.num_ssa_runs, verbose=True)
+                record_results(self.verification_suite)
 
         if case_type == 'CONTINUOUS_DETERMINISTIC':
             for ode_test_case in verification_cases:
                 self.verification_suite.run(case_type, [ode_test_case], verbose=True)
+                record_results(self.verification_suite)
 
         if case_type == 'MULTIALGORITHMIC':
             for multialg_test_case in verification_cases:
                 self.verification_suite.run_multialg([multialg_test_case], verbose=True)
+                record_results(self.verification_suite)
 
-        failures = []
-        successes = []
-        for result in self.verification_suite.get_results():
-            if result.error:
-                failure_msg = "{} {}\n".format(result.case_num, result.result_type.name) + \
-                    "{}".format(result.error)
-                failures.append(failure_msg)
-            else:
-                successes.append("{} {}".format(result.case_num, result.result_type.name))
         if testing:
             self.assertTrue(failures == [], msg='\n'.join(successes + failures))
         if successes:
@@ -856,11 +862,12 @@ class RunVerificationSuite(unittest.TestCase):
         if failures:
             msg = "SBML test suite case(s) failed validation:\n" + '\n'.join(failures)
             self.fail(msg=msg)
-        return self.verification_suite.get_results(), failures, successes
+
+        return failures, successes
 
     # todo: move test_verification_* methods to main verification module
     def test_verification_stochastic(self):
-        results, _, _ = self.run_verification_cases('DISCRETE_STOCHASTIC', self.ssa_test_cases)
+        self.run_verification_cases('DISCRETE_STOCHASTIC', self.ssa_test_cases)
 
     def test_verification_deterministic(self):
         # todo: set good tolerances for SBML test cases
@@ -912,7 +919,7 @@ class RunVerificationSuite(unittest.TestCase):
     def test_verification_hybrid(self):
         # transcription_translation_case = SsaTestCase('transcription_translation', 'NA', 10)
         # translation_metabolism_case = SsaTestCase('translation_metabolism', 'NA', 10)
-        results, _, _ = self.run_verification_cases('MULTIALGORITHMIC', self.multialgorithmic_test_cases)
+        self.run_verification_cases('MULTIALGORITHMIC', self.multialgorithmic_test_cases)
         profile = False
         if profile:
             print('profiling')

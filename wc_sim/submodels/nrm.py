@@ -170,11 +170,11 @@ class NrmSubmodel(DynamicSubmodel):
         """
         for reaction_idx, propensity in enumerate(self.propensities):
             # todo: if possible convert this 'if' and some of them in schedule_next_reaction to numpy operations
-            if 0. < propensity:
+            if propensity == 0:
+                self.execution_time_priority_queue[reaction_idx] = float('inf')
+            else:
                 tau = self.random_state.exponential(1.0/propensity) + self.time
                 self.execution_time_priority_queue[reaction_idx] = tau
-            else:
-                self.execution_time_priority_queue[reaction_idx] = float('inf')
 
     def register_nrm_reaction(self, execution_time, reaction_index):
         """ Schedule a NRM reaction event with the simulator
@@ -240,7 +240,10 @@ class NrmSubmodel(DynamicSubmodel):
         propensity_new = self.calc_reaction_rate(self.reactions[reaction_index])
 
         # 2. compute new tau
-        tau_new = self.random_state.exponential(1.0/propensity_new) + self.time
+        if propensity_new == 0:
+            tau_new = float('inf')
+        else:
+            tau_new = self.random_state.exponential(1.0/propensity_new) + self.time
 
         # 3. update the reaction's order in the indexed priority queue
         self.execution_time_priority_queue[reaction_index] = tau_new
