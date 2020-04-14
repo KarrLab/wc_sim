@@ -26,6 +26,7 @@ class TestSsaSubmodel(unittest.TestCase):
         wc_sim_config = WCSimulationConfig(de_simulation_config)
         multialgorithm_simulation = MultialgorithmSimulation(model, wc_sim_config)
         multialgorithm_simulation.build_simulation()
+        # todo: don't call SsaSubmodel(); return dynamic_model.dynamic_submodels['submodel name here'] will work; see test_nrm.py
         wc_lang_ssa_submodel = model.submodels[0]
 
         ssa_submodel = SsaSubmodel(
