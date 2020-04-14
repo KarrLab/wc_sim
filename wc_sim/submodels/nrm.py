@@ -1,12 +1,10 @@
-""" A submodel that employs Gibson and Bruck's Next Reaction Method (NRM) to model a set of reactions
+""" A submodel that uses Gibson and Bruck's Next Reaction Method (NRM) to model a set of reactions
 
 :Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2020-04-11
 :Copyright: 2020, Karr Lab
 :License: MIT
 """
-
-from pprint import pprint
 
 from pqdict import PQDict
 from scipy.constants import Avogadro
@@ -134,8 +132,7 @@ class NrmSubmodel(DynamicSubmodel):
         for species_id, dynamic_species_state in self.local_species_population._population.items():
             if dynamic_species_state.modeled_continuously:
                 continuously_modeled_species.add(species_id)
-        # print('continuously_modeled_species:')
-        # pprint(continuously_modeled_species)
+        # print('continuously_modeled_species:', continuously_modeled_species)
         for updated_species_set in updated_species.values():
             updated_species_set |= continuously_modeled_species
 
@@ -153,8 +150,7 @@ class NrmSubmodel(DynamicSubmodel):
         for antecedent_rxn, dependent_rxns in dependencies.items():
             dependencies_list[antecedent_rxn] = tuple(dependent_rxns)
 
-        # print('dependencies_list:')
-        # pprint(dependencies_list)
+        # print('dependencies_list:', dependencies_list)
         return dependencies_list
 
     def initialize_propensities(self):
@@ -195,7 +191,6 @@ class NrmSubmodel(DynamicSubmodel):
         """ Schedule the next reaction
         """
         next_rxn, next_time = self.execution_time_priority_queue.topitem()
-        # print(f"next_rxn: {next_rxn}; next_time: {next_time}")
         self.register_nrm_reaction(next_time, next_rxn)
 
     def send_initial_events(self):
@@ -219,7 +214,6 @@ class NrmSubmodel(DynamicSubmodel):
 
                 # 1. compute new propensity
                 propensity_new = self.calc_reaction_rate(self.reactions[reaction_to_reschedule])
-                # print(f"reaction_to_reschedule: {reaction_to_reschedule}; propensity_new: {propensity_new}")
 
                 # 2. compute new tau from old tau
                 tau_old = self.execution_time_priority_queue[reaction_to_reschedule]
@@ -233,7 +227,6 @@ class NrmSubmodel(DynamicSubmodel):
         # reschedule reaction reaction_index
         # 1. compute new propensity
         propensity_new = self.calc_reaction_rate(self.reactions[reaction_index])
-        # print(f"reaction_index: {reaction_index}; propensity_new: {propensity_new}")
 
         # 2. compute new tau
         tau_new = self.random_state.exponential(1.0/propensity_new) + self.time

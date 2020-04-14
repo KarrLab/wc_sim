@@ -6,10 +6,10 @@
 :License: MIT
 """
 
-from pprint import pprint
+import math
+import numpy as np
 import os
 import unittest
-import numpy as np
 
 from de_sim.simulation_config import SimulationConfig
 from wc_sim.multialgorithm_errors import DynamicFrozenSimulationError
@@ -87,22 +87,17 @@ class TestNrmSubmodel(unittest.TestCase):
         self.assertEqual(reactions, set(range(len(self.nrm_submodel.reactions))))
 
     def test_simulate(self):
-        num_trials = 10
-        run_time = 10
+        NUM_TRIALS = 20
+        RUN_TIME = 50
+        # the parameters in test_next_reaction_method_submodel.xlsx give each reaction an
+        # initial rate of 1/sec, which will change slowly because init. populations are 1000
         num_events = []
-        for _ in range(num_trials):
+        for _ in range(NUM_TRIALS):
             simulation_engine, _ = self.make_sim_w_nrm_submodel(self.model, True)
             simulation_engine.initialize()
-            # expect about 6 reactions per second
-            num_events.append(simulation_engine.simulate(run_time))
-        print('num_events', num_events)
-        # self.assertGreater(num_events, 10)
-
-    '''
-    statistical testing strategies:
-        expected means:
-            6 reactions / second
-            each reaction, once / second
-            reactions recomputed in determine_dependencies as predicted in expected_dependencies
-        expected distributions:
-    '''
+            num_events.append(simulation_engine.simulate(RUN_TIME))
+        num_reactions = len(self.model.reactions)
+        expected_mean_num_events = num_reactions * RUN_TIME
+        sd = math.sqrt(expected_mean_num_events)
+        self.assertLess(expected_mean_num_events - sd, np.mean(num_events))
+        self.assertLess(np.mean(num_events), expected_mean_num_events + sd)
