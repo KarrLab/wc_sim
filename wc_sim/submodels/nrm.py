@@ -124,7 +124,6 @@ class NrmSubmodel(DynamicSubmodel):
 
         # Sequential case, with one instance each of an SSA, ODE, dFBA submodels:
         # NRM must recompute all rate laws that depend on species in a continuous submodels
-        # TODO: possible optimization: compute #2 dynamically, based on the time of the last update of the species
         # get shared species from self.local_species_population
         continuously_modeled_species = self.local_species_population.get_continuous_species()
         for updated_species_set in updated_species.values():
@@ -155,7 +154,6 @@ class NrmSubmodel(DynamicSubmodel):
             :obj:`np.ndarray`: the propensities of the reactions modeled by this NRM submodel which
                 have adequate species counts to execute
         """
-        # TODO: raise exception if any propensities are < 0
         propensities = self.calc_reaction_rates()
 
         # avoid reactions with inadequate species counts
@@ -167,7 +165,6 @@ class NrmSubmodel(DynamicSubmodel):
         """ Initialize the NRM indexed priority queue of reactions
         """
         for reaction_idx, propensity in enumerate(self.propensities):
-            # todo: if possible convert this 'if' and some of them in schedule_next_reaction to numpy operations
             if propensity == 0:
                 self.execution_time_priority_queue[reaction_idx] = float('inf')
             else:
