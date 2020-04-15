@@ -89,7 +89,7 @@ class Simulation(object):
             raise MultialgorithmError(indent_forest(['The model is invalid:', [errors]]))
 
     def run(self, time_max, results_dir=None, progress_bar=True, checkpoint_period=None,
-            seed=None, ode_time_step=1, dfba_time_step=1, profile=False, submodels_to_skip=None,
+            seed=None, ode_time_step=None, dfba_time_step=None, profile=False, submodels_to_skip=None,
             verbose=True, options=None):
         """ Run one simulation
 

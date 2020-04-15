@@ -152,8 +152,8 @@ class WCSimulationConfig(EnhancedDataClass):
         de_sim_cfg = self.de_simulation_config
         if getattr(self, periodic_attr) is not None and \
             (de_sim_cfg.time_max - de_sim_cfg.time_init) / getattr(self, periodic_attr) % 1 != 0:
-            raise MultialgorithmError(f'(time_max - time_init) ({de_sim_cfg.time_max} - {de_sim_cfg.time_init})'
-                                      f'must be a multiple of ({getattr(self, periodic_attr)})')
+            raise MultialgorithmError(f'(time_max - time_init) ({de_sim_cfg.time_max} - {de_sim_cfg.time_init}) '
+                                      f'must be a multiple of {periodic_attr} ({getattr(self, periodic_attr)})')
 
     def apply_changes(self, model):
         """ Applies changes to model
