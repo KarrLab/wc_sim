@@ -15,7 +15,6 @@ import unittest
 from de_sim.simulation_config import SimulationConfig
 from wc_lang.core import ReactionParticipantAttribute
 from wc_lang.io import Reader
-from wc_onto import onto
 from wc_sim.dynamic_components import DynamicRateLaw
 from wc_sim.message_types import RunOde
 from wc_sim.multialgorithm_errors import DynamicMultialgorithmError, MultialgorithmError

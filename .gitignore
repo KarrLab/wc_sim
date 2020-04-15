@@ -88,4 +88,3 @@ examples/**/*.h5
 examples/**/*.pickle
 examples/**/*.pdf
 
-tests/perf_results/

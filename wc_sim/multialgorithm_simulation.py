@@ -22,6 +22,7 @@ from wc_sim.sim_config import WCSimulationConfig
 from wc_sim.species_populations import LocalSpeciesPopulation
 from wc_sim.submodels.dynamic_submodel import DynamicSubmodel
 from wc_sim.submodels.fba import DfbaSubmodel
+from wc_sim.submodels.nrm import NrmSubmodel
 from wc_sim.submodels.odes import OdeSubmodel
 from wc_sim.submodels.ssa import SsaSubmodel
 from wc_sim.submodels.testing.deterministic_simulation_algorithm import DsaSubmodel
@@ -303,6 +304,7 @@ class MultialgorithmSimulation(object):
         """
         # Simulation objects and submodels executing at the same simulation time run in this order:
         SimObjClassPriority.assign_decreasing_priority([SsaSubmodel,
+                                                        NrmSubmodel,
                                                         DsaSubmodel,
                                                         DfbaSubmodel,
                                                         OdeSubmodel,
@@ -363,6 +365,17 @@ class MultialgorithmSimulation(object):
                     self.get_dynamic_compartments(lang_submodel),
                     self.local_species_population,
                     **get_options(self, 'SsaSubmodel')
+                )
+
+            elif are_terms_equivalent(lang_submodel.framework, onto['WC:next_reaction_method']):
+                simulation_submodel = NrmSubmodel(
+                    lang_submodel.id,
+                    self.dynamic_model,
+                    list(lang_submodel.reactions),
+                    lang_submodel.get_children(kind='submodel', __type=Species),
+                    self.get_dynamic_compartments(lang_submodel),
+                    self.local_species_population,
+                    **get_options(self, 'NrmSubmodel')
                 )
 
             elif are_terms_equivalent(lang_submodel.framework, onto['WC:dynamic_flux_balance_analysis']):

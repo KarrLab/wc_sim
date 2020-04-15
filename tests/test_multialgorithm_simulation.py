@@ -34,6 +34,7 @@ from wc_sim.sim_config import WCSimulationConfig
 from wc_sim.simulation import Simulation
 from wc_sim.species_populations import LocalSpeciesPopulation
 from wc_sim.submodels.fba import DfbaSubmodel
+from wc_sim.submodels.nrm import NrmSubmodel
 from wc_sim.submodels.odes import OdeSubmodel
 from wc_sim.submodels.ssa import SsaSubmodel
 from wc_sim.submodels.testing.deterministic_simulation_algorithm import DsaSubmodel
@@ -193,16 +194,17 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
             local_species_population.adjust_continuously(2, adjustments)
 
     def test_set_simultaneous_execution_priorities(self):
-        simulation_object_classes = [SsaSubmodel,
-                                     DsaSubmodel,
-                                     DfbaSubmodel,
-                                     OdeSubmodel,
-                                     MultialgorithmicCheckpointingSimObj]
+        expected_order_of_sim_obj_classes = [SsaSubmodel,
+                                             NrmSubmodel,
+                                             DsaSubmodel,
+                                             DfbaSubmodel,
+                                             OdeSubmodel,
+                                             MultialgorithmicCheckpointingSimObj]
         self.multialgorithm_simulation.set_simultaneous_execution_priorities()
-        # ensure that simulation_object_classes are arranged in decreasing priority
-        for i in range(len(simulation_object_classes) - 1):
-            simulation_object_class = simulation_object_classes[i]
-            next_simulation_object_class = simulation_object_classes[i+1]
+        # ensure that expected_order_of_sim_obj_classes are arranged in decreasing priority
+        for i in range(len(expected_order_of_sim_obj_classes) - 1):
+            simulation_object_class = expected_order_of_sim_obj_classes[i]
+            next_simulation_object_class = expected_order_of_sim_obj_classes[i+1]
             self.assertLess(simulation_object_class.metadata.class_priority,
                             next_simulation_object_class.metadata.class_priority)
 
@@ -373,6 +375,7 @@ class TestMultialgorithmSimulationDynamically(unittest.TestCase):
         check_simul_results(self, dynamic_model, None, expected_initial_values=expected_initial_values)
 
 
+# TODO: clean up this class: move the good parts to test_ssa.py, and discard the rest
 class TestRunSSASimulation(unittest.TestCase):
 
     def setUp(self):
@@ -386,7 +389,8 @@ class TestRunSSASimulation(unittest.TestCase):
         shutil.rmtree(self.out_dir)
 
     def make_model_and_simulation(self, model_type, num_submodels, species_copy_numbers=None,
-                                  species_stds=None, init_vols=None):
+                                  species_stds=None, init_vols=None,
+                                  submodel_framework='WC:stochastic_simulation_algorithm'):
         # make simple model
         if init_vols is not None:
             if not isinstance(init_vols, list):
@@ -394,7 +398,8 @@ class TestRunSSASimulation(unittest.TestCase):
         model = MakeModel.make_test_model(model_type, num_submodels=num_submodels,
                                           species_copy_numbers=species_copy_numbers,
                                           species_stds=species_stds,
-                                          init_vols=init_vols)
+                                          init_vols=init_vols,
+                                          submodel_framework=submodel_framework)
         multialgorithm_simulation = MultialgorithmSimulation(model, self.wc_sim_config)
         simulation_engine, _ = multialgorithm_simulation.build_simulation()
         return (model, multialgorithm_simulation, simulation_engine)
@@ -519,11 +524,12 @@ class TestRunSSASimulation(unittest.TestCase):
                                   delta=0,
                                   init_vols=1E-22)
 
-    def prep_simulation(self, num_ssa_submodels):
+    def prep_simulation(self, num_ssa_submodels, submodel_framework='WC:stochastic_simulation_algorithm'):
         model, multialgorithm_simulation, simulation_engine = self.make_model_and_simulation(
             '2 species, a pair of symmetrical reactions, and rates given by reactant population',
             num_ssa_submodels,
-            init_vols=1E-18)
+            init_vols=1E-18,
+            submodel_framework=submodel_framework)
         local_species_pop = multialgorithm_simulation.local_species_population
         simulation_engine.initialize()
         return simulation_engine
@@ -533,47 +539,57 @@ class TestRunSSASimulation(unittest.TestCase):
         end_sim_time = 100
         min_num_ssa_submodels = 2
         max_num_ssa_submodels = 32
-        print()
-        print("Performance test of SSA submodel simulation: 2 reactions per submodel; end simulation time: {}".format(end_sim_time))
-        unprofiled_perf = ["\n#SSA submodels\t# events\trun time (s)\treactions/s".format()]
+        for submodel_framework in ['WC:stochastic_simulation_algorithm', 'WC:next_reaction_method']:
 
-        num_ssa_submodels = min_num_ssa_submodels
-        while num_ssa_submodels <= max_num_ssa_submodels:
+            framework_name = onto[submodel_framework].name.title()
+            framework_synonyms = onto[submodel_framework].synonyms
+            framework_synonym = next(iter(framework_synonyms)).description
 
-            # measure execution time
-            simulation_engine = self.prep_simulation(num_ssa_submodels)
-            start_time = time.process_time()
-            num_events = simulation_engine.simulate(end_sim_time)
-            run_time = time.process_time() - start_time
-            unprofiled_perf.append("{}\t{}\t{:8.3f}\t{:8.3f}".format(num_ssa_submodels, num_events,
-                                                                     run_time, num_events/run_time))
+            print(f"Performance test of {framework_name} submodel simulation:\n"
+                  f"    2 reactions per submodel; end simulation time: {end_sim_time}")
+            unprofiled_perf = [f"\n# {framework_synonym} submodels\t# events\trun time (s)\treactions/s"]
 
-            # profile
-            simulation_engine = self.prep_simulation(num_ssa_submodels)
-            out_file = os.path.join(self.out_dir, "profile_out_{}.out".format(num_ssa_submodels))
-            locals = {'simulation_engine': simulation_engine,
-                      'end_sim_time': end_sim_time}
-            cProfile.runctx('num_events = simulation_engine.simulate(end_sim_time)', {}, locals, filename=out_file)
-            profile = pstats.Stats(out_file)
-            print("Profile for {} simulation objects:".format(num_ssa_submodels))
-            profile.strip_dirs().sort_stats('cumulative').print_stats(15)
+            num_ssa_submodels = min_num_ssa_submodels
+            while num_ssa_submodels <= max_num_ssa_submodels:
 
-            num_ssa_submodels *= 4
+                # measure execution time
+                simulation_engine = self.prep_simulation(num_ssa_submodels,
+                                                         submodel_framework=submodel_framework)
+                start_time = time.process_time()
+                num_events = simulation_engine.simulate(end_sim_time)
+                run_time = time.process_time() - start_time
+                unprofiled_perf.append("{}\t{}\t{:8.3f}\t{:8.3f}".format(num_ssa_submodels, num_events,
+                                                                         run_time, num_events/run_time))
 
-        performance_log = os.path.join(os.path.dirname(__file__), 'perf_results',
-                                       'wc_sim_performance_log.txt')
+                # profile
+                simulation_engine = self.prep_simulation(num_ssa_submodels,
+                                                         submodel_framework=submodel_framework)
+                out_file = os.path.join(self.out_dir, "profile_out_{}.out".format(num_ssa_submodels))
+                locals = {'simulation_engine': simulation_engine,
+                          'end_sim_time': end_sim_time}
+                cProfile.runctx('num_events = simulation_engine.simulate(end_sim_time)',
+                                {}, locals, filename=out_file)
+                profile = pstats.Stats(out_file)
+                print(f"Profile for {num_ssa_submodels} instances of {framework_name}:")
+                profile.strip_dirs().sort_stats('cumulative').print_stats(15)
+
+                num_ssa_submodels *= 4
+
+            performance_log = os.path.join(os.path.dirname(__file__), 'perf_results',
+                                           'wc_sim_performance_log.txt')
         
-        if not os.path.isdir(os.path.dirname(performance_log)):
-            os.makedirs(os.path.dirname(performance_log))
+            if not os.path.isdir(os.path.dirname(performance_log)):
+                os.makedirs(os.path.dirname(performance_log))
 
-        with open(performance_log, 'a') as perf_log:
             today = datetime.today().strftime('%Y-%m-%d')
-            print(f'Performance summary on {today}', end='', file=perf_log)
-            print("\n".join(unprofiled_perf), file=perf_log)
-            print(file=perf_log)
+            summary = f'Performance summary for {framework_name} on {today}:' + \
+                      "\n".join(unprofiled_perf) + "\n"
 
-        print(f'Performance summary, written to {performance_log}')
-        print("\n".join(unprofiled_perf))
+            with open(performance_log, 'a') as perf_log:
+                print(summary, file=perf_log)
+
+            print(f'Performance summary, written to {performance_log}:\n')
+            print(summary)
 
     # TODO(Arthur): test multiple ssa submodels, in shared or different compartments
     # TODO(Arthur): test have identify_enabled_reactions() return a disabled reaction & ssa submodel with reactions that cannot run

@@ -491,17 +491,15 @@ class SsaEnsemble(object):
         Returns:
             :obj:`list`: of :obj:`RunResults`: a :obj:`RunResults` for each simulation run
         """
-        # TODO: provide run-time control over whether this is called
+        # TODO: provide run-time control over whether SsaEnsemble tests SSA or NRM
         SsaEnsemble.convert_ssa_submodels_to_nrm(model)
         simulation_run_results = []
         progress_factor = 1
-        for i in range(num_runs):
+        for i in range(1, num_runs+1):
             if i == progress_factor:
                 print("starting run {} of {} of model {}".format(i, num_runs, model.id))
                 progress_factor *= 2
             simul_kwargs['results_dir'] = tempfile.mkdtemp(dir=tmp_results_dir)
-            # TODO: provide method(s) in Simulation and classes it uses (SimulationEngine) to reload() a simulation,
-            # that is, do another monte Carlo simulation with a different seed
             simulation = Simulation(model)
             _, results_dir = simulation.run(**simul_kwargs)
             simulation_run_results.append(RunResults(results_dir))

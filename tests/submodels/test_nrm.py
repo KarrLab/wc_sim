@@ -108,9 +108,11 @@ class TestNrmSubmodel(unittest.TestCase):
             self.assertEqual(list(nrm_submodel_0_props.propensities), expected_propensities)
             for rxn_idx, propensity in enumerate(expected_propensities):
                 if propensity == 0:
-                    self.assertEqual(nrm_submodel_0_props.execution_time_priority_queue[rxn_idx], float('inf'))
+                    self.assertEqual(nrm_submodel_0_props.execution_time_priority_queue[rxn_idx],
+                                     float('inf'))
                 else:
-                    self.assertLess(nrm_submodel_0_props.execution_time_priority_queue[rxn_idx], float('inf'))
+                    self.assertLess(nrm_submodel_0_props.execution_time_priority_queue[rxn_idx],
+                                    float('inf'))
 
             # mock a simulation event for a reaction with a non-zero propensity
             first_reaction = reaction_sequence.pop(0)
