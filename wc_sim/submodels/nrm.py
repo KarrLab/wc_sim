@@ -127,7 +127,6 @@ class NrmSubmodel(DynamicSubmodel):
         # TODO: possible optimization: compute #2 dynamically, based on the time of the last update of the species
         # get shared species from self.local_species_population
         continuously_modeled_species = self.local_species_population.get_continuous_species()
-        # print('continuously_modeled_species:', continuously_modeled_species)
         for updated_species_set in updated_species.values():
             updated_species_set |= continuously_modeled_species
 
@@ -145,7 +144,6 @@ class NrmSubmodel(DynamicSubmodel):
         for antecedent_rxn, dependent_rxns in dependencies.items():
             dependencies_list[antecedent_rxn] = tuple(dependent_rxns)
 
-        # print('dependencies_list:', dependencies_list)
         return dependencies_list
 
     def initialize_propensities(self):
@@ -235,9 +233,10 @@ class NrmSubmodel(DynamicSubmodel):
                 # 3. update the reaction's order in the indexed priority queue
                 self.execution_time_priority_queue[reaction_to_reschedule] = tau_new
 
-        # reschedule reaction reaction_index
+        # reschedule the reaction that was executed
         # 1. compute new propensity
         propensity_new = self.calc_reaction_rate(self.reactions[reaction_index])
+        self.propensities[reaction_index] = propensity_new
 
         # 2. compute new tau
         if propensity_new == 0:

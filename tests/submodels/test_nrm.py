@@ -12,6 +12,7 @@ import os
 import unittest
 
 from de_sim.simulation_config import SimulationConfig
+from wc_sim import message_types
 from wc_sim.multialgorithm_errors import DynamicFrozenSimulationError
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.sim_config import WCSimulationConfig
@@ -85,6 +86,36 @@ class TestNrmSubmodel(unittest.TestCase):
             reactions.add(rxn_first)
             self.nrm_submodel.execution_time_priority_queue.pop()
         self.assertEqual(reactions, set(range(len(self.nrm_submodel.reactions))))
+
+    def test_propensities_eq_to_0(self):
+        model_filename = os.path.join(os.path.dirname(__file__), 'fixtures',
+                                      'test_next_reaction_method_submodel_2.xlsx')
+        test_props_eq_0_model = wc_lang.io.Reader().run(model_filename)[wc_lang.Model][0]
+        _, dynamic_model = self.make_sim_w_nrm_submodel(test_props_eq_0_model, False)
+        nrm_submodel_0_props = dynamic_model.dynamic_submodels['nrm_submodel']
+
+        ### single step a mock simulation ###
+        nrm_submodel_0_props.initialize()
+
+        # execute this sequence of reactions, all of which are enabled and have propensity > 0
+        reaction_sequence = [0, 1, 1, 1]
+        expected_propensities_sequence = [[1, 0, 0],
+                                          [0, 1, 0],
+                                          [0, 1, 1],
+                                          [0, 1, 2]]
+        for expected_propensities in expected_propensities_sequence:
+            # check propensities & execution_time_priority_queue
+            self.assertEqual(list(nrm_submodel_0_props.propensities), expected_propensities)
+            for rxn_idx, propensity in enumerate(expected_propensities):
+                if propensity == 0:
+                    self.assertEqual(nrm_submodel_0_props.execution_time_priority_queue[rxn_idx], float('inf'))
+                else:
+                    self.assertLess(nrm_submodel_0_props.execution_time_priority_queue[rxn_idx], float('inf'))
+
+            # mock a simulation event for a reaction with a non-zero propensity
+            first_reaction = reaction_sequence.pop(0)
+            nrm_submodel_0_props.execute_nrm_reaction(first_reaction)
+            nrm_submodel_0_props.schedule_next_reaction(first_reaction)
 
     def test_simulate(self):
         NUM_TRIALS = 20
