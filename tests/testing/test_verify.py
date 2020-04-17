@@ -26,7 +26,7 @@ from wc_sim.run_results import RunResults
 from wc_sim.testing.verify import (VerificationError, VerificationTestCaseType, VerificationTestReader,
                                    ResultsComparator, CaseVerifier, VerificationResultType,
                                    VerificationSuite, VerificationUtilities,
-                                   VerificationRunResult, ODETestIterators)
+                                   VerificationRunResult, ODETestIterators, SsaEnsemble)
 import obj_tables
 import wc_lang
 import wc_sim.submodels.odes as odes
@@ -818,6 +818,9 @@ class RunVerificationSuite(unittest.TestCase):
             '00007',
             '00030',
         ]
+        self.make_verification_suite()
+
+    def make_verification_suite(self):
         self.root_test_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', 'fixtures',
                                               'verification', 'cases'))
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
@@ -840,6 +843,14 @@ class RunVerificationSuite(unittest.TestCase):
                     successes.append("{} {}".format(result.case_num, result.result_type.name))
 
         if case_type == 'DISCRETE_STOCHASTIC':
+
+            for ssa_test_case in verification_cases:
+                self.verification_suite.run(case_type, [ssa_test_case.case_num],
+                                            num_stochastic_runs=ssa_test_case.num_ssa_runs, verbose=True)
+                record_results(self.verification_suite)
+
+            SsaEnsemble.SUBMODEL_ALGORITHM = 'NRM'
+            self.make_verification_suite()
             for ssa_test_case in verification_cases:
                 self.verification_suite.run(case_type, [ssa_test_case.case_num],
                                             num_stochastic_runs=ssa_test_case.num_ssa_runs, verbose=True)

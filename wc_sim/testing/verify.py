@@ -472,6 +472,8 @@ class SsaEnsemble(object):
     """ Handle an SSA ensemble
     """
 
+    SUBMODEL_ALGORITHM = 'SSA'
+
     @staticmethod
     def convert_ssa_submodels_to_nrm(model):
         for submodel in model.submodels:
@@ -491,8 +493,9 @@ class SsaEnsemble(object):
         Returns:
             :obj:`list`: of :obj:`RunResults`: a :obj:`RunResults` for each simulation run
         """
-        # TODO: provide run-time control over whether SsaEnsemble tests SSA or NRM
-        SsaEnsemble.convert_ssa_submodels_to_nrm(model)
+        if SsaEnsemble.SUBMODEL_ALGORITHM == 'NRM':
+            SsaEnsemble.convert_ssa_submodels_to_nrm(model)
+
         simulation_run_results = []
         progress_factor = 1
         for i in range(1, num_runs+1):
@@ -691,6 +694,7 @@ class CaseVerifier(object):
         reaction_participant_attribute = ReactionParticipantAttribute()
         for sm in mdl.submodels:
             summary.append("submodel {}:".format(sm.id))
+            summary.append("framework {}:".format(sm.framework.name.title()))
             for rxn in sm.reactions:
                 summary.append("rxn & rl '{}': {}, {}".format(rxn.id,
                     reaction_participant_attribute.serialize(rxn.participants),
