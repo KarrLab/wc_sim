@@ -141,6 +141,12 @@ class NrmSubmodel(DynamicSubmodel):
         # convert dependencies into more compact and faster list of tuples
         dependencies_list = [None] * len(self.reactions)
         for antecedent_rxn, dependent_rxns in dependencies.items():
+            # to simplify later code remove antecedent_rxn from dependent_rxns
+            # because antecedent_rxn is handled specially
+            try:
+                dependent_rxns.remove(antecedent_rxn)
+            except KeyError:
+                pass
             dependencies_list[antecedent_rxn] = tuple(dependent_rxns)
 
         return dependencies_list
@@ -204,31 +210,31 @@ class NrmSubmodel(DynamicSubmodel):
         # reschedule each reaction whose rate law depends on the execution of reaction reaction_index
         # or depends on species whose populations may have been changed by other submodels
         for reaction_to_reschedule in self.dependencies[reaction_index]:
-            if reaction_to_reschedule != reaction_index:
 
-                # 1. compute new propensity
-                propensity_new = self.calc_reaction_rate(self.reactions[reaction_to_reschedule])
-                if propensity_new == 0:
-                    tau_new = float('inf')
+            # 1. compute new propensity
+            propensity_new = self.calc_reaction_rate(self.reactions[reaction_to_reschedule])
+            if propensity_new == 0:
+                tau_new = float('inf')
+
+            else:
+                # 2. compute new tau from old tau
+                tau_old = self.execution_time_priority_queue[reaction_to_reschedule]
+                propensity_old = self.propensities[reaction_to_reschedule]
+                if propensity_old == 0:
+                    # If propensity_old == 0 then tau_old is infinity, and these cannot be used in
+                    #   (propensity_old/propensity_new) * (tau_old - self.time) + self.time
+                    # In this case a new random exponential must be drawn.
+                    # This does not increase the number of random draws, because they're not
+                    # drawn when the propensity is 0.
+                    tau_new = self.random_state.exponential(1.0/propensity_new) + self.time
 
                 else:
-                    # 2. compute new tau from old tau
-                    tau_old = self.execution_time_priority_queue[reaction_to_reschedule]
-                    propensity_old = self.propensities[reaction_to_reschedule]
-                    if propensity_old == 0:
-                        # if propensity_old == 0 then tau_old is infinity, and these cannot be used in
-                        #   (propensity_old/propensity_new) * (tau_old - self.time) + self.time
-                        # this does not increase the number of random draws, because they're not
-                        # done when the propensity is 0
-                        tau_new = self.random_state.exponential(1.0/propensity_new) + self.time
+                    tau_new = (propensity_old/propensity_new) * (tau_old - self.time) + self.time
 
-                    else:
-                        tau_new = (propensity_old/propensity_new) * (tau_old - self.time) + self.time
+            self.propensities[reaction_to_reschedule] = propensity_new
 
-                self.propensities[reaction_to_reschedule] = propensity_new
-
-                # 3. update the reaction's order in the indexed priority queue
-                self.execution_time_priority_queue[reaction_to_reschedule] = tau_new
+            # 3. update the reaction's order in the indexed priority queue
+            self.execution_time_priority_queue[reaction_to_reschedule] = tau_new
 
         # reschedule the reaction that was executed
         # 1. compute new propensity

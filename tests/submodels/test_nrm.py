@@ -58,12 +58,12 @@ class TestNrmSubmodel(unittest.TestCase):
 
     def test_determine_dependencies(self):
         expected_dependencies = [
-            (0, 1,),
-            (1, 2,),
-            (2, 3,),
-            (0, 3,),
+            (1,),
+            (2,),
+            (3,),
+            (0,),
             (3, 5,),
-            (3, 5,),
+            (3,),
         ]
         dependencies = self.nrm_submodel.determine_dependencies()
         self.assertEqual(dependencies, expected_dependencies)
