@@ -59,18 +59,30 @@ class SimController(cement.Controller):
                 type=float,
                 default=config['checkpoint_period'],
                 help="checkpointing period (sec)")),
-            (['--fba-time-step'], dict(
+            (['--dfba-time-step'], dict(
                 type=float,
                 default=config['dfba_time_step'],
-                help="timestep for FBA submodel(s) (sec)")),
+                help="timestep for dFBA submodel(s) (sec)")),
+            (['-p', '--profile'], dict(
+                default=False,
+                action='store_true',
+                help="output a profile of the simulation's performance")),
+            (['-v', '--verbose'], dict(
+                default=False,
+                action='store_true',
+                help="verbose output")),
         ]
 
     @cement.ex(hide=True)
     def _default(self):
         args = self.app.pargs
         simulation = Simulation(args.model_file)
-        simulation.run(time_max=args.time_max, results_dir=args.results_dir,
-            checkpoint_period=args.checkpoint_period)
+        simulation.run(time_max=args.time_max,
+                       results_dir=args.results_dir,
+                       checkpoint_period=args.checkpoint_period,
+                       dfba_time_step=args.dfba_time_step,
+                       profile=args.profile,
+                       verbose=args.verbose)
 
 
 class App(cement.App):
