@@ -90,11 +90,11 @@ class TestSimulation(unittest.TestCase):
         # test performance profiling
         results_dir = tempfile.mkdtemp(dir=self.test_dir)
         with CaptureOutput(relay=False) as capturer:
-            stats, _ = Simulation(TOY_MODEL_FILENAME).run(time_max=2,
-                                                       results_dir=results_dir,
-                                                       checkpoint_period=1,
-                                                       profile=True,
-                                                       verbose=False)
+            stats, _ = Simulation(TOY_MODEL_FILENAME).run(time_max=20,
+                                                          results_dir=results_dir,
+                                                          checkpoint_period=1,
+                                                          profile=True,
+                                                          verbose=False)
             expected_profile_text =['function calls', 'filename:lineno(function)']
             for text in expected_profile_text:
                 self.assertIn(text, capturer.get_text())

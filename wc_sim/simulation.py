@@ -114,7 +114,8 @@ class Simulation(object):
         Returns:
             :obj:`tuple` of (`int`, `str`): number of simulation events, pathname of directory
                 containing the results, or :obj:`tuple` of (`int`, `None`): number of simulation events,
-                `None` if `results_dir=None`
+                `None` if `results_dir is None`, or :obj:`tuple` of (`pstats.Stats`, `None`): profile
+                stats, `None` if `profile is True`
 
         Raises:
             :obj:`MultialgorithmError`: if the simulation raises an exception
