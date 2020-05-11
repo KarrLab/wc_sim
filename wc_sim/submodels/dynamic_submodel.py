@@ -54,12 +54,13 @@ class DynamicSubmodel(ApplicationSimulationObject):
         self.dynamic_model = dynamic_model
         self.reactions = reactions
         self.rates = np.full(len(self.reactions), np.nan)
-        self.log_with_time("submodel: {}; reactions: {}".format(self.id,
-                                                                [reaction.id for reaction in reactions]))
         self.species = species
         self.dynamic_compartments = dynamic_compartments
         self.local_species_population = local_species_population
         self.fast_debug_file_logger = FastLogger(debug_logs.get_log('wc.debug.file'), 'debug')
+        self.fast_debug_file_logger.fast_log(f"DynamicSubmodel.__init__: submodel: {self.id}; "
+                                             f"reactions: {[reaction.id for reaction in reactions]}",
+                                             sim_time=self.time)
 
     # The next 2 methods implement the abstract methods in ApplicationSimulationObject
     def send_initial_events(self):
@@ -123,7 +124,10 @@ class DynamicSubmodel(ApplicationSimulationObject):
             :obj:`float`: the reaction's rate
         """
         rate_law_id = reaction.rate_laws[0].id
-        return self.dynamic_model.dynamic_rate_laws[rate_law_id].eval(self.time)
+        rate = self.dynamic_model.dynamic_rate_laws[rate_law_id].eval(self.time)
+        self.fast_debug_file_logger.fast_log(f"DynamicSubmodel.calc_reaction_rate: "
+                                             f"rate of reaction {rate_law_id} = {rate}", sim_time=self.time)
+        return rate
 
     def calc_reaction_rates(self):
         """ Calculate the rates for this dynamic submodel's reactions
@@ -141,7 +145,8 @@ class DynamicSubmodel(ApplicationSimulationObject):
                 self.rates[idx_reaction] = self.calc_reaction_rate(rxn)
 
         if self.fast_debug_file_logger.is_active():
-            msg = str([(self.reactions[i].id, self.rates[i]) for i in range(len(self.reactions))])
+            msg = 'DynamicSubmodel.calc_reaction_rates: reactions and rates: ' + \
+                str([(self.reactions[i].id, self.rates[i]) for i in range(len(self.reactions))])
             self.fast_debug_file_logger.fast_log(msg, sim_time=self.time)
         return self.rates
 

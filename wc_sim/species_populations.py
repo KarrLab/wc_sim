@@ -591,10 +591,11 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
 
         # log initialization data
         self.fast_debug_file_logger = FastLogger(debug_logs.get_log('wc.debug.file'), 'debug')
-        self.fast_debug_file_logger.fast_log("initial_population: {}".format(DictUtil.to_string_sorted_by_key(
-            initial_population)), sim_time=self.time)
-        self.fast_debug_file_logger.fast_log("initial_population_slopes: {}".format(
-                        DictUtil.to_string_sorted_by_key(initial_population_slopes)), sim_time=self.time)
+        self.fast_debug_file_logger.fast_log("LocalSpeciesPopulation.__init__: initial_population: {}".format(
+                                             DictUtil.to_string_sorted_by_key(initial_population)), sim_time=self.time)
+        self.fast_debug_file_logger.fast_log("LocalSpeciesPopulation.__init__: initial_population_slopes: {}".format(
+                                             DictUtil.to_string_sorted_by_key(initial_population_slopes)),
+                                             sim_time=self.time)
 
     def init_cell_state_species(self, species_id, population, molecular_weight, initial_population_slope=None):
         """ Initialize a species with the given population and population slope
@@ -937,8 +938,8 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             except (DynamicSpeciesPopulationError, DynamicNegativePopulationError) as e:
                 errors.append(str(e))
         if errors:
-            self.fast_debug_file_logger.fast_log("Error: on species {}: {}".format(species_id,
-                                                 '\n'.join(errors)), sim_time=self.time)
+            self.fast_debug_file_logger.fast_log("LocalSpeciesPopulation.adjust_continuously: error: on species {}: {}".format(
+                                                 species_id, '\n'.join(errors)), sim_time=self.time)
             raise DynamicSpeciesPopulationError(time, "adjust_continuously error(s):\n{}".format('\n'.join(errors)))
 
     # TODO(Arthur): don't need compartment_id, because compartment is part of the species_ids
@@ -1018,7 +1019,8 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         values = [message, species.last_population, population_slope]
         values = map(lambda x: str(x), values)
         # log Sim_time Adjustment_type New_population New_population_slope
-        self.fast_debug_file_logger.fast_log('\t'.join(values), sim_time=self.time)
+        self.fast_debug_file_logger.fast_log('LocalSpeciesPopulation.log_event: ' + '\t'.join(values),
+                                             sim_time=self.time)
 
     def _initialize_history(self):
         """ Initialize the population history with current population """
