@@ -48,7 +48,8 @@ class SimControllerTestCase(unittest.TestCase):
             '10',
             '--checkpoint-period', '2',
             '--results-dir', self.checkpoints_dir,
-            '--fba-time-step', '5',
+            '--dfba-time-step', '5',
+            '--verbose'
         ]
         with __main__.App(argv=argv) as app:
             with CaptureOutput(relay=False) as capturer:
