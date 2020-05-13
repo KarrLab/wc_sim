@@ -290,6 +290,9 @@ class DynamicExpression(DynamicComponent):
         Args:
             time (:obj:`float`): the simulation time at which the expression should be evaluated
 
+        Returns:
+            :obj:`float`: the value of this :obj:`DynamicExpression` at time `time`
+
         Raises:
             :obj:`MultialgorithmError`: if Python `eval` raises an exception
         """
@@ -322,6 +325,18 @@ class DynamicFunction(DynamicExpression):
 
     def __init__(self, *args):
         super().__init__(*args)
+
+    def eval(self, time):
+        """ Provide the value of this dynamic function
+
+        Args:
+            time (:obj:`float`): the current simulation time; not needed, but included so that all
+                dynamic expression models have the same signature for `eval`
+
+        Returns:
+            :obj:`float`: the value of this dynamic function
+        """
+        return super().eval(time)
 
 
 class DynamicStopCondition(DynamicExpression):
