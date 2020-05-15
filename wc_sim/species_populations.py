@@ -525,6 +525,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             molecular weight of each species
         _population (:obj:`dict` of :obj:`DynamicSpeciesState`): map: species_id -> DynamicSpeciesState();
             the species whose counts are stored, represented by DynamicSpeciesState objects.
+        _cached_species_ids (:obj:`set`) ids of all species in `_population`; cached to enhance performance
         last_access_time (:obj:`dict` of :obj:`float`): map: species_name -> last_time; the last time at
             which the species was accessed.
         _history (:obj:`dict`) nested dict; an optional history of the species' state. The population
@@ -565,6 +566,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self.name = name
         self.time = initial_time
         self._population = {}
+        self._cached_species_ids = set()
         self._molecular_weights = {}
         self.last_access_time = {}
         self.random_state = random_state
@@ -617,6 +619,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         modeled_continuously = initial_population_slope is not None
         self._population[species_id] = DynamicSpeciesState(species_id, self.random_state, population,
                                                            modeled_continuously=modeled_continuously)
+        self._add_to_cached_species_ids(species_id)
         self._molecular_weights[species_id] = molecular_weight
 
         if modeled_continuously:
@@ -624,13 +627,21 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self.last_access_time[species_id] = self.time
         self._add_to_history(species_id)
 
+    def _add_to_cached_species_ids(self, id):
+        """ Add a species ID to the cached species IDs
+
+        Args:
+            id (:obj:`str`): the ID of a species stored in `_population`
+        """
+        self._cached_species_ids.add(id)
+
     def _all_species(self):
         """ Return the IDs of species known by this :obj:`LocalSpeciesPopulation`
 
         Returns:
             :obj:`set`: the species known by this :obj:`LocalSpeciesPopulation`
         """
-        return set(self._population.keys())
+        return self._cached_species_ids
 
     # todo: stop requiring that species be in sets, instead require iterator and remove set(species) below
     def _check_species(self, time, species=None, check_early_accesses=True):
