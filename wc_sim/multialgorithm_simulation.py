@@ -216,7 +216,7 @@ class MultialgorithmSimulation(object):
         species_weights = {}
         species = species or [species.id for species in self.model.get_species()]
         for species_id in species:
-            species_type_id, _ = Species.parse_id(species_id)
+            species_type_id, _ = ModelUtilities.parse_species_id(species_id)
             species_type = self.model.species_types.get_one(id=species_type_id)
             if species_type.structure:
                 species_weights[species_id] = species_type.structure.molecular_weight
