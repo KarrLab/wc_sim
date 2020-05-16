@@ -22,6 +22,7 @@ import tempfile
 import unittest
 
 from wc_sim.config import core as config_core_multialgorithm
+from wc_sim.model_utilities import ModelUtilities
 from wc_sim.run_results import RunResults
 from wc_sim.testing.verify import (VerificationError, VerificationTestCaseType, VerificationTestReader,
                                    ResultsComparator, CaseVerifier, VerificationResultType,
@@ -281,7 +282,7 @@ class TestResultsComparator(unittest.TestCase):
         if test_case_type_name == 'CONTINUOUS_DETERMINISTIC':
             # for continuous tests, convert Moles to populations that will be stored in run results
             for spec_id in species_ids:
-                _, comp_id = wc_lang.Species.parse_id(spec_id)
+                _, comp_id = ModelUtilities.parse_species_id(spec_id)
                 amounts_df.loc[:, spec_id] = amounts_df.loc[:, spec_id] * volumes[comp_id] * Avogadro
 
         # create an hdf storing the amounts

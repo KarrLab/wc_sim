@@ -709,7 +709,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         # compute the volume of each compartment only once
         volumes = {}
         for species_id in species:
-            _, compartment_id = wc_lang.Species.parse_id(species_id)
+            _, compartment_id = ModelUtilities.parse_species_id(species_id)
             if compartment_id not in volumes:
                 volumes[compartment_id] = \
                     dynamic_model.dynamic_compartments[compartment_id].accounted_volume()
@@ -753,7 +753,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
 
         # concentration (mole/liter) = population (molecule) / (Avogadro (molecule/mole) * volume (liter))
         for i in range(len(species)):
-            _, species_compartment = wc_lang.Species.parse_id(species[i])
+            _, species_compartment = ModelUtilities.parse_species_id(species[i])
             concentrations[i] = populations[i] / (Avogadro * volumes[species_compartment])
 
     def concentrations_to_populations(self, time, species, concentrations, dynamic_model, populations,
@@ -780,7 +780,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
 
         # population (molecule) = concentration (mole/liter) * Avogadro (molecule/mole) * volume (liter)
         for i in range(len(species)):
-            _, species_compartment = wc_lang.Species.parse_id(species[i])
+            _, species_compartment = ModelUtilities.parse_species_id(species[i])
             populations[i] = concentrations[i] * Avogadro * volumes[species_compartment]
 
     def concentrations_api(self):
@@ -976,7 +976,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             time = self.time
         mass = 0.
         for species_id in species_ids:
-            _, comp = wc_lang.Species.parse_id(species_id)
+            _, comp = ModelUtilities.parse_species_id(species_id)
             if comp == compartment_id:
                 try:
                     mw = self._molecular_weights[species_id]

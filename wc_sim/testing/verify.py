@@ -24,11 +24,11 @@ import time
 import traceback
 import warnings
 
-from wc_lang import Species
 from wc_lang.core import ReactionParticipantAttribute, Model
 from wc_lang.io import Reader
 from wc_onto import onto
 from wc_sim.config import core as config_core_multialgorithm
+from wc_sim.model_utilities import ModelUtilities
 from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_sim.run_results import RunResults
 from wc_sim.simulation import Simulation
@@ -291,7 +291,7 @@ class VerificationTestReader(object):
         """
         species_id = None
         for species in self.model.get_species():
-            possible_species_type_id, _ = Species.parse_id(species.id)
+            possible_species_type_id, _ = ModelUtilities.parse_species_id(species.id)
             if possible_species_type_id == species_type:
                 if species_id is not None:
                         raise VerificationError(f"multiple species ids for species_type {species_type}: "

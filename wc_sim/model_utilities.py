@@ -158,8 +158,26 @@ class ModelUtilities(object):
         species_types = set()
         species_types_list = []
         for species_id in species_ids:
-            species_type_id, _ = Species.parse_id(species_id)
+            species_type_id, _ = ModelUtilities.parse_species_id(species_id)
             if not species_type_id in species_types:
                 species_types.add(species_type_id)
                 species_types_list.append(species_type_id)
         return species_types_list
+
+    @staticmethod
+    def parse_species_id(species_id):
+        """ Fast species id parser
+
+        Args:
+            species_id (:obj:`str`): species identifier
+
+        Returns:
+            :obj:`tuple` of (:obj:`str`, :obj:`str`): species type id, compartment id
+
+        Raises:
+            :obj:`ValueError`: if `species_id` is not of the form `species_type_id[compartment_id]`
+        """
+        comp_start = species_id.find('[')
+        if comp_start == -1 or comp_start == 0 or comp_start == len(species_id)-2 or species_id[-1] != ']':
+            raise ValueError(f"Species id format should be 'species_type_id[compartment_id]' but is '{species_id}'")
+        return species_id[0:comp_start], species_id[comp_start+1:-1]

@@ -57,13 +57,6 @@ class TestModelUtilities(unittest.TestCase):
         self.assertEqual(set(ModelUtilities.find_shared_species(self.model, return_ids=True)),
                          set(['species_2[c]', 'species_3[c]', 'H2O[e]', 'H2O[c]']))
 
-    def test_get_species_types(self):
-        self.assertEqual(ModelUtilities.get_species_types([]), [])
-
-        species_type_ids = [species_type.id for species_type in self.model.get_species_types()]
-        species_ids = [species.serialize() for species in self.model.get_species()]
-        self.assertEqual(sorted(ModelUtilities.get_species_types(species_ids)), sorted(species_type_ids))
-
     def test_sample_copy_num_from_concentration(self):
         model = wc_lang.Model()
 
@@ -149,3 +142,22 @@ class TestModelUtilities(unittest.TestCase):
                                               units=wc_lang.InitVolume.units.choices[0])
         with self.assertRaisesRegex(ValueError, 'Unsupported unit'):
             conc_to_molecules(species_tmp2, species_tmp2.compartment.init_volume.mean, random_state)
+
+    def test_get_species_types(self):
+        self.assertEqual(ModelUtilities.get_species_types([]), [])
+
+        species_type_ids = [species_type.id for species_type in self.model.get_species_types()]
+        species_ids = [species.serialize() for species in self.model.get_species()]
+        self.assertEqual(sorted(ModelUtilities.get_species_types(species_ids)), sorted(species_type_ids))
+
+    def test_get_species_types(self):
+        self.assertEqual(ModelUtilities.parse_species_id('species_type_id[compartment_id]'),
+                         ('species_type_id', 'compartment_id'))
+        with self.assertRaisesRegex(ValueError, 'Species id format should be'):
+            ModelUtilities.parse_species_id('compartment_id]')
+        with self.assertRaisesRegex(ValueError, 'Species id format should be'):
+            ModelUtilities.parse_species_id('[compartment_id]')
+        with self.assertRaisesRegex(ValueError, 'Species id format should be'):
+            ModelUtilities.parse_species_id('species_type_id[]')
+        with self.assertRaisesRegex(ValueError, 'Species id format should be'):
+            ModelUtilities.parse_species_id('species_type_id[compartment_id]extra')

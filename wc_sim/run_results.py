@@ -17,8 +17,8 @@ import pickle
 
 from de_sim.checkpoint import Checkpoint, AccessCheckpoints
 from de_sim.simulation_metadata import SimulationMetadata
-from wc_lang import Species
 from wc_sim.metadata import WCSimulationMetadata
+from wc_sim.model_utilities import ModelUtilities
 from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_utils.util.dict import DictUtil
 
@@ -184,7 +184,7 @@ class RunResults(object):
             # (as of 0.25.3 pandas doesn't support joins between two MultiIndexes)
             pop_div_vol = populations.copy()
             for species_id in populations.columns.values:
-                _, compartment_id = Species.parse_id(species_id)
+                _, compartment_id = ModelUtilities.parse_species_id(species_id)
                 pop_div_vol.loc[:, species_id] = pop_div_vol.loc[:, species_id] / \
                     self.get_volumes(compartment_id=compartment_id)
             concentrations = pop_div_vol / Avogadro
