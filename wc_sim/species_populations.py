@@ -710,7 +710,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         # compute the volume of each compartment only once
         volumes = {}
         for species_id in species:
-            _, compartment_id = ModelUtilities.parse_species_id(species_id)
+            compartment_id = self._population[species_id].compartment_id
             if compartment_id not in volumes:
                 volumes[compartment_id] = \
                     dynamic_model.dynamic_compartments[compartment_id].accounted_volume()
@@ -754,8 +754,8 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
 
         # concentration (mole/liter) = population (molecule) / (Avogadro (molecule/mole) * volume (liter))
         for i in range(len(species)):
-            _, species_compartment = ModelUtilities.parse_species_id(species[i])
-            concentrations[i] = populations[i] / (Avogadro * volumes[species_compartment])
+            species_compartment_id = self._population[species[i]].compartment_id
+            concentrations[i] = populations[i] / (Avogadro * volumes[species_compartment_id])
 
     def concentrations_to_populations(self, time, species, concentrations, dynamic_model, populations,
                                       volumes=None):
@@ -781,8 +781,8 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
 
         # population (molecule) = concentration (mole/liter) * Avogadro (molecule/mole) * volume (liter)
         for i in range(len(species)):
-            _, species_compartment = ModelUtilities.parse_species_id(species[i])
-            populations[i] = concentrations[i] * Avogadro * volumes[species_compartment]
+            species_compartment_id = self._population[species[i]].compartment_id
+            populations[i] = concentrations[i] * Avogadro * volumes[species_compartment_id]
 
     def concentrations_api(self):
         """ Get the status of the concentrations API; if `True`, species amounts must be in molar
@@ -978,11 +978,11 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             time = self.time
         mass = 0.
         for species_id in species_ids:
-            _, comp = ModelUtilities.parse_species_id(species_id)
+            comp = self._population[species_id].compartment_id
             if comp == compartment_id:
                 try:
                     mw = self._molecular_weights[species_id]
-                except KeyError as e:
+                except KeyError as e:   # pragma: no cover
                     raise DynamicSpeciesPopulationError(time, f"molecular weight not available for '{species_id}'")
                 if not np.isnan(mw):
                     mass += mw * self.read_one(time, species_id)
@@ -1417,6 +1417,8 @@ class DynamicSpeciesState(object):
     Attributes:
         species_name (:obj:`str`): the species' name; not logically needed, but helpful for error
             reporting, logging, debugging, etc.
+        compartment_id (:obj:`str`): the species' compartment's id; optimization to avoid parsing species id
+            at run-time
         random_state (:obj:`np.random.RandomState`): a shared PRNG, used to round populations
             to integers
         last_population (:obj:`float`): species population at the most recent adjustment
@@ -1438,7 +1440,7 @@ class DynamicSpeciesState(object):
     MINIMUM_ALLOWED_POPULATION = config_multialgorithm['minimum_allowed_population']
 
     # use __slots__ to save space
-    __slots__ = ['species_name', 'random_state', 'last_population', 'modeled_continuously',
+    __slots__ = ['species_name', 'compartment_id', 'random_state', 'last_population', 'modeled_continuously',
                  'population_slope', 'continuous_time', 'last_adjustment_time', 'last_read_time',
                  '_record_history', '_history', '_temp_population_value']
 
@@ -1457,6 +1459,7 @@ class DynamicSpeciesState(object):
                 default=`False`
         """
         self.species_name = species_name
+        _, self.compartment_id = ModelUtilities.parse_species_id(species_name)
         assert 0 <= initial_population, f"DynamicSpeciesState '{species_name}': population should be >= 0"
         # if a population is not modeled continuously then it must be a non-negative integer
         assert modeled_continuously or float(initial_population).is_integer(), \
