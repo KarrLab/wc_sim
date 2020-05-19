@@ -39,8 +39,10 @@ from wc_sim.species_populations import (LOCAL_POP_STORE, DynamicSpeciesState, Sp
 from wc_sim.testing.utils import read_model_for_test
 from wc_utils.util.rand import RandomStateManager
 import wc_lang
+import wc_sim.species_populations
 
 config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
+
 
 def store_i(i):
     return "store_{}".format(i)
@@ -342,11 +344,15 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         test_species = 'species_2[c2]'
         self.assertEqual(self.local_species_pop_no_init_pop_change.read_one(1, test_species),
                          self.init_populations[test_species])
+        wc_sim.species_populations.RUN_TIME_ERROR_CHECKING = True
         with self.assertRaisesRegex(DynamicSpeciesPopulationError,
                                     "request for population of unknown species: 'unknown_species_id'"):
             self.local_species_pop_no_init_pop_change.read_one(2, 'unknown_species_id')
         with self.assertRaisesRegex(DynamicSpeciesPopulationError, r"is an earlier access of species"):
             self.local_species_pop_no_init_pop_change.read_one(0, test_species)
+        wc_sim.species_populations.RUN_TIME_ERROR_CHECKING = False
+        with self.assertRaises(KeyError):
+            self.local_species_pop_no_init_pop_change.read_one(2, 'unknown_species_id')
 
     def reusable_assertions(self, the_local_species_pop, population_slope):
         # test both discrete and hybrid species
@@ -375,6 +381,7 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
                 self.assertIn(species_id, str(the_local_species_pop))
 
     def test_discrete_and_hybrid(self):
+        wc_sim.species_populations.RUN_TIME_ERROR_CHECKING = True
         for (local_species_pop, population_slope) in [(self.local_species_pop, self.population_slope),
                                                       (self.local_species_pop_no_init_pop_slope, None)]:
             self.reusable_assertions(local_species_pop, population_slope)
@@ -414,6 +421,7 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         self.local_species_pop.clear_temp_populations({s_0})
         self.assertEqual(self.local_species_pop.read_one(time, s_0), pop_s_0)
 
+        wc_sim.species_populations.RUN_TIME_ERROR_CHECKING = True
         with self.assertRaises(DynamicSpeciesPopulationError):
             self.local_species_pop.set_temp_populations({'not a species id': temp_pop_s_0})
 
@@ -422,6 +430,10 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
 
         with self.assertRaises(DynamicSpeciesPopulationError):
             self.local_species_pop.clear_temp_populations(['not a species id'])
+
+        wc_sim.species_populations.RUN_TIME_ERROR_CHECKING = False
+        with self.assertRaises(KeyError):
+            self.local_species_pop.set_temp_populations({'not a species id': temp_pop_s_0})
 
     def test_concentrations_api(self):
         self.assertFalse(self.local_species_pop.concentrations_api())

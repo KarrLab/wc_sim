@@ -33,6 +33,7 @@ from wc_utils.util.rand import RandomStateManager
 import wc_lang
 
 config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
+RUN_TIME_ERROR_CHECKING = config_multialgorithm['run_time_error_checking']
 
 
 class AccessSpeciesPopulationInterface(metaclass=abc.ABCMeta):   # pragma: no cover; methods in ABCs aren't run
@@ -68,8 +69,6 @@ class AccessSpeciesPopulationInterface(metaclass=abc.ABCMeta):   # pragma: no co
         raise NotImplemented
 
 
-config_multialgorithm = \
-    config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 LOCAL_POP_STORE = 'LOCAL_POP_STORE'  # the name of the local population store
 
 
@@ -649,6 +648,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
 
         Also checks whether the species are being accessed in time order if `check_early_accesses`
         is set.
+        Does nothing if `RUN_TIME_ERROR_CHECKING` is `False`.
 
         Args:
             time (:obj:`float`): the time at which the population might be accessed
@@ -661,20 +661,21 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             :obj:`DynamicSpeciesPopulationError`: if a species in `species` is being accessed at a time earlier
                 than a prior access.
         """
-        if not species is None:
-            if not isinstance(species, set):
-                raise DynamicSpeciesPopulationError(time, "species '{}' must be a set".format(species))
-            unknown_species = species - self._all_species()
-            if unknown_species:
-                # raise exception if some species are non-existent
-                raise DynamicSpeciesPopulationError(time, "request for population of unknown species: {}".format(
-                    ', '.join(map(lambda x: "'{}'".format(str(x)), unknown_species))))
-            if check_early_accesses:
-                early_accesses = list(filter(lambda s: time < self.last_access_time[s], species))
-                if early_accesses:
-                    raise DynamicSpeciesPopulationError(time, "access at time {} is an earlier access of species "
-                                                 "{} than at {}".format(time, early_accesses,
-                                                 [self.last_access_time[s] for s in early_accesses]))
+        if RUN_TIME_ERROR_CHECKING:
+            if not species is None:
+                if not isinstance(species, set):
+                    raise DynamicSpeciesPopulationError(time, "species '{}' must be a set".format(species))
+                unknown_species = species - self._all_species()
+                if unknown_species:
+                    # raise exception if some species are non-existent
+                    raise DynamicSpeciesPopulationError(time, "request for population of unknown species: {}".format(
+                        ', '.join(map(lambda x: "'{}'".format(str(x)), unknown_species))))
+                if check_early_accesses:
+                    early_accesses = list(filter(lambda s: time < self.last_access_time[s], species))
+                    if early_accesses:
+                        raise DynamicSpeciesPopulationError(time, "access at time {} is an earlier access of "
+                                                     "species {} than at {}".format(time, early_accesses,
+                                                     [self.last_access_time[s] for s in early_accesses]))
 
     def _update_access_times(self, time, species=None):
         """ Update the access time to `time` for all species_ids in `species`
@@ -954,6 +955,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             raise DynamicSpeciesPopulationError(time, "adjust_continuously error(s):\n{}".format('\n'.join(errors)))
 
     # TODO(Arthur): don't need compartment_id, because compartment is part of the species_ids
+    # TODO(Arthur): to speed-up convert species ids, molecular weights and populations into arrays
     def compartmental_mass(self, compartment_id, species_ids=None, time=None):
         """ Compute the current mass of some, or all, species in a compartment
 
