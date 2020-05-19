@@ -722,6 +722,7 @@ class TestDynamicSpeciesState(unittest.TestCase):
         # dynamic species modeled only by discrete submodel(s)
         pop = 10
         s1 = DynamicSpeciesState('s1[c]', self.random_state, pop)
+        self.assertEqual(s1.compartment_id, 'c')
         self.assertEqual(s1.get_population(0), pop)
         time = 0
         adjustment = 1
