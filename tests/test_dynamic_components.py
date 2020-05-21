@@ -348,6 +348,9 @@ class TestDynamics(unittest.TestCase):
 
     def test_dynamic_expressions(self):
 
+        # stop caching in this test to measure performance correctly & get correct values for expressions
+        self.dynamic_model.cache_manager.stop_caching()
+
         # check computed value and measure performance of all test Dynamic objects
         executions = 10000
         static_times = []

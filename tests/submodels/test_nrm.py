@@ -94,6 +94,9 @@ class TestNrmSubmodel(unittest.TestCase):
         _, dynamic_model = self.make_sim_w_nrm_submodel(test_props_eq_0_model, False)
         nrm_submodel_0_props = dynamic_model.dynamic_submodels['nrm_submodel']
 
+        # stop caching for this test, because it repeatedly updates populations
+        dynamic_model.cache_manager.stop_caching()
+
         ### single step a mock simulation ###
         nrm_submodel_0_props.initialize()
 
@@ -103,6 +106,7 @@ class TestNrmSubmodel(unittest.TestCase):
                                           [0, 1, 0],
                                           [0, 1, 1],
                                           [0, 1, 2]]
+
         for expected_propensities in expected_propensities_sequence:
             # check propensities & execution_time_priority_queue
             self.assertEqual(list(nrm_submodel_0_props.propensities), expected_propensities)

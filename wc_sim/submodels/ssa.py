@@ -301,6 +301,7 @@ class SsaSubmodel(DynamicSubmodel):
         """
         self.log_event(event)
 
+        self.dynamic_model.cache_manager.clear_cache()
         reaction_index = event.message.reaction_index
 
         # if the selected reaction is still enabled execute it, otherwise try to choose another

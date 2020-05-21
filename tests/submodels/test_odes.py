@@ -47,8 +47,7 @@ class TestOdeSubmodel(unittest.TestCase):
         multialgorithm_simulation = MultialgorithmSimulation(model, wc_sim_config)
         simulation_engine, dynamic_model = multialgorithm_simulation.build_simulation()
         simulation_engine.initialize()
-        submodel_1 = dynamic_model.dynamic_submodels[submodel_name]
-        return submodel_1
+        return dynamic_model.dynamic_submodels[submodel_name]
 
     ### test low level methods ###
     def test_ode_submodel_init(self):
@@ -120,23 +119,27 @@ class TestOdeSubmodel(unittest.TestCase):
         one_rxn_exp_mdl = read_model_for_test(one_rxn_exponential_file,
                                               integration_framework='WC:ordinary_differential_equations')
         ode_submodel = self.make_ode_submodel(one_rxn_exp_mdl, submodel_name='submodel')
+
+        # stop caching for this test, because it repeatedly updates populations
+        ode_submodel.dynamic_model.cache_manager.stop_caching()
+
         ode_submodel.current_species_populations()
         new_species_populations = ode_submodel.populations.copy()
         population_change_rates_1 = np.zeros(ode_submodel.num_species)
         time = None
         ode_submodel.compute_population_change_rates(time, new_species_populations,
-                                                            population_change_rates_1)
+                                                     population_change_rates_1)
         new_species_populations = 2 * new_species_populations
         population_change_rates_2 = np.zeros(ode_submodel.num_species)
         ode_submodel.compute_population_change_rates(time, new_species_populations,
-                                                            population_change_rates_2)
+                                                     population_change_rates_2)
         np.testing.assert_allclose(2 * population_change_rates_1, population_change_rates_2)
 
         # compute_population_change_rates replaces negative species populations with 0s in the rate computation
         # this produces change rates of 0
         new_species_populations.fill(-1)
         ode_submodel.compute_population_change_rates(time, new_species_populations,
-                                                            population_change_rates_2)
+                                                     population_change_rates_2)
         np.testing.assert_array_equal(population_change_rates_2, np.zeros(ode_submodel.num_species))
 
         # test rxn: [compt_1]: spec_type_0 => spec_type_1 @ k * spec_type_0 / Avogadro / volume_compt_1

@@ -16,7 +16,6 @@ import warnings
 
 from de_sim.simulation_object import SimulationObject
 from wc_sim import message_types
-from wc_sim.config import core as config_core_core
 from wc_sim.config import core as config_core_multialgorithm
 from wc_sim.multialgorithm_errors import DynamicMultialgorithmError, MultialgorithmError
 from wc_sim.species_populations import TempPopulationsLSP
@@ -121,7 +120,7 @@ class OdeSubmodel(DynamicSubmodel):
                 tmp_coeffs_and_rate_laws[species_id].append((species_coefficient.coefficient,
                                                              dynamic_rate_law))
 
-        # todo: use linear algebra to compute species derivatives, & calc each RL once
+        # todo: use vector algebra to compute species derivatives, & calc each RL once
         # replace rate_of_change_expressions with a stoichiometric matrix S
         # then, in compute_population_change_rates() compute a vector of reaction rates R and get
         # rates of change of species from R * S
@@ -187,7 +186,8 @@ class OdeSubmodel(DynamicSubmodel):
 
         Args:
             time (:obj:`float`): simulation time
-            new_species_populations (:obj:`numpy.ndarray`): populations of all species at time `time`,
+            new_species_populations (:obj:`numpy.ndarray`): estimated populations of all species at
+                time `time`, provided by the ODE solver;
                 listed in the same order as `self.ode_species_ids`
             population_change_rates (:obj:`numpy.ndarray`): the rate of change of
                 `new_species_populations` at time `time`; written by this method
@@ -200,6 +200,8 @@ class OdeSubmodel(DynamicSubmodel):
             :obj:`DynamicMultialgorithmError`: if this method raises any exception
         """
 
+        # if caching, clear the expression cache because populations have changed
+        self.dynamic_model.cache_manager.clear_cache()
         try:
             self.compute_population_change_rates(time, new_species_populations, population_change_rates)
             return 0
@@ -300,5 +302,6 @@ class OdeSubmodel(DynamicSubmodel):
         Args:
             event (:obj:`Event`): a simulation event
         """
+        self.dynamic_model.cache_manager.clear_cache()
         self.run_ode_solver()
         self.schedule_next_ode_analysis()

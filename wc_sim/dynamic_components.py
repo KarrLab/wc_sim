@@ -26,12 +26,12 @@ import wc_lang
 
 config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 
+
 '''
 # old TODOs:
 cleanup
     jupyter examples
     memoize performance comparison; decide whether to trash or finish implementing direct dependency tracking eval
-    clean up memoize cache file?
 
 Expression eval design:
     Algorithms:
@@ -43,11 +43,6 @@ Expression eval design:
             Reaction and BiomassReaction: flux units in :obj:`wc_lang.DfbaObjective`?
     Optimizations:
         evaluate parameters statically at initialization
-        use memoization to avoid re-evaluation, if the benefit outweighs the overhead; like this:
-            cache_dir = tempfile.mkdtemp()
-            cache = wc_utils.cache.Cache(directory=os.path.join(cache_dir, 'cache'))
-            @cache.memoize()
-            def eval(time):
         fast access to species counts and concentrations:
             eliminate lookups, extra objects and memory allocation/deallocation
         for maximum speed, don't use eval() -- convert expressions into trees, & use an evaluator that
@@ -73,6 +68,45 @@ WcSimToken.__doc__ += ': Token in a validated expression'
 WcSimToken.code.__doc__ = 'SimTokCodes encoding'
 WcSimToken.token_string.__doc__ = "The token's string"
 WcSimToken.dynamic_expression.__doc__ = "When code is dynamic_expression, the dynamic_expression instance"
+
+
+class CacheManager(object):
+    """ Represent a cache of `DynamicExpression.eval()` values
+
+    Attributes:
+        expression_caching (:obj:`bool`): whether `DynamicExpression.eval()` values are being cached
+        _cache (:obj:`dict`): cache of `DynamicExpression.eval()` values
+        _cache_stats (:obj:`dict`): caching stats
+    """
+
+    def __init__(self):
+        self.expression_caching = config_multialgorithm['expression_caching']
+        self._cache = dict()
+        self._cache_stats = dict()
+        for cls in DynamicExpression.__subclasses__():
+            self._cache_stats[cls.__name__] = dict()
+            for result in ['HIT', 'MISS']:
+                self._cache_stats[cls.__name__][result] = 0
+
+    def clear_cache(self):
+        self._cache.clear()
+
+    def cache(self):
+        return self._cache
+
+    def caching(self):
+        return self.expression_caching
+
+    def set_caching(self, expression_caching):
+        self.expression_caching = expression_caching
+
+    def stop_caching(self):
+        # for testing
+        self.set_caching(False)
+
+    def start_caching(self):
+        # for testing
+        self.set_caching(True)
 
 
 class DynamicComponent(object):
@@ -297,11 +331,23 @@ class DynamicExpression(DynamicComponent):
             :obj:`MultialgorithmError`: if Python `eval` raises an exception
         """
         assert hasattr(self, 'wc_sim_tokens'), "'{}' must use prepare() before eval()".format(self.id)
+        if self.dynamic_model.cache_manager.caching():
+            cls_name = self.__class__.__name__
+            cache_key = (cls_name, self.id)
+            if cache_key in self.dynamic_model.cache_manager.cache():
+                self.dynamic_model.cache_manager._cache_stats[cls_name]['HIT'] += 1
+                return self.dynamic_model.cache_manager.cache()[cache_key]
+            else:
+                self.dynamic_model.cache_manager._cache_stats[cls_name]['MISS'] += 1
+
         for idx, sim_token in enumerate(self.wc_sim_tokens):
             if sim_token.code == SimTokCodes.dynamic_expression:
                 self.expr_substrings[idx] = str(sim_token.dynamic_expression.eval(time))
         try:
-            return eval(''.join(self.expr_substrings), {}, self.local_ns)
+            value = eval(''.join(self.expr_substrings), {}, self.local_ns)
+            if self.dynamic_model.cache_manager.caching():
+                    self.dynamic_model.cache_manager.cache()[cache_key] = value
+            return value
         except BaseException as e:
             raise MultialgorithmError("eval of '{}' raises {}: {}'".format(
                 self.expression, type(e).__name__, str(e)))
@@ -811,6 +857,8 @@ class DynamicModel(object):
                                          self.dynamic_dfba_objectives]:
             for dynamic_expression in dynamic_expression_group.values():
                 dynamic_expression.prepare()
+
+        self.cache_manager = CacheManager()
 
     def cell_mass(self):
         """ Provide the cell's current mass

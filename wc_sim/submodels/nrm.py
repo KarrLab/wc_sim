@@ -75,7 +75,7 @@ class NrmSubmodel(DynamicSubmodel):
         self.random_state = RandomStateManager.instance()
         self.execution_time_priority_queue = PQDict()
         self.options = options
-        # to enable testing of uninitialized instances auto_initialize controls initialization here
+        # to enable testing of uninitialized instances, auto_initialize controls initialization here
         # auto_initialize defaults to True
         auto_initialize = True
         if options is not None and 'auto_initialize' in options:
@@ -267,6 +267,7 @@ class NrmSubmodel(DynamicSubmodel):
         Args:
             event (:obj:`Event`): a simulation event
         """
+        self.dynamic_model.cache_manager.clear_cache()
         # execute the reaction
         reaction_index = event.message.reaction_index
         self.execute_nrm_reaction(reaction_index)
