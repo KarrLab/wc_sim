@@ -70,45 +70,6 @@ WcSimToken.token_string.__doc__ = "The token's string"
 WcSimToken.dynamic_expression.__doc__ = "When code is dynamic_expression, the dynamic_expression instance"
 
 
-class CacheManager(object):
-    """ Represent a cache of `DynamicExpression.eval()` values
-
-    Attributes:
-        expression_caching (:obj:`bool`): whether `DynamicExpression.eval()` values are being cached
-        _cache (:obj:`dict`): cache of `DynamicExpression.eval()` values
-        _cache_stats (:obj:`dict`): caching stats
-    """
-
-    def __init__(self):
-        self.expression_caching = config_multialgorithm['expression_caching']
-        self._cache = dict()
-        self._cache_stats = dict()
-        for cls in DynamicExpression.__subclasses__():
-            self._cache_stats[cls.__name__] = dict()
-            for result in ['HIT', 'MISS']:
-                self._cache_stats[cls.__name__][result] = 0
-
-    def clear_cache(self):
-        self._cache.clear()
-
-    def cache(self):
-        return self._cache
-
-    def caching(self):
-        return self.expression_caching
-
-    def set_caching(self, expression_caching):
-        self.expression_caching = expression_caching
-
-    def stop_caching(self):
-        # for testing
-        self.set_caching(False)
-
-    def start_caching(self):
-        # for testing
-        self.set_caching(True)
-
-
 class DynamicComponent(object):
     """ Component of a simulation
 
@@ -325,28 +286,25 @@ class DynamicExpression(DynamicComponent):
             time (:obj:`float`): the simulation time at which the expression should be evaluated
 
         Returns:
-            :obj:`float`: the value of this :obj:`DynamicExpression` at time `time`
+            :obj:`float` or :obj:`bool`: the value of this :obj:`DynamicExpression` at time `time`
 
         Raises:
             :obj:`MultialgorithmError`: if Python `eval` raises an exception
         """
         assert hasattr(self, 'wc_sim_tokens'), "'{}' must use prepare() before eval()".format(self.id)
-        if self.dynamic_model.cache_manager.caching():
-            cls_name = self.__class__.__name__
-            cache_key = (cls_name, self.id)
-            if cache_key in self.dynamic_model.cache_manager.cache():
-                self.dynamic_model.cache_manager._cache_stats[cls_name]['HIT'] += 1
-                return self.dynamic_model.cache_manager.cache()[cache_key]
-            else:
-                self.dynamic_model.cache_manager._cache_stats[cls_name]['MISS'] += 1
+        try:
+            # if caching is enabled & the expression's value is cached, return it
+            return self.dynamic_model.cache_manager.get(self.__class__, self.id)
+        except ValueError:
+            pass
 
         for idx, sim_token in enumerate(self.wc_sim_tokens):
             if sim_token.code == SimTokCodes.dynamic_expression:
                 self.expr_substrings[idx] = str(sim_token.dynamic_expression.eval(time))
         try:
             value = eval(''.join(self.expr_substrings), {}, self.local_ns)
-            if self.dynamic_model.cache_manager.caching():
-                    self.dynamic_model.cache_manager.cache()[cache_key] = value
+            # if caching is enabled cache the expression's value
+            self.dynamic_model.cache_manager.set(self.__class__, self.id, value)
             return value
         except BaseException as e:
             raise MultialgorithmError("eval of '{}' raises {}: {}'".format(
@@ -375,15 +333,15 @@ class DynamicFunction(DynamicExpression):
     def eval(self, time):
         """ Provide the value of this dynamic function
 
+        Defined so `DynamicFunction.eval()` can be observed in performance profiles
+
         Args:
-            time (:obj:`float`): the current simulation time; not needed, but included so that all
-                dynamic expression models have the same signature for `eval`
+            time (:obj:`float`): the current simulation time; not needed
 
         Returns:
             :obj:`float`: the value of this dynamic function
         """
         return super().eval(time)
-
 
 class DynamicStopCondition(DynamicExpression):
     """ The dynamic representation of a :obj:`wc_lang.StopCondition`
@@ -1026,3 +984,103 @@ WC_LANG_MODEL_TO_DYNAMIC_MODEL = {
     wc_lang.RateLaw: DynamicRateLaw,
     wc_lang.Compartment: DynamicCompartment,
 }
+
+
+class CacheManager(object):
+    """ Represent a RAM cache of `DynamicExpression.eval()` values
+
+    Attributes:
+        expression_caching (:obj:`bool`): whether `DynamicExpression.eval()` values are being cached
+        _cache (:obj:`dict`): cache of `DynamicExpression.eval()` values
+        _cache_stats (:obj:`dict`): caching stats
+    """
+    # caching results
+    HIT = 'HIT'
+    MISS = 'MISS'
+
+    def __init__(self):
+        self.expression_caching = config_multialgorithm['expression_caching']
+        self._cache = dict()
+        self._cache_stats = dict()
+        for cls in DynamicExpression.__subclasses__():
+            self._cache_stats[cls.__name__] = dict()
+            for result in [self.HIT, self.MISS]:
+                self._cache_stats[cls.__name__][result] = 0
+
+    def get(self, expression_class, id):
+        """ If caching is enabled, get a value from the cache if it's stored
+
+        Maintain caching statistics too
+
+        Args:
+            expression_class (:obj:`object`): the expression class
+            id (:obj:`str`): id of the expression class instance
+
+        Returns:
+            :obj:`object`: the cached value
+
+        Raises:
+            :obj:`ValueError`: if caching is not enabled or the cache does not contain an entry for the key
+        """
+        if self.expression_caching:
+            cls_name = expression_class.__name__
+            cache_key = (cls_name, id)
+            if cache_key in self._cache:
+                self._cache_stats[cls_name][self.HIT] += 1
+                return self._cache[cache_key]
+            else:
+                self._cache_stats[cls_name][self.MISS] += 1
+                raise ValueError('key not in cache')
+        raise ValueError('caching not enabled')
+
+    def set(self, expression_class, id, value):
+        """ If caching is enabled, set a value in the cache
+
+        Args:
+            expression_class (:obj:`object`): the expression class
+            id (:obj:`str`): id of the expression class instance
+            value (:obj:`object`): value of the expression class instance
+        """
+        if self.expression_caching:
+            cache_key = (expression_class.__name__, id)
+            self._cache[cache_key] = value
+
+    def clear_cache(self):
+        """ Remove all cache entries """
+        self._cache.clear()
+
+    def caching(self):
+        """ Is caching enabled?
+
+        Returns:
+            :obj:`bool`: return `True` if caching is enabled
+        """
+        return self.expression_caching
+
+    def set_caching(self, expression_caching):
+        """ Set the state of caching
+
+        Args:
+            expression_caching (:obj:`bool`): `True` if caching should be enabled, otherwise `False`
+        """
+        self.expression_caching = expression_caching
+
+    def stop_caching(self):
+        """ Disable caching; used for testing """
+        self.set_caching(False)
+
+    def start_caching(self):
+        """ Enable caching; used for testing """
+        self.set_caching(True)
+
+    def cache_stats_table(self):
+        """ Provide the caching stats
+
+        Returns:
+            :obj:`str`: the caching stats in a table
+        """
+        rv = ['name\t' + '\t'.join([self.HIT, self.MISS])]
+        for expression, stats in self._cache_stats.items():
+            row = [expression] + [str(stats[result]) for result in [self.HIT, self.MISS]]
+            rv.append('\t'.join(row))
+        return '\n'.join(rv)

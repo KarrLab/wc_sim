@@ -27,7 +27,7 @@ from wc_lang.io import Reader
 from wc_onto import onto
 from wc_sim.dynamic_components import (SimTokCodes, WcSimToken, DynamicComponent, DynamicExpression,
                                        DynamicModel, DynamicSpecies, DynamicFunction, DynamicParameter,
-                                       DynamicCompartment, DynamicStopCondition)
+                                       DynamicCompartment, DynamicStopCondition, CacheManager)
 from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.sim_config import WCSimulationConfig
@@ -716,3 +716,51 @@ class TestDynamicModel(unittest.TestCase):
                               'name': 'Cell'}}
         }
         self.compare_aggregate_states(expected_aggregate_state, computed_aggregate_state, frac_diff=2.5e-1)
+
+
+class TestCacheManager(unittest.TestCase):
+
+    def test(self):
+        cache_manager = CacheManager()
+        self.assertEqual(cache_manager._cache, dict())
+        self.assertTrue(isinstance(cache_manager.caching(), bool))
+
+        for b in [False, True]:
+            cache_manager.set_caching(b)
+            self.assertEqual(cache_manager.caching(), b)
+        cache_manager.stop_caching()
+        self.assertEqual(cache_manager.caching(), False)
+        cache_manager.start_caching()
+        self.assertEqual(cache_manager.caching(), True)
+
+        v = 3
+        id = 'f1'
+        cache_manager.set(DynamicFunction, id, v)
+        self.assertEqual(cache_manager.get(DynamicFunction, id), v)
+        v = 7
+        cache_manager.set(DynamicFunction, id, v)
+        self.assertEqual(cache_manager.get(DynamicFunction, id), v)
+        v = 5
+        id = 'f6'
+        cache_manager.set(DynamicFunction, id, v)
+        self.assertEqual(cache_manager.get(DynamicFunction, id), v)
+
+        v = 44
+        id = 's0'
+        cache_manager.set(DynamicStopCondition, id, v)
+        self.assertEqual(cache_manager.get(DynamicStopCondition, id), v)
+
+        with self.assertRaisesRegex(ValueError, 'key not in cache'):
+            cache_manager.get(DynamicStopCondition, 'not_id')
+        cache_manager.stop_caching()
+        with self.assertRaisesRegex(ValueError, 'caching not enabled'):
+            cache_manager.get(DynamicStopCondition, id)
+        self.assertEqual(cache_manager.set(DynamicFunction, id, v), None)
+
+        caching_stats = cache_manager.cache_stats_table()
+        expected = ('DynamicFunction', 'HIT\tMISS', '0', '3')   # DynamicFunction HIT 3 times
+        for e in expected:
+            self.assertIn(e, caching_stats)
+
+        cache_manager.clear_cache()
+        self.assertEqual(cache_manager._cache, dict())
