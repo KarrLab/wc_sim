@@ -451,15 +451,12 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         de_simulation_config = SimulationConfig(time_max=10)
         wc_sim_config = WCSimulationConfig(de_simulation_config)
         self.multialgorithm_simulation = MultialgorithmSimulation(model, wc_sim_config)
-        self.multialgorithm_simulation.initialize_components()
+        _, dynamic_model = self.multialgorithm_simulation.build_simulation()
         self.local_species_population = self.multialgorithm_simulation.local_species_population
-        dynamic_model = DynamicModel(model, self.local_species_population,
-                                          self.multialgorithm_simulation.temp_dynamic_compartments)
 
         self.compt_accounted_volumes = {}
         for dynamic_compartment in dynamic_model.dynamic_compartments.values():
             self.compt_accounted_volumes[dynamic_compartment.id] = dynamic_compartment.accounted_volume()
-
         return dynamic_model
 
     def test_accounted_volumes_for_species(self):
