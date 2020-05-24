@@ -151,12 +151,9 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
             self.assertTrue(0 < dynamic_compartment.init_density)
 
     def test_prepare_dynamic_compartments(self):
-        self.multialgorithm_simulation.create_dynamic_compartments()
-        self.multialgorithm_simulation.init_species_pop_from_distribution()
-        self.multialgorithm_simulation.local_species_population = \
-            self.multialgorithm_simulation.make_local_species_population(retain_history=False)
-        self.multialgorithm_simulation.prepare_dynamic_compartments()
-        for dynamic_compartment in self.multialgorithm_simulation.temp_dynamic_compartments.values():
+        self.multialgorithm_simulation.initialize_components()
+        self.multialgorithm_simulation.initialize_infrastructure()
+        for dynamic_compartment in self.multialgorithm_simulation.dynamic_model.dynamic_compartments.values():
             self.assertTrue(dynamic_compartment._initialized())
             self.assertTrue(0 < dynamic_compartment.accounted_mass())
             self.assertTrue(0 < dynamic_compartment.mass())
@@ -212,13 +209,14 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
         self.multialgorithm_simulation.initialize_components()
         self.assertTrue(isinstance(self.multialgorithm_simulation.local_species_population,
                         LocalSpeciesPopulation))
-        for dynamic_compartment in self.multialgorithm_simulation.temp_dynamic_compartments.values():
-            self.assertTrue(isinstance(dynamic_compartment.species_population, LocalSpeciesPopulation))
 
     def test_initialize_infrastructure(self):
         self.multialgorithm_simulation.initialize_components()
         self.multialgorithm_simulation.initialize_infrastructure()
         self.assertTrue(isinstance(self.multialgorithm_simulation.dynamic_model, DynamicModel))
+
+        for dynamic_compartment in self.multialgorithm_simulation.dynamic_model.dynamic_compartments.values():
+            self.assertTrue(isinstance(dynamic_compartment.species_population, LocalSpeciesPopulation))
 
         de_simulation_config = SimulationConfig(time_max=10, output_dir=self.results_dir)
         wc_sim_config = WCSimulationConfig(de_simulation_config, dfba_time_step=1, checkpoint_period=10)

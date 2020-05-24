@@ -9,6 +9,7 @@
 
 from collections import namedtuple
 import inspect
+import itertools
 import math
 import numpy
 import warnings
@@ -343,6 +344,7 @@ class DynamicFunction(DynamicExpression):
         """
         return super().eval(time)
 
+
 class DynamicStopCondition(DynamicExpression):
     """ The dynamic representation of a :obj:`wc_lang.StopCondition`
     """
@@ -567,8 +569,16 @@ class DynamicCompartment(DynamicComponent):
         Returns:
             :obj:`float`: the total current mass of all species (g)
         """
-        # todo: species_population.compartmental_mass() should error if time is in the future
-        return self.species_population.compartmental_mass(self.id, time=time)
+        # todo: species_population.compartmental_mass() should raise an error if time is in the future
+        try:
+            # if caching is enabled & the accounted_mass is cached, return it
+            return self.dynamic_model.cache_manager.get(self.__class__, self.id)
+        except ValueError:
+            pass
+        value = self.species_population.compartmental_mass(self.id, time=time)
+        # if caching is enabled cache the accounted_mass
+        self.dynamic_model.cache_manager.set(self.__class__, self.id, value)
+        return value
 
     def accounted_volume(self, time=None):
         """ Provide the current volume occupied by all species in this :obj:`DynamicCompartment`
@@ -727,6 +737,7 @@ class DynamicModel(object):
             indexed by their ids
         dynamic_dfba_objectives (:obj:`dict` of `DynamicDfbaObjective`): the simulation's dFBA Objective,
             indexed by their ids
+        cache_manager (:obj:`CacheManager`): a cache for expensive function evaluations that get repeated
     """
     AGGREGATE_VALUES = ['mass', 'volume', 'accounted mass', 'accounted volume']
 
@@ -1002,7 +1013,7 @@ class CacheManager(object):
         self.expression_caching = config_multialgorithm['expression_caching']
         self._cache = dict()
         self._cache_stats = dict()
-        for cls in DynamicExpression.__subclasses__():
+        for cls in itertools.chain(DynamicExpression.__subclasses__(), (DynamicCompartment,)):
             self._cache_stats[cls.__name__] = dict()
             for result in [self.HIT, self.MISS]:
                 self._cache_stats[cls.__name__][result] = 0
@@ -1079,7 +1090,7 @@ class CacheManager(object):
         Returns:
             :obj:`str`: the caching stats in a table
         """
-        rv = ['name\t' + '\t'.join([self.HIT, self.MISS])]
+        rv = ['Class\t' + '\t'.join([self.HIT, self.MISS])]
         for expression, stats in self._cache_stats.items():
             row = [expression] + [str(stats[result]) for result in [self.HIT, self.MISS]]
             rv.append('\t'.join(row))

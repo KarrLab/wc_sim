@@ -117,41 +117,42 @@ class TestInitialDynamicComponentsComprehensively(unittest.TestCase):
             expected_value = float(self.model.get_species(id=id)[0].comments)
             numpy.testing.assert_approx_equal(dynamic_species.eval(0), expected_value)
 
-    # FIX FOR DE-SIM CHANGES: need to make a few dynamic models to test all branches of get_stop_condition()
-    # a dynamic model with no stop concitions
-    # a dynamic model with stop condidtions that all evaluate false
-    # a dynamic model with at least one stop condidtions that evaluates true
+    # TODO: FIX FOR DE-SIM CHANGES: make a few dynamic models to test all branches of get_stop_condition()
+    # a dynamic model with no stop conditions
+    # a dynamic model with stop conditions that all evaluate false
+    # a dynamic model with at least one stop conditions that evaluates true
     def test_get_stop_condition(self):
         all_stop_conditions = self.dynamic_model.get_stop_condition()
         self.assertTrue(callable(all_stop_conditions))
         self.assertTrue(all_stop_conditions(0))
 
 
+def make_objects(test_case):
+    model = Model()
+    objects = {
+        Observable: {},
+        Parameter: {},
+        Function: {},
+        StopCondition: {}
+    }
+    test_case.param_value = 4
+    objects[Parameter]['param'] = param = \
+        model.parameters.create(id='param', value=test_case.param_value,
+                                units=unit_registry.parse_units('dimensionless'))
+
+    test_case.fun_expr = expr = 'param - 2 + max(param, 10)'
+    fun1 = Expression.make_obj(model, Function, 'fun1', expr, objects)
+    fun2 = Expression.make_obj(model, Function, 'fun2', 'log(2) - param', objects)
+
+    return model, param, fun1, fun2
+
+
 class TestDynamicComponentAndDynamicExpressions(unittest.TestCase):
-
-    def make_objects(self):
-        model = Model()
-        objects = {
-            Observable: {},
-            Parameter: {},
-            Function: {},
-            StopCondition: {}
-        }
-        self.param_value = 4
-        objects[Parameter]['param'] = param = \
-            model.parameters.create(id='param', value=self.param_value,
-                                    units=unit_registry.parse_units('dimensionless'))
-
-        self.fun_expr = expr = 'param - 2 + max(param, 10)'
-        fun1 = Expression.make_obj(model, Function, 'fun1', expr, objects)
-        fun2 = Expression.make_obj(model, Function, 'fun2', 'log(2) - param', objects)
-
-        return model, param, fun1, fun2
 
     def setUp(self):
         self.init_pop = {}
         self.local_species_population = MakeTestLSP(initial_population=self.init_pop).local_species_pop
-        self.model, self.parameter, self.fun1, self.fun2 = self.make_objects()
+        self.model, self.parameter, self.fun1, self.fun2 = make_objects(self)
 
         self.dynamic_model = DynamicModel(self.model, self.local_species_population, {})
 
@@ -466,6 +467,8 @@ class TestInitializedDynamicCompartment(unittest.TestCase):
         self.molecular_weights = dict(zip(self.species_ids, [self.all_m_weights]*len(species_nums)))
         self.local_species_pop = LocalSpeciesPopulation('test', self.init_populations, self.molecular_weights,
                                                         random_state=RandomStateManager.instance())
+        model, _, _, _ = make_objects(self)
+        self.dynamic_model = DynamicModel(model, self.local_species_pop, {})
 
         # make Compartments & use them to make a DynamicCompartments
         self.mean_init_volume = 1E-17
@@ -475,13 +478,13 @@ class TestInitializedDynamicCompartment(unittest.TestCase):
         self.compartment.init_density = Parameter(id='density_{}'.format(comp_id), value=1100.,
                                                   units=unit_registry.parse_units('g l^-1'))
         self.random_state = RandomStateManager.instance()
-        self.dynamic_compartment = DynamicCompartment(None, self.random_state, self.compartment,
+        self.dynamic_compartment = DynamicCompartment(self.dynamic_model, self.random_state, self.compartment,
                                                       self.species_ids)
 
         self.abstract_compartment = Compartment(id=comp_id, name='name',
                                                 init_volume=InitVolume(mean=self.mean_init_volume, std=0),
                                                 physical_type=onto['WC:abstract_compartment'])
-        self.abstract_dynamic_compartment = DynamicCompartment(None, self.random_state,
+        self.abstract_dynamic_compartment = DynamicCompartment(self.dynamic_model, self.random_state,
                                                                self.abstract_compartment)
 
     def specify_init_accounted_fraction(self, desired_init_accounted_fraction):
@@ -491,7 +494,7 @@ class TestInitializedDynamicCompartment(unittest.TestCase):
             (desired_init_accounted_fraction * self.dynamic_compartment.init_volume)
         self.compartment.init_density = Parameter(id='density_x', value=init_density,
             units=unit_registry.parse_units('g l^-1'))
-        return DynamicCompartment(None, self.random_state, self.compartment)
+        return DynamicCompartment(self.dynamic_model, self.random_state, self.compartment)
 
     def test_initialize_mass_and_density(self):
         self.dynamic_compartment.initialize_mass_and_density(self.local_species_pop)
@@ -515,13 +518,19 @@ class TestInitializedDynamicCompartment(unittest.TestCase):
 
         empty_local_species_pop = LocalSpeciesPopulation('test', {}, {},
                                                          random_state=RandomStateManager.instance())
-        dynamic_compartment = DynamicCompartment(None, self.random_state, self.compartment)
+        dynamic_compartment = DynamicCompartment(self.dynamic_model, self.random_state, self.compartment)
+
+        # clear cache to remove cached value of DynamicCompartment.accounted_mass()
+        self.dynamic_model.cache_manager.clear_cache()
         with self.assertRaisesRegex(MultialgorithmError, "initial accounted ratio is 0"):
             dynamic_compartment.initialize_mass_and_density(empty_local_species_pop)
 
+        # clear cache to remove cached value of DynamicCompartment.accounted_mass()
+        self.dynamic_model.cache_manager.clear_cache()
         dynamic_compartment = self.specify_init_accounted_fraction(
             (DynamicCompartment.MAX_ALLOWED_INIT_ACCOUNTED_FRACTION + 1)/2)
         with warnings.catch_warnings(record=True) as w:
+            # FIX ====
             dynamic_compartment.initialize_mass_and_density(self.local_species_pop)
             self.assertIn("initial accounted ratio (", str(w[-1].message))
             self.assertIn(") greater than 1.0", str(w[-1].message))
@@ -555,7 +564,7 @@ class TestInitializedDynamicCompartment(unittest.TestCase):
                          self.abstract_dynamic_compartment.init_volume)
 
     def test_str(self):
-        dynamic_compartment = DynamicCompartment(None, self.random_state, self.compartment)
+        dynamic_compartment = DynamicCompartment(self.dynamic_model, self.random_state, self.compartment)
         self.assertIn("has not been initialized", str(dynamic_compartment))
         self.assertIn(self.dynamic_compartment.id, str(dynamic_compartment))
 
@@ -636,11 +645,9 @@ class TestDynamicModel(unittest.TestCase):
         model = read_model_for_test(self.MODEL_FILENAME)
         # create dynamic model
         de_simulation_config = SimulationConfig(time_max=10)
-        wc_sim_config = WCSimulationConfig(de_simulation_config)
+        wc_sim_config = WCSimulationConfig(de_simulation_config, submodels_to_skip=['submodel_1'])
         multialgorithm_simulation = MultialgorithmSimulation(model, wc_sim_config)
-        multialgorithm_simulation.initialize_components()
-        dynamic_model = DynamicModel(model, multialgorithm_simulation.local_species_population,
-            multialgorithm_simulation.temp_dynamic_compartments)
+        _, dynamic_model = multialgorithm_simulation.build_simulation()
 
         # a Model to store expected initial values
         class ExpectedInitialValue(obj_tables.Model):

@@ -185,16 +185,16 @@ class MultialgorithmSimulation(object):
         self.create_dynamic_compartments()
         self.init_species_pop_from_distribution()
         self.local_species_population = self.make_local_species_population()
-        self.prepare_dynamic_compartments()
 
     def initialize_infrastructure(self):
         """ Initialize the infrastructure of a simulation
         """
         self.dynamic_model = DynamicModel(self.model, self.local_species_population,
                                           self.temp_dynamic_compartments)
-        self.temp_dynamic_compartments = None
         for comp in self.dynamic_model.dynamic_compartments.values():
             comp.dynamic_model = self.dynamic_model
+        self.prepare_dynamic_compartments()
+        self.temp_dynamic_compartments = None
         if self.wc_sim_config.de_simulation_config.output_dir is not None:
             self.checkpointing_sim_obj = self.create_multialgorithm_checkpointing(
                 self.wc_sim_config.de_simulation_config.output_dir,
@@ -253,7 +253,6 @@ class MultialgorithmSimulation(object):
     def create_dynamic_compartments(self):
         """ Create the :obj:`DynamicCompartment`\ s for this simulation
         """
-        # create DynamicCompartments
         self.temp_dynamic_compartments = {}
         for compartment in self.model.get_compartments():
             self.temp_dynamic_compartments[compartment.id] = DynamicCompartment(None, self.random_state,
