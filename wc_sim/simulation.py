@@ -188,7 +188,7 @@ class Simulation(object):
         if verbose:
             print(f'Simulated {num_events} events')
             print('Caching statistics:')
-            print(self.dynamic_model.cache_stats_table())
+            print(self.dynamic_model.cache_manager.cache_stats_table())
         if results_dir:
             # summarize results in an HDF5 file in results_dir
             RunResults(results_dir)
