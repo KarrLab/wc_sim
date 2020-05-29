@@ -504,7 +504,7 @@ class SsaEnsemble(object):
                 progress_factor *= 2
             simul_kwargs['results_dir'] = tempfile.mkdtemp(dir=tmp_results_dir)
             simulation = Simulation(model)
-            _, results_dir = simulation.run(**simul_kwargs)
+            results_dir = simulation.run(**simul_kwargs).results_dir
             simulation_run_results.append(RunResults(results_dir))
             # remove results_dir after RunResults created
             shutil.rmtree(simul_kwargs['results_dir'])
@@ -629,7 +629,7 @@ class CaseVerifier(object):
             simulation = Simulation(self.verification_test_reader.model)
             if tolerances:
                 simul_kwargs['options'] = dict(OdeSubmodel=dict(options=dict(tolerances=tolerances)))
-            _, results_dir = simulation.run(**simul_kwargs)
+            results_dir = simulation.run(**simul_kwargs).results_dir
             self.simulation_run_results = RunResults(results_dir)
 
             ## 2. compare results

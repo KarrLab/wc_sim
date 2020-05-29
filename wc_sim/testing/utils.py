@@ -302,7 +302,7 @@ def verify_independently_solved_model(test_case, model_filename, results_dir):
                     ode_time_step=1.)
         simulation = Simulation(model)
         start_time = time.perf_counter()
-        _, results_dir = simulation.run(time_max=time_max, **args)
+        results_dir = simulation.run(time_max=time_max, **args).results_dir
         elapsed_rt = time.perf_counter() - start_time
         print(f'ran {os.path.basename(model_filename)} with {integration_framework} in '
               f'{elapsed_rt:.2e} (sec)')

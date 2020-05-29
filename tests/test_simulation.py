@@ -39,11 +39,11 @@ class TestSimulation(unittest.TestCase):
     def run_simulation(self, simulation, time_max=100):
         checkpoint_period = min(10, time_max)
         with CaptureOutput(relay=False):
-            num_events, results_dir = simulation.run(time_max=time_max, results_dir=self.results_dir,
-                                                     checkpoint_period=checkpoint_period)
-        self.assertTrue(0 < num_events)
-        self.assertTrue(os.path.isdir(results_dir))
-        run_results = RunResults(results_dir)
+            simulation_rv = simulation.run(time_max=time_max, results_dir=self.results_dir,
+                                            checkpoint_period=checkpoint_period)
+        self.assertTrue(0 < simulation_rv.num_events)
+        self.assertTrue(os.path.isdir(simulation_rv.results_dir))
+        run_results = RunResults(simulation_rv.results_dir)
 
         for component in RunResults.COMPONENTS:
             self.assertTrue(isinstance(run_results.get(component), (pandas.DataFrame, pandas.Series)))
@@ -70,18 +70,18 @@ class TestSimulation(unittest.TestCase):
 
     def test_simulate_wo_output_files(self):
         with CaptureOutput(relay=False):
-            num_events, results_dir = Simulation(TOY_MODEL_FILENAME).run(time_max=5)
-        self.assertTrue(0 < num_events)
-        self.assertEqual(results_dir, None)
+            simulation_rv = Simulation(TOY_MODEL_FILENAME).run(time_max=5)
+        self.assertTrue(0 < simulation_rv.num_events)
+        self.assertEqual(simulation_rv.results_dir, None)
 
     def test_run(self):
         with CaptureOutput(relay=False):
-            num_events, results_dir = Simulation(TOY_MODEL_FILENAME).run(time_max=2,
-                                                                         results_dir=self.results_dir,
-                                                                         checkpoint_period=1)
+            simulation_rv = Simulation(TOY_MODEL_FILENAME).run(time_max=2,
+                                                               results_dir=self.results_dir,
+                                                               checkpoint_period=1)
 
         # check time, and simulation config in checkpoints
-        access_checkpoints = AccessCheckpoints(results_dir)
+        access_checkpoints = AccessCheckpoints(simulation_rv.results_dir)
         for time in access_checkpoints.list_checkpoints():
             ckpt = access_checkpoints.get_checkpoint(time=time)
             self.assertEqual(time, ckpt.time)
@@ -90,23 +90,31 @@ class TestSimulation(unittest.TestCase):
         # test performance profiling
         results_dir = tempfile.mkdtemp(dir=self.test_dir)
         with CaptureOutput(relay=False) as capturer:
-            stats, _ = Simulation(TOY_MODEL_FILENAME).run(time_max=20,
-                                                          results_dir=results_dir,
-                                                          checkpoint_period=1,
-                                                          profile=True,
-                                                          verbose=False)
+            simulation_rv = Simulation(TOY_MODEL_FILENAME).run(time_max=20,
+                                                               results_dir=results_dir,
+                                                               checkpoint_period=1,
+                                                               profile=True,
+                                                               verbose=False)
             expected_profile_text =['function calls', 'filename:lineno(function)']
             for text in expected_profile_text:
                 self.assertIn(text, capturer.get_text())
-            self.assertTrue(isinstance(stats, pstats.Stats))
+            self.assertTrue(isinstance(simulation_rv.profile_stats, pstats.Stats))
         self.assertTrue(isinstance(RunResults(results_dir), RunResults))
 
-        with self.assertRaises(MultialgorithmError):
+        # test profile and verbose both True
+        with CaptureOutput(relay=False) as capturer:
             Simulation(TOY_MODEL_FILENAME).run(time_max=2,
                                                results_dir=tempfile.mkdtemp(dir=self.test_dir),
                                                checkpoint_period=1,
                                                profile=True,
                                                verbose=True)
+            expected_patterns =['function calls',
+                                'filename:lineno\(function\)',
+                                'Simulated \d+ events',
+                                'Caching statistics',
+                                'Saved checkpoints and run results']
+            for pattern in expected_patterns:
+                self.assertRegex(capturer.get_text(), pattern)
 
         with self.assertRaisesRegex(MultialgorithmError, 'cannot be simulated .* it contains no submodels'):
             Simulation(TOY_MODEL_FILENAME).run(time_max=5,
@@ -122,12 +130,12 @@ class TestSimulation(unittest.TestCase):
         for seed in seeds:
             tmp_results_dir = tempfile.mkdtemp()
             with CaptureOutput(relay=False):
-                num_events, results_dir = Simulation(TOY_MODEL_FILENAME).run(time_max=5,
-                                                                             results_dir=tmp_results_dir,
-                                                                             checkpoint_period=5, seed=seed)
+                simulation_rv = Simulation(TOY_MODEL_FILENAME).run(time_max=5,
+                                                                   results_dir=tmp_results_dir,
+                                                                   checkpoint_period=5, seed=seed)
             results[seed] = {}
-            results[seed]['num_events'] = num_events
-            run_results[seed] = RunResults(results_dir)
+            results[seed]['num_events'] = simulation_rv.num_events
+            run_results[seed] = RunResults(simulation_rv.results_dir)
             shutil.rmtree(tmp_results_dir)
         self.assertNotEqual(results[seeds[0]]['num_events'], results[seeds[1]]['num_events'])
         self.assertFalse(run_results[seeds[0]].get('populations').equals(run_results[seeds[1]].get('populations')))
@@ -139,12 +147,12 @@ class TestSimulation(unittest.TestCase):
         for rep in range(2):
             tmp_results_dir = tempfile.mkdtemp()
             with CaptureOutput(relay=False):
-                num_events, results_dir = Simulation(TOY_MODEL_FILENAME).run(time_max=5,
-                                                                             results_dir=tmp_results_dir,
-                                                                             checkpoint_period=5, seed=seed)
+                simulation_rv = Simulation(TOY_MODEL_FILENAME).run(time_max=5,
+                                                                   results_dir=tmp_results_dir,
+                                                                   checkpoint_period=5, seed=seed)
             results[rep] = {}
-            results[rep]['num_events'] = num_events
-            run_results[rep] = RunResults(results_dir)
+            results[rep]['num_events'] = simulation_rv.num_events
+            run_results[rep] = RunResults(simulation_rv.results_dir)
             shutil.rmtree(tmp_results_dir)
         self.assertEqual(results[0]['num_events'], results[1]['num_events'])
         self.assertTrue(run_results[0].get('populations').equals(run_results[1].get('populations')))

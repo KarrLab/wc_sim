@@ -132,10 +132,6 @@ class WCSimulationConfig(EnhancedDataClass):
         self.check_periodic_timestep('dfba_time_step')
         self.check_periodic_timestep('checkpoint_period')
 
-        # verbose and profile should not both be set
-        if self.verbose and de_sim_config.profile:
-            raise MultialgorithmError(f"verbose and profile cannot both be true")
-
     def check_periodic_timestep(self, periodic_attr):
         """ Check that simulation duration is an integral multiple of a periodic activity's timestep
 

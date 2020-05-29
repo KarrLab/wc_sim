@@ -25,9 +25,9 @@ model = wc_lang.io.Reader().run(model_filename)[wc_lang.Model][0]
 
 # run simulation
 sim = Simulation(model)
-_, results_dirname = sim.run(time_max=time_max,
-                             results_dir=results_parent_dirname,
-                             checkpoint_period=checkpoint_period)
+results_dirname = sim.run(time_max=time_max,
+                          results_dir=results_parent_dirname,
+                          checkpoint_period=checkpoint_period).results_dir
 results = RunResults(results_dirname)
 
 # plot results

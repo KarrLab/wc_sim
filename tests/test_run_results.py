@@ -45,10 +45,10 @@ class TestRunResults(unittest.TestCase):
         cls.max_time = 30
 
         with CaptureOutput(relay=True):
-            _, cls.results_dir_1_cmpt = simulation.run(time_max=cls.max_time,
-                                                       results_dir=tempfile.mkdtemp(dir=cls.temp_dir),
-                                                       checkpoint_period=cls.checkpoint_period,
-                                                       verbose=True)
+            cls.results_dir_1_cmpt = simulation.run(time_max=cls.max_time,
+                                                    results_dir=tempfile.mkdtemp(dir=cls.temp_dir),
+                                                    checkpoint_period=cls.checkpoint_period,
+                                                    verbose=True).results_dir
 
         # run a simulation whose aggregate states vary over time
         exchange_rxn_model = os.path.join(os.path.dirname(__file__), 'fixtures', 'dynamic_tests',
@@ -60,9 +60,9 @@ class TestRunResults(unittest.TestCase):
         comp_e.biological_type = comp_c.biological_type
         simulation = Simulation(model)
         with CaptureOutput(relay=False):
-            _, cls.results_dir_dyn_aggr = simulation.run(time_max=cls.max_time,
-                                                        results_dir=tempfile.mkdtemp(dir=cls.temp_dir),
-                                                        checkpoint_period=cls.checkpoint_period)
+            cls.results_dir_dyn_aggr = simulation.run(time_max=cls.max_time,
+                                                      results_dir=tempfile.mkdtemp(dir=cls.temp_dir),
+                                                      checkpoint_period=cls.checkpoint_period).results_dir
 
     @classmethod
     def tearDownClass(cls):
@@ -303,7 +303,7 @@ class TestProfileRunResults(unittest.TestCase):
                                                              species_mw)
         wc_simulation_metadata = WCSimulationMetadata(wc_sim_config)
         simulation_engine.initialize()
-        num_events = simulation_engine.simulate(sim_config=de_simulation_config)
+        num_events = simulation_engine.simulate(sim_config=de_simulation_config).num_events
         print(simulation_engine.provide_event_counts())
         WCSimulationMetadata.write_dataclass(wc_simulation_metadata, run_results_dir)
 

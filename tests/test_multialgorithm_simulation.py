@@ -554,7 +554,7 @@ class TestRunSSASimulation(unittest.TestCase):
                 simulation_engine = self.prep_simulation(num_ssa_submodels,
                                                          submodel_framework=submodel_framework)
                 start_time = time.process_time()
-                num_events = simulation_engine.simulate(end_sim_time)
+                num_events = simulation_engine.simulate(end_sim_time).num_events
                 run_time = time.process_time() - start_time
                 unprofiled_perf.append("{}\t{}\t{:8.3f}\t{:8.3f}".format(num_ssa_submodels, num_events,
                                                                          run_time, num_events/run_time))
@@ -565,8 +565,7 @@ class TestRunSSASimulation(unittest.TestCase):
                 out_file = os.path.join(self.out_dir, "profile_out_{}.out".format(num_ssa_submodels))
                 locals = {'simulation_engine': simulation_engine,
                           'end_sim_time': end_sim_time}
-                cProfile.runctx('num_events = simulation_engine.simulate(end_sim_time)',
-                                {}, locals, filename=out_file)
+                cProfile.runctx('simulation_engine.simulate(end_sim_time)', {}, locals, filename=out_file)
                 profile = pstats.Stats(out_file)
                 print(f"Profile for {num_ssa_submodels} instances of {framework_name}:")
                 profile.strip_dirs().sort_stats('cumulative').print_stats(15)

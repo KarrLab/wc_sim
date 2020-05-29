@@ -182,10 +182,10 @@ class TwoSpeciesTestCase(unittest.TestCase):
         env.set('CONFIG__DOT__wc_lang__DOT__validation__DOT__validate_element_charge_balance', '0')
         with env:
             simulation = Simulation(model)
-        _, results_dirname = simulation.run(time_max=time_max,
-                                            ode_time_step=1.,
-                                            checkpoint_period=1.,
-                                            results_dir=self.tempdir)
+        results_dirname = simulation.run(time_max=time_max,
+                                         ode_time_step=1.,
+                                         checkpoint_period=1.,
+                                         results_dir=self.tempdir).results_dir
 
         # get results
         results = RunResults(results_dirname)
@@ -465,10 +465,10 @@ class MetabolismAndGeneExpressionTestCase(unittest.TestCase):
         model = wc_lang.io.Reader().run(model_filename)[wc_lang.Model][0]
 
         simulation = Simulation(model)
-        _, results_dirname = simulation.run(time_max=8 * 3600,
-                                            ode_time_step=1.,
-                                            checkpoint_period=100.,
-                                            results_dir=self.tempdir)
+        results_dirname = simulation.run(time_max=8 * 3600,
+                                         ode_time_step=1.,
+                                         checkpoint_period=100.,
+                                         results_dir=self.tempdir).results_dir
 
         # get results
         results = RunResults(results_dirname)

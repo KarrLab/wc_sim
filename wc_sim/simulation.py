@@ -6,6 +6,7 @@
 :License: MIT
 """
 
+from collections import namedtuple
 import os
 import datetime
 import numpy
@@ -88,6 +89,8 @@ class Simulation(object):
         if errors:
             raise MultialgorithmError(indent_forest(['The model is invalid:', [errors]]))
 
+    SimulationReturnValue = namedtuple('SimulationReturnValue', 'num_events results_dir profile_stats',
+                                       defaults=(None, None))
     def run(self, time_max, results_dir=None, progress_bar=True, checkpoint_period=None,
             seed=None, ode_time_step=None, dfba_time_step=None, profile=False, submodels_to_skip=None,
             verbose=True, options=None):
@@ -112,10 +115,10 @@ class Simulation(object):
             options (:obj:`dict`, optional): options for submodels, passed to `MultialgorithmSimulation`
 
         Returns:
-            :obj:`tuple` of (`int`, `str`): number of simulation events, pathname of directory
-                containing the results, or :obj:`tuple` of (`int`, `None`): number of simulation events,
-                `None` if `results_dir is None`, or :obj:`tuple` of (`pstats.Stats`, `None`): profile
-                stats, `None` if `profile is True`
+            :obj:`SimulationReturnValue`: containing 1) an :obj:`int` holding the number of simulation
+                events, 2) if `results_dir` is provided, a :obj:`str` containing the pathname of the
+                directory containing the results, and 3) if `profile is True`, profile stats for the
+                simulation
 
         Raises:
             :obj:`MultialgorithmError`: if the simulation raises an exception
@@ -169,16 +172,10 @@ class Simulation(object):
                                                           author_metadata=self.author_metadata)
 
             # add WC sim metadata to the output after the simulation, which requires an empty output dir
-            # TODO: have simulation_engine.simulate() allow certain files in self.de_sim_config.output_dir, and move
-            # this code above
+            # TODO: have simulation_engine.simulate() allow certain files in self.de_sim_config.output_dir,
+            # and move this code above
             if self.de_sim_config.output_dir is not None:
                 WCSimulationMetadata.write_dataclass(wc_simulation_metadata, self.de_sim_config.output_dir)
-
-            if profile:
-                stats = simulate_rv
-                return stats, None
-            else:
-                num_events = simulate_rv
 
         except SimulatorError as e:     # pragma: no cover
             raise MultialgorithmError(f'Simulation terminated with simulator error:\n{e}')
@@ -186,7 +183,7 @@ class Simulation(object):
             raise MultialgorithmError(f'Simulation terminated with error:\n{e}')
 
         if verbose:
-            print(f'Simulated {num_events} events')
+            print(f'Simulated {simulate_rv.num_events} events')
             print('Caching statistics:')
             print(self.dynamic_model.cache_manager.cache_stats_table())
         if results_dir:
@@ -194,9 +191,7 @@ class Simulation(object):
             RunResults(results_dir)
             if verbose:
                 print(f"Saved checkpoints and run results in '{results_dir}'")
-            return (num_events, results_dir)
-        else:
-            return (num_events, None)
+        return self.SimulationReturnValue(simulate_rv.num_events, results_dir, simulate_rv.profile_stats)
 
     def get_simulation_engine(self):
         """ Provide the simulation's simulation engine

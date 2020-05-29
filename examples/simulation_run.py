@@ -22,7 +22,8 @@ results_dir = tempfile.mkdtemp()
 
 # create and run simulation
 simulation = Simulation(model_filename)
-num_events, results_dir = simulation.run(time_max=30, results_dir=results_dir, checkpoint_period=10)
+simulation_rv= simulation.run(time_max=30, results_dir=results_dir, checkpoint_period=10)
+results_dir = simulation_rv.results_dir
 run_results = RunResults(results_dir)
 
 # view results

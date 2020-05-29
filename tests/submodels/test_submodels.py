@@ -215,7 +215,7 @@ class TestSkeletonSubmodel(unittest.TestCase):
 
         time_max = 100
         skeleton_submodel = self.make_sim_w_skeleton_submodel(lang_submodel, behavior)
-        self.assertEqual(self.simulator.simulate(time_max),
+        self.assertEqual(self.simulator.simulate(time_max).num_events,
                          time_max / behavior[SkeletonSubmodel.INTER_REACTION_TIME])
 
         behavior = {SkeletonSubmodel.INTER_REACTION_TIME: 2,
@@ -328,5 +328,5 @@ class TestDsaSubmodel(unittest.TestCase):
         model = MakeModel.make_test_model('1 species, 1 reaction')
         self.transform_model_for_dsa_simulation(model)
         simulation = Simulation(model)
-        num_events, _ = simulation.run(time_max=100)
+        num_events = simulation.run(time_max=100).num_events
         self.assertGreater(num_events, 0)

@@ -132,7 +132,7 @@ class TestNrmSubmodel(unittest.TestCase):
         for _ in range(NUM_TRIALS):
             simulation_engine, _ = self.make_sim_w_nrm_submodel(self.model, True)
             simulation_engine.initialize()
-            num_events.append(simulation_engine.simulate(RUN_TIME))
+            num_events.append(simulation_engine.simulate(RUN_TIME).num_events)
         num_reactions = len(self.model.reactions)
         expected_mean_num_events = num_reactions * RUN_TIME
         sd = math.sqrt(expected_mean_num_events)

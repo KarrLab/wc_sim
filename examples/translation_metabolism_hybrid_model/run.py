@@ -25,15 +25,14 @@ model = wc_lang.io.Reader().run(model_filename)[wc_lang.Model][0]
 # run simulation
 seed = 100
 sim = Simulation(model)
-_, results_dirname = sim.run(time_max=time_max,
-                             seed=seed,
-                             results_dir=results_parent_dirname,
-                             checkpoint_period=checkpoint_period)
+results_dirname = sim.run(time_max=time_max,
+                           seed=seed,
+                           results_dir=results_parent_dirname,
+                           checkpoint_period=checkpoint_period).results_dir
 results = RunResults(results_dirname)
 
+
 # plot results
-
-
 def plot(model, results, filename):
     # get expected results
     mean_doubling_time = model.parameters.get_one(id='mean_doubling_time').value

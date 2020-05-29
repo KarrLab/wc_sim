@@ -63,7 +63,7 @@ class TestTestingUtils(unittest.TestCase):
 
         # test dynamics
         simulation = Simulation(model)
-        _, results_dir = simulation.run(time_max=2, **self.args)
+        results_dir = simulation.run(time_max=2, **self.args).results_dir
         nan = float('NaN')
         check_simul_results(self, dynamic_model, results_dir,
                            expected_initial_values=expected_initial_values,
