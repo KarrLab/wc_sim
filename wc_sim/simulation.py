@@ -93,7 +93,8 @@ class Simulation(object):
                                        defaults=(None, None))
     def run(self, time_max, results_dir=None, progress_bar=True, checkpoint_period=None,
             seed=None, ode_time_step=None, dfba_time_step=None, profile=False, submodels_to_skip=None,
-            verbose=True, options=None):
+            verbose=True, object_memory_change_interval=0, options=None):
+
         """ Run one simulation
 
         Args:
@@ -112,6 +113,8 @@ class Simulation(object):
             submodels_to_skip (:obj:`list` of :obj:`str`, optional): submodels that should not be run,
                 identified by their ids
             verbose (:obj:`bool`, optional): whether to print success output
+            object_memory_change_interval (:obj:`int`, optional): event interval between memory profiles
+                of the simulation; default of 0 indicates no profile
             options (:obj:`dict`, optional): options for submodels, passed to `MultialgorithmSimulation`
 
         Returns:
@@ -128,7 +131,8 @@ class Simulation(object):
         # create simulation configurations
         # create and validate DE sim configuration
         self.de_sim_config = SimulationConfig(time_max, output_dir=results_dir, progress=progress_bar,
-                                              profile=profile)
+                                              profile=profile,
+                                              object_memory_change_interval=object_memory_change_interval)
         self.de_sim_config.validate()
 
         # create and validate WC configuration

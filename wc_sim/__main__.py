@@ -66,7 +66,12 @@ class SimController(cement.Controller):
             (['-p', '--profile'], dict(
                 default=False,
                 action='store_true',
-                help="output a profile of the simulation's performance")),
+                help="profile the simulation's performance; saved in results-dir if provided, else on stdout")),
+            (['-m', '--memory_profile'], dict(
+                type=float,
+                default=0,
+                help=("event interval in a memory profile of the simulation; saved in results-dir if provided, "
+                     "else on stdout"))),
             (['-v', '--verbose'], dict(
                 default=False,
                 action='store_true',

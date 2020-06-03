@@ -17,6 +17,7 @@ import time
 import unittest
 
 from de_sim.checkpoint import Checkpoint, AccessCheckpoints
+from de_sim.config import core
 from de_sim.simulation_engine import SimulationEngine
 from wc_sim import sim_config
 from wc_sim.multialgorithm_errors import MultialgorithmError
@@ -87,40 +88,40 @@ class TestSimulation(unittest.TestCase):
             self.assertEqual(time, ckpt.time)
             self.assertTrue(ckpt.random_state != None)
 
-        # test performance profiling
-        results_dir = tempfile.mkdtemp(dir=self.test_dir)
+        # test performance profiling and verbose to stdout
         with CaptureOutput(relay=False) as capturer:
-            simulation_rv = Simulation(TOY_MODEL_FILENAME).run(time_max=20,
-                                                               results_dir=results_dir,
-                                                               checkpoint_period=1,
+            simulation_rv = Simulation(TOY_MODEL_FILENAME).run(time_max=2,
                                                                profile=True,
-                                                               verbose=False)
-            expected_profile_text =['function calls', 'filename:lineno(function)']
-            for text in expected_profile_text:
-                self.assertIn(text, capturer.get_text())
-            self.assertTrue(isinstance(simulation_rv.profile_stats, pstats.Stats))
-        self.assertTrue(isinstance(RunResults(results_dir), RunResults))
-
-        # test profile and verbose both True
-        with CaptureOutput(relay=False) as capturer:
-            Simulation(TOY_MODEL_FILENAME).run(time_max=2,
-                                               results_dir=tempfile.mkdtemp(dir=self.test_dir),
-                                               checkpoint_period=1,
-                                               profile=True,
-                                               verbose=True)
+                                                               verbose=True)
             expected_patterns =['function calls',
                                 'filename:lineno\(function\)',
                                 'Simulated \d+ events',
-                                'Caching statistics',
-                                'Saved checkpoints and run results']
+                                'Caching statistics']
             for pattern in expected_patterns:
                 self.assertRegex(capturer.get_text(), pattern)
+            self.assertTrue(isinstance(simulation_rv.profile_stats, pstats.Stats))
 
         with self.assertRaisesRegex(MultialgorithmError, 'cannot be simulated .* it contains no submodels'):
             Simulation(TOY_MODEL_FILENAME).run(time_max=5,
                                                results_dir=tempfile.mkdtemp(dir=self.test_dir),
                                                checkpoint_period=1,
                                                submodels_to_skip=['test_submodel'])
+
+    def test_object_memory_use(self):
+        # test memory use profile to measurements file
+        results_dir = tempfile.mkdtemp(dir=self.test_dir)
+        # set object_memory_change_interval=50 because the simulation has about 200 events
+        Simulation(TOY_MODEL_FILENAME).run(time_max=2,
+                                           results_dir=results_dir,
+                                           checkpoint_period=1,
+                                           object_memory_change_interval=50)
+        expected_patterns =['Memory use changes by SummaryTracker',
+                            '# objects']
+        measurements_file = core.get_config()['de_sim']['measurements_file']
+        measurements_pathname = os.path.join(results_dir, measurements_file)
+        measurements = open(measurements_pathname, 'r').read()
+        for pattern in expected_patterns:
+            self.assertRegex(measurements, pattern)
 
     def test_reseed(self):
         # different seeds must make different results
