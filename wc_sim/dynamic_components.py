@@ -11,6 +11,7 @@ from collections import namedtuple
 import inspect
 import itertools
 import math
+import networkx
 import numpy
 import warnings
 
@@ -984,16 +985,87 @@ class DynamicModel(object):
                     model.local_species_population.read_one(now, species_id)
         return species_counts
 
+    def obtain_dependencies(self, model):
+        """ Obtain a model's dependencies among reactions and WC Lang models
+
+        Args:
+            model (:obj:`Model`): the description of the whole-cell model in `wc_lang`
+        """
+        model_types = (# wc_lang.Compartment,
+                       wc_lang.DfbaObjective,
+                       # wc_lang.DfbaReaction,
+                       wc_lang.Function,
+                       wc_lang.Observable,
+                       # wc_lang.Parameter,     # immutable, and does not depend on other entities
+                       wc_lang.RateLaw,
+                       wc_lang.Species,
+                       wc_lang.StopCondition
+                      )
+
+        model_entities = itertools.chain(model.dfba_objs,
+                                         # model.dfba_obj_reactions,
+                                         # model.dfba_obj_species,
+                                         model.functions,
+                                         # model.get_species(),   # does not depend on other entities
+                                         model.observables,
+                                         # model.parameters,  # does not depend on other entities
+                                         model.rate_laws,
+                                         model.stop_conditions)
+        # model.reactions
+        # model.compartments
+
+        def entity_id(entity):
+            return (entity.__class__.__name__, entity.id)
+
+        # 1) make digraph of dependencies among model instances
+        dependencies = networkx.DiGraph()
+        for model_entity in model_entities:
+            model_class = model_entity.__class__
+
+            # add edges from model_entity to the model_type entities on which it depends
+            for used_model_type in model_types:
+                # get all instances of used_model_type used by model_entity
+                used_models = []
+                for attr_name, attr in model_class.Meta.related_attributes.items():
+                    if attr.primary_class == used_model_type:
+                        used_models = getattr(model_entity, attr_name)
+                        break
+
+                for used_model in used_models:
+                    dependencies.add_edge(entity_id(model_entity), entity_id(used_model))
+
+        # 2) add edges of species altered by reactions
+        for reaction in model.reactions:
+            for species in itertools.chain(reaction.get_reactants(), reaction.get_products()):
+                dependencies.add_edge(entity_id(species), entity_id(reaction))
+
+        print('\ndependencies:')
+        for edge in list(dependencies.edges):
+            print(edge)
+
+        # 3) traverse from each reaction to dependent expressions
+        bfs_tree = networkx.algorithms.traversal.breadth_first_search.bfs_tree
+        reaction_dependencies = {}
+        for reaction in model.reactions:
+            reaction_dependencies[reaction.id] = set()
+            print('\ntree:')
+            print(list(bfs_tree(dependencies, entity_id(reaction), reverse=True).edges()))
+            for edge in bfs_tree(dependencies, entity_id(reaction), reverse=True).edges():
+                s, dest = edge
+                print(f"{s} -> {dest}")
+                reaction_dependencies[reaction.id].add(dest)
+        return reaction_dependencies
+
 
 WC_LANG_MODEL_TO_DYNAMIC_MODEL = {
-    wc_lang.Function: DynamicFunction,
-    wc_lang.Parameter: DynamicParameter,
-    wc_lang.Species: DynamicSpecies,
-    wc_lang.Observable: DynamicObservable,
-    wc_lang.StopCondition: DynamicStopCondition,
-    wc_lang.DfbaObjective: DynamicDfbaObjective,
-    wc_lang.RateLaw: DynamicRateLaw,
     wc_lang.Compartment: DynamicCompartment,
+    wc_lang.DfbaObjective: DynamicDfbaObjective,
+    wc_lang.Function: DynamicFunction,
+    wc_lang.Observable: DynamicObservable,
+    wc_lang.Parameter: DynamicParameter,
+    wc_lang.RateLaw: DynamicRateLaw,
+    wc_lang.Species: DynamicSpecies,
+    wc_lang.StopCondition: DynamicStopCondition,
 }
 
 

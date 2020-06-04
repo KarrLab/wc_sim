@@ -637,6 +637,13 @@ class TestDynamicModel(unittest.TestCase):
             DynamicModel(model, multialgorithm_simulation.local_species_population,
                          multialgorithm_simulation.temp_dynamic_compartments)
 
+    @unittest.skip("todo: fix repeated use of make_dynamic_mode()")
+    def test_obtain_dependencies(self):
+        self.make_dynamic_model(self.MODEL_FILENAME)
+        from pprint import pprint
+        print('obtain_dependencies')
+        pprint(self.dynamic_model.obtain_dependencies(self.models[self.MODEL_FILENAME]))
+
     def test_dynamic_components(self):
         # test agregate properties like mass and volume against independent calculations of their values
         # calculations made in the model's spreadsheet
