@@ -591,13 +591,14 @@ class TestDynamicModel(unittest.TestCase):
 
     def make_dynamic_model(self, model_filename):
         # read and initialize a model
-        self.model = TestDynamicModel.models[model_filename]
+        model = TestDynamicModel.models[model_filename]
         de_simulation_config = SimulationConfig(time_max=10)
         wc_sim_config = WCSimulationConfig(de_simulation_config)
-        multialgorithm_simulation = MultialgorithmSimulation(self.model, wc_sim_config)
+        multialgorithm_simulation = MultialgorithmSimulation(model, wc_sim_config)
         multialgorithm_simulation.initialize_components()
-        self.dynamic_model = DynamicModel(self.model, multialgorithm_simulation.local_species_population,
-                                          multialgorithm_simulation.temp_dynamic_compartments)
+        dynamic_model = DynamicModel(model, multialgorithm_simulation.local_species_population,
+                                     multialgorithm_simulation.temp_dynamic_compartments)
+        return model, dynamic_model
 
     def compute_expected_actual_masses(self, model_filename):
         # provide the expected actual masses for the compartments in model_filename, keyed by compartment id
@@ -622,13 +623,12 @@ class TestDynamicModel(unittest.TestCase):
             numpy.testing.assert_approx_equal(expected, computed, significant=1)
 
     def test_dynamic_model(self):
-        self.make_dynamic_model(self.MODEL_FILENAME)
-        self.assertEqual(len(self.dynamic_model.cellular_dyn_compartments), 1)
-        self.assertEqual(self.dynamic_model.cellular_dyn_compartments[0].id, 'c')
-        self.assertEqual(self.dynamic_model.get_num_submodels(), 2)
+        model, dynamic_model = self.make_dynamic_model(self.MODEL_FILENAME)
+        self.assertEqual(len(dynamic_model.cellular_dyn_compartments), 1)
+        self.assertEqual(dynamic_model.cellular_dyn_compartments[0].id, 'c')
+        self.assertEqual(dynamic_model.get_num_submodels(), 2)
 
-        model = TestDynamicModel.models[self.MODEL_FILENAME]
-        for compartment in self.model.get_compartments():
+        for compartment in model.get_compartments():
             compartment.biological_type = onto['WC:extracellular_compartment']
         de_simulation_config = SimulationConfig(time_max=10)
         wc_sim_config = WCSimulationConfig(de_simulation_config)
@@ -651,8 +651,8 @@ class TestDynamicModel(unittest.TestCase):
                         rv[rxn_id].add(id)
             return rv
 
-        self.make_dynamic_model(self.DEPENDENCIES_MDL_FILE)
-        dependencies = self.dynamic_model.obtain_dependencies(self.models[self.DEPENDENCIES_MDL_FILE])
+        _, dynamic_model = self.make_dynamic_model(self.DEPENDENCIES_MDL_FILE)
+        dependencies = dynamic_model.obtain_dependencies(self.models[self.DEPENDENCIES_MDL_FILE])
 
         expected_dependencies = {}
         expected_dependencies['Function'] = \
@@ -765,9 +765,9 @@ class TestDynamicModel(unittest.TestCase):
         cell_masses = []
         computed_aggregate_states = []
         for i_trial in range(10):
-            self.make_dynamic_model(self.DRY_MODEL_FILENAME)
-            cell_masses.append(self.dynamic_model.cell_mass())
-            computed_aggregate_states.append(self.dynamic_model.get_aggregate_state())
+            model, dynamic_model = self.make_dynamic_model(self.DRY_MODEL_FILENAME)
+            cell_masses.append(dynamic_model.cell_mass())
+            computed_aggregate_states.append(dynamic_model.get_aggregate_state())
 
         # expected values computed in tests/fixtures/test_dry_model_with_mass_computation.xlsx
         numpy.testing.assert_approx_equal(numpy.mean(cell_masses), 9.160E-19)
