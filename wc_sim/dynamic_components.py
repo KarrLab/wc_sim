@@ -7,7 +7,7 @@
 :License: MIT
 """
 
-from collections import namedtuple
+import collections
 import inspect
 import itertools
 import math
@@ -15,7 +15,7 @@ import networkx
 import numpy
 import warnings
 
-from obj_tables.math.expression import ObjTablesTokenCodes
+from obj_tables.math.expression import Expression, ObjTablesTokenCodes
 from wc_lang import Species, Compartment
 from wc_onto import onto
 from wc_sim.config import core as config_core_multialgorithm
@@ -63,7 +63,7 @@ class SimTokCodes(int, CaseInsensitiveEnum):
 
 
 # a token in DynamicExpression._obj_tables_tokens
-WcSimToken = namedtuple('WcSimToken', 'code, token_string, dynamic_expression')
+WcSimToken = collections.namedtuple('WcSimToken', 'code, token_string, dynamic_expression')
 # make dynamic_expression optional: see https://stackoverflow.com/a/18348004
 WcSimToken.__new__.__defaults__ = (None, )
 WcSimToken.__doc__ += ': Token in a validated expression'
@@ -955,6 +955,10 @@ class DynamicModel(object):
 
         A simulation's stop condition is constructed as a logical 'or' of all :obj:`StopConditions` in
         a model.
+
+        Returns:
+            :obj:`function`: a function which computes the logical 'or' of all :obj:`StopConditions`,
+                or `None` if no stop condition are defined
         """
         if self.dynamic_stop_conditions:
             dynamic_stop_conditions = self.dynamic_stop_conditions.values()
@@ -986,75 +990,72 @@ class DynamicModel(object):
         return species_counts
 
     def obtain_dependencies(self, model):
-        """ Obtain a model's dependencies among reactions and WC Lang models
+        """ Obtain the dependencies of expressions on reactions in a WC Lang model
 
         Args:
             model (:obj:`Model`): the description of the whole-cell model in `wc_lang`
-        """
-        model_types = (# wc_lang.Compartment,
-                       wc_lang.DfbaObjective,
-                       # wc_lang.DfbaReaction,
-                       wc_lang.Function,
-                       wc_lang.Observable,
-                       # wc_lang.Parameter,     # immutable, and does not depend on other entities
-                       wc_lang.RateLaw,
-                       wc_lang.Species,
-                       wc_lang.StopCondition
-                      )
 
-        model_entities = itertools.chain(model.dfba_objs,
-                                         # model.dfba_obj_reactions,
-                                         # model.dfba_obj_species,
-                                         model.functions,
-                                         # model.get_species(),   # does not depend on other entities
+        Returns:
+            :obj:`dict`: the dependencies of expressions on reactions, as a map from reaction id to a set of
+                tuples of the form (class name, instance id)
+        """
+        used_model_types = (wc_lang.Function,
+                            wc_lang.Observable,
+                            wc_lang.RateLaw,
+                            wc_lang.Species,
+                            wc_lang.StopCondition)
+
+        model_entities = itertools.chain(model.functions,
                                          model.observables,
-                                         # model.parameters,  # does not depend on other entities
                                          model.rate_laws,
                                          model.stop_conditions)
-        # model.reactions
-        # model.compartments
-
-        def entity_id(entity):
-            return (entity.__class__.__name__, entity.id)
 
         # 1) make digraph of dependencies among model instances
         dependencies = networkx.DiGraph()
-        for model_entity in model_entities:
-            model_class = model_entity.__class__
+        for dependent_model_entity in model_entities:
 
-            # add edges from model_entity to the model_type entities on which it depends
-            for used_model_type in model_types:
-                # get all instances of used_model_type used by model_entity
-                used_models = []
-                for attr_name, attr in model_class.Meta.related_attributes.items():
-                    if attr.primary_class == used_model_type:
-                        used_models = getattr(model_entity, attr_name)
-                        break
+            dependent_model_entity_expr = dependent_model_entity.expression
 
-                for used_model in used_models:
-                    dependencies.add_edge(entity_id(model_entity), entity_id(used_model))
+            # get all instances of types in used_model_types used by dependent_model_entity
+            used_models = []
+            for used_model_type in used_model_types:
+                for attr_name in dependent_model_entity_expr.Meta.children['submodel']:
+                    attr = getattr(dependent_model_entity_expr, attr_name)
+                    if attr:
+                        if attr[0].__class__ == used_model_type:
+                            used_models.extend(attr)
 
-        # 2) add edges of species altered by reactions
+            # add edges from dependent_model_entity to the model_type entities on which it depends
+            for used_model in used_models:
+                dependencies.add_edge(CacheManager.entity_id(dependent_model_entity),
+                                      CacheManager.entity_id(used_model))
+
+        # 2) add edges of species altered by reactions to determine dependencies of rxns on expressions
         for reaction in model.reactions:
-            for species in itertools.chain(reaction.get_reactants(), reaction.get_products()):
-                dependencies.add_edge(entity_id(species), entity_id(reaction))
-
-        print('\ndependencies:')
-        for edge in list(dependencies.edges):
-            print(edge)
+            net_stoichiometric_coefficients = collections.defaultdict(float)
+            for participant in reaction.participants:
+                species = participant.species
+                net_stoichiometric_coefficients[species] += participant.coefficient
+            for species, net_stoich_coeff in net_stoichiometric_coefficients.items():
+                if net_stoich_coeff < 0 or 0 < net_stoich_coeff:
+                    dependencies.add_edge(CacheManager.entity_id(species), CacheManager.entity_id(reaction))
 
         # 3) traverse from each reaction to dependent expressions
         bfs_tree = networkx.algorithms.traversal.breadth_first_search.bfs_tree
         reaction_dependencies = {}
         for reaction in model.reactions:
             reaction_dependencies[reaction.id] = set()
-            print('\ntree:')
-            print(list(bfs_tree(dependencies, entity_id(reaction), reverse=True).edges()))
-            for edge in bfs_tree(dependencies, entity_id(reaction), reverse=True).edges():
-                s, dest = edge
-                print(f"{s} -> {dest}")
+            for edge in bfs_tree(dependencies, CacheManager.entity_id(reaction), reverse=True).edges():
+                _, dest = edge
                 reaction_dependencies[reaction.id].add(dest)
-        return reaction_dependencies
+
+        # 4) remove species, which are not expressions
+        filtered_reaction_dependencies = {}
+        for rxn_id, dependencies in reaction_dependencies.items():
+            to_remove = {dependency for dependency in dependencies if dependency[0] == 'Species'}
+            filtered_reaction_dependencies[rxn_id] = dependencies - to_remove
+
+        return filtered_reaction_dependencies
 
 
 WC_LANG_MODEL_TO_DYNAMIC_MODEL = {
@@ -1080,6 +1081,31 @@ class CacheManager(object):
     # caching results
     HIT = 'HIT'
     MISS = 'MISS'
+
+    @staticmethod
+    def entity_id(entity):
+        """ Get the caching key for an entity
+
+        Args:
+            entity (:obj:`object`): a simulation entity
+
+        Returns:
+            :obj:`tuple`: the caching key for an entity
+        """
+        return (entity.__class__.__name__, entity.id)
+
+    @staticmethod
+    def class_id(cls, id):
+        """ Get a caching key
+
+        Args:
+            cls (:obj:`object`): a class
+            id (:obj:`str`): the id of an instance of `cls`
+
+        Returns:
+            :obj:`tuple`: the caching key
+        """
+        return (cls.__name__, id)
 
     def __init__(self):
         self.expression_caching = config_multialgorithm['expression_caching']
@@ -1107,7 +1133,7 @@ class CacheManager(object):
         """
         if self.expression_caching:
             cls_name = expression_class.__name__
-            cache_key = (cls_name, id)
+            cache_key = self.class_id(expression_class, id)
             if cache_key in self._cache:
                 self._cache_stats[cls_name][self.HIT] += 1
                 return self._cache[cache_key]
@@ -1125,7 +1151,7 @@ class CacheManager(object):
             value (:obj:`object`): value of the expression class instance
         """
         if self.expression_caching:
-            cache_key = (expression_class.__name__, id)
+            cache_key = self.class_id(expression_class, id)
             self._cache[cache_key] = value
 
     def clear_cache(self):

@@ -363,7 +363,7 @@ class TestDynamics(unittest.TestCase):
 
         dynamic_times = []
         for dynamic_obj_dict in [self.dynamic_model.dynamic_observables,
-                                 self.dynamic_model.dynamic_functions, 
+                                 self.dynamic_model.dynamic_functions,
                                  self.dynamic_model.dynamic_stop_conditions]:
             for id, dynamic_expression in dynamic_obj_dict.items():
                 self.assertEqual(self.expected_values[id], dynamic_expression.eval(0))
@@ -581,11 +581,12 @@ class TestDynamicModel(unittest.TestCase):
 
     MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_model.xlsx')
     DRY_MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_dry_model.xlsx')
+    DEPENDENCIES_MDL_FILE = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_dependencies.xlsx')
 
     @classmethod
     def setUpClass(cls):
         cls.models = {}
-        for model_file in [cls.MODEL_FILENAME, cls.DRY_MODEL_FILENAME]:
+        for model_file in [cls.MODEL_FILENAME, cls.DRY_MODEL_FILENAME, cls.DEPENDENCIES_MDL_FILE]:
             cls.models[model_file] = Reader().run(model_file, ignore_extra_models=True)[Model][0]
 
     def make_dynamic_model(self, model_filename):
@@ -637,12 +638,66 @@ class TestDynamicModel(unittest.TestCase):
             DynamicModel(model, multialgorithm_simulation.local_species_population,
                          multialgorithm_simulation.temp_dynamic_compartments)
 
-    @unittest.skip("todo: fix repeated use of make_dynamic_mode()")
     def test_obtain_dependencies(self):
-        self.make_dynamic_model(self.MODEL_FILENAME)
-        from pprint import pprint
-        print('obtain_dependencies')
-        pprint(self.dynamic_model.obtain_dependencies(self.models[self.MODEL_FILENAME]))
+        def sub_dependencies(dependencies, model_type):
+            """ Extract the dependencies for models of type model_type
+            """
+            rv = {}
+            for rxn_id, models in dependencies.items():
+                rv[rxn_id] = set()
+                for model in models:
+                    mdl_type, id = model
+                    if mdl_type == model_type:
+                        rv[rxn_id].add(id)
+            return rv
+
+        self.make_dynamic_model(self.DEPENDENCIES_MDL_FILE)
+        dependencies = self.dynamic_model.obtain_dependencies(self.models[self.DEPENDENCIES_MDL_FILE])
+
+        expected_dependencies = {}
+        expected_dependencies['Function'] = \
+            {'reaction_1': {'function_4', 'function_9'},
+             'reaction_2': {'function_5', 'function_9'},
+             'reaction_3': set(),
+             'reaction_4': {'function_4', 'function_9'},
+             'reaction_5': {'function_4', 'function_9'},
+             'reaction_6': {'function_4', 'function_5', 'function_9'},
+             'reaction_7': {'function_4', 'function_9'},
+             'reaction_8': {'function_4', 'function_9'}}
+
+        expected_dependencies['Observable'] = \
+            {'reaction_1': {'observable_1', 'observable_2', 'observable_6'},
+             'reaction_2': {'observable_3', 'observable_4', 'observable_5', 'observable_7'},
+             'reaction_3': {'observable_5', 'observable_7'},
+             'reaction_4': {'observable_1', 'observable_2', 'observable_6'},
+             'reaction_5': {'observable_2', 'observable_6'},
+             'reaction_6': {'observable_1', 'observable_2', 'observable_6', 'observable_3', 'observable_4',
+                            'observable_5', 'observable_7'},
+             'reaction_7': {'observable_1', 'observable_2', 'observable_6'},
+             'reaction_8': {'observable_1', 'observable_2', 'observable_6'}}
+
+        expected_dependencies['RateLaw'] = \
+            {'reaction_1': {'reaction_3-forward', 'reaction_5-forward', 'reaction_7-forward'},
+             'reaction_2': {'reaction_4-forward', 'reaction_7-forward'},
+             'reaction_3': set(),
+             'reaction_4': {'reaction_3-forward', 'reaction_5-forward', 'reaction_7-forward'},
+             'reaction_5': {'reaction_5-forward', 'reaction_7-forward'},
+             'reaction_6': {'reaction_3-forward', 'reaction_4-forward', 'reaction_5-forward', 'reaction_7-forward'},
+             'reaction_7': {'reaction_3-forward', 'reaction_5-forward', 'reaction_7-forward'},
+             'reaction_8': {'reaction_3-forward', 'reaction_5-forward', 'reaction_7-forward'}}
+
+        expected_dependencies['StopCondition'] = \
+            {'reaction_1': {'stop_condition_4', 'stop_condition_5'},
+             'reaction_2': {'stop_condition_5'},
+             'reaction_3': set(),
+             'reaction_4': {'stop_condition_4', 'stop_condition_5'},
+             'reaction_5': set(),
+             'reaction_6': {'stop_condition_4', 'stop_condition_5'},
+             'reaction_7': {'stop_condition_4', 'stop_condition_5'},
+             'reaction_8': {'stop_condition_4', 'stop_condition_5'}}
+
+        for model_type in ('Function', 'Observable', 'RateLaw', 'StopCondition'):
+            self.assertEqual(sub_dependencies(dependencies, model_type), expected_dependencies[model_type])
 
     def test_dynamic_components(self):
         # test agregate properties like mass and volume against independent calculations of their values
