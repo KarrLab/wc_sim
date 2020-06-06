@@ -992,6 +992,9 @@ class DynamicModel(object):
     def obtain_dependencies(self, model):
         """ Obtain the dependencies of expressions on reactions in a WC Lang model
 
+        When reactions execute stochastically dependencies are used to invalidate cached expressions
+        and determine which rate laws must be executed.
+
         Args:
             model (:obj:`Model`): the description of the whole-cell model in `wc_lang`
 
@@ -999,11 +1002,11 @@ class DynamicModel(object):
             :obj:`dict`: the dependencies of expressions on reactions, as a map from reaction id to a set of
                 tuples of the form (class name, instance id)
         """
-        used_model_types = (wc_lang.Function,
-                            wc_lang.Observable,
-                            wc_lang.RateLaw,
-                            wc_lang.Species,
-                            wc_lang.StopCondition)
+        used_model_types = set((wc_lang.Function,
+                                wc_lang.Observable,
+                                wc_lang.RateLaw,
+                                wc_lang.Species,
+                                wc_lang.StopCondition))
 
         model_entities = itertools.chain(model.functions,
                                          model.observables,
@@ -1018,12 +1021,10 @@ class DynamicModel(object):
 
             # get all instances of types in used_model_types used by dependent_model_entity
             used_models = []
-            for used_model_type in used_model_types:
-                for attr_name in dependent_model_entity_expr.Meta.children['submodel']:
-                    attr = getattr(dependent_model_entity_expr, attr_name)
-                    if attr:
-                        if attr[0].__class__ == used_model_type:
-                            used_models.extend(attr)
+            for attr_name, attr in dependent_model_entity_expr.Meta.attributes.items():
+                if isinstance(attr, obj_tables.RelatedAttribute):
+                    if attr.related_class in used_model_types:
+                        used_models.extend(getattr(dependent_model_entity_expr, attr_name))
 
             # add edges from dependent_model_entity to the model_type entities on which it depends
             for used_model in used_models:
