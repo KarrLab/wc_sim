@@ -94,8 +94,9 @@ class TestNrmSubmodel(unittest.TestCase):
         _, dynamic_model = self.make_sim_w_nrm_submodel(test_props_eq_0_model, False)
         nrm_submodel_0_props = dynamic_model.dynamic_submodels['nrm_submodel']
 
+        # TODO(Arthur): exact caching: done: remove
         # stop caching for this test, because it repeatedly updates populations
-        dynamic_model.cache_manager.stop_caching()
+        # dynamic_model._stop_caching()
 
         ### single step a mock simulation ###
         nrm_submodel_0_props.initialize()
@@ -119,9 +120,9 @@ class TestNrmSubmodel(unittest.TestCase):
                                     float('inf'))
 
             # mock a simulation event for a reaction with a non-zero propensity
-            first_reaction = reaction_sequence.pop(0)
-            nrm_submodel_0_props.execute_nrm_reaction(first_reaction)
-            nrm_submodel_0_props.schedule_next_reaction(first_reaction)
+            next_reaction = reaction_sequence.pop(0)
+            nrm_submodel_0_props.execute_nrm_reaction(next_reaction)
+            nrm_submodel_0_props.schedule_next_reaction(next_reaction)
 
     def test_simulate(self):
         NUM_TRIALS = 20

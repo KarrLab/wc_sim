@@ -13,6 +13,8 @@ import numpy
 import numpy.testing
 import os
 import re
+import shutil
+import tempfile
 import timeit
 import unittest
 import warnings
@@ -30,7 +32,9 @@ from wc_sim.dynamic_components import (SimTokCodes, WcSimToken, DynamicComponent
                                        DynamicCompartment, DynamicStopCondition, CacheManager)
 from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
+from wc_sim.run_results import RunResults
 from wc_sim.sim_config import WCSimulationConfig
+from wc_sim.simulation import Simulation
 from wc_sim.species_populations import LocalSpeciesPopulation, MakeTestLSP
 from wc_sim.testing.utils import read_model_for_test
 from wc_utils.util.rand import RandomStateManager
@@ -350,7 +354,7 @@ class TestDynamics(unittest.TestCase):
     def test_dynamic_expressions(self):
 
         # stop caching in this test to measure performance correctly & get correct values for expressions
-        self.dynamic_model.cache_manager.stop_caching()
+        self.dynamic_model._stop_caching()
 
         # check computed value and measure performance of all test Dynamic objects
         executions = 10000
@@ -589,6 +593,13 @@ class TestDynamicModel(unittest.TestCase):
         for model_file in [cls.MODEL_FILENAME, cls.DRY_MODEL_FILENAME, cls.DEPENDENCIES_MDL_FILE]:
             cls.models[model_file] = Reader().run(model_file, ignore_extra_models=True)[Model][0]
 
+    def setUp(self):
+        self.test_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        # shutil.rmtree(self.test_dir)
+        pass
+
     def make_dynamic_model(self, model_filename):
         # read and initialize a model
         model = TestDynamicModel.models[model_filename]
@@ -638,10 +649,10 @@ class TestDynamicModel(unittest.TestCase):
             DynamicModel(model, multialgorithm_simulation.local_species_population,
                          multialgorithm_simulation.temp_dynamic_compartments)
 
+    # TODO(Arthur): exact caching: done:
     def test_obtain_dependencies(self):
         def sub_dependencies(dependencies, model_type):
-            """ Extract the dependencies for models of type model_type
-            """
+            """ Extract the dependencies for models of type model_type """
             rv = {}
             for rxn_id, models in dependencies.items():
                 rv[rxn_id] = set()
@@ -655,7 +666,7 @@ class TestDynamicModel(unittest.TestCase):
         dependencies = dynamic_model.obtain_dependencies(self.models[self.DEPENDENCIES_MDL_FILE])
 
         expected_dependencies = {}
-        expected_dependencies['Function'] = \
+        expected_dependencies['DynamicFunction'] = \
             {'reaction_1': {'function_4', 'function_9'},
              'reaction_2': {'function_5', 'function_9'},
              'reaction_3': set(),
@@ -665,7 +676,7 @@ class TestDynamicModel(unittest.TestCase):
              'reaction_7': {'function_4', 'function_9'},
              'reaction_8': {'function_4', 'function_9'}}
 
-        expected_dependencies['Observable'] = \
+        expected_dependencies['DynamicObservable'] = \
             {'reaction_1': {'observable_1', 'observable_2', 'observable_6'},
              'reaction_2': {'observable_3', 'observable_4', 'observable_5', 'observable_7'},
              'reaction_3': {'observable_5', 'observable_7'},
@@ -676,7 +687,7 @@ class TestDynamicModel(unittest.TestCase):
              'reaction_7': {'observable_1', 'observable_2', 'observable_6'},
              'reaction_8': {'observable_1', 'observable_2', 'observable_6'}}
 
-        expected_dependencies['RateLaw'] = \
+        expected_dependencies['DynamicRateLaw'] = \
             {'reaction_1': {'reaction_3-forward', 'reaction_5-forward', 'reaction_7-forward'},
              'reaction_2': {'reaction_4-forward', 'reaction_7-forward'},
              'reaction_3': set(),
@@ -686,7 +697,7 @@ class TestDynamicModel(unittest.TestCase):
              'reaction_7': {'reaction_3-forward', 'reaction_5-forward', 'reaction_7-forward'},
              'reaction_8': {'reaction_3-forward', 'reaction_5-forward', 'reaction_7-forward'}}
 
-        expected_dependencies['StopCondition'] = \
+        expected_dependencies['DynamicStopCondition'] = \
             {'reaction_1': {'stop_condition_4', 'stop_condition_5'},
              'reaction_2': {'stop_condition_5'},
              'reaction_3': set(),
@@ -695,9 +706,34 @@ class TestDynamicModel(unittest.TestCase):
              'reaction_6': {'stop_condition_4', 'stop_condition_5'},
              'reaction_7': {'stop_condition_4', 'stop_condition_5'},
              'reaction_8': {'stop_condition_4', 'stop_condition_5'}}
+        # reaction_9 is not in expected_dependencies because no expressions depend on
+        # it and DynamicModel.obtain_dependencies() removes such reactions from the dependencies
 
-        for model_type in ('Function', 'Observable', 'RateLaw', 'StopCondition'):
+        self.maxDiff = None
+        for model_type in ('DynamicFunction', 'DynamicObservable', 'DynamicRateLaw', 'DynamicStopCondition'):
             self.assertEqual(sub_dependencies(dependencies, model_type), expected_dependencies[model_type])
+
+        self.assertEqual(dynamic_model.rxn_expression_dependencies, dependencies)
+
+    def test_expression_dependencies(self):
+        # TODO(Arthur): exact caching:
+        # ensure that a model with expressions that depend on reactions generates
+        # the same results with and without caching
+        # test dsa
+        simulation = Simulation(self.DEPENDENCIES_MDL_FILE)
+        # expression caching ON:
+        results_dir = tempfile.mkdtemp(dir=self.test_dir)
+        simulation_rv = simulation.run(time_max=10, results_dir=results_dir, checkpoint_period=2,
+                                       cache_expressions=True)
+        run_results_on = RunResults(simulation_rv.results_dir)
+        # expression caching OFF:
+        results_dir = tempfile.mkdtemp(dir=self.test_dir)
+        simulation_rv = simulation.run(time_max=10, results_dir=results_dir, checkpoint_period=2,
+                                       cache_expressions=False)
+        run_results_off = RunResults(simulation_rv.results_dir)
+        self.assertEqual(run_results_on, run_results_off)
+
+        # TODO: test ssa, nrm, and odes
 
     def test_dynamic_components(self):
         # test agregate properties like mass and volume against independent calculations of their values
@@ -789,7 +825,21 @@ class TestDynamicModel(unittest.TestCase):
 
 class TestCacheManager(unittest.TestCase):
 
+    # TODO(Arthur): exact caching: done: change
+    def test_staticmethods(self):
+        class DynamicExample(object):
+            def __init__(self, id):
+                self.id = id
+        id = 'de_7'
+        entity = DynamicExample(id)
+        self.assertEqual(CacheManager.key_from_entity(entity), ('DynamicExample', id))
+        self.assertEqual(CacheManager.key_from_class(DynamicFunction, 'fun_3'), ('DynamicFunction', 'fun_3'))
+
     def test(self):
+        for cache_expressions in (False, True):
+            cache_manager_0 = CacheManager(cache_expressions=cache_expressions)
+            self.assertEqual(cache_manager_0.caching(), cache_expressions)
+
         cache_manager = CacheManager()
         self.assertEqual(cache_manager._cache, dict())
         self.assertTrue(isinstance(cache_manager.caching(), bool))
@@ -797,11 +847,12 @@ class TestCacheManager(unittest.TestCase):
         for b in [False, True]:
             cache_manager.set_caching(b)
             self.assertEqual(cache_manager.caching(), b)
-        cache_manager.stop_caching()
+        cache_manager._stop_caching()
         self.assertEqual(cache_manager.caching(), False)
-        cache_manager.start_caching()
+        cache_manager._start_caching()
         self.assertEqual(cache_manager.caching(), True)
 
+        # test 'set' and 'get'
         v = 3
         id = 'f1'
         cache_manager.set(DynamicFunction, id, v)
@@ -810,21 +861,39 @@ class TestCacheManager(unittest.TestCase):
         cache_manager.set(DynamicFunction, id, v)
         self.assertEqual(cache_manager.get(DynamicFunction, id), v)
         v = 5
-        id = 'f6'
-        cache_manager.set(DynamicFunction, id, v)
-        self.assertEqual(cache_manager.get(DynamicFunction, id), v)
-
+        fid = 'f6'
+        cache_manager.set(DynamicFunction, fid, v)
+        self.assertEqual(cache_manager.get(DynamicFunction, fid), v)
         v = 44
-        id = 's0'
-        cache_manager.set(DynamicStopCondition, id, v)
-        self.assertEqual(cache_manager.get(DynamicStopCondition, id), v)
+        sc_id = 's0'
+        cache_manager.set(DynamicStopCondition, sc_id, v)
+        self.assertEqual(cache_manager.get(DynamicStopCondition, sc_id), v)
+
+        # test 'flush'
+        cache_key = CacheManager.key_from_class(DynamicFunction, fid)
+        self.assertEqual(cache_manager.flush(cache_key), None)
+        with self.assertRaisesRegex(ValueError, 'key not in cache'):
+            cache_manager.get(DynamicFunction, fid)
+        # flush again to generate FLUSH_MISS
+        self.assertEqual(cache_manager.flush(cache_key), None)
+
+        # test 'flush_all'
+        cache_key = CacheManager.key_from_class(DynamicStopCondition, sc_id)
+        cache_key_2 = CacheManager.key_from_class(DynamicStopCondition, sc_id+'_not_cached')
+        # flush_all generate 1 FLUSH_MISS & 1 FLUSH_HIT
+        self.assertEqual(cache_manager.flush_all([cache_key, cache_key_2]), None)
+        with self.assertRaisesRegex(ValueError, 'key not in cache'):
+            cache_manager.get(DynamicStopCondition, sc_id)
 
         with self.assertRaisesRegex(ValueError, 'key not in cache'):
             cache_manager.get(DynamicStopCondition, 'not_id')
-        cache_manager.stop_caching()
-        with self.assertRaisesRegex(ValueError, 'caching not enabled'):
-            cache_manager.get(DynamicStopCondition, id)
-        self.assertEqual(cache_manager.set(DynamicFunction, id, v), None)
+
+        # cover case in which caching is not enabled
+        cache_manager._stop_caching()
+        self.assertEqual(cache_manager.get(DynamicStopCondition, sc_id), None)
+        self.assertEqual(cache_manager.set(DynamicStopCondition, sc_id, 0), None)
+        self.assertEqual(cache_manager.flush(cache_key), None)
+        self.assertEqual(cache_manager.flush_all([cache_key, cache_key_2]), None)
 
         caching_stats = cache_manager.cache_stats_table()
         expected = ('DynamicFunction', 'HIT\tMISS', '0', '3')   # DynamicFunction HIT 3 times

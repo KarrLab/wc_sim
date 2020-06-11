@@ -7,6 +7,7 @@
 """
 
 from scipy.constants import Avogadro
+import copy
 import numpy
 import os
 import unittest
@@ -19,7 +20,7 @@ from wc_lang import Model, Species, Validator
 from wc_lang.io import Reader
 from wc_lang.transform import PrepForWcSimTransform
 from wc_onto import onto
-from wc_sim.dynamic_components import DynamicModel
+from wc_sim.dynamic_components import DynamicModel, DynamicFunction
 from wc_sim.model_utilities import ModelUtilities
 from wc_sim.multialgorithm_errors import DynamicMultialgorithmError, MultialgorithmError
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
@@ -60,6 +61,15 @@ def make_dynamic_submodel_params(model, lang_submodel):
             lang_submodel.get_children(kind='submodel', __type=Species),
             multialgorithm_simulation.get_dynamic_compartments(lang_submodel),
             multialgorithm_simulation.local_species_population)
+
+
+def build_sim_from_model(model, time_max=10, dfba_time_step=1, options=None):
+    de_simulation_config = SimulationConfig(time_max=time_max)
+    wc_sim_config = WCSimulationConfig(de_simulation_config, dfba_time_step=1)
+    options = {} if options is None else options
+    multialgorithm_simulation = MultialgorithmSimulation(model, wc_sim_config, options=options)
+    simulation_engine, dynamic_model = multialgorithm_simulation.build_simulation()
+    return multialgorithm_simulation, simulation_engine, dynamic_model
 
 
 class TestDynamicSubmodelStatically(unittest.TestCase):
@@ -106,10 +116,7 @@ class TestDynamicSubmodelStatically(unittest.TestCase):
     def test_calc_reaction_rates(self):
         # set standard deviation of initial conc. to 0
         self.setUp(std_init_concentrations=0.)
-        de_simulation_config = SimulationConfig(time_max=10)
-        wc_sim_config = WCSimulationConfig(de_simulation_config, dfba_time_step=1)
-        multialgorithm_simulation = MultialgorithmSimulation(self.model, wc_sim_config)
-        _, dynamic_model = multialgorithm_simulation.build_simulation()
+        multialgorithm_simulation, _, _ = build_sim_from_model(self.model)
 
         # rate law for reaction_4-forward: k_cat_4_for * max(species_4[c], p_4)
         k_cat_4_for = 1
@@ -188,6 +195,26 @@ class TestDynamicSubmodelStatically(unittest.TestCase):
         # test reaction in which a species appears multiple times
         self.do_test_execute_reaction('reaction_2', {'species_1[c]': 1, 'species_3[c]': 1})
 
+    # TODO(Arthur): exact caching: done:
+    def test_flush_cache_for_reaction(self):
+        dependencies_mdl_file = os.path.join(os.path.dirname(__file__), '..', 'fixtures', 'test_dependencies.xlsx')
+        model = Reader().run(dependencies_mdl_file)[Model][0]
+        _, _, dynamic_model = build_sim_from_model(model)
+
+        # eval DynamicFunction function_4
+        val = dynamic_model.dynamic_functions['function_4'].eval(0)
+        self.assertEqual(dynamic_model.cache_manager.get(DynamicFunction, 'function_4'), val)
+        test_submodel = dynamic_model.dynamic_submodels['test_submodel']
+        reactions = {rxn.id: rxn for rxn in test_submodel.reactions}
+        test_submodel.flush_cache_for_reaction(reactions['reaction_1'])
+        with self.assertRaisesRegex(ValueError, 'key not in cache'):
+            dynamic_model.cache_manager.get(DynamicFunction, 'function_4')
+
+        # since reaction_9 has no dependencies, it tests the if statement in flush_cache_for_reaction
+        cache_copy = copy.deepcopy(dynamic_model.cache_manager._cache)
+        test_submodel.flush_cache_for_reaction(reactions['reaction_9'])
+        self.assertEqual(cache_copy, dynamic_model.cache_manager._cache)
+
 
 class TestSkeletonSubmodel(unittest.TestCase):
 
@@ -255,10 +282,7 @@ class TestDsaSubmodel(unittest.TestCase):
     def test_deterministic_simulation_algorithm_submodel_statics(self):
         self.transform_model_for_dsa_simulation(self.model)
         prepare_model(self.model)
-        de_simulation_config = SimulationConfig(time_max=10)
-        wc_sim_config = WCSimulationConfig(de_simulation_config, dfba_time_step=1)
-        multialgorithm_simulation = MultialgorithmSimulation(self.model, wc_sim_config)
-        simulation_engine, _ = multialgorithm_simulation.build_simulation()
+        multialgorithm_simulation, simulation_engine, _ = build_sim_from_model(self.model)
         simulation_engine.initialize()
         dsa_submodel_name = 'submodel_2'
         dsa_submodel = multialgorithm_simulation.dynamic_model.dynamic_submodels[dsa_submodel_name]
@@ -313,16 +337,13 @@ class TestDsaSubmodel(unittest.TestCase):
 
         # test DsaSubmodel options
         expected = dict(a=1)
-        options = dict(DsaSubmodel=dict(optiona=expected))
         options = {'DsaSubmodel': {'options': expected
                                   }
                   }
-        de_simulation_config = SimulationConfig(time_max=10)
-        wc_sim_config = WCSimulationConfig(de_simulation_config, dfba_time_step=1)
-        multialgorithm_simulation = MultialgorithmSimulation(self.model, wc_sim_config, options)
-        multialgorithm_simulation.build_simulation()
+        multialgorithm_simulation, _, _ = build_sim_from_model(self.model, options=options)
         dsa_submodel = multialgorithm_simulation.dynamic_model.dynamic_submodels['submodel_2']
         self.assertEqual(dsa_submodel.options, expected)
+        # TODO(Arthur): exact caching: test expression caching
 
     def test_simulate_deterministic_simulation_algorithm_submodel(self):
         model = MakeModel.make_test_model('1 species, 1 reaction')

@@ -211,6 +211,10 @@ class TestRunResults(unittest.TestCase):
                          self.checkpoint_period)
         self.assertEqual(sim_metadata['de_sim_metadata']['simulation_config']['time_max'], self.max_time)
 
+    # TODO(Arthur): exact caching:
+    def test_eq(self):
+        pass
+
     def test_performance(self):
 
         # make RunResults local

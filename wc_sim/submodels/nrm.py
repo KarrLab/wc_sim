@@ -129,7 +129,7 @@ class NrmSubmodel(DynamicSubmodel):
         for updated_species_set in updated_species.values():
             updated_species_set |= continuously_modeled_species
 
-        # Parallel case (to be addressed later), with multiple instances each of an SSA, ODE and dFBA submodels:
+        # TODO: Parallel case, with multiple instances each of an SSA, ODE and dFBA submodels:
         # NRM must recompute all rate laws that depend on species shared with any other submodel
 
         # compute reaction to rate laws dependencies
@@ -137,6 +137,18 @@ class NrmSubmodel(DynamicSubmodel):
             for species_id in updated_species[reaction_idx]:
                 for rate_law_idx in used_species[species_id]:
                     dependencies[reaction_idx].add(rate_law_idx)
+
+        # TODO(Arthur): exact caching: add info from DynamicModel.obtain_dependencies()
+        # make sure works with or without caching
+        # add additional dependencies that propagate through expressions
+        rxn_id_to_idx = {rxn.id: rxn_idx for rxn_idx, rxn in enumerate(self.reactions)}
+        rate_law_id_to_idx = {rxn.rate_laws[0].id: rxn_idx for rxn_idx, rxn in enumerate(self.reactions)}
+        for rxn_id, expr_dependencies in self.dynamic_model.rxn_expression_dependencies.items():
+            rxn_idx = rxn_id_to_idx[rxn_id]
+            dependent_rate_laws = [id for cls_name, id in expr_dependencies if cls_name == 'DynamicRateLaw']
+            for dependent_rate_law_id in dependent_rate_laws:
+                rate_law_idx = rate_law_id_to_idx[dependent_rate_law_id]
+                dependencies[rxn_idx].add(rate_law_idx)
 
         # convert dependencies into more compact and faster list of tuples
         dependencies_list = [None] * len(self.reactions)
@@ -267,7 +279,7 @@ class NrmSubmodel(DynamicSubmodel):
         Args:
             event (:obj:`Event`): a simulation event
         """
-        self.dynamic_model.cache_manager.clear_cache()
+        # TODO(Arthur): exact caching: remove: done
         # execute the reaction
         reaction_index = event.message.reaction_index
         self.execute_nrm_reaction(reaction_index)

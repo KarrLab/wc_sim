@@ -36,6 +36,8 @@ class WCSimulationConfig(EnhancedDataClass):
     - Checkpoint period
     - Submodels to skip
     - Whether to produce verbose output
+    # TODO(Arthur): exact caching:
+    - Whether to cache expression values
     - Model changes: Instructions to change parameter values and add or remove model
       components. These instructions are executed before the initial conditions are
       calculated
@@ -52,6 +54,9 @@ class WCSimulationConfig(EnhancedDataClass):
         submodels_to_skip (:obj:`list` of :obj:`str`, optional): submodels that should not be run,
             identified by their ids
         verbose (:obj:`bool`, optional): whether to produce verbose output
+        # TODO(Arthur): exact caching:
+        cache_expressions (:obj:`object`, optional): whether to cache expression values; if :obj:`None`,
+            use `expression_caching` attribute in config file
         changes (:obj:`list`, optional): list of desired model changes (e.g. modified parameter values,
             additional species/reactions, removed species/reactions)
         perturbations (:obj:`list`, optional): list of desired simulated perturbations (e.g. set state
@@ -65,6 +70,7 @@ class WCSimulationConfig(EnhancedDataClass):
     checkpoint_period: float = None
     submodels_to_skip: list = None
     verbose: bool = False
+    cache_expressions: object = None
     changes: list = None
     perturbations: list = None
 
@@ -104,6 +110,11 @@ class WCSimulationConfig(EnhancedDataClass):
 
         if self.checkpoint_period is not None and self.checkpoint_period <= 0:
             raise MultialgorithmError(f'checkpoint_period ({self.checkpoint_period}) must be positive')
+
+        # TODO(Arthur): exact caching:
+        # cache_expressions is tri-state: a boolean, or None
+        if not isinstance(self.cache_expressions, bool) and not self.cache_expressions is None:
+            raise MultialgorithmError(f'cache_expressions ({self.cache_expressions}) must be a boolean or None')
 
     def validate(self):
         """ Fully validate a `WCSimulationConfig` instance

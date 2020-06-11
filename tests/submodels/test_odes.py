@@ -121,7 +121,7 @@ class TestOdeSubmodel(unittest.TestCase):
         ode_submodel = self.make_ode_submodel(one_rxn_exp_mdl, submodel_name='submodel')
 
         # stop caching for this test, because it repeatedly updates populations
-        ode_submodel.dynamic_model.cache_manager.stop_caching()
+        ode_submodel.dynamic_model._stop_caching()
 
         ode_submodel.current_species_populations()
         new_species_populations = ode_submodel.populations.copy()

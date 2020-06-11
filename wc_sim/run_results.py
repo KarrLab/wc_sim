@@ -41,7 +41,7 @@ class RunResults(object):
         'aggregate_states',     # predicted aggregate states of the cell over the simulation
         'observables',          # predicted values of all observables over the simulation
         'functions',            # predicted values of all functions over the simulation
-        'random_states',        # states of the simulation's random number geerators over the simulation
+        'random_states',        # states of the simulation's random number generators over the simulation
     }
 
     # components computed from stored components; map from component name to the method that computes it
@@ -376,6 +376,24 @@ class RunResults(object):
         functions_df = function_make_df.finish()
         return (population_df, observables_df, functions_df, aggregate_states_df, random_states_s)
 
+    # TODO(Arthur): exact caching:
+    def __eq__(self, other):
+        """ Compare two `RunResults` objects
+
+        Args:
+            other (:obj:`Object`): other object
+
+        Returns:
+            :obj:`bool`: true if `RunResults` objects are semantically equal
+        """
+        if other.__class__ is not self.__class__:
+            return False
+
+        for component in RunResults.COMPONENTS:
+            if component != 'random_states' and self.run_results[component] != other.run_results[component]:
+                return False
+
+        return True
 
 class MakeDataFrame(object):
     """ Efficiently make a Pandas dataframe that contains a 2D numpy.ndarray
