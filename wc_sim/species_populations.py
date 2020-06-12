@@ -1574,9 +1574,6 @@ class DynamicSpeciesState(object):
             :obj:`DynamicNegativePopulationError`: if the predicted population at `time` is negative or
                 if decreasing the population by `population_change` would make the population negative
         """
-        assert float(population_change).is_integer(), \
-            "DynamicSpeciesState '{}': population_change must be an integer, but {} isn't".format(
-                self.species_name, population_change)
         self._validate_adjustment_time(time, 'discrete_adjustment')
         current_population = self.get_population(time)
         if current_population + population_change < self.MINIMUM_ALLOWED_POPULATION:

@@ -925,12 +925,6 @@ class TestDynamicSpeciesState(unittest.TestCase):
                                     "integer, but .* isn't"):
             DynamicSpeciesState('species[c]', self.random_state, 1.5)
 
-        ds = DynamicSpeciesState('species[c]', self.random_state, 1)
-        with self.assertRaisesRegex(AssertionError,
-                                    r"DynamicSpeciesState '.*': population_change must be an integer, "
-                                    r"but .* isn't"):
-            ds.discrete_adjustment(2, .5)
-
         s1 = DynamicSpeciesState('s1[c]', self.random_state, 0, modeled_continuously=True)
         with self.assertRaisesRegex(AssertionError, r"population_slope .* must be an int or float"):
             s1.continuous_adjustment(1, 'not a number')
