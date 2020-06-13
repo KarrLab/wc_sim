@@ -96,7 +96,7 @@ class Simulation(object):
     # TODO(Arthur): exact caching:
     def run(self, time_max, results_dir=None, progress_bar=True, checkpoint_period=None,
             seed=None, ode_time_step=None, dfba_time_step=None, profile=False, submodels_to_skip=None,
-            verbose=True, cache_expressions=None, object_memory_change_interval=0, options=None):
+            verbose=True, object_memory_change_interval=0, options=None):
         """ Run one simulation
 
         Args:
@@ -115,8 +115,6 @@ class Simulation(object):
             submodels_to_skip (:obj:`list` of :obj:`str`, optional): submodels that should not be run,
                 identified by their ids
             verbose (:obj:`bool`, optional): whether to print success output
-            cache_expressions (:obj:`bool`, optional): whether to cache expression values; if not provided,
-                set from config file
             object_memory_change_interval (:obj:`int`, optional): event interval between memory profiles
                 of the simulation; default of 0 indicates no profile
             options (:obj:`dict`, optional): options for submodels, passed to `MultialgorithmSimulation`
@@ -140,17 +138,13 @@ class Simulation(object):
         self.de_sim_config.validate()
 
         # create and validate WC configuration
-        # TODO(Arthur): exact caching:
-        if cache_expressions is None:
-            cache_expressions = config_multialgorithm['expression_caching']
         self.wc_sim_config = WCSimulationConfig(de_simulation_config=self.de_sim_config,
                                                 random_seed=seed,
                                                 ode_time_step=ode_time_step,
                                                 dfba_time_step=dfba_time_step,
                                                 checkpoint_period=checkpoint_period,
                                                 submodels_to_skip=submodels_to_skip,
-                                                verbose=verbose,
-                                                cache_expressions=cache_expressions)
+                                                verbose=verbose)
         self.wc_sim_config.validate()
 
         # create author metadata for DE sim

@@ -200,6 +200,7 @@ class OdeSubmodel(DynamicSubmodel):
             :obj:`DynamicMultialgorithmError`: if this method raises any exception
         """
 
+        # TODO(Arthur): exact caching:
         # if caching, clear the expression cache because populations have changed
         self.dynamic_model.cache_manager.clear_cache()
         try:
@@ -302,6 +303,7 @@ class OdeSubmodel(DynamicSubmodel):
         Args:
             event (:obj:`Event`): a simulation event
         """
+        # TODO(Arthur): exact caching:
         self.dynamic_model.cache_manager.clear_cache()
         self.run_ode_solver()
         self.schedule_next_ode_analysis()

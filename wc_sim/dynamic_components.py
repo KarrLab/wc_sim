@@ -7,6 +7,7 @@
 :License: MIT
 """
 
+from enum import Enum, auto
 import collections
 import inspect
 import itertools
@@ -18,15 +19,13 @@ import warnings
 from obj_tables.math.expression import Expression, ObjTablesTokenCodes
 from wc_lang import Species, Compartment
 from wc_onto import onto
-from wc_sim.config import core as config_core_multialgorithm
 from wc_sim.multialgorithm_errors import MultialgorithmError, MultialgorithmWarning
 from wc_sim.species_populations import LocalSpeciesPopulation
 from wc_utils.util.enumerate import CaseInsensitiveEnum
 from wc_utils.util.ontology import are_terms_equivalent
 import obj_tables
 import wc_lang
-
-config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
+import wc_sim.config
 
 
 '''
@@ -298,7 +297,7 @@ class DynamicExpression(DynamicComponent):
         if self.dynamic_model.cache_manager.caching():
             try:
                 return self.dynamic_model.cache_manager.get(self.__class__, self.id)
-            except ValueError:
+            except MultialgorithmError:
                 pass
 
         for idx, sim_token in enumerate(self.wc_sim_tokens):
@@ -458,8 +457,6 @@ class DynamicCompartment(DynamicComponent):
         species_ids (:obj:`list` of :obj:`str`): the IDs of the species stored in this
             :obj:`DynamicCompartment`\ ; if `None`, use the IDs of all species in `species_population`
     """
-    MAX_ALLOWED_INIT_ACCOUNTED_FRACTION = config_multialgorithm['max_allowed_init_accounted_fraction']
-    MEAN_TO_STD_DEV_RATIO = config_multialgorithm['mean_to_std_dev_ratio']
 
     def __init__(self, dynamic_model, random_state, wc_lang_compartment, species_ids=None):
         """ Initialize the volume and density of this :obj:`DynamicCompartment`\ .
@@ -488,7 +485,9 @@ class DynamicCompartment(DynamicComponent):
             mean = wc_lang_compartment.init_volume.mean
             std = wc_lang_compartment.init_volume.std
             if numpy.isnan(std):
-                std = mean / self.MEAN_TO_STD_DEV_RATIO
+                config_multialgorithm = wc_sim.config.core.get_config()['wc_sim']['multialgorithm']
+                MEAN_TO_STD_DEV_RATIO = config_multialgorithm['mean_to_std_dev_ratio']
+                std = mean / MEAN_TO_STD_DEV_RATIO
             self.init_volume = max(0., random_state.normal(mean, std))
         else:
             raise MultialgorithmError('Initial volume must be normally distributed')
@@ -520,8 +519,11 @@ class DynamicCompartment(DynamicComponent):
 
         Raises:
             :obj:`MultialgorithmError`: if `accounted_fraction == 0` or
-                if `self.MAX_ALLOWED_INIT_ACCOUNTED_FRACTION < accounted_fraction`
+                if `MAX_ALLOWED_INIT_ACCOUNTED_FRACTION < accounted_fraction`
         """
+        config_multialgorithm = wc_sim.config.core.get_config()['wc_sim']['multialgorithm']
+        MAX_ALLOWED_INIT_ACCOUNTED_FRACTION = config_multialgorithm['max_allowed_init_accounted_fraction']
+
         self.species_population = species_population
         self.init_accounted_mass = self.accounted_mass(time=0)
         if self._is_abstract():
@@ -538,13 +540,13 @@ class DynamicCompartment(DynamicComponent):
             if 0 == self.accounted_fraction:
                 raise MultialgorithmError("DynamicCompartment '{}': initial accounted ratio is 0".format(
                                           self.id))
-            elif 1.0 < self.accounted_fraction <= self.MAX_ALLOWED_INIT_ACCOUNTED_FRACTION:
+            elif 1.0 < self.accounted_fraction <= MAX_ALLOWED_INIT_ACCOUNTED_FRACTION:
                 warnings.warn("DynamicCompartment '{}': initial accounted ratio ({:.3E}) greater than 1.0".format(
                     self.id, self.accounted_fraction), MultialgorithmWarning)
-            if self.MAX_ALLOWED_INIT_ACCOUNTED_FRACTION < self.accounted_fraction:
+            if MAX_ALLOWED_INIT_ACCOUNTED_FRACTION < self.accounted_fraction:
                 raise MultialgorithmError("DynamicCompartment {}: initial accounted ratio ({:.3E}) greater "
-                                          "than self.MAX_ALLOWED_INIT_ACCOUNTED_FRACTION ({}).".format(self.id,
-                                          self.accounted_fraction, self.MAX_ALLOWED_INIT_ACCOUNTED_FRACTION))
+                                          "than MAX_ALLOWED_INIT_ACCOUNTED_FRACTION ({}).".format(self.id,
+                                          self.accounted_fraction, MAX_ALLOWED_INIT_ACCOUNTED_FRACTION))
 
     def _is_abstract(self):
         """ Indicate whether this is an abstract compartment
@@ -572,11 +574,13 @@ class DynamicCompartment(DynamicComponent):
             :obj:`float`: the total current mass of all species (g)
         """
         # todo: species_population.compartmental_mass() should raise an error if time is in the future
-        try:
-            # if caching is enabled & the accounted_mass is cached, return it
-            return self.dynamic_model.cache_manager.get(self.__class__, self.id)
-        except ValueError:
-            pass
+        # if caching is enabled & the expression's value is cached, return it
+        if self.dynamic_model.cache_manager.caching():
+            try:
+                return self.dynamic_model.cache_manager.get(self.__class__, self.id)
+            except MultialgorithmError:
+                pass
+
         value = self.species_population.compartmental_mass(self.id, time=time)
         # if caching is enabled cache the accounted_mass
         self.dynamic_model.cache_manager.set(self.__class__, self.id, value)
@@ -741,13 +745,12 @@ class DynamicModel(object):
             indexed by their ids
         cache_manager (:obj:`CacheManager`): a cache for potentially expensive expression evaluations
             that get repeated
-        # TODO(Arthur): exact caching: done: define dependencies attribute
         rxn_expression_dependencies (:obj:`dict`): map of reaction ids to sets of expressions whose values
             depend on species with non-zero stoichiometry in a reaction; each expression is represented as a
             tuple of the form (class name, class instance id)
     """
     AGGREGATE_VALUES = ['mass', 'volume', 'accounted mass', 'accounted volume']
-    def __init__(self, model, species_population, dynamic_compartments, cache_expressions=None):
+    def __init__(self, model, species_population, dynamic_compartments):
         """ Prepare a `DynamicModel` for a discrete-event simulation
 
         Args:
@@ -755,7 +758,6 @@ class DynamicModel(object):
             species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
             dynamic_compartments (:obj:`dict`): the simulation's :obj:`DynamicCompartment`\ s, one
                 for each compartment in `model`
-            cache_expressions (:obj:`bool`, optional): whether `DynamicExpression` values are cached
 
         Raises:
             :obj:`MultialgorithmError`: if the model has no cellular compartments
@@ -834,10 +836,8 @@ class DynamicModel(object):
             for dynamic_expression in dynamic_expression_group.values():
                 dynamic_expression.prepare()
 
-        # TODO(Arthur): exact caching: done
-        if cache_expressions is None:
-            cache_expressions = config_multialgorithm['expression_caching']
-        self.cache_manager = CacheManager(cache_expressions)
+        # initialize cache manager
+        self.cache_manager = CacheManager()
 
         # initialize expression dependencies
         self.rxn_expression_dependencies = self.obtain_dependencies(model)
@@ -1106,11 +1106,36 @@ WC_LANG_MODEL_TO_DYNAMIC_MODEL = {
 }
 
 
+# TODO(Arthur): exact caching:
+class InvalidationApproaches(Enum):
+	REACTION_DEPENDENCY_BASED = auto()
+	EVENT_BASED = auto()
+
+
 class CacheManager(object):
     """ Represent a RAM cache of `DynamicExpression.eval()` values
 
+    This is a centralized cache for all `DynamicExpression` values and the `DynamicCompartment` `accounted_mass` values.
+    Caching may speed up a simulation substantially, or may not speed it up at all.
+    All caching is controlled by the multialgorithm configuration file.
+    The `expression_caching` attribute determines whether caching is active.
+    The `cache_invalidation` attribute selects the cache invalidation approach.
+    The `event_based` invalidation approach invalidates (flushes) the entire cache at the start of each simulation
+    event which changes species populations, that is, that executes a reaction. Thus, all expressions used during
+    the event must be recalculated. This approach will boost performance if many expressions are used repeatedly during
+    a single event, as occurs when many rate laws that share functions are evaluated.
+    The `reaction_dependency_based` invalidation approach invalidates (flushes) individual cache entries that
+    depend on the execution of a particular reaction.
+    The dependencies of `DynamicExpression`\ s on species populations and the reactions that alter the populations
+    are computed at initialization.
+    When a reaction executes, all cached values of the `DynamicExpression`\ s that depend on the reaction
+    are invalidated.
+    This approach will be superior if a typical reaction execution changes populations of species that are
+    used, directly or indirectly, by only a small fraction of the cached values of the `DynamicExpression`\ s.
+
     Attributes:
         cache_expressions (:obj:`bool`): whether `DynamicExpression.eval()` values are cached
+        cache_invalidation (:obj:`InvalidationApproaches`): the cache invalidation approach
         _cache (:obj:`dict`): cache of `DynamicExpression.eval()` values
         _cache_stats (:obj:`dict`): caching stats
     """
@@ -1121,13 +1146,31 @@ class CacheManager(object):
     FLUSH_MISS = 'FLUSH_MISS'
     CACHING_EVENTS = (HIT, MISS, FLUSH_HIT, FLUSH_MISS)
 
-    def __init__(self, cache_expressions=True):
+    def __init__(self, cache_expressions=None, cache_invalidation=None):
         """
 
         Args:
             cache_expressions (:obj:`bool`, optional): whether `DynamicExpression` values are cached
+            cache_invalidation (:obj:`str`, optional): the cache invalidation approach:
+                either reaction_dependency_based or event_based
+
+        Raises:
+            :obj:`MultialgorithmError`: if `cache_invalidation` is not `reaction_dependency_based` or `event_based`
         """
+        config_multialgorithm = wc_sim.config.core.get_config()['wc_sim']['multialgorithm']
         self.cache_expressions = cache_expressions
+        if cache_expressions is None:
+            self.cache_expressions = config_multialgorithm['expression_caching']
+
+        if self.cache_expressions:
+            if cache_invalidation is None:
+                cache_invalidation = config_multialgorithm['cache_invalidation']
+            cache_invalidation = cache_invalidation.upper()
+            if cache_invalidation not in InvalidationApproaches.__members__:
+                raise MultialgorithmError(f"cache_invalidation '{cache_invalidation}' not in "
+                                          f"{str(set(InvalidationApproaches.__members__))}")
+            self.cache_invalidation = InvalidationApproaches[cache_invalidation]
+
         self._cache = dict()
         self._cache_stats = dict()
         for cls in itertools.chain(DynamicExpression.__subclasses__(), (DynamicCompartment,)):
@@ -1173,7 +1216,7 @@ class CacheManager(object):
             :obj:`object`: the cached value
 
         Raises:
-            :obj:`ValueError`: if the cache does not contain an entry for the key
+            :obj:`MultialgorithmError`: if the cache does not contain an entry for the key
         """
         if self.cache_expressions:
             cls_name = expression_class.__name__
@@ -1183,7 +1226,7 @@ class CacheManager(object):
                 return self._cache[cache_key]
             else:
                 self._cache_stats[cls_name][self.MISS] += 1
-                raise ValueError('key not in cache')
+                raise MultialgorithmError(f'key ({cache_key}) not in cache')
 
     def set(self, expression_class, id, value):
         """ If caching is enabled, set a value in the cache
@@ -1197,24 +1240,8 @@ class CacheManager(object):
             cache_key = self.key_from_class(expression_class, id)
             self._cache[cache_key] = value
 
-    # TODO(Arthur): exact caching: done: 
-    def flush(self, cache_key):
-        """ If caching is enabled, invalidate the cache entry for `cache_key`
-
-        Do nothing if the cache doesn't contain an entry for `cache_key`.
-
-        Args:
-            cache_key (:obj:`tuple`): identifier of an expression instance, in the form
-                (dynamic class name :obj:`str`, class instance id :obj:`str`)
-        """
-        if self.cache_expressions:
-            try:
-                del self._cache[cache_key]
-                self._cache_stats[cache_key[0]][self.FLUSH_HIT] += 1
-            except KeyError:
-                self._cache_stats[cache_key[0]][self.FLUSH_MISS] += 1
-
-    def flush_all(self, cache_keys):
+    # TODO(Arthur): exact caching:
+    def flush(self, cache_keys):
         """ If caching is enabled, invalidate all cache entries in `cache_keys`
 
         Missing cache entries are ignored.
@@ -1223,7 +1250,7 @@ class CacheManager(object):
             cache_keys (:obj:`set` of :obj:`tuple`): set of identifiers of expression instances, each of
                 the form (dynamic class name :obj:`str`, class instance id :obj:`str`)
         """
-        if self.cache_expressions:
+        if self.cache_expressions and self.cache_invalidation == InvalidationApproaches.REACTION_DEPENDENCY_BASED:
             for cache_key in cache_keys:
                 try:
                     del self._cache[cache_key]
@@ -1233,7 +1260,8 @@ class CacheManager(object):
 
     def clear_cache(self):
         """ Remove all cache entries """
-        self._cache.clear()
+        if self.cache_expressions and self.cache_invalidation == InvalidationApproaches.EVENT_BASED:
+            self._cache.clear()
 
     def caching(self):
         """ Is caching enabled?

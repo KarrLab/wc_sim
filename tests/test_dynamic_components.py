@@ -9,6 +9,7 @@
 
 from math import log
 from scipy.constants import Avogadro
+import copy
 import numpy
 import numpy.testing
 import os
@@ -29,18 +30,19 @@ from wc_lang.io import Reader
 from wc_onto import onto
 from wc_sim.dynamic_components import (SimTokCodes, WcSimToken, DynamicComponent, DynamicExpression,
                                        DynamicModel, DynamicSpecies, DynamicFunction, DynamicParameter,
-                                       DynamicCompartment, DynamicStopCondition, CacheManager)
+                                       DynamicCompartment, DynamicStopCondition, CacheManager, InvalidationApproaches)
 from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.run_results import RunResults
 from wc_sim.sim_config import WCSimulationConfig
 from wc_sim.simulation import Simulation
 from wc_sim.species_populations import LocalSpeciesPopulation, MakeTestLSP
-from wc_sim.testing.utils import read_model_for_test
+from wc_sim.testing.utils import read_model_for_test, ConfigFileModifier
 from wc_utils.util.rand import RandomStateManager
 from wc_utils.util.units import unit_registry
 import obj_tables
 import obj_tables.io
+import wc_sim.config
 
 
 # Almost all machines map Python floats to IEEE-754 64-bit “double precision”, which provides 15 to
@@ -524,17 +526,17 @@ class TestInitializedDynamicCompartment(unittest.TestCase):
                                                          random_state=RandomStateManager.instance())
         dynamic_compartment = DynamicCompartment(self.dynamic_model, self.random_state, self.compartment)
 
-        # clear cache to remove cached value of DynamicCompartment.accounted_mass()
-        self.dynamic_model.cache_manager.clear_cache()
+        # TODO(Arthur): exact caching:
+        # stop caching to ignore any cached value for DynamicCompartment.accounted_mass()
+        self.dynamic_model.cache_manager._stop_caching()
         with self.assertRaisesRegex(MultialgorithmError, "initial accounted ratio is 0"):
             dynamic_compartment.initialize_mass_and_density(empty_local_species_pop)
 
-        # clear cache to remove cached value of DynamicCompartment.accounted_mass()
-        self.dynamic_model.cache_manager.clear_cache()
-        dynamic_compartment = self.specify_init_accounted_fraction(
-            (DynamicCompartment.MAX_ALLOWED_INIT_ACCOUNTED_FRACTION + 1)/2)
+        config_multialgorithm = wc_sim.config.core.get_config()['wc_sim']['multialgorithm']
+        MAX_ALLOWED_INIT_ACCOUNTED_FRACTION = config_multialgorithm['max_allowed_init_accounted_fraction']
+        dynamic_compartment = \
+            self.specify_init_accounted_fraction((MAX_ALLOWED_INIT_ACCOUNTED_FRACTION + 1)/2)
         with warnings.catch_warnings(record=True) as w:
-            # FIX ====
             dynamic_compartment.initialize_mass_and_density(self.local_species_pop)
             self.assertIn("initial accounted ratio (", str(w[-1].message))
             self.assertIn(") greater than 1.0", str(w[-1].message))
@@ -595,10 +597,12 @@ class TestDynamicModel(unittest.TestCase):
 
     def setUp(self):
         self.test_dir = tempfile.mkdtemp()
+        self.config_file_modifier = ConfigFileModifier()
 
     def tearDown(self):
-        # shutil.rmtree(self.test_dir)
-        pass
+        # TODO(Arthur): exact caching:
+        shutil.rmtree(self.test_dir)
+        self.config_file_modifier.clean_up()
 
     def make_dynamic_model(self, model_filename):
         # read and initialize a model
@@ -722,14 +726,14 @@ class TestDynamicModel(unittest.TestCase):
         # test dsa
         simulation = Simulation(self.DEPENDENCIES_MDL_FILE)
         # expression caching ON:
+        self.config_file_modifier.write_test_config_file([('expression_caching', 'True')])
         results_dir = tempfile.mkdtemp(dir=self.test_dir)
-        simulation_rv = simulation.run(time_max=10, results_dir=results_dir, checkpoint_period=2,
-                                       cache_expressions=True)
+        simulation_rv = simulation.run(time_max=6, results_dir=results_dir, checkpoint_period=2)
         run_results_on = RunResults(simulation_rv.results_dir)
         # expression caching OFF:
+        self.config_file_modifier.write_test_config_file([('expression_caching', 'False')])
         results_dir = tempfile.mkdtemp(dir=self.test_dir)
-        simulation_rv = simulation.run(time_max=10, results_dir=results_dir, checkpoint_period=2,
-                                       cache_expressions=False)
+        simulation_rv = simulation.run(time_max=6, results_dir=results_dir, checkpoint_period=2)
         run_results_off = RunResults(simulation_rv.results_dir)
         self.assertEqual(run_results_on, run_results_off)
 
@@ -825,6 +829,12 @@ class TestDynamicModel(unittest.TestCase):
 
 class TestCacheManager(unittest.TestCase):
 
+    def setUp(self):
+        self.config_file_modifier = ConfigFileModifier()
+
+    def tearDown(self):
+        self.config_file_modifier.clean_up()
+
     # TODO(Arthur): exact caching: done: change
     def test_staticmethods(self):
         class DynamicExample(object):
@@ -836,69 +846,104 @@ class TestCacheManager(unittest.TestCase):
         self.assertEqual(CacheManager.key_from_class(DynamicFunction, 'fun_3'), ('DynamicFunction', 'fun_3'))
 
     def test(self):
-        for cache_expressions in (False, True):
-            cache_manager_0 = CacheManager(cache_expressions=cache_expressions)
-            self.assertEqual(cache_manager_0.caching(), cache_expressions)
+        ### test arguments
+        cache_manager = CacheManager(cache_expressions=False)
+        self.assertEqual(cache_manager.caching(), False)
 
+        for cache_invalidation in ('reaction_dependency_based', 'event_based'):
+            cache_manager = CacheManager(cache_expressions=True, cache_invalidation=cache_invalidation)
+            self.assertEqual(cache_manager.caching(), True)
+            self.assertTrue(isinstance(cache_manager.cache_invalidation, InvalidationApproaches))
+
+        ### test no caching
+        cache_manager = CacheManager(cache_expressions=False)
+        self.assertEqual(cache_manager.caching(), False)
+        self.assertEqual(cache_manager.get(DynamicStopCondition, 'x'), None)
+        self.assertEqual(cache_manager.set(DynamicStopCondition, 'y', 0), None)
+        self.assertEqual(cache_manager.flush(['x', 'y']), None)
+        self.assertEqual(cache_manager.clear_cache(), None)
+
+        def test_get_set(test_case, cache_manager):
+            # test 'set' and 'get', which don't depend on the invalidation approach
+            cache_keys = []
+            v = 3
+            id = 'f1'
+            cache_manager.set(DynamicFunction, id, v)
+            cache_keys.append(CacheManager.key_from_class(DynamicFunction, id))
+            test_case.assertEqual(cache_manager.get(DynamicFunction, id), v)
+            v = 7
+            cache_manager.set(DynamicFunction, id, v)
+            cache_keys.append(CacheManager.key_from_class(DynamicFunction, id))
+            test_case.assertEqual(cache_manager.get(DynamicFunction, id), v)
+            v = 5
+            fid = 'f6'
+            cache_manager.set(DynamicFunction, fid, v)
+            cache_keys.append(CacheManager.key_from_class(DynamicFunction, fid))
+            test_case.assertEqual(cache_manager.get(DynamicFunction, fid), v)
+            v = 44
+            sc_id = 's0'
+            cache_manager.set(DynamicStopCondition, sc_id, v)
+            cache_keys.append(CacheManager.key_from_class(DynamicStopCondition, sc_id))
+            test_case.assertEqual(cache_manager.get(DynamicStopCondition, sc_id), v)
+
+            with test_case.assertRaisesRegex(MultialgorithmError, 'key .* not in cache'):
+                cache_manager.get(DynamicStopCondition, 'not_id')
+
+            expected = ('DynamicFunction', 'HIT\tMISS', '0', '3')   # DynamicFunction HIT 3 times
+            for e in expected:
+                self.assertIn(e, cache_manager.cache_stats_table())
+
+            return cache_keys
+
+        def test_cache_settings(test_case, cache_manager):
+            for b in [False, True]:
+                cache_manager.set_caching(b)
+                test_case.assertEqual(cache_manager.caching(), b)
+            cache_manager._stop_caching()
+            test_case.assertEqual(cache_manager.caching(), False)
+            cache_manager._start_caching()
+            test_case.assertEqual(cache_manager.caching(), True)
+
+        ### test event_based caching
+        cache_manager = CacheManager(cache_expressions=True, cache_invalidation='event_based')
+        self.assertEqual(cache_manager.caching(), True)
+        self.assertEqual(cache_manager.cache_invalidation, InvalidationApproaches.event_based)
+        cache_keys = test_get_set(self, cache_manager)
+        # flush should do nothing
+        cache_copy = copy.deepcopy(cache_manager._cache)
+        cache_manager.flush(cache_keys)
+        self.assertEqual(cache_manager._cache, cache_copy)
+        # clear_cache should empty the cache
+        cache_manager.clear_cache()
+        self.assertEqual(len(cache_manager._cache), 0)
+        test_cache_settings(self, cache_manager)
+
+        # test reaction_dependency_based caching
+        cache_manager = CacheManager(cache_expressions=True, cache_invalidation='reaction_dependency_based')
+        self.assertEqual(cache_manager.caching(), True)
+        self.assertEqual(cache_manager.cache_invalidation, InvalidationApproaches.REACTION_DEPENDENCY_BASED)
+        cache_keys = test_get_set(self, cache_manager)
+        # clear_cache should do nothing
+        cache_copy = copy.deepcopy(cache_manager._cache)
+        cache_manager.clear_cache()
+        self.assertEqual(cache_manager._cache, cache_copy)
+        # flush should empty the cache
+        cache_manager.flush(cache_keys)
+        self.assertEqual(len(cache_manager._cache), 0)
+        test_cache_settings(self, cache_manager)
+
+        # test caching configured from config file
         cache_manager = CacheManager()
         self.assertEqual(cache_manager._cache, dict())
         self.assertTrue(isinstance(cache_manager.caching(), bool))
 
-        for b in [False, True]:
-            cache_manager.set_caching(b)
-            self.assertEqual(cache_manager.caching(), b)
-        cache_manager._stop_caching()
+        # no caching
+        self.config_file_modifier.write_test_config_file([('expression_caching', 'False'),])
+        cache_manager = CacheManager()
         self.assertEqual(cache_manager.caching(), False)
-        cache_manager._start_caching()
-        self.assertEqual(cache_manager.caching(), True)
 
-        # test 'set' and 'get'
-        v = 3
-        id = 'f1'
-        cache_manager.set(DynamicFunction, id, v)
-        self.assertEqual(cache_manager.get(DynamicFunction, id), v)
-        v = 7
-        cache_manager.set(DynamicFunction, id, v)
-        self.assertEqual(cache_manager.get(DynamicFunction, id), v)
-        v = 5
-        fid = 'f6'
-        cache_manager.set(DynamicFunction, fid, v)
-        self.assertEqual(cache_manager.get(DynamicFunction, fid), v)
-        v = 44
-        sc_id = 's0'
-        cache_manager.set(DynamicStopCondition, sc_id, v)
-        self.assertEqual(cache_manager.get(DynamicStopCondition, sc_id), v)
-
-        # test 'flush'
-        cache_key = CacheManager.key_from_class(DynamicFunction, fid)
-        self.assertEqual(cache_manager.flush(cache_key), None)
-        with self.assertRaisesRegex(ValueError, 'key not in cache'):
-            cache_manager.get(DynamicFunction, fid)
-        # flush again to generate FLUSH_MISS
-        self.assertEqual(cache_manager.flush(cache_key), None)
-
-        # test 'flush_all'
-        cache_key = CacheManager.key_from_class(DynamicStopCondition, sc_id)
-        cache_key_2 = CacheManager.key_from_class(DynamicStopCondition, sc_id+'_not_cached')
-        # flush_all generate 1 FLUSH_MISS & 1 FLUSH_HIT
-        self.assertEqual(cache_manager.flush_all([cache_key, cache_key_2]), None)
-        with self.assertRaisesRegex(ValueError, 'key not in cache'):
-            cache_manager.get(DynamicStopCondition, sc_id)
-
-        with self.assertRaisesRegex(ValueError, 'key not in cache'):
-            cache_manager.get(DynamicStopCondition, 'not_id')
-
-        # cover case in which caching is not enabled
-        cache_manager._stop_caching()
-        self.assertEqual(cache_manager.get(DynamicStopCondition, sc_id), None)
-        self.assertEqual(cache_manager.set(DynamicStopCondition, sc_id, 0), None)
-        self.assertEqual(cache_manager.flush(cache_key), None)
-        self.assertEqual(cache_manager.flush_all([cache_key, cache_key_2]), None)
-
-        caching_stats = cache_manager.cache_stats_table()
-        expected = ('DynamicFunction', 'HIT\tMISS', '0', '3')   # DynamicFunction HIT 3 times
-        for e in expected:
-            self.assertIn(e, caching_stats)
-
-        cache_manager.clear_cache()
-        self.assertEqual(cache_manager._cache, dict())
+        # bad cache_invalidation
+        self.config_file_modifier.write_test_config_file([('expression_caching', 'True'),
+                                                          ('cache_invalidation', "'invalid'")])
+        with self.assertRaisesRegex(MultialgorithmError, "cache_invalidation .* not in"):
+            CacheManager()

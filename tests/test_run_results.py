@@ -213,7 +213,10 @@ class TestRunResults(unittest.TestCase):
 
     # TODO(Arthur): exact caching:
     def test_eq(self):
-        pass
+        self.assertEqual(self.run_results_1_cmpt, self.run_results_1_cmpt)
+        self.assertEqual(self.run_results_dyn_aggr, self.run_results_dyn_aggr)
+        self.assertNotEqual(self.run_results_1_cmpt, self.run_results_dyn_aggr)
+        # TODO(Arthur): exact caching: make small change to each RR component
 
     def test_performance(self):
 

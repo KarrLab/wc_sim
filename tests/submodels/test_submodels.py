@@ -30,6 +30,7 @@ from wc_sim.submodels.dynamic_submodel import DynamicSubmodel
 from wc_sim.submodels.testing.deterministic_simulation_algorithm import DsaSubmodel, ExecuteDsaReaction
 from wc_sim.submodels.testing.skeleton_submodel import SkeletonSubmodel
 from wc_sim.testing.make_models import MakeModel
+from wc_sim.testing.utils import read_model_for_test, ConfigFileModifier
 from wc_utils.util.ontology import are_terms_equivalent
 from wc_utils.util.rand import RandomStateManager
 from wc_utils.util.string import indent_forest
@@ -97,6 +98,11 @@ class TestDynamicSubmodelStatically(unittest.TestCase):
             dynamic_compartments.popitem()
             self.misconfigured_dynamic_submodels[lang_submodel.id] = DynamicSubmodel(
                 id, None, reactions, species, dynamic_compartments, local_species_pop)
+
+        self.config_file_modifier = ConfigFileModifier()
+
+    def tearDown(self):
+        self.config_file_modifier.clean_up()
 
     def test_get_state(self):
         for dynamic_submodel in self.dynamic_submodels.values():
@@ -197,6 +203,8 @@ class TestDynamicSubmodelStatically(unittest.TestCase):
 
     # TODO(Arthur): exact caching: done:
     def test_flush_cache_for_reaction(self):
+        self.config_file_modifier.write_test_config_file([('expression_caching', 'True'),
+                                                          ('cache_invalidation', "'reaction_dependency_based'")])
         dependencies_mdl_file = os.path.join(os.path.dirname(__file__), '..', 'fixtures', 'test_dependencies.xlsx')
         model = Reader().run(dependencies_mdl_file)[Model][0]
         _, _, dynamic_model = build_sim_from_model(model)
@@ -207,7 +215,7 @@ class TestDynamicSubmodelStatically(unittest.TestCase):
         test_submodel = dynamic_model.dynamic_submodels['test_submodel']
         reactions = {rxn.id: rxn for rxn in test_submodel.reactions}
         test_submodel.flush_cache_for_reaction(reactions['reaction_1'])
-        with self.assertRaisesRegex(ValueError, 'key not in cache'):
+        with self.assertRaisesRegex(MultialgorithmError, 'key .* not in cache'):
             dynamic_model.cache_manager.get(DynamicFunction, 'function_4')
 
         # since reaction_9 has no dependencies, it tests the if statement in flush_cache_for_reaction

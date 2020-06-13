@@ -190,8 +190,7 @@ class MultialgorithmSimulation(object):
         """ Initialize the infrastructure of a simulation
         """
         self.dynamic_model = DynamicModel(self.model, self.local_species_population,
-                                          self.temp_dynamic_compartments,
-                                          cache_expressions=self.wc_sim_config.cache_expressions)
+                                          self.temp_dynamic_compartments)
         for comp in self.dynamic_model.dynamic_compartments.values():
             comp.dynamic_model = self.dynamic_model
         self.prepare_dynamic_compartments()

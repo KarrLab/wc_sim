@@ -144,7 +144,6 @@ class DynamicSubmodel(ApplicationSimulationObject):
             if rxn.rate_laws:
                 self.rates[idx_reaction] = self.calc_reaction_rate(rxn)
 
-        # TODO(Arthur): exact caching: make is_active() work
         if self.fast_debug_file_logger.is_active():
             msg = 'DynamicSubmodel.calc_reaction_rates: reactions and rates: ' + \
                 str([(self.reactions[i].id, self.rates[i]) for i in range(len(self.reactions))])
@@ -211,7 +210,6 @@ class DynamicSubmodel(ApplicationSimulationObject):
         except DynamicSpeciesPopulationError as e:
             raise DynamicMultialgorithmError(self.time, "dynamic submodel '{}' cannot execute reaction: {}: {}".format(
                 self.id, reaction.id, e))
-        # TODO(Arthur): exact caching: done: 
         # call flush_cache_for_reaction() to flush expression values that depend on reaction from cache
         self.flush_cache_for_reaction(reaction)
 
@@ -223,7 +221,7 @@ class DynamicSubmodel(ApplicationSimulationObject):
             reaction (:obj:`Reaction`): the reaction being executed
         """
         if reaction.id in self.dynamic_model.rxn_expression_dependencies:
-            self.dynamic_model.cache_manager.flush_all(self.dynamic_model.rxn_expression_dependencies[reaction.id])
+            self.dynamic_model.cache_manager.flush(self.dynamic_model.rxn_expression_dependencies[reaction.id])
 
     # TODO(Arthur): cover after MVP wc_sim done
     def handle_get_current_prop_event(self, event):   # pragma: no cover    not used

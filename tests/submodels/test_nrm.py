@@ -94,9 +94,9 @@ class TestNrmSubmodel(unittest.TestCase):
         _, dynamic_model = self.make_sim_w_nrm_submodel(test_props_eq_0_model, False)
         nrm_submodel_0_props = dynamic_model.dynamic_submodels['nrm_submodel']
 
-        # TODO(Arthur): exact caching: done: remove
-        # stop caching for this test, because it repeatedly updates populations
-        # dynamic_model._stop_caching()
+        # TODO(Arthur): exact caching:
+        # stop caching for this test, because it repeatedly updates populations & no invalidation is done
+        dynamic_model._stop_caching()
 
         ### single step a mock simulation ###
         nrm_submodel_0_props.initialize()

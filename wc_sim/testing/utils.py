@@ -12,6 +12,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 import math
 import numpy as np
 import os
+import re
 import tempfile
 import time
 
@@ -375,6 +376,7 @@ def verify_independently_solved_model(test_case, model_filename, results_dir):
                             expected_species_trajectories=expected_species_trajectories,
                             expected_property_trajectories=expected_aggregate_trajectories)
 
+
 def plot_expected_vs_simulated(dynamic_model,
                             integration_algorithm,
                             results_dir,
@@ -506,3 +508,48 @@ def plot_expected_vs_simulated(dynamic_model,
                 fig.savefig(filename)
                 pyplot.close(fig)
     return plots_dir
+
+
+# TODO(Arthur): exact caching:
+# TODO(Arthur): unittest; make context manager that removes temp file; move to wc_utils
+# utility for changing config values when testing
+TEMP_CONFIG_FILENAME = os.path.expanduser(os.path.join('~', '.wc', 'wc_sim.core.cfg'))
+SOURCE_CONFIG_FILENAME = os.path.join(os.path.dirname(__file__), '..', '..', 'wc_sim', 'config', 'core.default.cfg')
+
+
+class ConfigFileModifier(object):
+    """ Modify the core config file to easily enable testing
+
+    To use, load the config information at run-time, not compile-time.
+
+    Attributes:
+        source_config_filename (:obj:`str`): filename of the permanent config file
+        temp_config_filename (:obj:`str`): filename of a temporary config file on the path that loads config files
+    """
+
+    def __init__(self, source_config_filename=SOURCE_CONFIG_FILENAME, temp_config_filename=TEMP_CONFIG_FILENAME):
+        self.source_config_filename = source_config_filename
+        self.temp_config_filename = temp_config_filename
+
+    def write_test_config_file(self, replacements):
+        """ Write a modified config file for testing
+
+        Args:
+            replacements (:obj:`list` of :obj:`tuple`): iterator over pairs of 'attribute', 'replacement value';
+                each config attribute in `self.source_config_filename` is replaced with its replacement value
+        """
+        with open(self.source_config_filename, 'r') as f:
+            source_config = f.read()
+        modified_config = source_config
+        for name, value in replacements:
+            modified_config = re.sub(f"{name} .*", f"{name} = {value}", modified_config)
+        with open(self.temp_config_filename, 'w') as f:
+            f.write(modified_config)
+
+    def clean_up(self):
+        """ Remove the temporary config file
+        """
+        try:
+            os.remove(self.temp_config_filename)
+        except FileNotFoundError:
+            pass

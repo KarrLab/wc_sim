@@ -1574,6 +1574,7 @@ class DynamicSpeciesState(object):
             :obj:`DynamicNegativePopulationError`: if the predicted population at `time` is negative or
                 if decreasing the population by `population_change` would make the population negative
         """
+        # merge with other branch
         assert float(population_change).is_integer(), \
             "DynamicSpeciesState '{}': population_change must be an integer, but {} isn't".format(
                 self.species_name, population_change)

@@ -144,11 +144,12 @@ class NrmSubmodel(DynamicSubmodel):
         rxn_id_to_idx = {rxn.id: rxn_idx for rxn_idx, rxn in enumerate(self.reactions)}
         rate_law_id_to_idx = {rxn.rate_laws[0].id: rxn_idx for rxn_idx, rxn in enumerate(self.reactions)}
         for rxn_id, expr_dependencies in self.dynamic_model.rxn_expression_dependencies.items():
-            rxn_idx = rxn_id_to_idx[rxn_id]
-            dependent_rate_laws = [id for cls_name, id in expr_dependencies if cls_name == 'DynamicRateLaw']
-            for dependent_rate_law_id in dependent_rate_laws:
-                rate_law_idx = rate_law_id_to_idx[dependent_rate_law_id]
-                dependencies[rxn_idx].add(rate_law_idx)
+            if rxn_id in rxn_id_to_idx:
+                rxn_idx = rxn_id_to_idx[rxn_id]
+                dependent_rate_laws = [id for cls_name, id in expr_dependencies if cls_name == 'DynamicRateLaw']
+                for dependent_rate_law_id in dependent_rate_laws:
+                    rate_law_idx = rate_law_id_to_idx[dependent_rate_law_id]
+                    dependencies[rxn_idx].add(rate_law_idx)
 
         # convert dependencies into more compact and faster list of tuples
         dependencies_list = [None] * len(self.reactions)
@@ -279,7 +280,8 @@ class NrmSubmodel(DynamicSubmodel):
         Args:
             event (:obj:`Event`): a simulation event
         """
-        # TODO(Arthur): exact caching: remove: done
+        # TODO(Arthur): exact caching: only if cache_invalidation is event_based
+        self.dynamic_model.cache_manager.clear_cache()
         # execute the reaction
         reaction_index = event.message.reaction_index
         self.execute_nrm_reaction(reaction_index)

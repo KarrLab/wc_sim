@@ -95,11 +95,13 @@ class DsaSubmodel(DynamicSubmodel):
         Raises:
             :obj:`DynamicMultialgorithmError:` if the reaction does not have sufficient reactants to execute
         """
-        # TODO(Arthur): exact caching: remove: done
+        # TODO(Arthur): exact caching: only if cache_invalidation is event_based
+        self.dynamic_model.cache_manager.clear_cache()
         # reaction_index is the reaction to execute
         reaction_index = event.message.reaction_index
         # execute reaction if it is enabled
         reaction = self.reactions[reaction_index]
+        # TODO: more information in the error
         if not self.enabled_reaction(reaction):
             raise DynamicMultialgorithmError(self.time, f"Insufficient reactants to execute reaction {reaction.id}")
         self.execute_reaction(reaction)

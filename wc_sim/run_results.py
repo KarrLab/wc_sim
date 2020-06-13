@@ -390,10 +390,11 @@ class RunResults(object):
             return False
 
         for component in RunResults.COMPONENTS:
-            if component != 'random_states' and self.run_results[component] != other.run_results[component]:
+            if component != 'random_states' and not self.run_results[component].equals(other.run_results[component]):
                 return False
 
         return True
+
 
 class MakeDataFrame(object):
     """ Efficiently make a Pandas dataframe that contains a 2D numpy.ndarray
