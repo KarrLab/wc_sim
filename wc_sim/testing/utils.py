@@ -9,6 +9,7 @@
 from collections import defaultdict
 from matplotlib import pyplot
 from matplotlib.backends.backend_pdf import PdfPages
+import copy
 import math
 import numpy as np
 import os
@@ -553,3 +554,55 @@ class ConfigFileModifier(object):
             os.remove(self.temp_config_filename)
         except FileNotFoundError:
             pass
+
+
+# dependencies in ./fixtures/test_dependencies.xlsx
+expected_dependencies = {}
+expected_dependencies['DynamicFunction'] = \
+    {'reaction_1': {'function_4', 'function_9'},
+     'reaction_2': {'function_5', 'function_9'},
+     'reaction_3': set(),
+     'reaction_4': {'function_4', 'function_9'},
+     'reaction_5': {'function_4', 'function_9'},
+     'reaction_6': {'function_4', 'function_5', 'function_9'},
+     'reaction_7': {'function_4', 'function_9'},
+     'reaction_8': {'function_4', 'function_9'},
+     'reaction_9': set()}
+
+expected_dependencies['DynamicObservable'] = \
+    {'reaction_1': {'observable_1', 'observable_2', 'observable_6'},
+     'reaction_2': {'observable_3', 'observable_4', 'observable_5', 'observable_7'},
+     'reaction_3': {'observable_5', 'observable_7'},
+     'reaction_4': {'observable_1', 'observable_2', 'observable_6'},
+     'reaction_5': {'observable_2', 'observable_6'},
+     'reaction_6': {'observable_1', 'observable_2', 'observable_6', 'observable_3', 'observable_4',
+                    'observable_5', 'observable_7'},
+     'reaction_7': {'observable_1', 'observable_2', 'observable_6'},
+     'reaction_8': {'observable_1', 'observable_2', 'observable_6'},
+     'reaction_9': set()}
+
+expected_dependencies['DynamicRateLaw'] = \
+    {'reaction_1': {'reaction_3-forward', 'reaction_5-forward', 'reaction_7-forward'},
+     'reaction_2': {'reaction_4-forward', 'reaction_7-forward'},
+     'reaction_3': set(),
+     'reaction_4': {'reaction_3-forward', 'reaction_5-forward', 'reaction_7-forward'},
+     'reaction_5': {'reaction_5-forward', 'reaction_7-forward'},
+     'reaction_6': {'reaction_3-forward', 'reaction_4-forward', 'reaction_5-forward', 'reaction_7-forward'},
+     'reaction_7': {'reaction_3-forward', 'reaction_5-forward', 'reaction_7-forward'},
+     'reaction_8': {'reaction_3-forward', 'reaction_5-forward', 'reaction_7-forward'},
+     'reaction_9': set()}
+
+expected_dependencies['DynamicStopCondition'] = \
+    {'reaction_1': {'stop_condition_4', 'stop_condition_5'},
+     'reaction_2': {'stop_condition_5'},
+     'reaction_3': set(),
+     'reaction_4': {'stop_condition_4', 'stop_condition_5'},
+     'reaction_5': set(),
+     'reaction_6': {'stop_condition_4', 'stop_condition_5'},
+     'reaction_7': {'stop_condition_4', 'stop_condition_5'},
+     'reaction_8': {'stop_condition_4', 'stop_condition_5'},
+     'reaction_9': set()}
+
+
+def get_expected_dependencies():
+    return copy.deepcopy(expected_dependencies)
