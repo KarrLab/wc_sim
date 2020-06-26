@@ -209,14 +209,7 @@ class TestOdeSubmodel(unittest.TestCase):
         with self.assertRaises(DynamicMultialgorithmError):
             self.ode_submodel_1.run_ode_solver()
 
-    # test event scheduling and handling
-    @unittest.skip("not good test")
-    def test_schedule_next_ode_analysis(self):
-        custom_ode_time_step = 4
-        custom_ode_submodel = self.make_ode_submodel(self.mdl_1_spec, ode_time_step=custom_ode_time_step)
-        # no events are scheduled
-        self.assertTrue(custom_ode_submodel.simulator.event_queue.empty())
-
+    def test_schedule_next_ode_event(self):
         # check that the next event is a RunOde message at time expected_time
         def check_next_event(expected_time):
             next_event = custom_ode_submodel.simulator.event_queue.next_events()[0]
@@ -227,8 +220,12 @@ class TestOdeSubmodel(unittest.TestCase):
             self.assertEqual(type(next_event.message), RunOde)
             self.assertTrue(custom_ode_submodel.simulator.event_queue.empty())
 
-        # initial event should be at 0
-        custom_ode_submodel.send_initial_events()
+        custom_ode_time_step = 4
+        custom_ode_submodel = self.make_ode_submodel(self.mdl_1_spec, ode_time_step=custom_ode_time_step)
+        # 1 initial event is scheduled
+        self.assertEqual(custom_ode_submodel.simulator.event_queue.len(), 1)
+
+        # initial event should be at time 0
         check_next_event(0)
 
         # next RunOde event should be at custom_ode_time_step
