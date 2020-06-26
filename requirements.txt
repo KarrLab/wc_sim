@@ -1,5 +1,6 @@
 callbacks
 cement >= 3.0.0
+configobj
 cobra
 h5py
 matplotlib
@@ -12,7 +13,6 @@ recordtype
 scikits.odes
 scipy
 setuptools
-tables >= 3.5.0
 wc_lang
 wc_onto
 wc_utils[git]
