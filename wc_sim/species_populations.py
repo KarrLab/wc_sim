@@ -531,6 +531,8 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             history is recorded at each continuous adjustment.
         random_state (:obj:`np.random.RandomState`): a PRNG used by all `Species`
         fast_debug_file_logger (:obj:`FastLogger`): a fast logger for debugging messages
+        temporary_mode (:obj:`bool`): if True, this `LocalSpeciesPopulation` is being accessed through a
+            `TempPopulationsLSP`
     """
     # TODO(Arthur): support tracking the population history of species added at any time in the simulation
     # TODO(Arthur): report an error if a DynamicSpeciesState is updated by multiple continuous submodels
@@ -570,6 +572,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self.last_access_time = {}
         self.random_state = random_state
         self._concentrations_api = False
+        self.temporary_mode = False
 
         if retain_history:
             self._initialize_history()
@@ -822,10 +825,12 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self._check_species(time, species_id_in_set)
         self.time = time
         self._update_access_times(time, species_id_in_set)
-        return dynamic_species_state.get_population(time)
+        return dynamic_species_state.get_population(time, temporary_mode=self.temporary_mode)
 
     def read(self, time, species=None, round=True):
-        """ Read the predicted population of a list of species at simulation time `time`
+        """ Read the predicted population of a multiple species at simulation time `time`
+
+        Ignores temporary species populations
 
         Args:
             time (:obj:`float`): the time at which the population should be estimated
@@ -864,7 +869,9 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
     # todo: combine read() and read_into_array() into 1 method
 
     def set_temp_populations(self, populations):
-        """ Set temporary population values for a set of species
+        """ Set temporary population values for multiple species
+
+        Used to solve ODE submodels
 
         Args:
             populations (:obj:`dict` of :obj:`float`): map: species_id -> temporary_population_value
@@ -885,7 +892,9 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             self._population[species_id].set_temp_population_value(population)
 
     def clear_temp_populations(self, species_ids):
-        """ Clear temporary population values for a set of species
+        """ Clear temporary population values for multiple species
+
+        Used to solve ODE submodels
 
         Args:
             species_ids (:obj:`iterator`): an iterator over some species ids
@@ -921,6 +930,17 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         if errors:
             raise DynamicSpeciesPopulationError(time, "adjust_discretely error(s):\n{}".format(
                                                 '\n'.join(errors)))
+        # TODO(Arthur): exact caching: adjust mass
+        '''
+        # adjustment to mass of each compartment
+        mass_adjustments = defaultdict(float)
+        for species_id in adjustments:
+                comp_id = self._population[species_id].compartment_id
+                mw = self._molecular_weights[species_id]
+                mass_adjustments[comp_id] += mw * adjustments[species_id]
+        # make mass_adjustments to masses of compartments stored by DynamicModel
+        return mass_adjustments
+        '''
 
     def adjust_continuously(self, time, population_slopes):
         """ A continuous submodel adjusts the population slopes of a set of species at simulation time `time`
@@ -1183,6 +1203,7 @@ class TempPopulationsLSP(object):
         self.local_species_population = local_species_population
         local_species_population.set_temp_populations(temporary_populations)
         self.species_ids = set(temporary_populations)
+        self.local_species_population.temporary_mode = True
 
     def __enter__(self):
         return self.local_species_population
@@ -1191,6 +1212,7 @@ class TempPopulationsLSP(object):
         """ Clear the temporary population values
         """
         self.local_species_population.clear_temp_populations(self.species_ids)
+        self.local_species_population.temporary_mode = False
 
 
 class MakeTestLSP(object):
@@ -1355,8 +1377,8 @@ class SpeciesPopSimObject(LocalSpeciesPopulation, ApplicationSimulationObject,
 
 # todo: support multiple continuous-time algorithms by additive Superposition of their slopes
 # todo: have continuous_adjustment accept population or population_slope
-# todo: have continuous_adjustment is given population_slope, have it automatically incorporate
-# population change predicted by the prior slope, and change its docstring
+# todo: if continuous_adjustment is given population_slope, have it automatically incorporate
+# population change predicted by the prior slope,
 # that is, use: population_change = (time - self.continuous_time) * self.population_slope
 class DynamicSpeciesState(object):
     """ Track the population of a single species in a multi-algorithmic model
@@ -1509,12 +1531,12 @@ class DynamicSpeciesState(object):
         """
         if adjustment_time < self.last_adjustment_time:
             raise DynamicSpeciesPopulationError(adjustment_time,
-                "{}(): adjustment_time is earlier than latest prior adjustment: "
-                "{:.2f} < {:.2f}".format(method, adjustment_time, self.last_adjustment_time))
+                "{}(): {}: adjustment_time is earlier than latest prior adjustment: "
+                "{:.2f} < {:.2f}".format(method, self.species_name, adjustment_time, self.last_adjustment_time))
         if adjustment_time < self.last_read_time:
             raise DynamicSpeciesPopulationError(adjustment_time,
-                "{}(): adjustment_time is earlier than latest prior read: "
-                "{:.2f} < {:.2f}".format(method, adjustment_time, self.last_read_time))
+                "{}(): {}: adjustment_time is earlier than latest prior read: "
+                "{:.2f} < {:.2f}".format(method, self.species_name, adjustment_time, self.last_read_time))
 
     def _validate_read_time(self, read_time, method):
         """ Raise an exception if `read_time` is too early
@@ -1526,10 +1548,10 @@ class DynamicSpeciesState(object):
         Raises:
             :obj:`DynamicSpeciesPopulationError`: if `read_time` is earlier than latest prior adjustment
         """
-        if read_time < self.last_read_time:
+        if read_time < self.last_adjustment_time:
             raise DynamicSpeciesPopulationError(read_time,
-                "{}(): read_time is earlier than latest prior adjustment: "
-                "{:.2f} < {:.2f}".format(method, read_time, self.last_adjustment_time))
+                "{}(): {}: read_time is earlier than latest prior adjustment: "
+                "{:.2f} < {:.2f}".format(method, self.species_name, read_time, self.last_adjustment_time))
 
     class Operation(Enum):
         """ Types of operations on DynamicSpeciesState, for use in history """
@@ -1670,7 +1692,7 @@ class DynamicSpeciesState(object):
         """
         self._temp_population_value = None
 
-    def get_population(self, time, interpolate=None, round=True):
+    def get_population(self, time, interpolate=None, round=True, temporary_mode=False):
         """ Provide the species' population at time `time`
 
         If one of the submodel(s) predicting the species' population is a continuous-time model,
@@ -1683,7 +1705,7 @@ class DynamicSpeciesState(object):
         do not naturally handle non-integral copy numbers.
 
         We resolve this conflict by storing real valued populations within a species, but
-        providing only integral population predictions. To aovid the bias that would arise by
+        providing integral population predictions if `round` is `True`. To aovid the bias that would arise by
         always using `floor()` or `ceiling()` to convert a float to an integer, population predictions
         are stochastically rounded before being returned by `get_population`. *This means
         that a sequence of calls to `get_population` with `round=True`
@@ -1694,6 +1716,8 @@ class DynamicSpeciesState(object):
             round (:obj:`bool`, optional): if `round` then round the population to an integer
             interpolate (:obj:`bool`, optional): if not `None` then control interpolation;
                 otherwise it's controlled by the 'interpolate' config variable
+            temporary_mode (:obj:`bool`, optional): whether the calling `LocalSpeciesPopulation` is in
+                temporary mode; if set, do not update `last_read_time`
 
         Returns:
             :obj:`int`: if `round`, an integer approximation of the species' population, otherwise
@@ -1701,13 +1725,14 @@ class DynamicSpeciesState(object):
 
         Raises:
             :obj:`DynamicSpeciesPopulationError`: if `time` is earlier than the time of a previous continuous
-                adjustment or discrete adjustment
+                or discrete adjustment
             :obj:`DynamicNegativePopulationError`: if interpolation predicts a negative population
         """
 
         self._validate_read_time(time, 'get_population')
         if not self.modeled_continuously:
-            self._update_last_read_time(time)
+            if not temporary_mode:
+                self._update_last_read_time(time)
             # self.last_population does not need to be rounded as discrete submodels only change
             # populations by integral amounts
             return self.last_population
@@ -1722,7 +1747,8 @@ class DynamicSpeciesState(object):
                         raise DynamicNegativePopulationError(time, 'get_population', self.species_name,
                             self.last_population, interpolation, time - self.continuous_time)
             float_copy_number = self.last_population + interpolation
-            self._update_last_read_time(time)
+            if not temporary_mode:
+                self._update_last_read_time(time)
             # if round then round the return value to an integer, otherwise don't
             if round:
                 # this cannot return a negative number

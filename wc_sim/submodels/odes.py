@@ -65,7 +65,7 @@ class OdeSubmodel(DynamicSubmodel):
 
         Args:
             id (:obj:`str`): unique id of this dynamic ODE submodel
-            dynamic_model (:obj: `DynamicModel`): the aggregate state of a simulation
+            dynamic_model (:obj: `DynamicModel`): the simulation's central coordinator
             reactions (:obj:`list` of `wc_lang.Reaction`): the reactions modeled by this ODE submodel
             species (:obj:`list` of `wc_lang.Species`): the species that participate in the reactions
                 modeled by this ODE submodel
@@ -80,6 +80,9 @@ class OdeSubmodel(DynamicSubmodel):
         """
         super().__init__(id, dynamic_model, reactions, species, dynamic_compartments,
                          local_species_population)
+        if not isinstance(ode_time_step, (float, int)):
+            raise MultialgorithmError(f"OdeSubmodel {self.id}: ode_time_step must be a number but is "
+                                      f"{ode_time_step}")
         if ode_time_step <= 0:
             raise MultialgorithmError(f"OdeSubmodel {self.id}: ode_time_step must be positive, but is "
                                       f"{ode_time_step}")
@@ -98,7 +101,6 @@ class OdeSubmodel(DynamicSubmodel):
 
     def set_up_ode_submodel(self):
         """ Set up an ODE submodel, including its ODE solver """
-
         # disable locking temporarily
         # self.get_solver_lock()
 
@@ -120,7 +122,7 @@ class OdeSubmodel(DynamicSubmodel):
                 tmp_coeffs_and_rate_laws[species_id].append((species_coefficient.coefficient,
                                                              dynamic_rate_law))
 
-        # todo: use vector algebra to compute species derivatives, & calc each RL once
+        # TODO(Arthur): use vector algebra to compute species derivatives, & calc each RL once
         # replace rate_of_change_expressions with a stoichiometric matrix S
         # then, in compute_population_change_rates() compute a vector of reaction rates R and get
         # rates of change of species from R * S
@@ -199,10 +201,6 @@ class OdeSubmodel(DynamicSubmodel):
         Raises:
             :obj:`DynamicMultialgorithmError`: if this method raises any exception
         """
-
-        # TODO(Arthur): exact caching:
-        # if caching, clear the expression cache because populations have changed
-        self.dynamic_model.cache_manager.clear_cache()
         try:
             self.compute_population_change_rates(time, new_species_populations, population_change_rates)
             return 0
@@ -224,7 +222,6 @@ class OdeSubmodel(DynamicSubmodel):
             population_change_rates (:obj:`numpy.ndarray`): the rate of change of
                 `new_species_populations` at time `time`; written by this method
         """
-
         # Use TempPopulationsLSP to temporarily set the populations of species used by this ODE
         # to the values provided by the ODE solver
 
@@ -234,6 +231,11 @@ class OdeSubmodel(DynamicSubmodel):
         self.non_negative_populations = np.maximum(self.zero_populations, new_species_populations)
         temporary_populations = dict(zip(self.ode_species_ids, self.non_negative_populations))
         with TempPopulationsLSP(self.local_species_population, temporary_populations):
+
+            # TODO(Arthur): exact caching:
+            # flush expressions that depend on species and reactions modeled by this ODE submodel from cache
+            self.dynamic_model.ode_flush_after_populations_change(self.id)
+
             for idx in range(self.num_species):
                 species_rate_of_change = 0.0
                 for coeff, dynamic_rate_law in self.rate_of_change_expressions[idx]:
@@ -256,7 +258,6 @@ class OdeSubmodel(DynamicSubmodel):
         Raises:
             :obj:`DynamicMultialgorithmError`: if the CVODE ODE solver indicates an error
         """
-
         ### run the ODE solver ###
         end_time = self.time + self.ode_time_step
         # advance one ode_time_step
@@ -278,6 +279,10 @@ class OdeSubmodel(DynamicSubmodel):
             self.adjustments[species_id] = population_change_rates[idx]
         self.local_species_population.adjust_continuously(self.time, self.adjustments)
 
+        # TODO(Arthur): exact caching:
+        # flush expressions that depend on species and reactions modeled by this ODE submodel from cache
+        self.dynamic_model.ode_flush_after_populations_change(self.id)
+
     def get_info(self):
         """ Get info from CVODE
 
@@ -293,9 +298,8 @@ class OdeSubmodel(DynamicSubmodel):
 
     def schedule_next_ode_analysis(self):
         """ Schedule the next analysis by this ODE submodel """
-        next_event_time = self.num_steps * self.ode_time_step
         self.num_steps += 1
-        self.send_event_absolute(next_event_time, self, message_types.RunOde())
+        self.send_event_absolute(self.num_steps * self.ode_time_step, self, message_types.RunOde())
 
     def handle_RunOde_msg(self, event):
         """ Handle an event containing a RunOde message
@@ -303,7 +307,5 @@ class OdeSubmodel(DynamicSubmodel):
         Args:
             event (:obj:`Event`): a simulation event
         """
-        # TODO(Arthur): exact caching:
-        self.dynamic_model.cache_manager.clear_cache()
         self.run_ode_solver()
         self.schedule_next_ode_analysis()

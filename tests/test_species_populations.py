@@ -646,10 +646,13 @@ class TestTempPopulationsLSP(unittest.TestCase):
         species_ids = self.species_ids[:num_species]
         temp_pop = 123
         temp_pops = dict(zip(species_ids, [temp_pop]*num_species))
+        self.assertEqual(self.test_lsp.temporary_mode, False)
         with TempPopulationsLSP(self.test_lsp, temp_pops):
+            self.assertEqual(self.test_lsp.temporary_mode, True)
             for i in range(num_species):
                 self.assertEqual(self.test_lsp.read_one(1, species_ids[i]), temp_pop)
 
+        self.assertEqual(self.test_lsp.temporary_mode, False)
         for i in range(num_species):
             self.assertEqual(self.test_lsp.read_one(1, species_ids[i]), self.pop)
 
@@ -806,6 +809,33 @@ class TestDynamicSpeciesState(unittest.TestCase):
         # change the config interpolate variable back because all imports may already have been cached
         config_multialgorithm['interpolate'] = existing_interpolate
 
+    def test_get_population_with_temporary_mode_on_or_off(self):
+        pop = 10
+        s0 = DynamicSpeciesState('s0[c]', self.random_state, pop, modeled_continuously=True)
+        time = 0
+        self.assertEqual(s0.last_read_time, -float('inf'))
+        s0.get_population(time, temporary_mode=True)
+        self.assertEqual(s0.last_read_time, -float('inf'))
+        time = 1
+        s0.get_population(time, temporary_mode=False)
+        self.assertEqual(s0.last_read_time, time)
+        time = 2
+        s0.get_population(time)
+        self.assertEqual(s0.last_read_time, time)
+
+        pop = 1
+        s1 = DynamicSpeciesState('s1[c]', self.random_state, pop, modeled_continuously=False)
+        time = 0
+        self.assertEqual(s1.last_read_time, -float('inf'))
+        s1.get_population(time, temporary_mode=True)
+        self.assertEqual(s1.last_read_time, -float('inf'))
+        time = 1
+        s1.get_population(time, temporary_mode=False)
+        self.assertEqual(s1.last_read_time, time)
+        time = 1
+        s1.get_population(time)
+        self.assertEqual(s1.last_read_time, time)
+
     def test_validation(self):
         ### dynamic species modeled only by a discrete submodel ###
         ds_discrete = DynamicSpeciesState('ds_discrete[c]', self.random_state, 0)
@@ -819,21 +849,21 @@ class TestDynamicSpeciesState(unittest.TestCase):
 
         # test exceptions
         with self.assertRaisesRegex(DynamicSpeciesPopulationError,
-                                    "get_population\(\): read_time is earlier than latest "
+                                    "get_population\(\): .*: read_time is earlier than latest "
                                     "prior adjustment: "):
             ds_discrete.get_population(time-1)
 
         time = 5
         ds_discrete.get_population(time)
         with self.assertRaisesRegex(DynamicSpeciesPopulationError,
-                                    "discrete_adjustment\(\): adjustment_time is earlier than "
+                                    "discrete_adjustment\(\): .*: adjustment_time is earlier than "
                                     "latest prior read: "):
             ds_discrete.discrete_adjustment(time-1, 0)
 
         time = 6
         ds_discrete.discrete_adjustment(time, 0)
         with self.assertRaisesRegex(DynamicSpeciesPopulationError,
-                                    "discrete_adjustment\(\): adjustment_time is earlier than "
+                                    "discrete_adjustment\(\): .*: adjustment_time is earlier than "
                                     "latest prior adjustment: "):
             ds_discrete.discrete_adjustment(time-1, 0)
 
@@ -847,14 +877,14 @@ class TestDynamicSpeciesState(unittest.TestCase):
         time = 2
         ds_hybrid.get_population(time)
         with self.assertRaisesRegex(DynamicSpeciesPopulationError,
-                                    "continuous_adjustment\(\): adjustment_time is earlier than "
+                                    "continuous_adjustment\(\): .*: adjustment_time is earlier than "
                                     "latest prior read: "):
             ds_hybrid.continuous_adjustment(time-1, 0)
 
         time = 4
         ds_hybrid.continuous_adjustment(time, 0)
         with self.assertRaisesRegex(DynamicSpeciesPopulationError,
-                                    "continuous_adjustment\(\): adjustment_time is earlier than "
+                                    "continuous_adjustment\(\): .*: adjustment_time is earlier than "
                                     "latest prior adjustment: "):
             ds_hybrid.continuous_adjustment(time-1, 0)
 
