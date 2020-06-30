@@ -79,3 +79,21 @@ class WCSimulationMetadata(EnhancedDataClass):
         """ See docstring in :obj:`EnhancedDataClass`
         """
         return os.path.join(dirname, 'wc_simulation_metadata.pickle')
+
+    def semantically_equal(self, other):
+        """ Are two instances semantically equal with respect to a simulation's predictions?
+
+        Overrides `semantically_equal` in :obj:`EnhancedDataClass`.
+        Ignore `verbose`, `changes`, and `perturbations`.
+        `verbose` does not influence a simulation's predictions and `changes` and `perturbations`
+        are not currently used.
+
+        Args:
+            other (:obj:`Object`): other object
+
+        Returns:
+            :obj:`bool`: :obj:`True` if `other` is semantically equal to `self`, :obj:`False` otherwise
+        """
+        return self.wc_sim_config.semantically_equal(other.wc_sim_config) and \
+            self.wc_simulator_repo == other.wc_simulator_repo and \
+            self.wc_model_repo == other.wc_model_repo

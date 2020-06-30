@@ -33,6 +33,8 @@ class TestWCSimulationMetadata(unittest.TestCase):
         self.github_repo = GitHubRepoForTests(self.test_repo_name)
         self.repo_dir = tempfile.mkdtemp(dir=self.tempdir)
         self.github_repo.make_test_repo(self.repo_dir)
+        self.file_in_git_repo = os.path.join(self.repo_dir, 'README.md')
+        self.wc_simulation_metadata.set_wc_model_repo(self.file_in_git_repo)
 
     def tearDown(self):
         shutil.rmtree(self.tempdir)
@@ -47,31 +49,41 @@ class TestWCSimulationMetadata(unittest.TestCase):
 
     def test__get_repo_metadata(self):
         # test with model path in a git repo
-        file_in_git_repo = os.path.join(self.repo_dir, 'README.md')
-        wc_simulation_metadata = WCSimulationMetadata(self.wc_sim_config)
-        metadata = wc_simulation_metadata._get_repo_metadata(file_in_git_repo)
+        metadata = self.wc_simulation_metadata._get_repo_metadata(self.file_in_git_repo)
         self.assertIn(self.test_repo_name, metadata.url)
 
         # test with model path not in a git repo
         with warnings.catch_warnings(record=True) as w:
-            rv = wc_simulation_metadata._get_repo_metadata('/')
+            rv = self.wc_simulation_metadata._get_repo_metadata('/')
             self.assertIn("Cannot obtain metadata for git repo containing model", str(w[-1].message))
         self.assertEqual(rv, None)
 
     def test_set_wc_model_repo(self):
         # test with model path in a git repo
-        file_in_git_repo = os.path.join(self.repo_dir, 'README.md')
-        wc_simulation_metadata = WCSimulationMetadata(self.wc_sim_config)
-        wc_simulation_metadata.set_wc_model_repo(file_in_git_repo)
-        self.assertIn(self.test_repo_name, wc_simulation_metadata.wc_model_repo.url)
+        self.assertIn(self.test_repo_name, self.wc_simulation_metadata.wc_model_repo.url)
 
         # test with model path not in a git repo
-        wc_simulation_metadata = WCSimulationMetadata(self.wc_sim_config)
         with warnings.catch_warnings(record=True) as w:
-            wc_simulation_metadata.set_wc_model_repo('/')
+            self.wc_simulation_metadata.set_wc_model_repo('/')
             self.assertIn("Cannot obtain metadata for git repo containing model", str(w[-1].message))
-        self.assertEqual(wc_simulation_metadata.wc_model_repo, None)
+        self.assertEqual(self.wc_simulation_metadata.wc_model_repo, None)
 
     def test_get_pathname(self):
         self.assertEqual(os.path.basename(WCSimulationMetadata.get_pathname(self.tempdir)),
                          'wc_simulation_metadata.pickle')
+
+    def test_semantically_equal(self):
+        # WCSimulationMetadata instances with a repo
+        wc_simulation_metadata_equal = WCSimulationMetadata(self.wc_sim_config)
+        wc_simulation_metadata_equal.set_wc_model_repo(self.file_in_git_repo)
+        self.assertTrue(self.wc_simulation_metadata.semantically_equal(wc_simulation_metadata_equal))
+
+        wc_simulation_metadata_equal.wc_sim_config = WCSimulationConfig(SimulationConfig(time_max=1))
+        self.assertFalse(self.wc_simulation_metadata.semantically_equal(wc_simulation_metadata_equal))
+        wc_simulation_metadata_equal.wc_sim_config = self.wc_sim_config
+        self.assertTrue(self.wc_simulation_metadata.semantically_equal(wc_simulation_metadata_equal))
+
+        wc_simulation_metadata_equal.wc_model_repo = None
+        self.assertFalse(self.wc_simulation_metadata.semantically_equal(wc_simulation_metadata_equal))
+        wc_simulation_metadata_equal.set_wc_model_repo(self.file_in_git_repo)
+        self.assertTrue(self.wc_simulation_metadata.semantically_equal(wc_simulation_metadata_equal))
