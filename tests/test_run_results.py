@@ -7,11 +7,12 @@
 """
 
 from capturer import CaptureOutput
+from pandas import DataFrame
 from scipy.constants import Avogadro
 import cProfile
 import h5py
 import math
-import numpy
+import numpy as np
 import os
 import pandas
 import pstats
@@ -89,7 +90,7 @@ class TestRunResults(unittest.TestCase):
     def test__check_component(self):
         for component in RunResults.COMPONENTS:
             self.assertEqual(self.run_results_1_cmpt._check_component(component), None)
-        self.run_results_1_cmpt.run_results['populations'] = pandas.DataFrame()
+        self.run_results_1_cmpt.run_results['populations'] = DataFrame()
         with self.assertRaisesRegex(MultialgorithmError, "component is empty"):
             self.run_results_1_cmpt._check_component('populations')
 
@@ -98,7 +99,7 @@ class TestRunResults(unittest.TestCase):
         for component in RunResults.COMPONENTS:
             self.assertTrue(self.run_results_1_cmpt.get(component).equals(run_results_2.get(component)))
 
-        expected_times = pandas.Float64Index(numpy.linspace(0, self.max_time,
+        expected_times = pandas.Float64Index(np.linspace(0, self.max_time,
                                                             int(1 + self.max_time/self.checkpoint_period)))
         for component in ['populations', 'observables', 'functions', 'aggregate_states', 'random_states']:
             component_data = self.run_results_1_cmpt.get(component)
@@ -112,7 +113,7 @@ class TestRunResults(unittest.TestCase):
             self.assertEqual(pop_sum[time], pop_sum[0.])
 
         volumes = self.run_results_1_cmpt.get('volumes')
-        numpy.testing.assert_array_equal(volumes, self.run_results_1_cmpt.get_volumes())
+        np.testing.assert_array_equal(volumes, self.run_results_1_cmpt.get_volumes())
 
         with self.assertRaisesRegex(MultialgorithmError, "component '.*' is not an element of "):
             self.run_results_1_cmpt.get('not_a_component')
@@ -143,7 +144,7 @@ class TestRunResults(unittest.TestCase):
         self.run_results_1_cmpt._load_hdf_file()
         for component in self.run_results_1_cmpt.run_results:
             self.assertTrue(isinstance(self.run_results_1_cmpt.run_results[component],
-                                       (pandas.DataFrame, pandas.Series)))
+                                       (DataFrame, pandas.Series)))
 
     def test_get_concentrations(self):
         concentration_in_compt_1 = self.run_results_1_cmpt.get_concentrations('compt_1')
@@ -164,9 +165,9 @@ class TestRunResults(unittest.TestCase):
                                      rel_tol=1e-9))
 
     def test_get_times(self):
-        expected_times = numpy.arange(0., float(self.max_time), self.checkpoint_period, dtype='float64')
-        expected_times = numpy.append(expected_times, float(self.max_time))
-        numpy.testing.assert_array_equal(self.run_results_1_cmpt.get_times(), expected_times)
+        expected_times = np.arange(0., float(self.max_time), self.checkpoint_period, dtype='float64')
+        expected_times = np.append(expected_times, float(self.max_time))
+        np.testing.assert_array_equal(self.run_results_1_cmpt.get_times(), expected_times)
 
     def test_aggregate_state_properties(self):
         expected_properties = set(['mass', 'volume', 'accounted mass', 'accounted volume'])
@@ -174,27 +175,27 @@ class TestRunResults(unittest.TestCase):
         self.assertEqual(self.run_results_dyn_aggr.aggregate_state_properties(), expected_properties)
 
     def test_get_properties(self):
-        numpy.testing.assert_array_equal(self.run_results_1_cmpt.get_properties('compt_1', 'mass'),
+        np.testing.assert_array_equal(self.run_results_1_cmpt.get_properties('compt_1', 'mass'),
                                          self.run_results_1_cmpt.get_properties('compt_1')['mass'])
 
     def test_get_volumes(self):
-        numpy.testing.assert_array_equal(self.run_results_1_cmpt.get_volumes('compt_1'),
+        np.testing.assert_array_equal(self.run_results_1_cmpt.get_volumes('compt_1'),
                                          self.run_results_1_cmpt.get_properties('compt_1')['volume'])
-        numpy.testing.assert_array_equal(self.run_results_dyn_aggr.get_volumes('c'),
+        np.testing.assert_array_equal(self.run_results_dyn_aggr.get_volumes('c'),
                                          self.run_results_dyn_aggr.get_properties('c')['volume'])
 
         # when a model has 1 compartment, obtain same result requesting it
         # or all compartments and then squeezing the df into a Series
-        numpy.testing.assert_array_equal(self.run_results_1_cmpt.get_volumes('compt_1'),
+        np.testing.assert_array_equal(self.run_results_1_cmpt.get_volumes('compt_1'),
                                          self.run_results_1_cmpt.get_volumes().squeeze())
 
     def test_get_masses(self):
-        numpy.testing.assert_array_equal(self.run_results_1_cmpt.get_masses('compt_1'),
+        np.testing.assert_array_equal(self.run_results_1_cmpt.get_masses('compt_1'),
                                          self.run_results_1_cmpt.get_properties('compt_1')['mass'])
-        numpy.testing.assert_array_equal(self.run_results_dyn_aggr.get_masses('c'),
+        np.testing.assert_array_equal(self.run_results_dyn_aggr.get_masses('c'),
                                          self.run_results_dyn_aggr.get_properties('c')['mass'])
 
-        numpy.testing.assert_array_equal(self.run_results_1_cmpt.get_masses('compt_1'),
+        np.testing.assert_array_equal(self.run_results_1_cmpt.get_masses('compt_1'),
                                          self.run_results_1_cmpt.get_masses().squeeze())
 
     def test_convert_metadata(self):
@@ -218,8 +219,48 @@ class TestRunResults(unittest.TestCase):
         self.assertNotEqual(self.run_results_1_cmpt, self.run_results_dyn_aggr)
         # TODO(Arthur): exact caching: make small change to each RR component
 
-    def test_performance(self):
+    def test_semantically_equal(self):
+        self.assertTrue(self.run_results_1_cmpt.semantically_equal(self.run_results_1_cmpt))
+        self.assertTrue(self.run_results_dyn_aggr.semantically_equal(self.run_results_dyn_aggr))
+        self.assertFalse(self.run_results_dyn_aggr.semantically_equal(self.run_results_1_cmpt))
+        self.assertFalse(self.run_results_dyn_aggr.semantically_equal(1))
 
+    def test_dataframes_are_close(self):
+        # test columns and index differ
+        data = np.array([1e10, 1e-8])
+        index = [1, 2]
+        columns = ['A']
+        df1 = DataFrame(data, index=index, columns=columns)
+        df_diff = DataFrame(data, index=index, columns=['B'])
+        self.assertFalse(RunResults.dataframes_are_close(df1, df_diff))
+        df_diff = DataFrame(data, index=[2, 2], columns=columns)
+        self.assertFalse(RunResults.dataframes_are_close(df1, df_diff))
+
+        # test close and different arrays from https://numpy.org/doc/stable/reference/generated/numpy.allclose.html
+        kwargs_1 = dict(index=index, columns=columns)
+        df1 = DataFrame(np.array([1e10, 1e-8]), **kwargs_1)
+        self.assertTrue(RunResults.dataframes_are_close(df1, df1.copy()))
+        df_close = DataFrame(np.array([1.00001e10, 1e-9]), **kwargs_1)
+        self.assertTrue(RunResults.dataframes_are_close(df1, df_close))
+        df_not_close = DataFrame(np.array([1.0001e10, 1e-9]), **kwargs_1)
+        self.assertFalse(RunResults.dataframes_are_close(df1, df_not_close))
+
+        # test rtol and atol
+        index_2 = [1]
+        kwargs_2 = dict(index=index_2, columns=columns)
+        df_a = DataFrame(np.array([1_000_000]), **kwargs_2)
+        df_b = DataFrame(np.array([1_000_001]), **kwargs_2)
+        self.assertTrue(RunResults.dataframes_are_close(df_a, df_b))
+        self.assertFalse(RunResults.dataframes_are_close(df_a, df_b, rtol=0))
+        self.assertTrue(RunResults.dataframes_are_close(df_a, df_b, atol=0))
+        self.assertFalse(RunResults.dataframes_are_close(df_a, df_b, rtol=0, atol=0))
+
+        with self.assertRaises(ValueError):
+            RunResults.dataframes_are_close(df1, 3)
+        with self.assertRaises(ValueError):
+            RunResults.dataframes_are_close(3, df1)
+
+    def test_performance(self):
         # make RunResults local
         from wc_sim.run_results import RunResults
 
@@ -249,20 +290,20 @@ class TestMakeDataFrame(unittest.TestCase):
 
     def test(self):
         n_times = 1000
-        times = numpy.arange(n_times)
+        times = np.arange(n_times)
         n_cols = 1000
         cols = [f"col_{i}" for i in range(n_cols)]
-        array = 10. * numpy.random.rand(n_times, n_cols)
-        array = numpy.rint(array)
+        array = 10. * np.random.rand(n_times, n_cols)
+        array = np.rint(array)
 
         make_df = MakeDataFrame(times, cols)
         for row_num, time in enumerate(times):
             iterator = dict(zip(cols, array[row_num][:]))
             make_df.add(time, iterator)
 
-        self.assertTrue(numpy.array_equal(array, make_df.ndarray))
+        self.assertTrue(np.array_equal(array, make_df.ndarray))
         df = make_df.finish()
-        self.assertTrue(numpy.array_equal(df.values, array))
+        self.assertTrue(np.array_equal(df.values, array))
         self.assertEqual(list(df.index), list(times))
         self.assertEqual(list(df.columns), list(cols))
 

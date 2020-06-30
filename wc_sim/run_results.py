@@ -38,10 +38,10 @@ class RunResults(object):
     # components stored in a RunResults instance and the HDF file it manages
     COMPONENTS = {
         'populations',          # predicted populations of species at all checkpoint times
-        'aggregate_states',     # predicted aggregate states of the cell over the simulation
-        'observables',          # predicted values of all observables over the simulation
-        'functions',            # predicted values of all functions over the simulation
-        'random_states',        # states of the simulation's random number generators over the simulation
+        'aggregate_states',     # predicted aggregate states of the cell at all checkpoint times
+        'observables',          # predicted values of all observables at all checkpoint times
+        'functions',            # predicted values of all functions at all checkpoint times
+        'random_states',        # states of the simulation's random number generators at all checkpoint times
     }
 
     # components computed from stored components; map from component name to the method that computes it
@@ -294,7 +294,8 @@ class RunResults(object):
 
             for key, value in flat_metadata_as_dict.items():
                 # make a dotted string for each value in the metadata
-                # metadata_as_dict keys cannot contain '.' because they're attribute names
+                # metadata_as_dict keys cannot contain '.' because they're attribute names, therefore
+                # '.' can be used as a separator in a name derived from concatenated keys
                 separator = '.'
                 name = f'{metadata_class_name}{separator}{separator.join(key)}'
 
@@ -376,9 +377,9 @@ class RunResults(object):
         functions_df = function_make_df.finish()
         return (population_df, observables_df, functions_df, aggregate_states_df, random_states_s)
 
-    # TODO(Arthur): exact caching:
+    # TODO(Arthur): exact caching: add metadata elements
     def __eq__(self, other):
-        """ Compare two `RunResults` objects
+        """ Determine whether two `RunResults` objects are semantically equal
 
         Args:
             other (:obj:`Object`): other object
@@ -394,6 +395,79 @@ class RunResults(object):
                 return False
 
         return True
+
+    # TODO(Arthur): exact caching: add approximate match
+    def semantically_equal(self, other, debug=False):
+        """ Are the predictions and metadata in two :obj:`RunResults` objects semantically equal?
+
+        Uses `numpy.allclose()` to compare predictions.
+        Uses `semantically_equal` to ignore semantically insignificant metadata, such as the timestamp of a simulation's
+        execution or its runtime.
+        Compares all `RunResults.COMPONENTS` except 'random_states', which is ignored.
+
+        Args:
+            other (:obj:`Object`): other object
+            debug (:obj:`bool`): whether to output debugging info when the objects are not semantically equal
+
+        Returns:
+            :obj:`bool`: :obj:`True` if `self` and `other` are semantically equal, :obj:`False` otherwise
+        """
+        if other.__class__ is not self.__class__:
+            return False
+
+        for component in RunResults.COMPONENTS:
+            # TODO(Arthur): exact caching: tune tolerances for each component
+            if component != 'random_states':
+                if not self.dataframes_are_close(self.get(component), other.get(component)):
+                    if debug:
+                        print(f"{component} components are not close")
+                    return False
+
+        # use original metadata classes so their semantically_equal() methods can be used
+        for metadata_class in self.METADATA_CLASS_TO_NAME:
+            self_metadata = metadata_class.read_dataclass(self.results_dir)
+            other_metadata = metadata_class.read_dataclass(other.results_dir)
+            if not self_metadata.semantically_equal(other_metadata):
+                if debug:
+                    print(f"metadata {metadata_class.__name__} instances are not semantically equal")
+                return False
+
+        return True
+
+    @staticmethod
+    def dataframes_are_close(df1, df2, rtol=None, atol=None):
+     """ Indicate whether two Pandas DataFrames that contain floats are almost equal
+
+     Return :obj:`True` if rows and columns are identical and values are all close.
+
+     Args:
+         df1 (:obj:`pandas.DataFrame`): one DataFrame
+         df2 (:obj:`pandas.DataFrame`): another DataFrame
+         rtol (:obj:`float`, optional): relative tolerance; if provided, passed to `numpy.allclose()`
+            which compares DataFrame values
+         atol (:obj:`float`, optional): absolute tolerance, if provided, passed to `numpy.allclose()`
+            which compares DataFrame values
+
+     Returns:
+         :obj:`bool`: :obj:`True` if the DataFrames are semantically equal
+
+    Raises:
+        :obj:`ValueError`: if either argument is not a :obj:`pandas.DataFrame`
+     """
+     if not isinstance(df1, pandas.DataFrame):
+         raise ValueError(f"df1 is a(n) '{type(df1).__name__}', not a Pandas DataFrame")
+     if not isinstance(df2, pandas.DataFrame):
+         raise ValueError(f"df2 is a(n) '{type(df2).__name__}', not a Pandas DataFrame")
+     if not df1.columns.equals(df2.columns):
+         return False
+     if not df1.index.equals(df2.index):
+         return False
+     kwargs = {}
+     if rtol is not None:
+        kwargs['rtol'] = rtol
+     if atol is not None:
+        kwargs['atol'] = atol
+     return numpy.allclose(df1.values, df2.values, **kwargs)
 
 
 class MakeDataFrame(object):
