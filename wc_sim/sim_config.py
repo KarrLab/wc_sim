@@ -181,6 +181,27 @@ class WCSimulationConfig(EnhancedDataClass):
         """
         return int((self.de_simulation_config.time_max - self.de_simulation_config.time_init) / self.ode_time_step)
 
+    def semantically_equal(self, other):
+        """ Are two instances semantically equal with respect to a simulation's predictions?
+
+        Overrides `semantically_equal` in :obj:`EnhancedDataClass`.
+        Ignore `verbose`, `changes`, and `perturbations`.
+        `verbose` does not influence a simulation's predictions and `changes` and `perturbations`
+        are not currently used.
+
+        Args:
+            other (:obj:`Object`): other object
+
+        Returns:
+            :obj:`bool`: :obj:`True` if `other` is semantically equal to `self`, :obj:`False` otherwise
+        """
+        return self.de_simulation_config.semantically_equal(other.de_simulation_config) and \
+            self.random_seed == other.random_seed and \
+            self.ode_time_step == other.ode_time_step and \
+            self.dfba_time_step == other.dfba_time_step and \
+            self.checkpoint_period == other.checkpoint_period and \
+            self.submodels_to_skip == other.submodels_to_skip
+
 
 Change = wc_lang.transform.ChangeValueTransform
 

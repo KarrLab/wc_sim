@@ -128,6 +128,47 @@ class TestWCSimulationConfig(unittest.TestCase):
             cfg = WCSimulationConfig(self.de_simulation_config, random_seed=1, dfba_time_step=3.0)
             cfg.validate()
 
+    def test_semantically_equal(self):
+        random_seed = 3
+        ode_time_step = 2
+        dfba_time_step = 5
+        checkpoint_period = 1
+        submodels_to_skip = ['ode_mdl', 'ssa_mdl']
+        cfg = WCSimulationConfig(de_simulation_config=self.de_simulation_config,
+                                 random_seed=random_seed,
+                                 ode_time_step=ode_time_step,
+                                 dfba_time_step=dfba_time_step,
+                                 checkpoint_period=checkpoint_period,
+                                 submodels_to_skip=submodels_to_skip)
+        cfg_equal = WCSimulationConfig(de_simulation_config=self.de_simulation_config,
+                                       random_seed=random_seed,
+                                       ode_time_step=ode_time_step,
+                                       dfba_time_step=dfba_time_step,
+                                       checkpoint_period=checkpoint_period,
+                                       submodels_to_skip=submodels_to_skip)
+        self.assertTrue(cfg.semantically_equal(cfg_equal))
+        self.assertTrue(cfg_equal.semantically_equal(cfg))
+
+        # vary de_simulation_config
+        cfg.de_simulation_config = SimulationConfig(time_max=100)
+        self.assertFalse(cfg.semantically_equal(cfg_equal))
+        cfg.de_simulation_config = self.de_simulation_config
+
+        # vary submodels_to_skip
+        cfg.submodels_to_skip = submodels_to_skip[1:]
+        self.assertFalse(cfg.semantically_equal(cfg_equal))
+        cfg.submodels_to_skip = submodels_to_skip
+
+        # vary all numerical attributes
+        for attr in ['random_seed', 'ode_time_step', 'dfba_time_step', 'checkpoint_period']:
+            save = getattr(cfg, attr)
+            setattr(cfg, attr, 2 * save)
+            self.assertFalse(cfg.semantically_equal(cfg_equal))
+            setattr(cfg, attr, save)
+
+        # with values reset, WCSimulationConfig still semantically_equal
+        self.assertTrue(cfg.semantically_equal(cfg_equal))
+
     def test_apply_changes(self):
         cfg = WCSimulationConfig(self.de_simulation_config, random_seed=1, ode_time_step=2)
         cfg.changes.append(Change([
