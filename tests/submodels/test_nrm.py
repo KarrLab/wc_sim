@@ -12,12 +12,14 @@ import os
 import unittest
 
 from de_sim.simulation_config import SimulationConfig
+from wc_onto import onto
 from wc_sim import message_types
 from wc_sim.multialgorithm_errors import DynamicFrozenSimulationError
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.sim_config import WCSimulationConfig
 from wc_sim.submodels.nrm import NrmSubmodel
 from wc_sim.testing.make_models import MakeModel
+from wc_sim.testing.utils import get_expected_dependencies
 import wc_lang
 import wc_lang.io
 import wc_lang.transform
@@ -25,39 +27,30 @@ import wc_lang.transform
 
 class TestNrmSubmodel(unittest.TestCase):
 
-    def make_sim_w_nrm_submodel(self, model, auto_initialize):
+    def make_sim_w_nrm_submodel(self, model):
         wc_lang.transform.PrepForWcSimTransform().run(model)
         de_simulation_config = SimulationConfig(time_max=10)
-        wc_sim_config = WCSimulationConfig(de_simulation_config)
-        nrm_options = dict(auto_initialize=auto_initialize)
-        options = {'NrmSubmodel': dict(options=nrm_options)}
-        multialgorithm_simulation = MultialgorithmSimulation(model, wc_sim_config, options)
+        wc_sim_config = WCSimulationConfig(de_simulation_config, ode_time_step=1)
+        multialgorithm_simulation = MultialgorithmSimulation(model, wc_sim_config)
         return multialgorithm_simulation.build_simulation()
 
     def setUp(self):
         self.MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures',
                                            'test_next_reaction_method_submodel.xlsx')
         self.model = wc_lang.io.Reader().run(self.MODEL_FILENAME)[wc_lang.Model][0]
-        self.simulation_engine, self.dynamic_model = self.make_sim_w_nrm_submodel(self.model, False)
+        self.simulation_engine, self.dynamic_model = self.make_sim_w_nrm_submodel(self.model)
         self.nrm_submodel = self.dynamic_model.dynamic_submodels['nrm_submodel']
 
-    def test_init(self):
-        self.assertTrue(isinstance(self.nrm_submodel.options, dict))
-
-        # test NrmSubmodel() with default options=None
-        wc_sim_config = WCSimulationConfig(SimulationConfig(time_max=10))
-        _, dynamic_model = MultialgorithmSimulation(self.model, wc_sim_config).build_simulation()
-        nrm_submodel = dynamic_model.dynamic_submodels['nrm_submodel']
-        self.assertEquals(nrm_submodel.options, None)
-
-    def test_initialize(self):
-        attributes_initialized = ['dependencies', 'propensities', 'execution_time_priority_queue']
-        self.nrm_submodel.initialize()
-        for attr in attributes_initialized:
+    def test_prepare(self):
+        attributes_prepared = ['dependencies', 'propensities', 'execution_time_priority_queue']
+        for attr in attributes_prepared:
+            setattr(self.nrm_submodel, attr, None)
+        self.nrm_submodel.prepare()
+        for attr in attributes_prepared:
             self.assertTrue(len(getattr(self.nrm_submodel, attr)))
 
     def test_determine_dependencies(self):
-        expected_dependencies = [
+        expected_dependencies_1 = [
             (1,),
             (2,),
             (3,),
@@ -66,7 +59,61 @@ class TestNrmSubmodel(unittest.TestCase):
             (3,),
         ]
         dependencies = self.nrm_submodel.determine_dependencies()
-        self.assertEqual(dependencies, expected_dependencies)
+        self.assertEqual(dependencies, expected_dependencies_1)
+
+        # TODO(Arthur): exact caching:
+        # test dependencies indirectly propagated through expressions
+        dependencies_mdl_file = os.path.join(os.path.dirname(__file__), '..', 'fixtures',
+                                             'test_dependencies.xlsx')
+        dependencies_model = wc_lang.io.Reader().run(dependencies_mdl_file)[wc_lang.Model][0]
+        # make the DSA submodel an NRM submodel
+        dsa_submodel = dependencies_model.submodels.get_one(id='dsa_submodel')
+        dsa_submodel.id = 'nrm_submodel'
+        dsa_submodel.framework = onto['WC:next_reaction_method']
+        _, dynamic_model = self.make_sim_w_nrm_submodel(dependencies_model)
+        nrm_submodel = dynamic_model.dynamic_submodels['nrm_submodel']
+        nrm_dependencies = nrm_submodel.determine_dependencies()
+
+        ode_submodel = dynamic_model.dynamic_submodels['ode_submodel']
+        ode_submodel_rxn_ids = [rxn.id for rxn in ode_submodel.reactions]
+
+        # rate laws that depend on reactions in other submodels
+        # convert nrm_dependencies entries into ids
+        nrm_dependencies_as_ids = {}
+        for rxn_idx, rate_law_dependencies in enumerate(nrm_dependencies):
+            rxn = nrm_submodel.reactions[rxn_idx]
+            nrm_dependencies_as_ids[rxn.id] = set()
+            for rate_law_idx in rate_law_dependencies:
+                rate_law_id = nrm_submodel.reactions[rate_law_idx].rate_laws[0].id
+                nrm_dependencies_as_ids[rxn.id].add(rate_law_id)
+
+        expected_dependencies = get_expected_dependencies()
+        expected_nrm_dependencies_as_ids = expected_dependencies['DynamicRateLaw']
+        # NRM dependencies do not have entries for reactions in other submodels
+        for rxn_id in ode_submodel_rxn_ids:
+            del expected_nrm_dependencies_as_ids[rxn_id]
+
+        # NRM dependencies keep only rate laws used by nrm_submodel
+        rate_laws_used_by_nrm_submodel = [rxn.rate_laws[0].id for rxn in nrm_submodel.reactions]
+        for rxn_id in expected_nrm_dependencies_as_ids:
+            expected_nrm_dependencies_as_ids[rxn_id].intersection_update(rate_laws_used_by_nrm_submodel)
+
+        # Each NRM reaction must re-evaluate all of its rate laws that depend on other submodels
+        expected_dependencies = get_expected_dependencies()
+        rate_laws_modified_by_ode_submodel = set()
+        for rxn_id in ode_submodel_rxn_ids:
+            rate_laws_modified_by_ode_submodel.update(expected_dependencies['DynamicRateLaw'][rxn_id])
+        # keep only rate laws used by nrm_submodel
+        rate_laws_modified_by_ode_submodel.intersection_update(rate_laws_used_by_nrm_submodel)
+        for rxn_id in expected_nrm_dependencies_as_ids:
+            expected_nrm_dependencies_as_ids[rxn_id].update(rate_laws_modified_by_ode_submodel)
+
+        # NRM dependencies do not include self-references
+        for rxn_id in expected_nrm_dependencies_as_ids:
+            rate_law_id = f"{rxn_id}-forward"
+            expected_nrm_dependencies_as_ids[rxn_id].discard(rate_law_id)
+
+        self.assertEqual(nrm_dependencies_as_ids, expected_nrm_dependencies_as_ids)
 
     def test_initialize_propensities(self):
         propensities = self.nrm_submodel.initialize_propensities()
@@ -91,15 +138,15 @@ class TestNrmSubmodel(unittest.TestCase):
         model_filename = os.path.join(os.path.dirname(__file__), 'fixtures',
                                       'test_next_reaction_method_submodel_2.xlsx')
         test_props_eq_0_model = wc_lang.io.Reader().run(model_filename)[wc_lang.Model][0]
-        _, dynamic_model = self.make_sim_w_nrm_submodel(test_props_eq_0_model, False)
+        _, dynamic_model = self.make_sim_w_nrm_submodel(test_props_eq_0_model)
         nrm_submodel_0_props = dynamic_model.dynamic_submodels['nrm_submodel']
 
-        # TODO(Arthur): exact caching:
+        # TODO(Arthur): exact caching: test with all 3 levels of caching
         # stop caching for this test, because it repeatedly updates populations & no invalidation is done
         dynamic_model._stop_caching()
 
         ### single step a mock simulation ###
-        nrm_submodel_0_props.initialize()
+        nrm_submodel_0_props.prepare()
 
         # execute this sequence of reactions, all of which are enabled and have propensity > 0
         reaction_sequence = [0, 1, 1, 1]
@@ -131,7 +178,7 @@ class TestNrmSubmodel(unittest.TestCase):
         # initial rate of 1/sec, which will change slowly because init. populations are 1000
         num_events = []
         for _ in range(NUM_TRIALS):
-            simulation_engine, _ = self.make_sim_w_nrm_submodel(self.model, True)
+            simulation_engine, _ = self.make_sim_w_nrm_submodel(self.model)
             simulation_engine.initialize()
             num_events.append(simulation_engine.simulate(RUN_TIME).num_events)
         num_reactions = len(self.model.reactions)

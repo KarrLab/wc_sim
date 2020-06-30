@@ -18,6 +18,7 @@ from de_sim.simulation_engine import SimulationEngine
 from de_sim.simulation_object import ApplicationSimulationObject, SimulationObject
 from wc_sim import message_types
 from wc_sim.config import core as config_core_multialgorithm
+from wc_sim.dynamic_components import DynamicRateLaw
 from wc_sim.multialgorithm_errors import MultialgorithmError, DynamicFrozenSimulationError
 from wc_sim.submodels.dynamic_submodel import DynamicSubmodel
 from wc_utils.util.rand import RandomStateManager
@@ -50,8 +51,9 @@ class NrmSubmodel(DynamicSubmodel):
 
     event_handlers = [(message_types.ExecuteAndScheduleNrmReaction, 'handle_ExecuteAndScheduleNrmReaction_msg')]
 
+    # TODO(Arthur): exact caching:
     def __init__(self, id, dynamic_model, reactions, species, dynamic_compartments,
-                 local_species_population, options=None):
+                 local_species_population):
         """ Initialize an NRM submodel object
 
         Args:
@@ -65,7 +67,6 @@ class NrmSubmodel(DynamicSubmodel):
                 adjacent compartments used by its transfer reactions
             local_species_population (:obj:`LocalSpeciesPopulation`): the store that maintains this
                 NRM submodel's species population
-            options (:obj:`dict`, optional): NRM submodel options
 
         Raises:
             :obj:`MultialgorithmError`: if the initial NRM wait exponential moving average is not positive
@@ -73,17 +74,8 @@ class NrmSubmodel(DynamicSubmodel):
         super().__init__(id, dynamic_model, reactions, species, dynamic_compartments,
                          local_species_population)
         self.random_state = RandomStateManager.instance()
-        self.execution_time_priority_queue = PQDict()
-        self.options = options
-        # to enable testing of uninitialized instances, auto_initialize controls initialization here
-        # auto_initialize defaults to True
-        auto_initialize = True
-        if options is not None and 'auto_initialize' in options:
-            auto_initialize = options['auto_initialize']
-        if auto_initialize:
-            self.initialize()
 
-    def initialize(self):
+    def prepare(self):
         self.dependencies = self.determine_dependencies()
         self.propensities = self.initialize_propensities()
         self.initialize_execution_time_priorities()
@@ -91,78 +83,76 @@ class NrmSubmodel(DynamicSubmodel):
     def determine_dependencies(self):
         """ Determine the dependencies that rate laws have on executed reactions
 
+        In a multi-algorithmic simulation, two types of dependencies arise when NRM considers which
+        rate laws to update after a reaction executes:
+        1) Dependencies between NRM reactions and rate laws for NRM reactions. Rate laws that depend
+        on species whose populations are updated by a reaction, either directly or indirectly through
+        expressions that use the species, must be evaluated after the reaction executes.
+        2) Rate laws that depend on, again either directly or indirectly, species whose populations can
+        be updated by reactions or continuous changes in other submodels, must always be evaluated after any
+        NRM reaction executes.
+        This method combines both types of dependencies into a single map from executed reaction to
+        dependent rate laws.
+        It is executed only once, at initialization, so its complexity is fine.
+
         Returns:
             :obj:`list` of :obj:`tuple`: entry i provides the indices of reactions whose
-                rate laws depend on the execution of reaction i
+                rate laws depend on the execution of reaction i, not including reaction i itself
         """
-        # in a multi-algorithmic simulation, two types of dependencies arise when a reaction executes:
-        # 1) ones used by NRM: rate laws that use species whose populations are updated by the reaction
-        # 2) rate laws that use species whose populations might be updated by other submodels
 
-        # dependencies[i] will contain the indices of rate laws that depend on reaction i
-        dependencies = {i: set() for i in range(len(self.reactions))}
+        # TODO(Arthur): exact caching: make sure works with or without caching
 
-        # updated_species[i] will contain the ids of species whose populations are updated by reaction i
-        updated_species = {i: set() for i in range(len(self.reactions))}
+        # Rate laws and reactions used by this NRM model
+        ids_of_rate_laws_used_by_self = {rxn.rate_laws[0].id for rxn in self.reactions}
+        ids_of_rxns_used_by_self = {rxn.id for rxn in self.reactions}
 
-        # used_species[species_id] will contain the indices of rate laws (rxns) that use species with id species_id
-        used_species = {species.gen_id(): set() for species in self.species}
+        # Rate laws that depend on species that can be updated by reactions or continuous changes in other submodels
+        ids_of_rls_depend_on_other_submodels = set()
+        for rxn_id, cache_keys_of_dependent_exprs in self.dynamic_model.rxn_expression_dependencies.items():
+            if rxn_id not in ids_of_rxns_used_by_self:
+                for cls_name, rate_law_id in cache_keys_of_dependent_exprs:
+                    if cls_name == DynamicRateLaw.__name__:
+                        ids_of_rls_depend_on_other_submodels.add(rate_law_id)
 
-        # initialize reaction -> species -> reaction dependency dictionaries
-        for reaction_idx, rxn in enumerate(self.reactions):
-            net_stoichiometric_coefficients = collections.defaultdict(float)
-            for participant in rxn.participants:
-                species_id = participant.species.gen_id()
-                net_stoichiometric_coefficients[species_id] += participant.coefficient
-            for species_id, net_stoich_coeff in net_stoichiometric_coefficients.items():
-                if net_stoich_coeff < 0 or 0 < net_stoich_coeff:
-                    updated_species[reaction_idx].add(species_id)
-            rate_law = rxn.rate_laws[0]
-            for species in rate_law.expression.species:
-                species_id = species.gen_id()
-                used_species[species_id].add(reaction_idx)
+        # Dependencies of rate laws on reactions in this NRM submodel
+        rate_laws_depend_on_rxns_as_ids = {rxn_id: set() for rxn_id in ids_of_rxns_used_by_self}
+        for rxn_id, cache_keys_of_dependent_exprs in self.dynamic_model.rxn_expression_dependencies.items():
+            if rxn_id in ids_of_rxns_used_by_self:
+                for cls_name, rate_law_id in cache_keys_of_dependent_exprs:
+                    if cls_name == DynamicRateLaw.__name__:
+                        rate_laws_depend_on_rxns_as_ids[rxn_id].add(rate_law_id)
 
-        # Sequential case, with one instance each of an SSA, ODE, dFBA submodels:
-        # NRM must recompute all rate laws that depend on species in a continuous submodels
-        # get shared species from self.local_species_population
-        continuously_modeled_species = self.local_species_population.get_continuous_species()
-        for updated_species_set in updated_species.values():
-            updated_species_set |= continuously_modeled_species
+        # Ids of rate laws that must be updated when a reaction is executed by this NRM model
+        for rxn_id, dependent_rate_law_ids in rate_laws_depend_on_rxns_as_ids.items():
+            # Add rate laws that depend on species updated by other models
+            dependent_rate_law_ids.update(ids_of_rls_depend_on_other_submodels)
+            # Delete rate laws not used by this NRM model
+            dependent_rate_law_ids.intersection_update(ids_of_rate_laws_used_by_self)
 
-        # TODO: Parallel case, with multiple instances each of an SSA, ODE and dFBA submodels:
-        # NRM must recompute all rate laws that depend on species shared with any other submodel
+        # Convert ids into indices in self.reactions
+        rxn_id_to_idx = {}
+        rate_law_id_to_idx = {}
+        for idx, rxn in enumerate(self.reactions):
+            rxn_id_to_idx[rxn.id] = idx
+            rate_law_id_to_idx[rxn.rate_laws[0].id] = idx
+        # Dependencies of rate laws on reactions, identified by their indices in self.reactions
+        rate_laws_depend_on_rxns_as_indices = collections.defaultdict(set)
+        for rxn_id, dependent_rate_law_ids in rate_laws_depend_on_rxns_as_ids.items():
+            rate_laws_depend_on_rxns_as_indices[rxn_id_to_idx[rxn_id]] = \
+                {rate_law_id_to_idx[rate_law_id] for rate_law_id in dependent_rate_law_ids}
 
-        # compute reaction to rate laws dependencies
-        for reaction_idx, rxn in enumerate(self.reactions):
-            for species_id in updated_species[reaction_idx]:
-                for rate_law_idx in used_species[species_id]:
-                    dependencies[reaction_idx].add(rate_law_idx)
-
-        # TODO(Arthur): exact caching: add info from DynamicModel.obtain_dependencies()
-        # make sure works with or without caching
-        # add additional dependencies that propagate through expressions
-        rxn_id_to_idx = {rxn.id: rxn_idx for rxn_idx, rxn in enumerate(self.reactions)}
-        rate_law_id_to_idx = {rxn.rate_laws[0].id: rxn_idx for rxn_idx, rxn in enumerate(self.reactions)}
-        for rxn_id, expr_dependencies in self.dynamic_model.rxn_expression_dependencies.items():
-            if rxn_id in rxn_id_to_idx:
-                rxn_idx = rxn_id_to_idx[rxn_id]
-                dependent_rate_laws = [id for cls_name, id in expr_dependencies if cls_name == 'DynamicRateLaw']
-                for dependent_rate_law_id in dependent_rate_laws:
-                    rate_law_idx = rate_law_id_to_idx[dependent_rate_law_id]
-                    dependencies[rxn_idx].add(rate_law_idx)
-
-        # convert dependencies into more compact and faster list of tuples
-        dependencies_list = [None] * len(self.reactions)
-        for antecedent_rxn, dependent_rxns in dependencies.items():
-            # to simplify later code remove antecedent_rxn from dependent_rxns
-            # because antecedent_rxn is handled specially
+        # Convert dependencies into more compact and faster list of tuples
+        rate_laws_depend_on_rxns_as_indices_in_seqs = [tuple()] * len(self.reactions)
+        for antecedent_rxn, dependent_rate_laws in rate_laws_depend_on_rxns_as_indices.items():
+            # remove antecedent_rxn from dependent_rate_laws to simplify schedule_next_reaction,
+            # which handles antecedent_rxn specially
             try:
-                dependent_rxns.remove(antecedent_rxn)
+                dependent_rate_laws.remove(antecedent_rxn)
             except KeyError:
                 pass
-            dependencies_list[antecedent_rxn] = tuple(dependent_rxns)
+            rate_laws_depend_on_rxns_as_indices_in_seqs[antecedent_rxn] = tuple(dependent_rate_laws)
 
-        return dependencies_list
+        return rate_laws_depend_on_rxns_as_indices_in_seqs
 
     def initialize_propensities(self):
         """ Get the initial propensities of all reactions that have enough species counts to execute
@@ -183,6 +173,7 @@ class NrmSubmodel(DynamicSubmodel):
     def initialize_execution_time_priorities(self):
         """ Initialize the NRM indexed priority queue of reactions
         """
+        self.execution_time_priority_queue = PQDict()
         for reaction_idx, propensity in enumerate(self.propensities):
             if propensity == 0:
                 self.execution_time_priority_queue[reaction_idx] = float('inf')
@@ -280,8 +271,6 @@ class NrmSubmodel(DynamicSubmodel):
         Args:
             event (:obj:`Event`): a simulation event
         """
-        # TODO(Arthur): exact caching: only if cache_invalidation is event_based
-        self.dynamic_model.cache_manager.clear_cache()
         # execute the reaction
         reaction_index = event.message.reaction_index
         self.execute_nrm_reaction(reaction_index)
