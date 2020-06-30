@@ -17,7 +17,7 @@ from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.sim_config import WCSimulationConfig
 from wc_sim.simulation import Simulation
 from wc_sim.testing.make_models import MakeModel
-from wc_sim.testing.utils import check_simul_results, plot_expected_vs_simulated
+from wc_sim.testing.utils import check_simul_results, plot_expected_vs_simulated, get_expected_dependencies
 
 
 class TestTestingUtils(unittest.TestCase):
@@ -136,3 +136,8 @@ class TestTestingUtils(unittest.TestCase):
                                 expected_property_trajectories=\
                                     {'compt_1':
                                         {'mass':[nan, nan, nan]}})
+
+    def test_expected_dependencies(self):
+        eds = get_expected_dependencies()
+        self.assertEqual(eds['DynamicStopCondition']['reaction_9'], {'stop_condition_7'})
+        self.assertEqual(eds['DynamicStopCondition']['reaction_10'], set())

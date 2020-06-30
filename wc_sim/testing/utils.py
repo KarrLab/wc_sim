@@ -9,6 +9,7 @@
 from collections import defaultdict
 from matplotlib import pyplot
 from matplotlib.backends.backend_pdf import PdfPages
+import ast
 import copy
 import math
 import numpy as np
@@ -518,7 +519,7 @@ TEMP_CONFIG_FILENAME = os.path.expanduser(os.path.join('~', '.wc', 'wc_sim.core.
 SOURCE_CONFIG_FILENAME = os.path.join(os.path.dirname(__file__), '..', '..', 'wc_sim', 'config', 'core.default.cfg')
 
 
-class ConfigFileModifier(object):
+class TempConfigFileModifier(object):
     """ Modify the core config file to easily enable testing
 
     To use, load the config information at run-time, not compile-time.
@@ -556,53 +557,16 @@ class ConfigFileModifier(object):
             pass
 
 
-# dependencies in ./fixtures/test_dependencies.xlsx
-expected_dependencies = {}
-expected_dependencies['DynamicFunction'] = \
-    {'reaction_1': {'function_4', 'function_9'},
-     'reaction_2': {'function_5', 'function_9'},
-     'reaction_3': set(),
-     'reaction_4': {'function_4', 'function_9'},
-     'reaction_5': {'function_4', 'function_9'},
-     'reaction_6': {'function_4', 'function_5', 'function_9'},
-     'reaction_7': {'function_4', 'function_9'},
-     'reaction_8': {'function_4', 'function_9'},
-     'reaction_9': set()}
-
-expected_dependencies['DynamicObservable'] = \
-    {'reaction_1': {'observable_1', 'observable_2', 'observable_6'},
-     'reaction_2': {'observable_3', 'observable_4', 'observable_5', 'observable_7'},
-     'reaction_3': {'observable_5', 'observable_7'},
-     'reaction_4': {'observable_1', 'observable_2', 'observable_6'},
-     'reaction_5': {'observable_2', 'observable_6'},
-     'reaction_6': {'observable_1', 'observable_2', 'observable_6', 'observable_3', 'observable_4',
-                    'observable_5', 'observable_7'},
-     'reaction_7': {'observable_1', 'observable_2', 'observable_6'},
-     'reaction_8': {'observable_1', 'observable_2', 'observable_6'},
-     'reaction_9': set()}
-
-expected_dependencies['DynamicRateLaw'] = \
-    {'reaction_1': {'reaction_3-forward', 'reaction_5-forward', 'reaction_7-forward'},
-     'reaction_2': {'reaction_4-forward', 'reaction_7-forward'},
-     'reaction_3': set(),
-     'reaction_4': {'reaction_3-forward', 'reaction_5-forward', 'reaction_7-forward'},
-     'reaction_5': {'reaction_5-forward', 'reaction_7-forward'},
-     'reaction_6': {'reaction_3-forward', 'reaction_4-forward', 'reaction_5-forward', 'reaction_7-forward'},
-     'reaction_7': {'reaction_3-forward', 'reaction_5-forward', 'reaction_7-forward'},
-     'reaction_8': {'reaction_3-forward', 'reaction_5-forward', 'reaction_7-forward'},
-     'reaction_9': set()}
-
-expected_dependencies['DynamicStopCondition'] = \
-    {'reaction_1': {'stop_condition_4', 'stop_condition_5'},
-     'reaction_2': {'stop_condition_5'},
-     'reaction_3': set(),
-     'reaction_4': {'stop_condition_4', 'stop_condition_5'},
-     'reaction_5': set(),
-     'reaction_6': {'stop_condition_4', 'stop_condition_5'},
-     'reaction_7': {'stop_condition_4', 'stop_condition_5'},
-     'reaction_8': {'stop_condition_4', 'stop_condition_5'},
-     'reaction_9': set()}
-
-
 def get_expected_dependencies():
-    return copy.deepcopy(expected_dependencies)
+
+    expected_dependencies_file = os.path.join(os.path.dirname(__file__), '..', '..', 'tests', 'fixtures', 'expected_dependencies.txt')
+    with open(expected_dependencies_file, 'r') as f:
+        s = f.read()
+        expected_dependencies = ast.literal_eval(s)
+
+    # replace empty strings with empty sets, which cannot be written literally
+    for expr_type, dependencies in expected_dependencies.items():
+        for rxn_id, dependent_ids in dependencies.items():
+            if dependent_ids == '':
+                expected_dependencies[expr_type][rxn_id] = set()
+    return expected_dependencies
