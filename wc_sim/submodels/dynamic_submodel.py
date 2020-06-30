@@ -71,6 +71,11 @@ class DynamicSubmodel(ApplicationSimulationObject):
     def get_state(self):
         return DynamicSubmodel.GET_STATE_METHOD_MESSAGE
 
+    def prepare(self):
+        """ If necessary, prepare a submodel after the :obj:`DynamicModel` has been fully initialized
+        """
+        pass
+
     # At any time instant, event messages are processed in this order
     # TODO(Arthur): cover after MVP wc_sim done
     event_handlers = [(message_types.GetCurrentProperty, 'handle_get_current_prop_event')]  # pragma: no cover
@@ -151,7 +156,7 @@ class DynamicSubmodel(ApplicationSimulationObject):
         return self.rates
 
     # These methods - enabled_reaction, identify_enabled_reactions, execute_reaction - are used
-    # by discrete time submodels like SsaSubmodel and the SkeletonSubmodel.
+    # by discrete time submodels like SsaSubmodel and NrmSubmodel.
     def enabled_reaction(self, reaction):
         """ Determine whether the cell state has adequate species counts to run a reaction
 
@@ -210,18 +215,8 @@ class DynamicSubmodel(ApplicationSimulationObject):
         except DynamicSpeciesPopulationError as e:
             raise DynamicMultialgorithmError(self.time, "dynamic submodel '{}' cannot execute reaction: {}: {}".format(
                 self.id, reaction.id, e))
-        # call flush_cache_for_reaction() to flush expression values that depend on reaction from cache
-        self.flush_cache_for_reaction(reaction)
-
-    # TODO(Arthur): exact caching: done: method to flush entries that depend on reaction from cache
-    def flush_cache_for_reaction(self, reaction):
-        """ Flush dynamic expressions that depends on species in `reaction` from the `DynamicModel` expression cache
-
-        Args:
-            reaction (:obj:`Reaction`): the reaction being executed
-        """
-        if reaction.id in self.dynamic_model.rxn_expression_dependencies:
-            self.dynamic_model.cache_manager.flush(self.dynamic_model.rxn_expression_dependencies[reaction.id])
+        # TODO(Arthur): exact caching: done: flush entries that depend on reaction from cache
+        self.dynamic_model.flush_after_reaction(reaction)
 
     # TODO(Arthur): cover after MVP wc_sim done
     def handle_get_current_prop_event(self, event):   # pragma: no cover    not used

@@ -82,7 +82,10 @@ class DsaSubmodel(DynamicSubmodel):
         # todo: don't schedule reactions that can't execute - requires predictions of the future populations
         for reaction in self.reactions:
             rate = self.calc_reaction_rate(reaction)
-            dt = 1.0/(2 * rate)
+            if 0 < rate:
+                dt = 1.0/(2 * rate)
+            else:
+                dt = float('inf')
             reaction_index = self.reaction_table[reaction.id]
             self.schedule_ExecuteDsaReaction(dt, reaction_index)
 
@@ -95,8 +98,7 @@ class DsaSubmodel(DynamicSubmodel):
         Raises:
             :obj:`DynamicMultialgorithmError:` if the reaction does not have sufficient reactants to execute
         """
-        # TODO(Arthur): exact caching: only if cache_invalidation is event_based
-        self.dynamic_model.cache_manager.clear_cache()
+        # TODO(Arthur): exact caching: remove
         # reaction_index is the reaction to execute
         reaction_index = event.message.reaction_index
         # execute reaction if it is enabled
@@ -124,6 +126,9 @@ class DsaSubmodel(DynamicSubmodel):
         """
         # todo: don't schedule reactions that can't execute - requires predictions of the future populations
         rate = self.calc_reaction_rate(reaction)
-        dt = 1.0/rate
+        if 0 < rate:
+            dt = 1.0/rate
+        else:
+            dt = float('inf')
         reaction_index = self.reaction_table[reaction.id]
         self.schedule_ExecuteDsaReaction(dt, reaction_index)
