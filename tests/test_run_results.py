@@ -244,6 +244,7 @@ class TestRunResults(unittest.TestCase):
         with CaptureOutput(relay=False) as capturer:
             self.assertFalse(run_results_dsa_1.semantically_equal(run_results_dsa_2, debug=True))
             self.assertRegex(capturer.get_text(), "metadata .* instances are not semantically equal")
+        self.assertFalse(run_results_dsa_1.semantically_equal(run_results_dsa_2))
 
     def test_dataframes_are_close(self):
         # test columns and index differ
