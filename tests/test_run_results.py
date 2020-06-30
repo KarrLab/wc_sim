@@ -49,7 +49,7 @@ class TestRunResults(unittest.TestCase):
             cls.results_dir_1_cmpt = simulation.run(time_max=cls.max_time,
                                                     results_dir=tempfile.mkdtemp(dir=cls.temp_dir),
                                                     checkpoint_period=cls.checkpoint_period,
-                                                    verbose=True).results_dir
+                                                    verbose=False).results_dir
 
         # run a simulation whose aggregate states vary over time
         exchange_rxn_model = os.path.join(os.path.dirname(__file__), 'fixtures', 'dynamic_tests',
@@ -213,17 +213,37 @@ class TestRunResults(unittest.TestCase):
         self.assertEqual(sim_metadata['de_sim_metadata']['simulation_config']['time_max'], self.max_time)
 
     # TODO(Arthur): exact caching:
-    def test_eq(self):
-        self.assertEqual(self.run_results_1_cmpt, self.run_results_1_cmpt)
-        self.assertEqual(self.run_results_dyn_aggr, self.run_results_dyn_aggr)
-        self.assertNotEqual(self.run_results_1_cmpt, self.run_results_dyn_aggr)
-        # TODO(Arthur): exact caching: make small change to each RR component
-
     def test_semantically_equal(self):
         self.assertTrue(self.run_results_1_cmpt.semantically_equal(self.run_results_1_cmpt))
         self.assertTrue(self.run_results_dyn_aggr.semantically_equal(self.run_results_dyn_aggr))
         self.assertFalse(self.run_results_dyn_aggr.semantically_equal(self.run_results_1_cmpt))
         self.assertFalse(self.run_results_dyn_aggr.semantically_equal(1))
+        with CaptureOutput(relay=False) as capturer:
+            self.assertFalse(self.run_results_dyn_aggr.semantically_equal(self.run_results_1_cmpt, debug=True))
+            self.assertIn('components are not close', capturer.get_text())
+
+        # create and run simulations with different metadata, by adding seed
+        model = MakeModel.make_test_model('2 species, 1 reaction',
+                                          init_vol_stds=[0],
+                                          default_species_std=0,
+                                          submodel_framework='WC:deterministic_simulation_algorithm')
+        simulation = Simulation(model)
+        new_tmp_dir = os.path.join(tempfile.mkdtemp(dir=self.temp_dir), 'empty_dir')
+        run_kwargs = dict(time_max=5,
+                          results_dir=new_tmp_dir,
+                          checkpoint_period=self.checkpoint_period,
+                          verbose=False,
+                          progress_bar=True)
+        run_results_dsa_1 = RunResults(simulation.run(**run_kwargs).results_dir)
+
+        simulation = Simulation(model)
+        new_tmp_dir = os.path.join(tempfile.mkdtemp(dir=self.temp_dir), 'empty_dir')
+        run_kwargs['results_dir'] = new_tmp_dir
+        run_kwargs['seed'] = 2
+        run_results_dsa_2 = RunResults(simulation.run(**run_kwargs).results_dir)
+        with CaptureOutput(relay=False) as capturer:
+            self.assertFalse(run_results_dsa_1.semantically_equal(run_results_dsa_2, debug=True))
+            self.assertRegex(capturer.get_text(), "metadata .* instances are not semantically equal")
 
     def test_dataframes_are_close(self):
         # test columns and index differ

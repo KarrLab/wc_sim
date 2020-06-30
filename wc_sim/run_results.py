@@ -377,25 +377,6 @@ class RunResults(object):
         functions_df = function_make_df.finish()
         return (population_df, observables_df, functions_df, aggregate_states_df, random_states_s)
 
-    # TODO(Arthur): exact caching: add metadata elements
-    def __eq__(self, other):
-        """ Determine whether two `RunResults` objects are semantically equal
-
-        Args:
-            other (:obj:`Object`): other object
-
-        Returns:
-            :obj:`bool`: true if `RunResults` objects are semantically equal
-        """
-        if other.__class__ is not self.__class__:
-            return False
-
-        for component in RunResults.COMPONENTS:
-            if component != 'random_states' and not self.run_results[component].equals(other.run_results[component]):
-                return False
-
-        return True
-
     # TODO(Arthur): exact caching: add approximate match
     def semantically_equal(self, other, debug=False):
         """ Are the predictions and metadata in two :obj:`RunResults` objects semantically equal?
