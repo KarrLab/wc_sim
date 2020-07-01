@@ -20,6 +20,7 @@ class ValidateWcLangFilesTestCase(unittest.TestCase):
         {'path': 'tests/fixtures/2_species_1_reaction_with_rates_given_by_reactant_population.xlsx'},
         {'path': 'tests/fixtures/2_species_a_pair_of_symmetrical_reactions_rates_given_by_reactant_population.xlsx'},
         {'path': 'tests/fixtures/MetabolismAndGeneExpression.xlsx'},
+        {'path': 'tests/fixtures/test_dependencies.xlsx'},
         {'path': 'tests/fixtures/test_dry_model.xlsx'},
         {'path': 'tests/fixtures/test_dry_model_with_mass_computation.xlsx',
          'ignore_extra_models': True},

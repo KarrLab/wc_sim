@@ -377,7 +377,6 @@ class RunResults(object):
         functions_df = function_make_df.finish()
         return (population_df, observables_df, functions_df, aggregate_states_df, random_states_s)
 
-    # TODO(Arthur): exact caching: add approximate match
     def semantically_equal(self, other, debug=False):
         """ Are the predictions and metadata in two :obj:`RunResults` objects semantically equal?
 
@@ -397,7 +396,6 @@ class RunResults(object):
             return False
 
         for component in RunResults.COMPONENTS:
-            # TODO(Arthur): exact caching: tune tolerances for each component
             if component != 'random_states':
                 if not self.dataframes_are_close(self.get(component), other.get(component)):
                     if debug:

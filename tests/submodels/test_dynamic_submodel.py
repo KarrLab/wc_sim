@@ -173,7 +173,6 @@ class TestDynamicSubmodelStatically(unittest.TestCase):
         # test reaction in which a species appears multiple times
         self.do_test_execute_reaction('reaction_2', {'species_1[c]': 1, 'species_3[c]': 1})
 
-    # TODO(Arthur): exact caching: done:
     def test_flush_after_reaction(self):
         self.config_file_modifier.write_test_config_file([('expression_caching', 'True'),
                                                           ('cache_invalidation', "'reaction_dependency_based'")])
@@ -282,7 +281,6 @@ class TestDsaSubmodel(unittest.TestCase):
         dsa_submodel = multialgorithm_simulation.dynamic_model.dynamic_submodels['submodel_2']
         self.assertEqual(dsa_submodel.options, expected)
 
-    # TODO(Arthur): exact caching: test with all 3 levels of caching
     def test_rate_eq_0(self):
         # Disable caching so Parameter values and RateLaws are not cached
         self.dsa_submodel.dynamic_model._stop_caching()

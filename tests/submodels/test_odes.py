@@ -117,7 +117,6 @@ class TestOdeSubmodel(unittest.TestCase):
             pop_change_rate_spec_1 = pop_change_rates[1]
 
     def do_test_compute_population_change_rates_control_caching(self, caching_settings):
-        # TODO(Arthur): exact caching: test with all 3 levels of caching
         ### test with caching specified by caching_settings ###
         self.config_file_modifier.write_test_config_file(caching_settings)
 

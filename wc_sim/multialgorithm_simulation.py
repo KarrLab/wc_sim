@@ -200,6 +200,9 @@ class MultialgorithmSimulation(object):
                 self.wc_sim_config.de_simulation_config.output_dir,
                 self.wc_sim_config.checkpoint_period)
         self.dynamic_model.dynamic_submodels = self.create_dynamic_submodels()
+        self.dynamic_model.prepare_dependencies(self.model)
+        for dynamic_submodel in self.dynamic_model.dynamic_submodels.values():
+            dynamic_submodel.prepare()
 
     def molecular_weights_for_species(self, species=None):
         """ Obtain the molecular weights for species with specified ids

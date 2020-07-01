@@ -61,7 +61,6 @@ class TestNrmSubmodel(unittest.TestCase):
         dependencies = self.nrm_submodel.determine_dependencies()
         self.assertEqual(dependencies, expected_dependencies_1)
 
-        # TODO(Arthur): exact caching:
         # test dependencies indirectly propagated through expressions
         dependencies_mdl_file = os.path.join(os.path.dirname(__file__), '..', 'fixtures',
                                              'test_dependencies.xlsx')
@@ -141,7 +140,6 @@ class TestNrmSubmodel(unittest.TestCase):
         _, dynamic_model = self.make_sim_w_nrm_submodel(test_props_eq_0_model)
         nrm_submodel_0_props = dynamic_model.dynamic_submodels['nrm_submodel']
 
-        # TODO(Arthur): exact caching: test with all 3 levels of caching
         # stop caching for this test, because it repeatedly updates populations & no invalidation is done
         dynamic_model._stop_caching()
 

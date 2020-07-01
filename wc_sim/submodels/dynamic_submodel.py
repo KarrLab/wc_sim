@@ -215,7 +215,7 @@ class DynamicSubmodel(ApplicationSimulationObject):
         except DynamicSpeciesPopulationError as e:
             raise DynamicMultialgorithmError(self.time, "dynamic submodel '{}' cannot execute reaction: {}: {}".format(
                 self.id, reaction.id, e))
-        # TODO(Arthur): exact caching: done: flush entries that depend on reaction from cache
+        # flush entries that depend on reaction from cache
         self.dynamic_model.flush_after_reaction(reaction)
 
     # TODO(Arthur): cover after MVP wc_sim done

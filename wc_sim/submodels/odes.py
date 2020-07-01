@@ -232,7 +232,6 @@ class OdeSubmodel(DynamicSubmodel):
         temporary_populations = dict(zip(self.ode_species_ids, self.non_negative_populations))
         with TempPopulationsLSP(self.local_species_population, temporary_populations):
 
-            # TODO(Arthur): exact caching:
             # flush expressions that depend on species and reactions modeled by this ODE submodel from cache
             self.dynamic_model.ode_flush_after_populations_change(self.id)
 
@@ -279,7 +278,6 @@ class OdeSubmodel(DynamicSubmodel):
             self.adjustments[species_id] = population_change_rates[idx]
         self.local_species_population.adjust_continuously(self.time, self.adjustments)
 
-        # TODO(Arthur): exact caching:
         # flush expressions that depend on species and reactions modeled by this ODE submodel from cache
         self.dynamic_model.ode_flush_after_populations_change(self.id)
 

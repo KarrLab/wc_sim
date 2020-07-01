@@ -512,7 +512,6 @@ def plot_expected_vs_simulated(dynamic_model,
     return plots_dir
 
 
-# TODO(Arthur): exact caching:
 # TODO(Arthur): unittest; make context manager that removes temp file; move to wc_utils
 # utility for changing config values when testing
 TEMP_CONFIG_FILENAME = os.path.expanduser(os.path.join('~', '.wc', 'wc_sim.core.cfg'))

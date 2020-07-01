@@ -976,6 +976,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
 
     # TODO(Arthur): don't need compartment_id, because compartment is part of the species_ids
     # TODO(Arthur): to speed-up convert species ids, molecular weights and populations into arrays
+    # TODO(Arthur): raise an error if time is in the future
     def compartmental_mass(self, compartment_id, species_ids=None, time=None):
         """ Compute the current mass of some, or all, species in a compartment
 

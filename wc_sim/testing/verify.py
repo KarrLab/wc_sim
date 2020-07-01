@@ -478,7 +478,7 @@ class SsaEnsemble(object):
     def convert_ssa_submodels_to_nrm(model):
         for submodel in model.submodels:
             if are_terms_equivalent(submodel.framework, onto['WC:stochastic_simulation_algorithm']):
-                submodel.framework = framework=onto['WC:next_reaction_method']
+                submodel.framework = onto['WC:next_reaction_method']
 
     @staticmethod
     def run(model, simul_kwargs, tmp_results_dir, num_runs):

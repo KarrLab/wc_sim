@@ -51,7 +51,6 @@ class NrmSubmodel(DynamicSubmodel):
 
     event_handlers = [(message_types.ExecuteAndScheduleNrmReaction, 'handle_ExecuteAndScheduleNrmReaction_msg')]
 
-    # TODO(Arthur): exact caching:
     def __init__(self, id, dynamic_model, reactions, species, dynamic_compartments,
                  local_species_population):
         """ Initialize an NRM submodel object
@@ -99,8 +98,7 @@ class NrmSubmodel(DynamicSubmodel):
             :obj:`list` of :obj:`tuple`: entry i provides the indices of reactions whose
                 rate laws depend on the execution of reaction i, not including reaction i itself
         """
-
-        # TODO(Arthur): exact caching: make sure works with or without caching
+        # TODO(Arthur): exact caching: make sure works with any caching setting
 
         # Rate laws and reactions used by this NRM model
         ids_of_rate_laws_used_by_self = {rxn.rate_laws[0].id for rxn in self.reactions}

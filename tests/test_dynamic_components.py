@@ -10,6 +10,7 @@
 from math import log
 from scipy.constants import Avogadro
 import copy
+import math
 import numpy
 import numpy.testing
 import os
@@ -30,14 +31,15 @@ from wc_lang.io import Reader
 from wc_onto import onto
 from wc_sim.dynamic_components import (SimTokCodes, WcSimToken, DynamicComponent, DynamicExpression,
                                        DynamicModel, DynamicSpecies, DynamicFunction, DynamicParameter,
-                                       DynamicCompartment, DynamicStopCondition, CacheManager, InvalidationApproaches)
+                                       DynamicCompartment, DynamicStopCondition, CacheManager,
+                                       InvalidationApproaches, CachingEvents)
 from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.run_results import RunResults
 from wc_sim.sim_config import WCSimulationConfig
 from wc_sim.simulation import Simulation
 from wc_sim.species_populations import LocalSpeciesPopulation, MakeTestLSP
-from wc_sim.testing.utils import read_model_for_test, ConfigFileModifier
+from wc_sim.testing.utils import read_model_for_test, TempConfigFileModifier, get_expected_dependencies
 from wc_utils.util.rand import RandomStateManager
 from wc_utils.util.units import unit_registry
 import obj_tables
@@ -526,7 +528,6 @@ class TestInitializedDynamicCompartment(unittest.TestCase):
                                                          random_state=RandomStateManager.instance())
         dynamic_compartment = DynamicCompartment(self.dynamic_model, self.random_state, self.compartment)
 
-        # TODO(Arthur): exact caching:
         # stop caching to ignore any cached value for DynamicCompartment.accounted_mass()
         self.dynamic_model.cache_manager._stop_caching()
         with self.assertRaisesRegex(MultialgorithmError, "initial accounted ratio is 0"):
@@ -597,10 +598,9 @@ class TestDynamicModel(unittest.TestCase):
 
     def setUp(self):
         self.test_dir = tempfile.mkdtemp()
-        self.config_file_modifier = ConfigFileModifier()
+        self.config_file_modifier = TempConfigFileModifier()
 
     def tearDown(self):
-        # TODO(Arthur): exact caching:
         shutil.rmtree(self.test_dir)
         self.config_file_modifier.clean_up()
 
@@ -608,11 +608,9 @@ class TestDynamicModel(unittest.TestCase):
         # read and initialize a model
         model = TestDynamicModel.models[model_filename]
         de_simulation_config = SimulationConfig(time_max=10)
-        wc_sim_config = WCSimulationConfig(de_simulation_config)
+        wc_sim_config = WCSimulationConfig(de_simulation_config, ode_time_step=2, dfba_time_step=5)
         multialgorithm_simulation = MultialgorithmSimulation(model, wc_sim_config)
-        multialgorithm_simulation.initialize_components()
-        dynamic_model = DynamicModel(model, multialgorithm_simulation.local_species_population,
-                                     multialgorithm_simulation.temp_dynamic_compartments)
+        _, dynamic_model = multialgorithm_simulation.build_simulation()
         return model, dynamic_model
 
     def compute_expected_actual_masses(self, model_filename):
@@ -653,7 +651,6 @@ class TestDynamicModel(unittest.TestCase):
             DynamicModel(model, multialgorithm_simulation.local_species_population,
                          multialgorithm_simulation.temp_dynamic_compartments)
 
-    # TODO(Arthur): exact caching: done:
     def test_obtain_dependencies(self):
         def sub_dependencies(dependencies, model_type):
             """ Extract the dependencies for models of type model_type """
@@ -669,78 +666,168 @@ class TestDynamicModel(unittest.TestCase):
         _, dynamic_model = self.make_dynamic_model(self.DEPENDENCIES_MDL_FILE)
         dependencies = dynamic_model.obtain_dependencies(self.models[self.DEPENDENCIES_MDL_FILE])
 
-        expected_dependencies = {}
-        expected_dependencies['DynamicFunction'] = \
-            {'reaction_1': {'function_4', 'function_9'},
-             'reaction_2': {'function_5', 'function_9'},
-             'reaction_3': set(),
-             'reaction_4': {'function_4', 'function_9'},
-             'reaction_5': {'function_4', 'function_9'},
-             'reaction_6': {'function_4', 'function_5', 'function_9'},
-             'reaction_7': {'function_4', 'function_9'},
-             'reaction_8': {'function_4', 'function_9'}}
+        # remove rxns with no dependencies from expected_dependencies, as obtain_dependencies() does
+        # reaction_10 has no dependencies
+        expected_dependencies = get_expected_dependencies()
+        for model_type in expected_dependencies:
+            del expected_dependencies[model_type]['reaction_10']
 
-        expected_dependencies['DynamicObservable'] = \
-            {'reaction_1': {'observable_1', 'observable_2', 'observable_6'},
-             'reaction_2': {'observable_3', 'observable_4', 'observable_5', 'observable_7'},
-             'reaction_3': {'observable_5', 'observable_7'},
-             'reaction_4': {'observable_1', 'observable_2', 'observable_6'},
-             'reaction_5': {'observable_2', 'observable_6'},
-             'reaction_6': {'observable_1', 'observable_2', 'observable_6', 'observable_3', 'observable_4',
-                            'observable_5', 'observable_7'},
-             'reaction_7': {'observable_1', 'observable_2', 'observable_6'},
-             'reaction_8': {'observable_1', 'observable_2', 'observable_6'}}
-
-        expected_dependencies['DynamicRateLaw'] = \
-            {'reaction_1': {'reaction_3-forward', 'reaction_5-forward', 'reaction_7-forward'},
-             'reaction_2': {'reaction_4-forward', 'reaction_7-forward'},
-             'reaction_3': set(),
-             'reaction_4': {'reaction_3-forward', 'reaction_5-forward', 'reaction_7-forward'},
-             'reaction_5': {'reaction_5-forward', 'reaction_7-forward'},
-             'reaction_6': {'reaction_3-forward', 'reaction_4-forward', 'reaction_5-forward', 'reaction_7-forward'},
-             'reaction_7': {'reaction_3-forward', 'reaction_5-forward', 'reaction_7-forward'},
-             'reaction_8': {'reaction_3-forward', 'reaction_5-forward', 'reaction_7-forward'}}
-
-        expected_dependencies['DynamicStopCondition'] = \
-            {'reaction_1': {'stop_condition_4', 'stop_condition_5'},
-             'reaction_2': {'stop_condition_5'},
-             'reaction_3': set(),
-             'reaction_4': {'stop_condition_4', 'stop_condition_5'},
-             'reaction_5': set(),
-             'reaction_6': {'stop_condition_4', 'stop_condition_5'},
-             'reaction_7': {'stop_condition_4', 'stop_condition_5'},
-             'reaction_8': {'stop_condition_4', 'stop_condition_5'}}
-        # reaction_9 is not in expected_dependencies because no expressions depend on
-        # it and DynamicModel.obtain_dependencies() removes such reactions from the dependencies
-
-        self.maxDiff = None
-        for model_type in ('DynamicFunction', 'DynamicObservable', 'DynamicRateLaw', 'DynamicStopCondition'):
+        for model_type in ('DynamicFunction', 'DynamicObservable', 'DynamicRateLaw', 'DynamicStopCondition',
+                           'DynamicCompartment'):
             self.assertEqual(sub_dependencies(dependencies, model_type), expected_dependencies[model_type])
 
         self.assertEqual(dynamic_model.rxn_expression_dependencies, dependencies)
 
-    def test_expression_dependencies(self):
-        # TODO(Arthur): exact caching:
-        # ensure that a model with expressions that depend on reactions generates
-        # the same results with and without caching
-        # test dsa
-        simulation = Simulation(self.DEPENDENCIES_MDL_FILE)
-        # expression caching ON:
-        self.config_file_modifier.write_test_config_file([('expression_caching', 'True')])
-        results_dir = tempfile.mkdtemp(dir=self.test_dir)
-        simulation_rv = simulation.run(time_max=6, results_dir=results_dir, checkpoint_period=2)
-        run_results_on = RunResults(simulation_rv.results_dir)
-        # expression caching OFF:
+    def test_continuous_reaction_dependencies(self):
+        _, dynamic_model = self.make_dynamic_model(self.DEPENDENCIES_MDL_FILE)
+
+        ode_submodel = dynamic_model.dynamic_submodels['ode_submodel']
+        ode_reactions = [rxn.id for rxn in ode_submodel.reactions]
+        continous_rxn_dependencies = {}
+        continous_rxn_dependencies['ode_submodel'] = set()
+        expected_dependencies = get_expected_dependencies()
+        for expr_type_name, dependencies in expected_dependencies.items():
+            for rxn_id, dependent_ids in dependencies.items():
+                if rxn_id in ode_reactions:
+                    for dependent_id in dependent_ids:
+                        continous_rxn_dependencies['ode_submodel'].add((expr_type_name, dependent_id))
+        self.assertEqual(dynamic_model.continuous_reaction_dependencies(), continous_rxn_dependencies)
+
+    def test_flush_operations(self):
+        NOT_FOUND = 'not found'
+        def get_cached_masses(dynamic_model):
+            values = {}
+            for compt_id in dynamic_model.dynamic_compartments:
+                compt_mass_key = CacheManager.key_from_class(DynamicCompartment, compt_id)
+                try:
+                    values[compt_mass_key] = dynamic_model.cache_manager.get(DynamicCompartment, compt_id)
+                except MultialgorithmError as e:
+                    values[compt_mass_key] = NOT_FOUND
+            return values
+
+        def evaluate_some_expressions(dynamic_model, submodel_id):
+            """ Evaluate some expressions """
+            dsa_submodel = dynamic_model.dynamic_submodels[submodel_id]
+            dsa_submodel.calc_reaction_rates()
+
+        dsa_submodel_id = 'dsa_submodel'
+        ode_submodel_id = 'ode_submodel'
+
+
+        ### test NO CACHING ###
+        # all flush methods do nothing
         self.config_file_modifier.write_test_config_file([('expression_caching', 'False')])
+        model, dynamic_model = self.make_dynamic_model(self.DEPENDENCIES_MDL_FILE)
+        cached_masses = get_cached_masses(dynamic_model)
+        dynamic_model.flush_compartment_masses()
+        self.assertEqual(cached_masses, get_cached_masses(dynamic_model))
+
+        reaction = model.get_reactions(id='reaction_1')[0]
+        dynamic_model.flush_after_reaction(reaction)
+        self.assertEqual(len(dynamic_model.cache_manager._cache), 0)
+
+        dynamic_model.ode_flush_after_populations_change(ode_submodel_id)
+        self.assertEqual(len(dynamic_model.cache_manager._cache), 0)
+
+
+        ### test EVENT_BASED invalidation ###
+        self.config_file_modifier.write_test_config_file([('expression_caching', 'True'),
+                                                          ('cache_invalidation', 'event_based')])
+        model, dynamic_model = self.make_dynamic_model(self.DEPENDENCIES_MDL_FILE)
+        evaluate_some_expressions(dynamic_model, dsa_submodel_id)
+
+        # when using EVENT_BASED invalidation, flush_compartment_masses does nothing
+        cached_masses = get_cached_masses(dynamic_model)
+        dynamic_model.flush_compartment_masses()
+        self.assertEqual(cached_masses, get_cached_masses(dynamic_model))
+
+        # when using EVENT_BASED invalidation, flush_after_reaction empties cache
+        reaction = model.get_reactions(id='reaction_1')[0]
+        dynamic_model.flush_after_reaction(reaction)
+        self.assertEqual(len(dynamic_model.cache_manager._cache), 0)
+
+        # when using EVENT_BASED invalidation, ode_flush_after_populations_change empties cache
+        evaluate_some_expressions(dynamic_model, ode_submodel_id)
+        dynamic_model.ode_flush_after_populations_change(ode_submodel_id)
+        self.assertEqual(len(dynamic_model.cache_manager._cache), 0)
+
+
+        ### test REACTION_DEPENDENCY_BASED invalidation ###
+        self.config_file_modifier.write_test_config_file([('expression_caching', 'True'),
+                                                          ('cache_invalidation', 'reaction_dependency_based')])
+        model, dynamic_model = self.make_dynamic_model(self.DEPENDENCIES_MDL_FILE)
+        evaluate_some_expressions(dynamic_model, dsa_submodel_id)
+
+        # when using REACTION_DEPENDENCY_BASED invalidation,
+        # flush_compartment_masses deletes all compartment mass cache entries
+        cached_masses = get_cached_masses(dynamic_model)
+        for key in cached_masses:
+            cached_masses[key] = NOT_FOUND
+        dynamic_model.flush_compartment_masses()
+        self.assertEqual(cached_masses, get_cached_masses(dynamic_model))
+
+        # when using REACTION_DEPENDENCY_BASED invalidation, flush_after_reaction flushes dependent expressions
+        # reaction_10 has no dependencies
+        reaction = model.get_reactions(id='reaction_10')[0]
+        cache_copy = copy.deepcopy(dynamic_model.cache_manager._cache)
+        dynamic_model.flush_after_reaction(reaction)
+        self.assertEqual(dynamic_model.cache_manager._cache, cache_copy)
+
+        def get_rxn_dependencies(reaction_ids):
+            expected_dependencies = get_expected_dependencies()
+            cache_keys_of_dependent_exprs = set()
+            for class_id, dependencies in expected_dependencies.items():
+                for rxn_id in reaction_ids:
+                    for expr_id in dependencies[rxn_id]:
+                        cache_keys_of_dependent_exprs.add((class_id, expr_id))
+            return cache_keys_of_dependent_exprs
+
+        reaction = model.get_reactions(id='reaction_1')[0]
+        dynamic_model.flush_after_reaction(reaction)
+        for cache_key in get_rxn_dependencies(['reaction_1']):
+            self.assertNotIn(cache_key, dynamic_model.cache_manager._cache)
+
+        # when using REACTION_DEPENDENCY_BASED invalidation, ode_flush_after_populations_change flushes
+        # expressions that depend on the continuous submodel calling it
+        evaluate_some_expressions(dynamic_model, ode_submodel_id)
+        dynamic_model.ode_flush_after_populations_change(ode_submodel_id)
+        for cache_key in get_rxn_dependencies(['reaction_3', 'reaction_8']):
+            self.assertNotIn(cache_key, dynamic_model.cache_manager._cache)
+
+    def do_test_expression_dependency_dynamics(self, model, time_max, alternative_caching_settings):
+        ### test with caching specified by alternative_caching_settings ###
+        simulation = Simulation(model)
         results_dir = tempfile.mkdtemp(dir=self.test_dir)
-        simulation_rv = simulation.run(time_max=6, results_dir=results_dir, checkpoint_period=2)
-        run_results_off = RunResults(simulation_rv.results_dir)
-        self.assertEqual(run_results_on, run_results_off)
+        kwargs = dict(time_max=time_max, results_dir=results_dir, checkpoint_period=2,
+                      ode_time_step=2, progress_bar=True, verbose=True)
+        self.config_file_modifier.write_test_config_file([('expression_caching', 'False')])
+        run_results_no_caching = RunResults(simulation.run(**kwargs).results_dir)
+        self.config_file_modifier.clean_up()
+        for caching_settings in alternative_caching_settings:
+            self.config_file_modifier.write_test_config_file(caching_settings)
+            kwargs['results_dir'] = tempfile.mkdtemp(dir=self.test_dir)
+            run_results_caching = RunResults(simulation.run(**kwargs).results_dir)
+            self.config_file_modifier.clean_up()
+            self.assertTrue(run_results_no_caching.semantically_equal(run_results_caching, debug=True))
 
-        # TODO: test ssa, nrm, and odes
+    def test_expression_dependency_dynamics(self):
+        # ensure that models with expressions that depend on reactions generates
+        # the same results with and without caching
+        alternative_caching_settings = ([('expression_caching', 'True'),
+                                         ('cache_invalidation', 'event_based')],
+                                        [('expression_caching', 'True'),
+                                         ('cache_invalidation', 'reaction_dependency_based')])
 
-    def test_dynamic_components(self):
-        # test agregate properties like mass and volume against independent calculations of their values
+        # test DSA and ODE
+        self.do_test_expression_dependency_dynamics(self.DEPENDENCIES_MDL_FILE, 6, alternative_caching_settings)
+        # test H1 model, modified to remove stochasticity
+        # TODO(Arthur): test H1 model after addressing "Insufficient reactants to execute reaction" problem
+        MOCK_H1_HESC_MODEL = os.path.join(os.path.dirname(__file__), 'fixtures', 'mock_h1_hesc_model_deterministic.xlsx')
+        # self.do_test_expression_dependency_dynamics(MOCK_H1_HESC_MODEL, alternative_caching_settings)
+        # TODO(Arthur): exact caching: test ssa, nrm, and odes hybrid
+
+    def test_agregate_properties(self):
+        # test aggregate properties like mass and volume against independent calculations of their values
         # calculations made in the model's spreadsheet
 
         # read model while ignoring missing models
@@ -830,12 +917,11 @@ class TestDynamicModel(unittest.TestCase):
 class TestCacheManager(unittest.TestCase):
 
     def setUp(self):
-        self.config_file_modifier = ConfigFileModifier()
+        self.config_file_modifier = TempConfigFileModifier()
 
     def tearDown(self):
         self.config_file_modifier.clean_up()
 
-    # TODO(Arthur): exact caching: done: change
     def test_staticmethods(self):
         class DynamicExample(object):
             def __init__(self, id):
@@ -847,21 +933,24 @@ class TestCacheManager(unittest.TestCase):
 
     def test(self):
         ### test arguments
-        cache_manager = CacheManager(cache_expressions=False)
+        cache_manager = CacheManager(caching_active=False)
         self.assertEqual(cache_manager.caching(), False)
 
         for cache_invalidation in ('reaction_dependency_based', 'event_based'):
-            cache_manager = CacheManager(cache_expressions=True, cache_invalidation=cache_invalidation)
+            cache_manager = CacheManager(caching_active=True, cache_invalidation=cache_invalidation)
             self.assertEqual(cache_manager.caching(), True)
             self.assertTrue(isinstance(cache_manager.cache_invalidation, InvalidationApproaches))
+            self.assertEqual(cache_manager.invalidation_approach(), cache_manager.cache_invalidation)
 
         ### test no caching
-        cache_manager = CacheManager(cache_expressions=False)
+        cache_manager = CacheManager(caching_active=False)
         self.assertEqual(cache_manager.caching(), False)
         self.assertEqual(cache_manager.get(DynamicStopCondition, 'x'), None)
         self.assertEqual(cache_manager.set(DynamicStopCondition, 'y', 0), None)
-        self.assertEqual(cache_manager.flush(['x', 'y']), None)
+        self.assertEqual(cache_manager.flush([]), None)
+        self.assertEqual(cache_manager.flush([CacheManager.key_from_class(DynamicStopCondition, 'y')]), None)
         self.assertEqual(cache_manager.clear_cache(), None)
+        self.assertEqual(cache_manager.invalidate(), None)
 
         def test_get_set(test_case, cache_manager):
             # test 'set' and 'get', which don't depend on the invalidation approach
@@ -889,10 +978,6 @@ class TestCacheManager(unittest.TestCase):
             with test_case.assertRaisesRegex(MultialgorithmError, 'key .* not in cache'):
                 cache_manager.get(DynamicStopCondition, 'not_id')
 
-            expected = ('DynamicFunction', 'HIT\tMISS', '0', '3')   # DynamicFunction HIT 3 times
-            for e in expected:
-                self.assertIn(e, cache_manager.cache_stats_table())
-
             return cache_keys
 
         def test_cache_settings(test_case, cache_manager):
@@ -904,33 +989,50 @@ class TestCacheManager(unittest.TestCase):
             cache_manager._start_caching()
             test_case.assertEqual(cache_manager.caching(), True)
 
-        ### test event_based caching
-        cache_manager = CacheManager(cache_expressions=True, cache_invalidation='event_based')
+        ### test flush
+        cache_manager = CacheManager(caching_active=True, cache_invalidation='event_based')
         self.assertEqual(cache_manager.caching(), True)
-        self.assertEqual(cache_manager.cache_invalidation, InvalidationApproaches.event_based)
+        self.assertEqual(cache_manager.cache_invalidation, InvalidationApproaches.EVENT_BASED)
         cache_keys = test_get_set(self, cache_manager)
-        # flush should do nothing
-        cache_copy = copy.deepcopy(cache_manager._cache)
+        # flush should empty the cache
         cache_manager.flush(cache_keys)
+        self.assertEqual(len(cache_manager._cache), 0)
+
+        # flush should do nothing with keys not in the cache
+        cache_manager = CacheManager(caching_active=True, cache_invalidation='event_based')
+        test_get_set(self, cache_manager)
+        cache_keys_not_in_cache = []
+        cache_keys_not_in_cache.append(CacheManager.key_from_class(DynamicFunction, 'not an id'))
+        cache_keys_not_in_cache.append(CacheManager.key_from_class(DynamicStopCondition, 'no such id'))
+        cache_copy = copy.deepcopy(cache_manager._cache)
+        cache_manager.flush(cache_keys_not_in_cache)
         self.assertEqual(cache_manager._cache, cache_copy)
+
         # clear_cache should empty the cache
         cache_manager.clear_cache()
         self.assertEqual(len(cache_manager._cache), 0)
         test_cache_settings(self, cache_manager)
 
+        ### test event_based caching
+        cache_manager = CacheManager(caching_active=True, cache_invalidation='event_based')
+        cache_keys = test_get_set(self, cache_manager)
+        # invalidate should empty the cache
+        cache_manager.invalidate()
+        self.assertEqual(len(cache_manager._cache), 0)
+
         # test reaction_dependency_based caching
-        cache_manager = CacheManager(cache_expressions=True, cache_invalidation='reaction_dependency_based')
-        self.assertEqual(cache_manager.caching(), True)
+        cache_manager = CacheManager(caching_active=True, cache_invalidation='reaction_dependency_based')
         self.assertEqual(cache_manager.cache_invalidation, InvalidationApproaches.REACTION_DEPENDENCY_BASED)
         cache_keys = test_get_set(self, cache_manager)
-        # clear_cache should do nothing
+
+        # with no keys, invalidate should do nothing
         cache_copy = copy.deepcopy(cache_manager._cache)
-        cache_manager.clear_cache()
+        cache_manager.invalidate()
         self.assertEqual(cache_manager._cache, cache_copy)
-        # flush should empty the cache
-        cache_manager.flush(cache_keys)
+
+        # with keys in the cache, invalidate empty it
+        cache_manager.invalidate(cache_keys)
         self.assertEqual(len(cache_manager._cache), 0)
-        test_cache_settings(self, cache_manager)
 
         # test caching configured from config file
         cache_manager = CacheManager()
@@ -947,3 +1049,43 @@ class TestCacheManager(unittest.TestCase):
                                                           ('cache_invalidation', "'invalid'")])
         with self.assertRaisesRegex(MultialgorithmError, "cache_invalidation .* not in"):
             CacheManager()
+
+    def test_caching_stats(self):
+        cache_manager = CacheManager(caching_active=True, cache_invalidation='reaction_dependency_based')
+        with self.assertRaises(MultialgorithmError):
+            # MISS
+            cache_manager.get(DynamicFunction, 'df_id')
+        cache_manager.set(DynamicFunction, 'df_id', 1)
+        # HIT
+        cache_manager.get(DynamicFunction, 'df_id')
+        # FLUSH_HIT
+        cache_manager.flush([(DynamicFunction.__name__, 'df_id')])
+        # FLUSH_MISS
+        cache_manager.flush([(DynamicFunction.__name__, 'df_id')])
+
+        cache_manager._add_hit_ratios()
+        for expression_name, stats in cache_manager._cache_stats.items():
+            if expression_name == DynamicFunction.__name__:
+                self.assertEqual(stats[CachingEvents.HIT], 1)
+                self.assertEqual(stats[CachingEvents.MISS], 1)
+                self.assertEqual(stats[CachingEvents.FLUSH_HIT], 1)
+                self.assertEqual(stats[CachingEvents.FLUSH_MISS], 1)
+                self.assertEqual(stats[CachingEvents.HIT_RATIO], 1/2)
+                self.assertEqual(stats[CachingEvents.FLUSH_HIT_RATIO], 1/2)
+            else:
+                self.assertEqual(stats[CachingEvents.HIT], 0)
+                self.assertEqual(stats[CachingEvents.MISS], 0)
+                self.assertEqual(stats[CachingEvents.FLUSH_HIT], 0)
+                self.assertEqual(stats[CachingEvents.FLUSH_MISS], 0)
+                self.assertTrue(math.isnan(stats[CachingEvents.HIT_RATIO]))
+                self.assertTrue(math.isnan(stats[CachingEvents.FLUSH_HIT_RATIO]))
+
+        self.assertTrue(isinstance(cache_manager.cache_stats_table(), str))
+        cache_stats_table = cache_manager.cache_stats_table()
+        expected = ('DynamicFunction', 'HIT\tMISS', '0', '1')   # DynamicFunction HIT 1 time
+        for e in expected:
+            self.assertIn(e, cache_stats_table)
+
+        self.assertIn('caching_active:', str(cache_manager))
+        self.assertIn('cache_invalidation:', str(cache_manager))
+        self.assertIn('cache:', str(cache_manager))

@@ -212,7 +212,6 @@ class TestRunResults(unittest.TestCase):
                          self.checkpoint_period)
         self.assertEqual(sim_metadata['de_sim_metadata']['simulation_config']['time_max'], self.max_time)
 
-    # TODO(Arthur): exact caching:
     def test_semantically_equal(self):
         self.assertTrue(self.run_results_1_cmpt.semantically_equal(self.run_results_1_cmpt))
         self.assertTrue(self.run_results_dyn_aggr.semantically_equal(self.run_results_dyn_aggr))

@@ -7,10 +7,11 @@
 """
 
 from collections import namedtuple
-import os
 import datetime
-import numpy
 import getpass
+import numpy
+import os
+import pstats
 
 from de_sim.errors import SimulatorError
 from de_sim.simulation_config import SimulationConfig
@@ -93,7 +94,11 @@ class Simulation(object):
 
     SimulationReturnValue = namedtuple('SimulationReturnValue', 'num_events results_dir profile_stats',
                                        defaults=(None, None))
-    # TODO(Arthur): exact caching:
+    SimulationReturnValue.__doc__ += ': Value returned by a simulation run'
+    SimulationReturnValue.num_events.__doc__ = 'Number of events executed by the run'
+    SimulationReturnValue.results_dir.__doc__ = 'Directory containing results, if provided'
+    SimulationReturnValue.profile_stats.__doc__ = 'A :obj:`pstats.Stats` instance of a profile, if requested'
+
     def run(self, time_max, results_dir=None, progress_bar=True, checkpoint_period=None,
             seed=None, ode_time_step=None, dfba_time_step=None, profile=False, submodels_to_skip=None,
             verbose=True, object_memory_change_interval=0, options=None):

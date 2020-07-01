@@ -1,0 +1,59 @@
+metadata hierarchy
+
+RunResults:
+    METADATA_CLASS_TO_NAME = {SimulationMetadata: 'de_sim_metadata',
+                              WCSimulationMetadata: 'wc_sim_metadata'}
+
+*** - define semantically_equal
+** - include in semantically_equal
+* - ignored by semantically_equal
+== - define equal
+X - done
+
+class WCSimulationMetadata(EnhancedDataClass): ***
+    wc_sim_config: WCSimulationConfig **
+    wc_simulator_repo: RepositoryMetadata = None **
+    wc_model_repo: RepositoryMetadata = None **
+
+class WCSimulationConfig(EnhancedDataClass): *** X
+    de_simulation_config SimulationConfig: a simulation configuration for DE-Sim **
+    random_seed int: random number generator seed **
+    ode_time_step float: ODE submodel timestep (s) **
+    dfba_time_step float: dFBA submodel timestep (s) **
+    checkpoint_period float: checkpointing timestep (s) **
+    submodels_to_skip list of `str: submodels that should not be run, identified by their ids **
+    verbose bool: whether to produce verbose output *
+    changes list: + not currently used + *
+    perturbations list: + not currently used + *
+
+class SimulationMetadata(EnhancedDataClass): # Represents the metadata of a discrete event simulation run *** X
+    simulation_config SimulationConfig: information about the simulation's configuration **
+    run RunMetadata: information about the simulation's run *
+    author AuthorMetadata: information about the person who ran the simulation **
+    simulator RepositoryMetadata: metadata about this simulator's git repository **
+
+class SimulationConfig(EnhancedDataClass): *** X
+    time_max float: maximum simulation time **
+    time_init float: time at which a simulation starts **
+    stop_condition function: a simulation terminates if the function returns `True` *
+    output_dir str: directory for saving metadata *
+    progress bool: *
+    profile bool: output a profile of the simulation's performance *
+    object_memory_change_interval int: # of simulation events between reporting changes memory use *
+
+class RunMetadata(EnhancedDataClass): # Represent a simulation's run *** X
+    ip_address str: ip address of the machine that ran the simulation *
+    start_time datetime: simulation clock start time *
+    run_time float: simulation run time in seconds *
+
+class AuthorMetadata(EnhancedDataClass): # Represents a simulation's author
+    name str: authors' name
+    email str: author's email address
+    username str: authors' username
+    organization str: author's organization
+
+@dataclass
+class RepositoryMetadata(object): # Represents metadata about a Git repository
+    url: str
+    branch: str
+    revision: str

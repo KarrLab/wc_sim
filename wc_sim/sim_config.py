@@ -36,7 +36,6 @@ class WCSimulationConfig(EnhancedDataClass):
     - Checkpoint period
     - Submodels to skip
     - Whether to produce verbose output
-    # TODO(Arthur): exact caching:
     - Model changes: Instructions to change parameter values and add or remove model
       components. These instructions are executed before the initial conditions are
       calculated
