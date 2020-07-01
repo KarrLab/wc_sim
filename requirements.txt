@@ -1,9 +1,12 @@
 callbacks
 cement >= 3.0.0
+configobj
 cobra
+de_sim
 h5py
 matplotlib
 numpy
+obj_tables
 pandas
 pqdict
 pint >= 0.10
@@ -12,7 +15,6 @@ recordtype
 scikits.odes
 scipy
 setuptools
-tables >= 3.5.0
 wc_lang
 wc_onto
 wc_utils[git]
