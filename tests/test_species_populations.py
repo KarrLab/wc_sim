@@ -750,7 +750,7 @@ class TestDynamicSpeciesState(unittest.TestCase):
         self.assertEqual(s2.continuous_adjustment(time, slope), pop)
         # 1 sec later the pop has risen by the slope of 0.5; get_population() rounds by default
         time += 1
-        self.assertIn(s2.get_population(time), {pop, pop+1})
+        self.assertIn(s2.get_population(time, round=True), {pop, pop+1})
         exact_pop = pop + 0.5
         # if round=False get_population return non-integer population
         self.assertEqual(s2.get_population(time, round=False), exact_pop)
@@ -758,6 +758,22 @@ class TestDynamicSpeciesState(unittest.TestCase):
         time += 1
         exact_pop = pop + 1
         self.assertEqual(s2.continuous_adjustment(time, slope), exact_pop)
+
+        # test default_rounding
+        pop = 7
+        s3 = DynamicSpeciesState('s3[c]', self.random_state, pop, modeled_continuously=True, default_rounding=True)
+        time = 1
+        slope = 0.5
+        s3.continuous_adjustment(time, slope)
+        time += 1
+        self.assertIn(s3.get_population(time), {pop, pop+1})
+
+        s4 = DynamicSpeciesState('s4[c]', self.random_state, pop, modeled_continuously=True, default_rounding=False)
+        time = 1
+        slope = 0.5
+        s4.continuous_adjustment(time, slope)
+        time += 1
+        self.assertEqual(s4.get_population(time), pop + slope)
 
     def test_text_output(self):
         pop = 10
@@ -969,7 +985,7 @@ class TestDynamicSpeciesState(unittest.TestCase):
         s1 = DynamicSpeciesState('s1[c]', self.random_state, 10.5, modeled_continuously=True)
         samples = 1000
         for i in range(samples):
-            pop = s1.get_population(0)
+            pop = s1.get_population(0, round=True)
             self.assertTrue(pop in [10, 11])
 
         mean = np.mean([s1.get_population(0, round=True) for i in range(samples)])

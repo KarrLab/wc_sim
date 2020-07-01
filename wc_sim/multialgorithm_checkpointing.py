@@ -13,6 +13,7 @@ import pandas
 from de_sim.checkpoint import Checkpoint
 from de_sim.simulation_checkpoint_object import CheckpointSimulationObject, AccessStateObjectInterface
 from wc_sim.species_populations import LocalSpeciesPopulation
+from wc_sim.submodels.nrm import NrmSubmodel
 from wc_sim.submodels.ssa import SsaSubmodel
 from wc_utils.util.misc import obj_to_str
 
@@ -69,8 +70,8 @@ class AccessState(AccessStateObjectInterface):
         random_states['local_species_population'] = self.local_species_population.random_state.get_state()
         random_states['submodels'] = {}
         for submodel in self.multialgorithm_simulation.dynamic_model.dynamic_submodels.values():
-            if isinstance(submodel, SsaSubmodel):
-                # only SSA submodels use random numbers
+            if isinstance(submodel, (NrmSubmodel, SsaSubmodel)):
+                # NRM and SSA submodels use random numbers
                 random_states['submodels'][submodel.id] = submodel.random_state.get_state()
         return random_states
 

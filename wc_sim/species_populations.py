@@ -533,13 +533,14 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         fast_debug_file_logger (:obj:`FastLogger`): a fast logger for debugging messages
         temporary_mode (:obj:`bool`): if True, this `LocalSpeciesPopulation` is being accessed through a
             `TempPopulationsLSP`
+        default_rounding (:obj:`bool`): whether species populations get rounded when rounding isn't specified
     """
     # TODO(Arthur): support tracking the population history of species added at any time in the simulation
     # TODO(Arthur): report an error if a DynamicSpeciesState is updated by multiple continuous submodels
     # because modeling a linear superposition of species population slopes is not supported
     # TODO(Arthur): molecular_weights should accept MW of each species type, like the model does
     def __init__(self, name, initial_population, molecular_weights, initial_population_slopes=None,
-                 initial_time=0, random_state=None, retain_history=True):
+                 initial_time=0, random_state=None, retain_history=True, default_rounding=None):
         """ Initialize a :obj:`LocalSpeciesPopulation` object
 
         Initialize a :obj:`LocalSpeciesPopulation` object. Establish its initial population, and initialize
@@ -560,6 +561,8 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             retain_history (:obj:`bool`, optional): whether to retain species population history
             _concentrations_api (:obj:`bool`, optional): if set, use concentrations; species amounts
                 passed into and returned by methods must be concentrations (molar == mol/L); defaults to `False`
+            default_rounding (:obj:`bool`, optional): whether species populations are rounded when
+                rounding isn't specified
 
         Raises:
             :obj:`SpeciesPopulationError`: if the population cannot be initialized
@@ -573,6 +576,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self.random_state = random_state
         self._concentrations_api = False
         self.temporary_mode = False
+        self.default_rounding = default_rounding
 
         if retain_history:
             self._initialize_history()
@@ -620,7 +624,8 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
                                          "LocalSpeciesPopulation".format(species_id))
         modeled_continuously = initial_population_slope is not None
         self._population[species_id] = DynamicSpeciesState(species_id, self.random_state, population,
-                                                           modeled_continuously=modeled_continuously)
+                                                           modeled_continuously=modeled_continuously,
+                                                           default_rounding=self.default_rounding)
         self._add_to_cached_species_ids(species_id)
         self._molecular_weights[species_id] = molecular_weight
 
@@ -1459,16 +1464,18 @@ class DynamicSpeciesState(object):
         _record_history (:obj:`bool`): whether to record history of operations
         _history (:obj:`list`): history of operations
         _temp_population_value (:obj:`float`): a temporary population for a temporary computation
+        default_rounding (:obj:`bool`, optional): whether species populations are rounded when
+            rounding isn't specified
     """
     MINIMUM_ALLOWED_POPULATION = config_multialgorithm['minimum_allowed_population']
 
     # use __slots__ to save space
     __slots__ = ['species_name', 'compartment_id', 'random_state', 'last_population', 'modeled_continuously',
                  'population_slope', 'continuous_time', 'last_adjustment_time', 'last_read_time',
-                 '_record_history', '_history', '_temp_population_value']
+                 '_record_history', '_history', '_temp_population_value', 'default_rounding']
 
     def __init__(self, species_name, random_state, initial_population, modeled_continuously=False,
-                 record_history=False):
+                 record_history=False, default_rounding=None):
         """ Initialize a species object, defaulting to a simulation time start time of 0
 
         Args:
@@ -1480,6 +1487,8 @@ class DynamicSpeciesState(object):
                 default=`False`
             record_history (:obj:`bool`, optional): whether to record a history of all operations;
                 default=`False`
+            default_rounding (:obj:`bool`, optional): whether species populations are rounded when
+                rounding isn't specified
         """
         self.species_name = species_name
         _, self.compartment_id = ModelUtilities.parse_species_id(species_name)
@@ -1502,6 +1511,7 @@ class DynamicSpeciesState(object):
             self._history = []
             self._record_operation_in_hist(0, 'initialize', initial_population)
         self._temp_population_value = None
+        self.default_rounding = default_rounding
 
     def _update_last_adjustment_time(self, adjustment_time):
         """ Advance the last adjustment time to `adjustment_time`
@@ -1693,7 +1703,7 @@ class DynamicSpeciesState(object):
         """
         self._temp_population_value = None
 
-    def get_population(self, time, interpolate=None, round=True, temporary_mode=False):
+    def get_population(self, time, interpolate=None, round=None, temporary_mode=False):
         """ Provide the species' population at time `time`
 
         If one of the submodel(s) predicting the species' population is a continuous-time model,
@@ -1714,7 +1724,8 @@ class DynamicSpeciesState(object):
 
         Args:
             time (:obj:`float`): the current simulation time
-            round (:obj:`bool`, optional): if `round` then round the population to an integer
+            round (:obj:`bool`, optional): if `round` then round the population to an integer; if not
+                provided, then use `self.default_rounding`
             interpolate (:obj:`bool`, optional): if not `None` then control interpolation;
                 otherwise it's controlled by the 'interpolate' config variable
             temporary_mode (:obj:`bool`, optional): whether the calling `LocalSpeciesPopulation` is in
@@ -1730,6 +1741,8 @@ class DynamicSpeciesState(object):
             :obj:`DynamicNegativePopulationError`: if interpolation predicts a negative population
         """
 
+        if round is None:
+            round = self.default_rounding
         self._validate_read_time(time, 'get_population')
         if not self.modeled_continuously:
             if not temporary_mode:

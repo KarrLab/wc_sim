@@ -31,7 +31,6 @@ from wc_utils.util.misc import obj_to_str
 from wc_utils.util.ontology import are_terms_equivalent
 from wc_utils.util.rand import RandomStateManager
 
-config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 
 # TODO(Arthur): use lists instead of sets to ensure deterministic behavior
 # TODO(Arthur): add logging
@@ -93,7 +92,6 @@ multiple SimObjs on different cores or processors?
 Direct exchange of species count changes for shared species through a shared membrane vs. exchange of
 species copy number changes through shared population.
 """
-CHECKPOINTING_SIM_OBJ = config_multialgorithm['checkpointing_sim_obj_name']
 
 
 class MultialgorithmSimulation(object):
@@ -293,13 +291,16 @@ class MultialgorithmSimulation(object):
                 for species in submodel.get_children(kind='submodel', __type=Species):
                     init_pop_slopes[species.id] = 0.0
 
+        config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
+        default_rounding = config_multialgorithm['default_rounding']
         return LocalSpeciesPopulation(
             'LSP_' + self.model.id,
             self.init_populations,
             molecular_weights,
             initial_population_slopes=init_pop_slopes,
             random_state=self.random_state,
-            retain_history=retain_history)
+            retain_history=retain_history,
+            default_rounding=default_rounding)
 
     def set_simultaneous_execution_priorities(self):
         """ Assign simultaneous execution priorities for all simulation objects and submodels
@@ -322,6 +323,8 @@ class MultialgorithmSimulation(object):
         Returns:
             :obj:`MultialgorithmicCheckpointingSimObj`: the checkpointing object
         """
+        config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
+        CHECKPOINTING_SIM_OBJ = config_multialgorithm['checkpointing_sim_obj_name']
         multialgorithm_checkpointing_sim_obj = MultialgorithmicCheckpointingSimObj(
             CHECKPOINTING_SIM_OBJ, checkpoint_period, checkpoints_dir,
             self.local_species_population, self.dynamic_model, self)

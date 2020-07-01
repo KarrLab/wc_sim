@@ -45,6 +45,7 @@ from wc_utils.util.units import unit_registry
 import obj_tables
 import obj_tables.io
 import wc_sim.config
+import wc_utils.util.ontology
 
 
 # Almost all machines map Python floats to IEEE-754 64-bit “double precision”, which provides 15 to
@@ -794,21 +795,36 @@ class TestDynamicModel(unittest.TestCase):
         for cache_key in get_rxn_dependencies(['reaction_3', 'reaction_8']):
             self.assertNotIn(cache_key, dynamic_model.cache_manager._cache)
 
-    def do_test_expression_dependency_dynamics(self, model, time_max, alternative_caching_settings):
+    def do_test_expression_dependency_dynamics(self, model_file, framework, time_max,
+                                               alternative_caching_settings, seed=17):
+
         ### test with caching specified by alternative_caching_settings ###
+
+        # must suspend rounding by DynamicSpeciesState.get_population() because DynamicSpeciesStates
+        # and submodels share a RandomState, so if rounding is used it changes stochastic algorithms
+        def suspend_rounding_in_config(unittest, replacements):
+            suspend_rounding = [('default_rounding', 'False')]
+            unittest.config_file_modifier.write_test_config_file(replacements + suspend_rounding)
+
+        model = Reader().run(model_file)[Model][0]
+        # change DSA submodel to another framework
+        for submodel in model.submodels:
+            if wc_utils.util.ontology.are_terms_equivalent(submodel.framework,
+                                                           onto['WC:deterministic_simulation_algorithm']):
+                submodel.framework = onto[framework]
         simulation = Simulation(model)
         results_dir = tempfile.mkdtemp(dir=self.test_dir)
-        kwargs = dict(time_max=time_max, results_dir=results_dir, checkpoint_period=2,
-                      ode_time_step=2, progress_bar=True, verbose=True)
-        self.config_file_modifier.write_test_config_file([('expression_caching', 'False')])
+        kwargs = dict(time_max=time_max, results_dir=results_dir, checkpoint_period=1, seed=seed,
+                      ode_time_step=1, progress_bar=False, verbose=False)
+        suspend_rounding_in_config(self, [('expression_caching', 'False')])
         run_results_no_caching = RunResults(simulation.run(**kwargs).results_dir)
         self.config_file_modifier.clean_up()
         for caching_settings in alternative_caching_settings:
-            self.config_file_modifier.write_test_config_file(caching_settings)
+            suspend_rounding_in_config(self, caching_settings)
             kwargs['results_dir'] = tempfile.mkdtemp(dir=self.test_dir)
             run_results_caching = RunResults(simulation.run(**kwargs).results_dir)
-            self.config_file_modifier.clean_up()
             self.assertTrue(run_results_no_caching.semantically_equal(run_results_caching, debug=True))
+            self.config_file_modifier.clean_up()
 
     def test_expression_dependency_dynamics(self):
         # ensure that models with expressions that depend on reactions generates
@@ -818,13 +834,16 @@ class TestDynamicModel(unittest.TestCase):
                                         [('expression_caching', 'True'),
                                          ('cache_invalidation', 'reaction_dependency_based')])
 
-        # test DSA and ODE
-        self.do_test_expression_dependency_dynamics(self.DEPENDENCIES_MDL_FILE, 6, alternative_caching_settings)
+        # test ODE with DSA, SSA and NRM
+        frameworks = ('WC:deterministic_simulation_algorithm', 'WC:stochastic_simulation_algorithm',
+                      'WC:next_reaction_method',)
+        for framework in frameworks:
+            self.do_test_expression_dependency_dynamics(self.DEPENDENCIES_MDL_FILE, framework,
+                                                        2, alternative_caching_settings)
         # test H1 model, modified to remove stochasticity
         # TODO(Arthur): test H1 model after addressing "Insufficient reactants to execute reaction" problem
         MOCK_H1_HESC_MODEL = os.path.join(os.path.dirname(__file__), 'fixtures', 'mock_h1_hesc_model_deterministic.xlsx')
         # self.do_test_expression_dependency_dynamics(MOCK_H1_HESC_MODEL, alternative_caching_settings)
-        # TODO(Arthur): exact caching: test ssa, nrm, and odes hybrid
 
     def test_agregate_properties(self):
         # test aggregate properties like mass and volume against independent calculations of their values

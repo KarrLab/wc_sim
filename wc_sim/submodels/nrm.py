@@ -98,7 +98,6 @@ class NrmSubmodel(DynamicSubmodel):
             :obj:`list` of :obj:`tuple`: entry i provides the indices of reactions whose
                 rate laws depend on the execution of reaction i, not including reaction i itself
         """
-        # TODO(Arthur): exact caching: make sure works with any caching setting
 
         # Rate laws and reactions used by this NRM model
         ids_of_rate_laws_used_by_self = {rxn.rate_laws[0].id for rxn in self.reactions}
