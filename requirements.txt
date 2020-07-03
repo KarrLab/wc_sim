@@ -1,15 +1,16 @@
 callbacks
 cement >= 3.0.0
-configobj
 cobra
+configobj
 de_sim
 h5py
 matplotlib
+networkx
 numpy
 obj_tables
 pandas
-pqdict
 pint >= 0.10
+pqdict
 python_libsedml
 recordtype
 scikits.odes
