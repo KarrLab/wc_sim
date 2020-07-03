@@ -787,7 +787,7 @@ class RunVerificationSuite(unittest.TestCase):
         self.ssa_test_cases = [
             # see: https://github.com/sbmlteam/sbml-test-suite/blob/master/cases/stochastic/DSMTS-userguide-31v2.pdf
             SsaTestCase('00001', NUM_SIMULATION_RUNS),
-            SsaTestCase('00003', NUM_SIMULATION_RUNS),
+            SsaTestCase('00003', 10 * NUM_SIMULATION_RUNS),
             SsaTestCase('00004', NUM_SIMULATION_RUNS),
             SsaTestCase('00007', NUM_SIMULATION_RUNS),
             SsaTestCase('00012', NUM_SIMULATION_RUNS),
