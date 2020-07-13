@@ -102,22 +102,23 @@ class NrmSubmodel(DynamicSubmodel):
         # Rate laws and reactions used by this NRM model
         ids_of_rate_laws_used_by_self = {rxn.rate_laws[0].id for rxn in self.reactions}
         ids_of_rxns_used_by_self = {rxn.id for rxn in self.reactions}
+        rxns_used_by_self = set(self.reactions)
 
         # Rate laws that depend on species that can be updated by reactions or continuous changes in other submodels
         ids_of_rls_depend_on_other_submodels = set()
-        for rxn_id, cache_keys_of_dependent_exprs in self.dynamic_model.rxn_expression_dependencies.items():
-            if rxn_id not in ids_of_rxns_used_by_self:
-                for cls_name, rate_law_id in cache_keys_of_dependent_exprs:
-                    if cls_name == DynamicRateLaw.__name__:
-                        ids_of_rls_depend_on_other_submodels.add(rate_law_id)
+        for rxn, dependent_exprs in self.dynamic_model.rxn_expression_dependencies.items():
+            if rxn not in rxns_used_by_self:
+                for dependent_expr in dependent_exprs:
+                    if isinstance(dependent_expr, DynamicRateLaw):
+                        ids_of_rls_depend_on_other_submodels.add(dependent_expr.id)
 
         # Dependencies of rate laws on reactions in this NRM submodel
         rate_laws_depend_on_rxns_as_ids = {rxn_id: set() for rxn_id in ids_of_rxns_used_by_self}
-        for rxn_id, cache_keys_of_dependent_exprs in self.dynamic_model.rxn_expression_dependencies.items():
-            if rxn_id in ids_of_rxns_used_by_self:
-                for cls_name, rate_law_id in cache_keys_of_dependent_exprs:
-                    if cls_name == DynamicRateLaw.__name__:
-                        rate_laws_depend_on_rxns_as_ids[rxn_id].add(rate_law_id)
+        for rxn, dependent_exprs in self.dynamic_model.rxn_expression_dependencies.items():
+            if rxn in rxns_used_by_self:
+                for dependent_expr in dependent_exprs:
+                    if isinstance(dependent_expr, DynamicRateLaw):
+                        rate_laws_depend_on_rxns_as_ids[rxn.id].add(dependent_expr.id)
 
         # Ids of rate laws that must be updated when a reaction is executed by this NRM model
         for rxn_id, dependent_rate_law_ids in rate_laws_depend_on_rxns_as_ids.items():

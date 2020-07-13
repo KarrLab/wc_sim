@@ -31,8 +31,9 @@ from wc_lang.io import Reader
 from wc_onto import onto
 from wc_sim.dynamic_components import (SimTokCodes, WcSimToken, DynamicComponent, DynamicExpression,
                                        DynamicModel, DynamicSpecies, DynamicFunction, DynamicParameter,
-                                       DynamicCompartment, DynamicStopCondition, CacheManager,
-                                       InvalidationApproaches, CachingEvents)
+                                       DynamicCompartment, DynamicStopCondition, DynamicObservable,
+                                       DynamicRateLaw,
+                                       CacheManager, InvalidationApproaches, CachingEvents)
 from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.run_results import RunResults
@@ -45,6 +46,7 @@ from wc_utils.util.units import unit_registry
 import obj_tables
 import obj_tables.io
 import wc_sim.config
+import wc_sim.dynamic_components
 import wc_utils.util.ontology
 
 
@@ -152,27 +154,38 @@ def make_objects(test_case):
     test_case.fun_expr = expr = 'param - 2 + max(param, 10)'
     fun1 = Expression.make_obj(model, Function, 'fun1', expr, objects)
     fun2 = Expression.make_obj(model, Function, 'fun2', 'log(2) - param', objects)
+    stop_cond = Expression.make_obj(model, StopCondition, 'stop_cond', '0 == 1', objects)
 
-    return model, param, fun1, fun2
+    return model, param, fun1, fun2, stop_cond
+
+
+def make_dynamic_objects(test_case):
+        test_case.init_pop = {}
+        test_case.local_species_population = MakeTestLSP(initial_population=test_case.init_pop).local_species_pop
+        test_case.model, test_case.parameter, test_case.fun1, test_case.fun2, test_case.stop_cond = make_objects(test_case)
+
+        test_case.dynamic_model = DynamicModel(test_case.model, test_case.local_species_population, {})
+
+        # create a DynamicParameter, two DynamicFunctions, and a DynamicObservable
+        test_case.dynamic_objects = dynamic_objects = {}
+        dynamic_objects[test_case.parameter] = DynamicParameter(test_case.dynamic_model,
+                                                                test_case.local_species_population,
+                                                                test_case.parameter, test_case.parameter.value)
+
+        for fun in [test_case.fun1, test_case.fun2]:
+            dynamic_objects[fun] = DynamicFunction(test_case.dynamic_model, test_case.local_species_population,
+                                                   fun, fun.expression._parsed_expression)
+
+        dynamic_objects[test_case.stop_cond] = DynamicStopCondition(test_case.dynamic_model,
+                                                                    test_case.local_species_population,
+                                                                    test_case.stop_cond,
+                                                                    test_case.stop_cond.expression._parsed_expression)
 
 
 class TestDynamicComponentAndDynamicExpressions(unittest.TestCase):
 
     def setUp(self):
-        self.init_pop = {}
-        self.local_species_population = MakeTestLSP(initial_population=self.init_pop).local_species_pop
-        self.model, self.parameter, self.fun1, self.fun2 = make_objects(self)
-
-        self.dynamic_model = DynamicModel(self.model, self.local_species_population, {})
-
-        # create a DynamicParameter and some DynamicFunctions
-        self.dynamic_objects = dynamic_objects = {}
-        dynamic_objects[self.parameter] = DynamicParameter(self.dynamic_model, self.local_species_population,
-                                                           self.parameter, self.parameter.value)
-
-        for fun in [self.fun1, self.fun2]:
-            dynamic_objects[fun] = DynamicFunction(self.dynamic_model, self.local_species_population,
-                                                   fun, fun.expression._parsed_expression)
+        make_dynamic_objects(self)
 
     def test_get_dynamic_model_type(self):
 
@@ -476,7 +489,7 @@ class TestInitializedDynamicCompartment(unittest.TestCase):
         self.molecular_weights = dict(zip(self.species_ids, [self.all_m_weights]*len(species_nums)))
         self.local_species_pop = LocalSpeciesPopulation('test', self.init_populations, self.molecular_weights,
                                                         random_state=RandomStateManager.instance())
-        model, _, _, _ = make_objects(self)
+        model, _, _, _, _ = make_objects(self)
         self.dynamic_model = DynamicModel(model, self.local_species_pop, {})
 
         # make Compartments & use them to make a DynamicCompartments
@@ -608,6 +621,9 @@ class TestDynamicModel(unittest.TestCase):
     def make_dynamic_model(self, model_filename):
         # read and initialize a model
         model = TestDynamicModel.models[model_filename]
+        return self._make_dynamic_model(model)
+
+    def _make_dynamic_model(self, model):
         de_simulation_config = SimulationConfig(time_max=10)
         wc_sim_config = WCSimulationConfig(de_simulation_config, ode_time_step=2, dfba_time_step=5)
         multialgorithm_simulation = MultialgorithmSimulation(model, wc_sim_config)
@@ -656,57 +672,73 @@ class TestDynamicModel(unittest.TestCase):
         def sub_dependencies(dependencies, model_type):
             """ Extract the dependencies for models of type model_type """
             rv = {}
-            for rxn_id, models in dependencies.items():
-                rv[rxn_id] = set()
+            for rxn, models in dependencies.items():
+                rv[rxn.id] = set()
                 for model in models:
-                    mdl_type, id = model
-                    if mdl_type == model_type:
-                        rv[rxn_id].add(id)
+                    if type(model) == model_type:
+                        rv[rxn.id].add(model.id)
             return rv
 
         _, dynamic_model = self.make_dynamic_model(self.DEPENDENCIES_MDL_FILE)
         dependencies = dynamic_model.obtain_dependencies(self.models[self.DEPENDENCIES_MDL_FILE])
+        self.assertEqual(dynamic_model.rxn_expression_dependencies, dependencies)
 
-        # remove rxns with no dependencies from expected_dependencies, as obtain_dependencies() does
+        # remove rxns with no dependencies from expected_dependencies, like obtain_dependencies() does
         # reaction_10 has no dependencies
         expected_dependencies = get_expected_dependencies()
         for model_type in expected_dependencies:
             del expected_dependencies[model_type]['reaction_10']
 
-        for model_type in ('DynamicFunction', 'DynamicObservable', 'DynamicRateLaw', 'DynamicStopCondition',
-                           'DynamicCompartment'):
-            self.assertEqual(sub_dependencies(dependencies, model_type), expected_dependencies[model_type])
+        for model_type in (DynamicFunction, DynamicObservable, DynamicRateLaw, DynamicStopCondition,
+                           DynamicCompartment):
+            self.assertEqual(sub_dependencies(dependencies, model_type), expected_dependencies[model_type.__name__])
 
-        self.assertEqual(dynamic_model.rxn_expression_dependencies, dependencies)
+    # @unittest.skip("requires about 5 GB RAM and takes 0.5 hr.")
+    def test_large_obtain_dependencies(self):
+        # test obtain_dependencies() on a large model
+        H1_MODEL_SCALED_DOWN = os.path.join(os.path.dirname(__file__), 'fixtures', 'h1_scaled_down_model_core.xlsx')
+        # would like to set validate = True, and validate_element_charge_balance = False in wc_lang config 'cuz
+        # some H1_MODEL_SCALED_DOWN rxns aren't balanced
+        # but validate takes a REALLY long time
+        h1_model = Reader().run(H1_MODEL_SCALED_DOWN, validate=False)[Model][0]
+
+        # to speed up reading model would like to save a 'compiled' model in a fixture file, like a pickle file, but pickle fails
+        # scaled_down_model contains compartments with large initial accounted ratios
+        self.config_file_modifier.write_test_config_file([('max_allowed_init_accounted_fraction', 1E3)])
+        _, dynamic_model = self._make_dynamic_model(h1_model)
+        self.assertTrue(isinstance(dynamic_model.rxn_expression_dependencies, dict))
 
     def test_continuous_reaction_dependencies(self):
         _, dynamic_model = self.make_dynamic_model(self.DEPENDENCIES_MDL_FILE)
 
         ode_submodel = dynamic_model.dynamic_submodels['ode_submodel']
         ode_reactions = [rxn.id for rxn in ode_submodel.reactions]
-        continous_rxn_dependencies = {}
-        continous_rxn_dependencies['ode_submodel'] = set()
+        expected_continous_rxn_dependencies = {'ode_submodel': set()}
         expected_dependencies = get_expected_dependencies()
         for expr_type_name, dependencies in expected_dependencies.items():
             for rxn_id, dependent_ids in dependencies.items():
                 if rxn_id in ode_reactions:
                     for dependent_id in dependent_ids:
-                        continous_rxn_dependencies['ode_submodel'].add((expr_type_name, dependent_id))
-        self.assertEqual(dynamic_model.continuous_reaction_dependencies(), continous_rxn_dependencies)
+                        dyn_model_type = getattr(wc_sim.dynamic_components, expr_type_name)
+                        dyn_model = DynamicComponent.get_dynamic_component(dyn_model_type, dependent_id)
+                        expected_continous_rxn_dependencies['ode_submodel'].add(dyn_model)
+        # compare sets
+        continuous_rxn_dependencies = dynamic_model.continuous_reaction_dependencies()
+        continuous_rxn_dependencies['ode_submodel'] = set(continuous_rxn_dependencies['ode_submodel'])
+        self.assertEqual(continuous_rxn_dependencies, expected_continous_rxn_dependencies)
 
     def test_flush_operations(self):
         NOT_FOUND = 'not found'
         def get_cached_masses(dynamic_model):
             values = {}
-            for compt_id in dynamic_model.dynamic_compartments:
-                compt_mass_key = CacheManager.key_from_class(DynamicCompartment, compt_id)
+            for compt in dynamic_model.dynamic_compartments.values():
                 try:
-                    values[compt_mass_key] = dynamic_model.cache_manager.get(DynamicCompartment, compt_id)
+                    values[compt] = dynamic_model.cache_manager.get(compt)
                 except MultialgorithmError as e:
-                    values[compt_mass_key] = NOT_FOUND
+                    values[compt] = NOT_FOUND
             return values
 
-        def evaluate_some_expressions(dynamic_model, submodel_id):
+        def eval_rate_laws_in_submodel(dynamic_model, submodel_id):
             """ Evaluate some expressions """
             dsa_submodel = dynamic_model.dynamic_submodels[submodel_id]
             dsa_submodel.calc_reaction_rates()
@@ -735,7 +767,7 @@ class TestDynamicModel(unittest.TestCase):
         self.config_file_modifier.write_test_config_file([('expression_caching', 'True'),
                                                           ('cache_invalidation', 'event_based')])
         model, dynamic_model = self.make_dynamic_model(self.DEPENDENCIES_MDL_FILE)
-        evaluate_some_expressions(dynamic_model, dsa_submodel_id)
+        eval_rate_laws_in_submodel(dynamic_model, dsa_submodel_id)
 
         # when using EVENT_BASED invalidation, flush_compartment_masses does nothing
         cached_masses = get_cached_masses(dynamic_model)
@@ -748,7 +780,7 @@ class TestDynamicModel(unittest.TestCase):
         self.assertEqual(len(dynamic_model.cache_manager._cache), 0)
 
         # when using EVENT_BASED invalidation, ode_flush_after_populations_change empties cache
-        evaluate_some_expressions(dynamic_model, ode_submodel_id)
+        eval_rate_laws_in_submodel(dynamic_model, ode_submodel_id)
         dynamic_model.ode_flush_after_populations_change(ode_submodel_id)
         self.assertEqual(len(dynamic_model.cache_manager._cache), 0)
 
@@ -757,7 +789,7 @@ class TestDynamicModel(unittest.TestCase):
         self.config_file_modifier.write_test_config_file([('expression_caching', 'True'),
                                                           ('cache_invalidation', 'reaction_dependency_based')])
         model, dynamic_model = self.make_dynamic_model(self.DEPENDENCIES_MDL_FILE)
-        evaluate_some_expressions(dynamic_model, dsa_submodel_id)
+        eval_rate_laws_in_submodel(dynamic_model, dsa_submodel_id)
 
         # when using REACTION_DEPENDENCY_BASED invalidation,
         # flush_compartment_masses deletes all compartment mass cache entries
@@ -770,30 +802,41 @@ class TestDynamicModel(unittest.TestCase):
         # when using REACTION_DEPENDENCY_BASED invalidation, flush_after_reaction flushes dependent expressions
         # reaction_10 has no dependencies
         reaction = model.get_reactions(id='reaction_10')[0]
-        cache_copy = copy.deepcopy(dynamic_model.cache_manager._cache)
+        cache_copy = copy.copy(dynamic_model.cache_manager._cache)
         dynamic_model.flush_after_reaction(reaction)
         self.assertEqual(dynamic_model.cache_manager._cache, cache_copy)
 
-        def get_rxn_dependencies(reaction_ids):
+        def get_expected_rxn_dependencies(reaction_ids):
+            """ Get dynamic expressions that are known to depend on reactions
+            """
             expected_dependencies = get_expected_dependencies()
-            cache_keys_of_dependent_exprs = set()
-            for class_id, dependencies in expected_dependencies.items():
+            dependent_exprs = set()
+            for expr_type_name, dependencies in expected_dependencies.items():
                 for rxn_id in reaction_ids:
-                    for expr_id in dependencies[rxn_id]:
-                        cache_keys_of_dependent_exprs.add((class_id, expr_id))
-            return cache_keys_of_dependent_exprs
+                    for dependent_id in dependencies[rxn_id]:
+                        dyn_model_type = getattr(wc_sim.dynamic_components, expr_type_name)
+                        dyn_model = DynamicComponent.get_dynamic_component(dyn_model_type, dependent_id)
+                        dependent_exprs.add(dyn_model)
+            return dependent_exprs
 
-        reaction = model.get_reactions(id='reaction_1')[0]
+        rxn_id = 'reaction_1'
+        self.assertLess(0, len([expr for expr in get_expected_rxn_dependencies([rxn_id])\
+                                if expr in dynamic_model.cache_manager._cache]))
+        reaction = model.get_reactions(id=rxn_id)[0]
         dynamic_model.flush_after_reaction(reaction)
-        for cache_key in get_rxn_dependencies(['reaction_1']):
-            self.assertNotIn(cache_key, dynamic_model.cache_manager._cache)
+        for expression in get_expected_rxn_dependencies([rxn_id]):
+            self.assertNotIn(expression, dynamic_model.cache_manager._cache)
 
         # when using REACTION_DEPENDENCY_BASED invalidation, ode_flush_after_populations_change flushes
         # expressions that depend on the continuous submodel calling it
-        evaluate_some_expressions(dynamic_model, ode_submodel_id)
+        eval_rate_laws_in_submodel(dynamic_model, ode_submodel_id)
+        reaction_ids = ['reaction_3', 'reaction_8']
+        self.assertLess(0, len([expr for expr in get_expected_rxn_dependencies(reaction_ids)\
+                                if expr in dynamic_model.cache_manager._cache]))
+        expected_rxn_dependencies = get_expected_rxn_dependencies(reaction_ids)
         dynamic_model.ode_flush_after_populations_change(ode_submodel_id)
-        for cache_key in get_rxn_dependencies(['reaction_3', 'reaction_8']):
-            self.assertNotIn(cache_key, dynamic_model.cache_manager._cache)
+        for expression in expected_rxn_dependencies:
+            self.assertNotIn(expression, dynamic_model.cache_manager._cache)
 
     def do_test_expression_dependency_dynamics(self, model_file, framework, time_max,
                                                alternative_caching_settings, seed=17):
@@ -840,10 +883,6 @@ class TestDynamicModel(unittest.TestCase):
         for framework in frameworks:
             self.do_test_expression_dependency_dynamics(self.DEPENDENCIES_MDL_FILE, framework,
                                                         2, alternative_caching_settings)
-        # test H1 model, modified to remove stochasticity
-        # TODO(Arthur): test H1 model after addressing "Insufficient reactants to execute reaction" problem
-        MOCK_H1_HESC_MODEL = os.path.join(os.path.dirname(__file__), 'fixtures', 'mock_h1_hesc_model_deterministic.xlsx')
-        # self.do_test_expression_dependency_dynamics(MOCK_H1_HESC_MODEL, alternative_caching_settings)
 
     def test_agregate_properties(self):
         # test aggregate properties like mass and volume against independent calculations of their values
@@ -936,19 +975,14 @@ class TestDynamicModel(unittest.TestCase):
 class TestCacheManager(unittest.TestCase):
 
     def setUp(self):
+        make_dynamic_objects(self)
+        self.dyn_function = self.dynamic_objects[self.fun1]
+        self.dyn_function_2 = self.dynamic_objects[self.fun2]
+        self.dyn_stop_cond = self.dynamic_objects[self.stop_cond]
         self.config_file_modifier = TempConfigFileModifier()
 
     def tearDown(self):
         self.config_file_modifier.clean_up()
-
-    def test_staticmethods(self):
-        class DynamicExample(object):
-            def __init__(self, id):
-                self.id = id
-        id = 'de_7'
-        entity = DynamicExample(id)
-        self.assertEqual(CacheManager.key_from_entity(entity), ('DynamicExample', id))
-        self.assertEqual(CacheManager.key_from_class(DynamicFunction, 'fun_3'), ('DynamicFunction', 'fun_3'))
 
     def test(self):
         ### test arguments
@@ -964,40 +998,32 @@ class TestCacheManager(unittest.TestCase):
         ### test no caching
         cache_manager = CacheManager(caching_active=False)
         self.assertEqual(cache_manager.caching(), False)
-        self.assertEqual(cache_manager.get(DynamicStopCondition, 'x'), None)
-        self.assertEqual(cache_manager.set(DynamicStopCondition, 'y', 0), None)
+        self.assertEqual(cache_manager.get(self.dyn_stop_cond), None)
+        self.assertEqual(cache_manager.set(self.dyn_stop_cond, 0), None)
         self.assertEqual(cache_manager.flush([]), None)
-        self.assertEqual(cache_manager.flush([CacheManager.key_from_class(DynamicStopCondition, 'y')]), None)
         self.assertEqual(cache_manager.clear_cache(), None)
         self.assertEqual(cache_manager.invalidate(), None)
 
         def test_get_set(test_case, cache_manager):
             # test 'set' and 'get', which don't depend on the invalidation approach
-            cache_keys = []
+            expressions = []
             v = 3
-            id = 'f1'
-            cache_manager.set(DynamicFunction, id, v)
-            cache_keys.append(CacheManager.key_from_class(DynamicFunction, id))
-            test_case.assertEqual(cache_manager.get(DynamicFunction, id), v)
+            cache_manager.set(test_case.dyn_function, v)
+            expressions.append(test_case.dyn_function)
+            test_case.assertEqual(cache_manager.get(test_case.dyn_function), v)
             v = 7
-            cache_manager.set(DynamicFunction, id, v)
-            cache_keys.append(CacheManager.key_from_class(DynamicFunction, id))
-            test_case.assertEqual(cache_manager.get(DynamicFunction, id), v)
-            v = 5
-            fid = 'f6'
-            cache_manager.set(DynamicFunction, fid, v)
-            cache_keys.append(CacheManager.key_from_class(DynamicFunction, fid))
-            test_case.assertEqual(cache_manager.get(DynamicFunction, fid), v)
+            cache_manager.set(test_case.dyn_function, v)
+            expressions.append(test_case.dyn_function)
+            test_case.assertEqual(cache_manager.get(test_case.dyn_function), v)
             v = 44
-            sc_id = 's0'
-            cache_manager.set(DynamicStopCondition, sc_id, v)
-            cache_keys.append(CacheManager.key_from_class(DynamicStopCondition, sc_id))
-            test_case.assertEqual(cache_manager.get(DynamicStopCondition, sc_id), v)
+            cache_manager.set(self.dyn_stop_cond, v)
+            expressions.append(self.dyn_stop_cond)
+            test_case.assertEqual(cache_manager.get(self.dyn_stop_cond), v)
 
-            with test_case.assertRaisesRegex(MultialgorithmError, 'key .* not in cache'):
-                cache_manager.get(DynamicStopCondition, 'not_id')
+            with test_case.assertRaisesRegex(MultialgorithmError, 'dynamic expression .* not in cache'):
+                cache_manager.get(self.dyn_function_2)
 
-            return cache_keys
+            return expressions
 
         def test_cache_settings(test_case, cache_manager):
             for b in [False, True]:
@@ -1012,19 +1038,17 @@ class TestCacheManager(unittest.TestCase):
         cache_manager = CacheManager(caching_active=True, cache_invalidation='event_based')
         self.assertEqual(cache_manager.caching(), True)
         self.assertEqual(cache_manager.cache_invalidation, InvalidationApproaches.EVENT_BASED)
-        cache_keys = test_get_set(self, cache_manager)
+        expressions = test_get_set(self, cache_manager)
         # flush should empty the cache
-        cache_manager.flush(cache_keys)
+        cache_manager.flush(expressions)
         self.assertEqual(len(cache_manager._cache), 0)
 
         # flush should do nothing with keys not in the cache
         cache_manager = CacheManager(caching_active=True, cache_invalidation='event_based')
-        test_get_set(self, cache_manager)
-        cache_keys_not_in_cache = []
-        cache_keys_not_in_cache.append(CacheManager.key_from_class(DynamicFunction, 'not an id'))
-        cache_keys_not_in_cache.append(CacheManager.key_from_class(DynamicStopCondition, 'no such id'))
-        cache_copy = copy.deepcopy(cache_manager._cache)
-        cache_manager.flush(cache_keys_not_in_cache)
+        cache_manager.set(self.dyn_function, 1)
+        cache_copy = copy.copy(cache_manager._cache)
+        expressions_not_in_cache = [self.dyn_stop_cond]
+        cache_manager.flush(expressions_not_in_cache)
         self.assertEqual(cache_manager._cache, cache_copy)
 
         # clear_cache should empty the cache
@@ -1034,7 +1058,7 @@ class TestCacheManager(unittest.TestCase):
 
         ### test event_based caching
         cache_manager = CacheManager(caching_active=True, cache_invalidation='event_based')
-        cache_keys = test_get_set(self, cache_manager)
+        test_get_set(self, cache_manager)
         # invalidate should empty the cache
         cache_manager.invalidate()
         self.assertEqual(len(cache_manager._cache), 0)
@@ -1042,15 +1066,15 @@ class TestCacheManager(unittest.TestCase):
         # test reaction_dependency_based caching
         cache_manager = CacheManager(caching_active=True, cache_invalidation='reaction_dependency_based')
         self.assertEqual(cache_manager.cache_invalidation, InvalidationApproaches.REACTION_DEPENDENCY_BASED)
-        cache_keys = test_get_set(self, cache_manager)
+        expressions = test_get_set(self, cache_manager)
 
         # with no keys, invalidate should do nothing
-        cache_copy = copy.deepcopy(cache_manager._cache)
+        cache_copy = copy.copy(cache_manager._cache)
         cache_manager.invalidate()
         self.assertEqual(cache_manager._cache, cache_copy)
 
-        # with keys in the cache, invalidate empty it
-        cache_manager.invalidate(cache_keys)
+        # with keys in the cache, invalidate should empty it
+        cache_manager.invalidate(expressions)
         self.assertEqual(len(cache_manager._cache), 0)
 
         # test caching configured from config file
@@ -1073,14 +1097,14 @@ class TestCacheManager(unittest.TestCase):
         cache_manager = CacheManager(caching_active=True, cache_invalidation='reaction_dependency_based')
         with self.assertRaises(MultialgorithmError):
             # MISS
-            cache_manager.get(DynamicFunction, 'df_id')
-        cache_manager.set(DynamicFunction, 'df_id', 1)
+            cache_manager.get(self.dyn_function)
+        cache_manager.set(self.dyn_function, 1)
         # HIT
-        cache_manager.get(DynamicFunction, 'df_id')
+        cache_manager.get(self.dyn_function)
         # FLUSH_HIT
-        cache_manager.flush([(DynamicFunction.__name__, 'df_id')])
+        cache_manager.flush([self.dyn_function])
         # FLUSH_MISS
-        cache_manager.flush([(DynamicFunction.__name__, 'df_id')])
+        cache_manager.flush([self.dyn_function])
 
         cache_manager._add_hit_ratios()
         for expression_name, stats in cache_manager._cache_stats.items():

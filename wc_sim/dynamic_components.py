@@ -299,7 +299,7 @@ class DynamicExpression(DynamicComponent):
         # if caching is enabled & the expression's value is cached, return it
         if self.dynamic_model.cache_manager.caching():
             try:
-                return self.dynamic_model.cache_manager.get(self.__class__, self.id)
+                return self.dynamic_model.cache_manager.get(self)
             except MultialgorithmError:
                 pass
 
@@ -309,7 +309,7 @@ class DynamicExpression(DynamicComponent):
         try:
             value = eval(''.join(self.expr_substrings), {}, self.local_ns)
             # if caching is enabled cache the expression's value
-            self.dynamic_model.cache_manager.set(self.__class__, self.id, value)
+            self.dynamic_model.cache_manager.set(self, value)
             return value
         except BaseException as e:
             raise MultialgorithmError("eval of '{}' raises {}: {}'".format(
@@ -334,19 +334,6 @@ class DynamicFunction(DynamicExpression):
 
     def __init__(self, *args):
         super().__init__(*args)
-
-    def eval(self, time):
-        """ Provide the value of this dynamic function
-
-        Defined so `DynamicFunction.eval()` can be observed in performance profiles
-
-        Args:
-            time (:obj:`float`): the current simulation time; not needed
-
-        Returns:
-            :obj:`float`: the value of this dynamic function
-        """
-        return super().eval(time)
 
 
 class DynamicStopCondition(DynamicExpression):
@@ -580,13 +567,13 @@ class DynamicCompartment(DynamicComponent):
 
         if self.dynamic_model.cache_manager.caching():
             try:
-                return self.dynamic_model.cache_manager.get(self.__class__, self.id)
+                return self.dynamic_model.cache_manager.get(self)
             except MultialgorithmError:
                 pass
 
         value = self.species_population.compartmental_mass(self.id, time=time)
         # if caching is enabled cache the accounted_mass
-        self.dynamic_model.cache_manager.set(self.__class__, self.id, value)
+        self.dynamic_model.cache_manager.set(self, value)
         return value
 
     def accounted_volume(self, time=None):
@@ -748,13 +735,11 @@ class DynamicModel(object):
             indexed by their ids
         cache_manager (:obj:`CacheManager`): a cache for potentially expensive expression evaluations
             that get repeated
-        rxn_expression_dependencies (:obj:`dict`): map from reaction ids to sets of expressions whose values
-            depend on species with non-zero stoichiometry in a reaction; each expression is represented as a
-            tuple of the form (class name, expression instance id)
+        rxn_expression_dependencies (:obj:`dict`): map from reactions to lists of expressions whose values
+            depend on species with non-zero stoichiometry in the reaction
         continuous_rxn_dependencies (:obj:`dict`): map from ids of continuous submodels to sets identifying
             expressions whose values depend on species with non-zero stoichiometry in reaction(s)
-            modeled by the submodel; each expression is identified by a tuple of the form
-            (class name, expression instance id)
+            modeled by the submodel
         all_continuous_rxn_dependencies (:obj:`tuple`): all expressions in `continuous_rxn_dependencies`
     """
     AGGREGATE_VALUES = ['mass', 'volume', 'accounted mass', 'accounted volume']
@@ -1016,8 +1001,8 @@ class DynamicModel(object):
             model (:obj:`Model`): the description of the whole-cell model in `wc_lang`
 
         Returns:
-            :obj:`dict`: the dependencies of expressions on reactions, as a map from reaction id to a set of
-                tuples of the form (class name, expressions instance id)
+            :obj:`dict` of :obj:`list`: the dependencies of expressions on reactions, as a map from
+                reaction to a list of expressions
         """
         used_model_types = set((wc_lang.Function,
                                 wc_lang.Observable,
@@ -1032,9 +1017,12 @@ class DynamicModel(object):
                                          model.stop_conditions)
 
         # 1) make digraph of dependencies among model instances
-        dependencies = networkx.DiGraph()
-        for dependent_model_entity in model_entities:
+        dependency_graph = networkx.DiGraph()
 
+        def map_model_to_dynamic_model(model):
+            return DynamicComponent.get_dynamic_component(type(model), model.id)
+
+        for dependent_model_entity in model_entities:
             dependent_model_entity_expr = dependent_model_entity.expression
 
             # get all instances of types in used_model_types used by dependent_model_entity
@@ -1044,64 +1032,58 @@ class DynamicModel(object):
                     if attr.related_class in used_model_types:
                         used_models.extend(getattr(dependent_model_entity_expr, attr_name))
 
-            # add edges from dependent_model_entity to the model_type entities on which it depends
+            # add edges from model_type entities to the dependent_model_entity that uses them
             for used_model in used_models:
-                dependencies.add_edge(CacheManager.key_from_entity(dependent_model_entity),
-                                      CacheManager.key_from_entity(used_model))
+                dependency_graph.add_edge(map_model_to_dynamic_model(used_model),
+                                          map_model_to_dynamic_model(dependent_model_entity))
 
-        # 2) add edges of species altered by reactions to determine dependencies of rxns on expressions
-        for reaction in model.reactions:
-            net_stoichiometric_coefficients = collections.defaultdict(float)
-            for participant in reaction.participants:
-                species = participant.species
-                net_stoichiometric_coefficients[species] += participant.coefficient
-            for species, net_stoich_coeff in net_stoichiometric_coefficients.items():
-                if net_stoich_coeff < 0 or 0 < net_stoich_coeff:
-                    dependencies.add_edge(CacheManager.key_from_entity(species),
-                                          CacheManager.key_from_entity(reaction))
-
-        # 3) a compartment in an expression is a special case that computes the compartment's mass
+        # 2) a compartment in an expression is a special case that computes the compartment's mass
         # add dependencies between each compartment used in an expression and all the species in the compartment
-        compartments_in_use = set()
-        for model_type, model_id in dependencies.nodes:
-            if model_type == Compartment.__name__:
-                compartments_in_use.add(model_id)
-        for compartment in model.compartments:
-            if compartment.id in compartments_in_use:
+        dynamic_compartments_in_use = set()
+        for node in dependency_graph.nodes():
+            if isinstance(node, DynamicCompartment):
+                dynamic_compartments_in_use.add(node)
+        for dynamic_compartment in dynamic_compartments_in_use:
+                compartment = model.compartments.get(id=dynamic_compartment.id)[0]
                 for species in compartment.species:
-                    dependencies.add_edge(CacheManager.key_from_entity(compartment),
-                                          CacheManager.key_from_entity(species))
+                    dependency_graph.add_edge(map_model_to_dynamic_model(species),
+                                              map_model_to_dynamic_model(compartment))
 
-        # 4) traverse from each reaction to dependent expressions
-        bfs_tree = networkx.algorithms.traversal.breadth_first_search.bfs_tree
+        # 3) add edges of species altered by reactions to determine dependencies of expressions on reactions
+        # to reduce memory use, process one reaction at a time
         reaction_dependencies = {}
-        for reaction in model.reactions:
-            reaction_dependencies[reaction.id] = set()
-            for edge in bfs_tree(dependencies, CacheManager.key_from_entity(reaction), reverse=True).edges():
-                _, dest = edge
-                reaction_dependencies[reaction.id].add(dest)
+        dfs_preorder_nodes = networkx.algorithms.traversal.depth_first_search.dfs_preorder_nodes
+        for dynamic_submodel in self.dynamic_submodels.values():
+            for reaction in dynamic_submodel.reactions:
 
-        # 5) remove species, which are not expressions
-        filtered_reaction_dependencies = {}
-        for rxn_id, dependencies in reaction_dependencies.items():
-            to_remove = {(class_name, id) for class_name, id in dependencies if class_name == 'Species'}
-            filtered_reaction_dependencies[rxn_id] = dependencies - to_remove
+                net_stoichiometric_coefficients = collections.defaultdict(float)
+                for participant in reaction.participants:
+                    species = participant.species
+                    net_stoichiometric_coefficients[species] += participant.coefficient
+                for species, net_stoich_coeff in net_stoichiometric_coefficients.items():
+                    if net_stoich_coeff < 0 or 0 < net_stoich_coeff:
+                        dependency_graph.add_edge(reaction,
+                                                  map_model_to_dynamic_model(species))
 
-        # 6) remove reactions that have no dependencies to conserve space
+                # 4) traverse from each reaction to dependent expressions
+                reaction_dependencies[reaction] = set()
+                for node in dfs_preorder_nodes(dependency_graph, reaction):
+                    if not isinstance(node, (wc_lang.Reaction, DynamicCompartment, DynamicSpecies)):
+                        reaction_dependencies[reaction].add(node)
+
+                # convert the dependency sets into lists, which are more than 3x smaller
+                reaction_dependencies[reaction] = list(reaction_dependencies[reaction])
+                dependency_graph.remove_node(reaction)
+
+        # 5) remove reactions that have no dependencies to conserve space
         rxns_to_remove = set()
-        for rxn_id, dependencies in filtered_reaction_dependencies.items():
+        for rxn_id, dependencies in reaction_dependencies.items():
             if not dependencies:
                 rxns_to_remove.add(rxn_id)
         for rxn_id in rxns_to_remove:
-            del filtered_reaction_dependencies[rxn_id]
+            del reaction_dependencies[rxn_id]
 
-        # 7) map class names into their Dynamic equivalents
-        final_reaction_dependencies = {}
-        for rxn_id, dependencies in filtered_reaction_dependencies.items():
-            renamed_dependencies = {('Dynamic' + class_name, id) for class_name, id in dependencies}
-            final_reaction_dependencies[rxn_id] = renamed_dependencies
-
-        return final_reaction_dependencies
+        return reaction_dependencies
 
     def continuous_reaction_dependencies(self):
         """ Identify the expressions that depend on species used by the reactions of all continuous submodels
@@ -1110,24 +1092,25 @@ class DynamicModel(object):
         species populations change or time advances.
 
         Returns:
-            (:obj:`dict`): map from ids of continuous submodels to sets identifying expressions
+            (:obj:`dict`): map from ids of continuous submodels to lists of expressions
                 whose values depend on species with non-zero stoichiometry in reaction(s)
-                modeled by the submodel; each expression is identified by a tuple of the form
-                (class name, expression instance id)
+                modeled by the submodel
         """
         rxns_modeled_by_continuous_submodels = {}
         for submodel_id, dynamic_submodel in self.dynamic_submodels.items():
             if isinstance(dynamic_submodel, (wc_sim.submodels.fba.DfbaSubmodel,
                                              wc_sim.submodels.odes.OdeSubmodel)):
-                rxns_modeled_by_continuous_submodels[submodel_id] = \
-                    {rxn.id for rxn in dynamic_submodel.reactions}
+                rxns_modeled_by_continuous_submodels[submodel_id] = set(dynamic_submodel.reactions)
 
         continuous_rxn_dependencies = {}
         for submodel_id, sm_reactions in rxns_modeled_by_continuous_submodels.items():
             continuous_rxn_dependencies[submodel_id] = set()
-            for reaction_id, dependencies in self.rxn_expression_dependencies.items():
-                if reaction_id in sm_reactions:
+            for reaction, dependencies in self.rxn_expression_dependencies.items():
+                if reaction in sm_reactions:
                     continuous_rxn_dependencies[submodel_id].update(dependencies)
+        # to save space convert values in continuous_rxn_dependencies from sets to lists
+        for submodel_id, dependencies in continuous_rxn_dependencies.items():
+            continuous_rxn_dependencies[submodel_id] = list(dependencies)
         return continuous_rxn_dependencies
 
     def prepare_dependencies(self, model):
@@ -1158,11 +1141,9 @@ class DynamicModel(object):
         """
         if self.cache_manager.caching():
             # do nothing if the invalidation is EVENT_BASED invalidation, because invalidate() clears the cache
-            if self.cache_manager.invalidation_approach() == InvalidationApproaches.REACTION_DEPENDENCY_BASED:
-                compartment_mass_keys = []
-                for dynamic_compartment in self.dynamic_compartments.values():
-                    compartment_mass_keys.append(CacheManager.key_from_entity(dynamic_compartment))
-                self.cache_manager.invalidate(cache_keys=compartment_mass_keys)
+            if self.cache_manager.invalidation_approach() is InvalidationApproaches.REACTION_DEPENDENCY_BASED:
+                dynamic_compartments = [dyn_compartment for dyn_compartment in self.dynamic_compartments.values()]
+                self.cache_manager.invalidate(expressions=dynamic_compartments)
 
     def flush_after_reaction(self, reaction):
         """ If caching is enabled, invalidate cache entries when time advances and a reaction executes
@@ -1170,10 +1151,10 @@ class DynamicModel(object):
         Args:
             reaction (:obj:`Reaction`): the reaction that executed
         """
-        cache_keys = self.all_continuous_rxn_dependencies
-        if reaction.id in self.rxn_expression_dependencies:
-            cache_keys = itertools.chain(cache_keys, self.rxn_expression_dependencies[reaction.id])
-        self.cache_manager.invalidate(cache_keys=cache_keys)
+        expressions = self.all_continuous_rxn_dependencies
+        if reaction in self.rxn_expression_dependencies:
+            expressions = itertools.chain(expressions, self.rxn_expression_dependencies[reaction])
+        self.cache_manager.invalidate(expressions=expressions)
         self.flush_compartment_masses()
 
     def ode_flush_after_populations_change(self, dynamic_submodel_id):
@@ -1184,7 +1165,7 @@ class DynamicModel(object):
         Args:
             dynamic_submodel_id (:obj:`str`): the id of the ODE submodel that's running
         """
-        self.cache_manager.invalidate(cache_keys=self.continuous_rxn_dependencies[dynamic_submodel_id])
+        self.cache_manager.invalidate(expressions=self.continuous_rxn_dependencies[dynamic_submodel_id])
         self.flush_compartment_masses()
 
 
@@ -1278,31 +1259,6 @@ class CacheManager(object):
             for caching_event in list(CachingEvents):
                 self._cache_stats[cls.__name__][caching_event] = 0
 
-    @staticmethod
-    def key_from_entity(entity):
-        """ Get the caching key for an entity
-
-        Args:
-            entity (:obj:`object`): a simulation entity
-
-        Returns:
-            :obj:`tuple`: the caching key for an entity
-        """
-        return (entity.__class__.__name__, entity.id)
-
-    @staticmethod
-    def key_from_class(cls, id):
-        """ Get a caching key
-
-        Args:
-            cls (:obj:`object`): a class
-            id (:obj:`str`): the id of an instance of `cls`
-
-        Returns:
-            :obj:`tuple`: the caching key
-        """
-        return (cls.__name__, id)
-
     def invalidation_approach(self):
         """ Provide the invalidation approach
 
@@ -1311,76 +1267,71 @@ class CacheManager(object):
         """
         return self.cache_invalidation
 
-    def get(self, expression_class, id):
-        """ If caching is enabled, get a value from the cache if it's stored
+    def get(self, expression):
+        """ If caching is enabled, get the value of `expression` from the cache if it's stored
 
-        Maintain caching statistics too
+        Also maintain caching statistics.
 
         Args:
-            expression_class (:obj:`object`): the expression class
-            id (:obj:`str`): id of the expression class instance
+            expression (:obj:`object`): a dynamic expression
 
         Returns:
-            :obj:`object`: the cached value
+            :obj:`object`: the cached value of `expression`
 
         Raises:
-            :obj:`MultialgorithmError`: if the cache does not contain an entry for the key
+            :obj:`MultialgorithmError`: if the cache does not contain an entry for `expression`
         """
         if self.caching_active:
-            cls_name = expression_class.__name__
-            cache_key = self.key_from_class(expression_class, id)
-            if cache_key in self._cache:
+            cls_name = expression.__class__.__name__
+            if expression in self._cache:
                 self._cache_stats[cls_name][CachingEvents.HIT] += 1
-                return self._cache[cache_key]
+                return self._cache[expression]
             else:
                 self._cache_stats[cls_name][CachingEvents.MISS] += 1
-                raise MultialgorithmError(f'key ({cache_key}) not in cache')
+                raise MultialgorithmError(f'dynamic expression ({cls_name}.{expression.id}) not in cache')
 
-    def set(self, expression_class, id, value):
-        """ If caching is enabled, set a value in the cache
+    def set(self, expression, value):
+        """ If caching is enabled, set a value for `expression` in the cache
 
         Args:
-            expression_class (:obj:`object`): the expression class
-            id (:obj:`str`): id of the expression class instance
-            value (:obj:`object`): value of the expression class instance
+            expression (:obj:`object`): a dynamic expression
+            value (:obj:`object`): value of the dynamic expression
         """
         if self.caching_active:
-            cache_key = self.key_from_class(expression_class, id)
-            self._cache[cache_key] = value
+            self._cache[expression] = value
 
-    def flush(self, cache_keys):
-        """ Invalidate all cache entries in `cache_keys`
+    def flush(self, expressions):
+        """ Invalidate the cache entries for all dynamic expressions in `expressions`
 
         Missing cache entries are ignored.
 
         Args:
-            cache_keys (:obj:`set` of :obj:`tuple`): set of identifiers of expression instances, each of
-                the form (dynamic class name :obj:`str`, class instance id :obj:`str`)
+            expressions (:obj:`list` of :obj:`obj`): iterator over dynamic expression instances
         """
-        for cache_key in cache_keys:
+        for expression in expressions:
+            cls_name = expression.__class__.__name__
             try:
-                del self._cache[cache_key]
-                self._cache_stats[cache_key[0]][CachingEvents.FLUSH_HIT] += 1
+                del self._cache[expression]
+                self._cache_stats[cls_name][CachingEvents.FLUSH_HIT] += 1
             except KeyError:
-                self._cache_stats[cache_key[0]][CachingEvents.FLUSH_MISS] += 1
+                self._cache_stats[cls_name][CachingEvents.FLUSH_MISS] += 1
 
     def clear_cache(self):
         """ Remove all cache entries """
         self._cache.clear()
 
-    def invalidate(self, cache_keys=None):
-        """ If caching is enabled, invalidate cache entries
+    def invalidate(self, expressions=None):
+        """ Invalidate the cache entries for all dynamic expressions in `expressions`
 
-        Missing cache entries are ignored.
+        Missing cache entries are ignored. Does nothing if caching is not enabled.
 
         Args:
-            cache_keys (:obj:`set` of :obj:`tuple`, optional): set of identifiers of expression instances,
-                each of the form (dynamic class name :obj:`str`, class instance id :obj:`str`)
+            expressions (:obj:`set` of :obj:`obj`): iterator over dynamic expression instances
         """
-        if self.caching_active:     # coverage claim that 'self.caching_active' is never False is wrong
+        if self.caching_active:     # coverage's claim that 'self.caching_active' is never False is wrong
             if self.cache_invalidation == InvalidationApproaches.REACTION_DEPENDENCY_BASED:
-                cache_keys = tuple() if cache_keys is None else cache_keys
-                self.flush(cache_keys)
+                expressions = tuple() if expressions is None else expressions
+                self.flush(expressions)
             elif self.cache_invalidation == InvalidationApproaches.EVENT_BASED:
                 self.clear_cache()
             else:

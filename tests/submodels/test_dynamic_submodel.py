@@ -181,13 +181,14 @@ class TestDynamicSubmodelStatically(unittest.TestCase):
         _, _, dynamic_model = build_sim_from_model(model)
 
         # eval DynamicFunction function_4
-        val = dynamic_model.dynamic_functions['function_4'].eval(0)
-        self.assertEqual(dynamic_model.cache_manager.get(DynamicFunction, 'function_4'), val)
+        function_4 = dynamic_model.dynamic_functions['function_4']
+        val = function_4.eval(0)
+        self.assertEqual(dynamic_model.cache_manager.get(function_4), val)
         test_submodel = dynamic_model.dynamic_submodels['dsa_submodel']
         reactions = {rxn.id: rxn for rxn in test_submodel.reactions}
         test_submodel.dynamic_model.flush_after_reaction(reactions['reaction_1'])
-        with self.assertRaisesRegex(MultialgorithmError, 'key .* not in cache'):
-            dynamic_model.cache_manager.get(DynamicFunction, 'function_4')
+        with self.assertRaisesRegex(MultialgorithmError, 'dynamic expression .* not in cache'):
+            dynamic_model.cache_manager.get(function_4)
 
         # since reaction_10 has no dependencies, it tests the if statement in flush_after_reaction()
         cache_copy = copy.deepcopy(dynamic_model.cache_manager._cache)

@@ -74,12 +74,11 @@ def obtain_expression_usage(model):
 
         # add edges from dependent_model_entity to the model_type entities on which it depends
         for used_model in used_models:
-            dependencies.add_edge(CacheManager.key_from_entity(dependent_model_entity),
-                                  CacheManager.key_from_entity(used_model))
+            dependencies.add_edge(dependent_model_entity, used_model)
 
     # 2) add all rate laws
     for rate_law in model.rate_laws:
-        dependencies.add_node(CacheManager.key_from_entity(rate_law))
+        dependencies.add_node(rate_law)
 
     # SKIP 3) a compartment in an expression is a special case that computes the compartment's mass
     # add dependencies between each compartment used in an expression and all the species in the compartment
@@ -95,12 +94,12 @@ def obtain_expression_usage(model):
             next *= 2
         rate_law_expr_use[rate_law.id] = defaultdict(int)
         for expression in dependencies.nodes:
-            if expression[0] == 'RateLaw':
+            if isinstance(expression, wc_lang.RateLaw):
                 break
-            for path in networkx.all_simple_paths(dependencies, CacheManager.key_from_entity(rate_law), expression):
+            for path in networkx.all_simple_paths(dependencies, rate_law, expression):
                 rate_law_expr_use[rate_law.id][expression] += 1
 
-    return rate_law_expr_use            
+    return rate_law_expr_use
 
 def get_h1_model_properties(model_file):
     ### static data ###
