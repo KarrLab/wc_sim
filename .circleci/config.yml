@@ -66,7 +66,7 @@ jobs:
           name: Test code
           environment:
             PYTHONFAULTHANDLER: 1
-          no_output_timeout: 1800
+          no_output_timeout: 90m
           command: |
             set +e
 
