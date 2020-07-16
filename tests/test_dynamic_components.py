@@ -601,13 +601,12 @@ class TestInitializedDynamicCompartment(unittest.TestCase):
 class TestDynamicModel(unittest.TestCase):
 
     MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_model.xlsx')
-    DRY_MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_dry_model.xlsx')
     DEPENDENCIES_MDL_FILE = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_dependencies.xlsx')
 
     @classmethod
     def setUpClass(cls):
         cls.models = {}
-        for model_file in [cls.MODEL_FILENAME, cls.DRY_MODEL_FILENAME, cls.DEPENDENCIES_MDL_FILE]:
+        for model_file in [cls.MODEL_FILENAME, cls.DEPENDENCIES_MDL_FILE]:
             cls.models[model_file] = Reader().run(model_file, ignore_extra_models=True)[Model][0]
 
     def setUp(self):
@@ -692,7 +691,7 @@ class TestDynamicModel(unittest.TestCase):
         for model_type in (DynamicFunction, DynamicObservable, DynamicRateLaw, DynamicStopCondition):
             self.assertEqual(sub_dependencies(dependencies, model_type), expected_dependencies[model_type.__name__])
 
-    @unittest.skip("requires about 5 GB RAM and takes 0.5 hr.")
+    # @unittest.skip("requires about 5 GB RAM and takes 0.5 hr.")
     def test_large_obtain_dependencies(self):
         # test obtain_dependencies() on a large model
         H1_MODEL_SCALED_DOWN = os.path.join(os.path.dirname(__file__), 'fixtures', 'h1_scaled_down_model_core.xlsx')
@@ -943,32 +942,6 @@ class TestDynamicModel(unittest.TestCase):
             else:
                 actual_value = aggregate_state['compartments'][eiv_record.component][eiv_record.attribute]
                 numpy.testing.assert_approx_equal(actual_value, expected_value)
-
-    @unittest.skip("todo: fix or toss test_dry_dynamic_model()")
-    def test_dry_dynamic_model(self):
-        cell_masses = []
-        computed_aggregate_states = []
-        for i_trial in range(10):
-            model, dynamic_model = self.make_dynamic_model(self.DRY_MODEL_FILENAME)
-            cell_masses.append(dynamic_model.cell_mass())
-            computed_aggregate_states.append(dynamic_model.get_aggregate_state())
-
-        # expected values computed in tests/fixtures/test_dry_model_with_mass_computation.xlsx
-        numpy.testing.assert_approx_equal(numpy.mean(cell_masses), 9.160E-19)
-        aggregate_state = self.dynamic_model.get_aggregate_state()
-        expected_aggregate_state = {
-            'cell mass': 9.160E-19,
-            'compartments': {'c':
-                             {'mass': 9.160E-19,
-                              'name': 'Cell'}}
-        }
-        computed_aggregate_state = {
-            'cell mass': numpy.mean([s['cell mass'] for s in computed_aggregate_states]),
-            'compartments': {'c':
-                             {'mass': numpy.mean([s['compartments']['c']['mass'] for s in computed_aggregate_states]),
-                              'name': 'Cell'}}
-        }
-        self.compare_aggregate_states(expected_aggregate_state, computed_aggregate_state, frac_diff=2.5e-1)
 
 
 class TestCacheManager(unittest.TestCase):

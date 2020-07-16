@@ -32,20 +32,16 @@ import wc_sim.submodels
 
 '''
 # old TODOs:
-cleanup
-    jupyter examples
-    memoize performance comparison; decide whether to trash or finish implementing direct dependency tracking eval
+    memoize performance comparison
 
 Expression eval design:
     Algorithms:
         evaling expression model types:
             special cases:
                 :obj:`wc_lang.DfbaObjective`: used by FBA, so express as needed by the FBA solver
-                :obj:`wc_lang.RateLaw`: needs special considaration of reactant order, intensive vs. extensive, volume, etc.
         evaling other model types used by expressions:
             Reaction and BiomassReaction: flux units in :obj:`wc_lang.DfbaObjective`?
     Optimizations:
-        evaluate parameters statically at initialization
         fast access to species counts and concentrations:
             eliminate lookups, extra objects and memory allocation/deallocation
         for maximum speed, don't use eval() -- convert expressions into trees, & use an evaluator that
