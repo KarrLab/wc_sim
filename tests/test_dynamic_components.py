@@ -691,7 +691,7 @@ class TestDynamicModel(unittest.TestCase):
         for model_type in (DynamicFunction, DynamicObservable, DynamicRateLaw, DynamicStopCondition):
             self.assertEqual(sub_dependencies(dependencies, model_type), expected_dependencies[model_type.__name__])
 
-    # @unittest.skip("requires about 5 GB RAM and takes 0.5 hr.")
+    @unittest.skip("requires about 5 GB RAM and takes 0.5 hr.")
     def test_large_obtain_dependencies(self):
         # test obtain_dependencies() on a large model
         H1_MODEL_SCALED_DOWN = os.path.join(os.path.dirname(__file__), 'fixtures', 'h1_scaled_down_model_core.xlsx')
