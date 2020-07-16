@@ -689,8 +689,7 @@ class TestDynamicModel(unittest.TestCase):
         for model_type in expected_dependencies:
             del expected_dependencies[model_type]['reaction_10']
 
-        for model_type in (DynamicFunction, DynamicObservable, DynamicRateLaw, DynamicStopCondition,
-                           DynamicCompartment):
+        for model_type in (DynamicFunction, DynamicObservable, DynamicRateLaw, DynamicStopCondition):
             self.assertEqual(sub_dependencies(dependencies, model_type), expected_dependencies[model_type.__name__])
 
     @unittest.skip("requires about 5 GB RAM and takes 0.5 hr.")
