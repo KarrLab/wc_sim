@@ -9,6 +9,7 @@ import os
 import unittest
 import sys
 import math
+import statistics
 from io import StringIO
 
 from wc_sim.aggregate_distributed_props import (AggregateDistributedProps,
@@ -222,6 +223,7 @@ class TestAggregateDistributedProps(unittest.TestCase):
 
         return (properties, expected_value_hist, property_providers, requestors)
 
+    @unittest.skip("aggregate_distributed_props not currently used")
     def test_aggregate_distributed_props(self):
 
         # test multiple concurrent properties over multiple time periods
@@ -297,34 +299,16 @@ class TestAggregateDistributedProps(unittest.TestCase):
                       str(context.exception))
 
 
-def median(l):
-    # return the median of list l
-    if not len(l):
-        raise ValueError("median undefined on empty list")
-    l_sorted = sorted(l)
-    midpoint = int(len(l)/2)
-    if len(l) % 2:
-        # odd number of elements
-        return l_sorted[midpoint]
-    else:
-        before_midpoint = midpoint-1
-        return 0.5*sum(l_sorted[before_midpoint:before_midpoint+2])
-
-
-medians = [
-    ([1], 1.),
-    ([33, 2, 1], 2.),
-    ([1, 2], 1.5),
-    ([1, 20, 10, 100], 15.),
-    ([10, 1, 0, 1], 1.),
+test_lists = [
+    [1],
+    [33, 2, 1],
+    [1, 2],
+    [1, 20, 10, 100],
+    [10, 1, 0, 1],
 ]
 
 
 class TestDistributedPropertyFactory(unittest.TestCase):
-
-    def test_median(self):
-        for l, med in medians:
-            self.assertEqual(median(l), med)
 
     def test_distributed_property_factory(self):
 
@@ -350,6 +334,6 @@ class TestDistributedPropertyFactory(unittest.TestCase):
             'MEDIAN',
             'median_value',
             2,    # seconds in period
-            median)
-        for l, med in medians:
-            self.assertEqual(median_value.aggregation_function(l), med)
+            statistics.median)
+        for test_list in test_lists:
+            self.assertEqual(median_value.aggregation_function(test_list), statistics.median(test_list))

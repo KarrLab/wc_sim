@@ -1196,8 +1196,8 @@ class CachingEvents(Enum):
 class CacheManager(object):
     """ Represent a RAM cache of `DynamicExpression.eval()` values
 
-    This is a centralized cache for all `DynamicExpression` values and the `DynamicCompartment` `accounted_mass` values.
-    Caching may speed up a simulation substantially, or may not speed it up at all.
+    This is a centralized cache for all `DynamicExpression` values and `DynamicCompartment` `accounted_mass` values.
+    Caching may speed up a simulation substantially, or may slow it down.
     All caching is controlled by the multialgorithm configuration file.
     The `expression_caching` attribute determines whether caching is active.
     The `cache_invalidation` attribute selects the cache invalidation approach.
@@ -1209,11 +1209,13 @@ class CacheManager(object):
     depend on the execution of a particular reaction.
     The dependencies of `DynamicExpression`\ s on species populations and the reactions that alter the populations
     are computed at initialization.
-    When a reaction executes, all cached values of the `DynamicExpression`\ s that depend on the reaction
+    Under the  `reaction_dependency_based` approach,
+    when a reaction executes all cached values of the `DynamicExpression`\ s that depend on the reaction
     are invalidated.
     This approach will be superior if a typical reaction execution changes populations of species that are
     used, directly or indirectly, by only a small fraction of the cached values of the `DynamicExpression`\ s.
-    Since the populations of species modeled by continuous integration algorithms, such as ODEs and dFBA,
+
+    In addition, since the populations of species modeled by continuous integration algorithms, such as ODEs and dFBA,
     vary continuously, `DynamicExpression`\ s that depend on them must always be invalidated whenever simulation
     time advances.
 

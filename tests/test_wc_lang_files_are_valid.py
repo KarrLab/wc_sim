@@ -52,7 +52,6 @@ class ValidateWcLangFilesTestCase(unittest.TestCase):
         {'path': 'tests/fixtures/verification/cases/multialgorithmic/00007/00007-wc_lang.xlsx'},
         {'path': 'tests/fixtures/verification/cases/multialgorithmic/00020/00020-wc_lang.xlsx'},
         {'path': 'tests/fixtures/verification/cases/multialgorithmic/00021/00021-wc_lang.xlsx'},
-        {'path': 'tests/fixtures/verification/cases/multialgorithmic/00030/00007-wc_lang.xlsx'},
         {'path': 'tests/fixtures/verification/cases/multialgorithmic/00030/00030-wc_lang.xlsx'},
         {'path': 'tests/fixtures/verification/cases/semantic/00001/00001-wc_lang.xlsx'},
         {'path': 'tests/fixtures/verification/cases/semantic/00002/00002-wc_lang.xlsx'},
