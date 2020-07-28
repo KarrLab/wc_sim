@@ -45,7 +45,7 @@ class DsaSubmodel(DynamicSubmodel):
     # at any time instant, process messages in this order
     MESSAGE_TYPES_BY_PRIORITY = [ExecuteDsaReaction]
 
-    event_handlers = [(ExecuteDsaReaction, 'handle_ExecuteDsaReaction_msg')]
+    event_handlers = [(ExecuteDsaReaction, 'handle_ExecuteDsaReaction_msgs')]
 
     def __init__(self, id, dynamic_model, reactions, species, dynamic_compartments,
                  local_species_population, options=None):
@@ -89,7 +89,7 @@ class DsaSubmodel(DynamicSubmodel):
             reaction_index = self.reaction_table[reaction.id]
             self.schedule_ExecuteDsaReaction(dt, reaction_index)
 
-    def handle_ExecuteDsaReaction_msg(self, event):
+    def execute_dsa_reaction(self, event):
         """ Handle a simulation event that contains an :obj:`ExecuteDsaReaction` message
 
         Args:
@@ -107,6 +107,26 @@ class DsaSubmodel(DynamicSubmodel):
             raise DynamicMultialgorithmError(self.time, f"Insufficient reactants to execute reaction {reaction.id}")
         self.execute_reaction(reaction)
         self.schedule_next_reaction_execution(reaction)
+
+    def handle_ExecuteDsaReaction_msgs(self, event_or_events):
+        """ Handle one or more simulation event(s) that contain an :obj:`ExecuteDsaReaction` message
+
+        Reactions with the same rates will occur simultaneously and be superposed.
+
+        Args:
+            event_or_events (:obj:`obj`): an :obj:`Event` to execute or a list of :obj:`Event` to execute
+
+        Raises:
+            :obj:`DynamicMultialgorithmError:` if the reaction does not have sufficient reactants to execute
+        """
+        # handle either superposed events or a single event
+        if isinstance(event_or_events, list):
+            for event in event_or_events:
+                self.execute_dsa_reaction(event)
+        else:
+            event = event_or_events
+            self.execute_dsa_reaction(event)
+
 
     def schedule_ExecuteDsaReaction(self, dt, reaction_index):
         """ Schedule an :obj:`ExecuteDsaReaction` event.

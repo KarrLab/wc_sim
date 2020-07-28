@@ -245,7 +245,7 @@ class TestDsaSubmodel(unittest.TestCase):
             reaction_indices.add(event_record[reaction_idx])
         self.assertEqual(reaction_indices, set([str(i) for i in range(len(self.dsa_submodel.reactions))]))
 
-        # test handle_ExecuteDsaReaction_msg(): execute next reaction
+        # test handle_ExecuteDsaReaction_msgs(): execute next reaction
         # reaction_3_forward has the highest reaction rate
         events = self.simulation_engine.event_queue.next_events()
         self.assertEqual(len(events), 1)
@@ -261,7 +261,7 @@ class TestDsaSubmodel(unittest.TestCase):
         expected_pop_changes = dict(zip(species, [-1, -2, +1]))
         # set time of dsa_submodel to time of the event
         self.dsa_submodel.time = event.event_time
-        self.dsa_submodel.handle_ExecuteDsaReaction_msg(event)
+        self.dsa_submodel.handle_ExecuteDsaReaction_msgs(event)
         for s_id, expected_pop_change in expected_pop_changes.items():
             self.assertEqual(pops_before[s_id] + expected_pop_changes[s_id],
                              populations.read_one(event.event_time, s_id))
@@ -271,7 +271,7 @@ class TestDsaSubmodel(unittest.TestCase):
             pop = populations.read_one(event.event_time, species_id)
             populations.adjust_discretely(event.event_time, {species_id: -pop})
         with self.assertRaises(DynamicMultialgorithmError):
-            self.dsa_submodel.handle_ExecuteDsaReaction_msg(event)
+            self.dsa_submodel.handle_ExecuteDsaReaction_msgs(event)
 
         # test DsaSubmodel options
         expected = dict(a=1)

@@ -302,7 +302,8 @@ def verify_independently_solved_model(test_case, model_filename, results_dir):
         checkpoint_period = model.parameters.get_one(id='checkpoint_period').value
         args = dict(results_dir=results_dir,
                     checkpoint_period=checkpoint_period,
-                    ode_time_step=1.)
+                    ode_time_step=1.,
+                    progress_bar=True)
         simulation = Simulation(model)
         start_time = time.perf_counter()
         results_dir = simulation.run(time_max=time_max, **args).results_dir
