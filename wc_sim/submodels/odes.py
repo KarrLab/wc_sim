@@ -35,6 +35,7 @@ class OdeSubmodel(DynamicSubmodel):
 
     Attributes:
         ode_time_step (:obj:`float`): the time between ODE solutions
+        num_steps (:obj:`int`): number of steps taken
         solver (:obj:`scikits.odes.ode.ode`): the Odes ode solver
         ode_species_ids (:obj:`list`): ids of the species used by this ODE solver
         ode_species_ids_set (:obj:`set`): ids of the species used by this ODE solver
@@ -75,7 +76,6 @@ class OdeSubmodel(DynamicSubmodel):
             local_species_population (:obj:`LocalSpeciesPopulation`): the store that maintains this
                 ODE submodel's species population
             ode_time_step (:obj:`float`): time interval between ODE analyses
-            num_steps (:obj:`int`): number of steps taken
             options (:obj:`dict`, optional): ODE submodel options
         """
         super().__init__(id, dynamic_model, reactions, species, dynamic_compartments,

@@ -239,3 +239,66 @@ class DynamicSubmodel(ApplicationSimulationObject):
             raise DynamicMultialgorithmError(self.time, "Error: not handling distributed_properties.MASS")
         else:
             raise DynamicMultialgorithmError(self.time, "Error: unknown property_name: '{}'".format(property_name))
+
+
+class ContinuousTimeSubmodel(DynamicSubmodel):
+    """ Provide functionality that is shared by multiple continuous time submodels
+
+    Discrete time submodels represent changes in species populations as step functions.
+    Continuous time submodels model changes in species populations as continuous functions, currently
+    piece-wise linear functions.
+    ODEs and dFBA are continuous time submodels.
+
+    Attributes:
+        time_step (:obj:`float`): time interval between continuous time submodel analyses
+        num_steps (:obj:`int`): number of analyses made
+        options (:obj:`dict`): continuous time submodel options
+        species_ids (:obj:`list`): ids of the species used by this continuous time submodel
+        species_ids_set (:obj:`set`): ids of the species used by this continuous time submodel
+        adjustments (:obj:`dict`): pre-allocated adjustments for passing changes to LocalSpeciesPopulation
+        num_species (:obj:`int`): number of species in `species_ids`
+        populations (:obj:`numpy.ndarray`): pre-allocated numpy array for storing species populations
+    """
+    def __init__(self, id, dynamic_model, reactions, species, dynamic_compartments,
+                 local_species_population, time_step, options=None):
+        super().__init__(id, dynamic_model, reactions, species, dynamic_compartments,
+                         local_species_population)
+        cls_name = type(self).__name__
+        if not isinstance(time_step, (float, int)):
+            raise MultialgorithmError(f"{cls_name} {self.id}: time_step must be a number but is "
+                                      f"{type(time_step).__name__}")
+        if time_step <= 0:
+            raise MultialgorithmError(f"{cls_name} {self.id}: time_step must be positive, but is {time_step}")
+        self.time_step = time_step
+        self.num_steps = 0
+        self.options = options
+
+    def set_up_continuous_time_submodel(self):
+        """ Begin setting up a continuous time submodel """
+
+        # find species in reactions modeled by this continuous time submodel
+        species = []
+        for idx, rxn in enumerate(self.reactions):
+            for species_coefficient in rxn.participants:
+                species_id = species_coefficient.species.gen_id()
+                species.append(species_id)
+        self.species_ids = det_dedupe(species)
+
+    def set_up_optimizations(self):
+        """ To improve performance, pre-compute and pre-allocate some data structures """
+        # make fixed set of species ids used by this continuous time submodel
+        self.species_ids_set = set(self.species_ids)
+        # pre-allocate dict of adjustments used to pass changes to LocalSpeciesPopulation
+        self.adjustments = {species_id: None for species_id in self.species_ids}
+        # pre-allocate numpy arrays for populations
+        self.num_species = len(self.species_ids)
+        self.populations = np.zeros(self.num_species)
+
+    def current_species_populations(self):
+        """ Obtain the current populations of species modeled by this continuous time submodel
+
+        The current populations are written into `self.populations`.
+        """
+        pops_dict = self.local_species_population.read(self.time, self.species_ids_set, round=False)
+        for idx, species_id in enumerate(self.species_ids):
+            self.populations[idx] = pops_dict[species_id]
