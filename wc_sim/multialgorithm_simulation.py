@@ -21,7 +21,7 @@ from wc_sim.multialgorithm_errors import MultialgorithmError, MultialgorithmWarn
 from wc_sim.sim_config import WCSimulationConfig
 from wc_sim.species_populations import LocalSpeciesPopulation
 from wc_sim.submodels.dynamic_submodel import DynamicSubmodel
-from wc_sim.submodels.fba import DfbaSubmodel
+from wc_sim.submodels.dfba import DfbaSubmodel
 from wc_sim.submodels.nrm import NrmSubmodel
 from wc_sim.submodels.odes import OdeSubmodel
 from wc_sim.submodels.ssa import SsaSubmodel
@@ -384,7 +384,6 @@ class MultialgorithmSimulation(object):
                 )
 
             elif are_terms_equivalent(lang_submodel.framework, onto['WC:dynamic_flux_balance_analysis']):
-                # TODO(Arthur): make DFBA submodels work
                 simulation_submodel = DfbaSubmodel(
                     lang_submodel.id,
                     self.dynamic_model,
@@ -393,6 +392,9 @@ class MultialgorithmSimulation(object):
                     self.get_dynamic_compartments(lang_submodel),
                     self.local_species_population,
                     self.wc_sim_config.dfba_time_step,
+                    lang_submodel.dfba_obj,
+                    self.wc_sim_config.dfba_bound_scale_factor,
+                    self.wc_sim_config.dfba_coef_scale_factor,
                     **get_options(self, 'DfbaSubmodel')
                 )
 
