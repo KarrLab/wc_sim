@@ -86,8 +86,6 @@ class PropertyProvider(ApplicationSimulationObject):
         super().__init__(name)
         self.test_property_hist = test_property_hist
 
-    def send_initial_events(self): pass
-
     def get_state(self):
         return 'object state to be provided'
 
@@ -135,7 +133,7 @@ class PropertyRequestor(ApplicationSimulationObject):
         self.expected_history = expected_history
         self.test_case = test_case
 
-    def send_initial_events(self):
+    def init_before_run(self):
         self.send_event(self.period,
                         self,
                         GoGetProperty(self.property_name, self.period))

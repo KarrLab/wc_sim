@@ -129,7 +129,7 @@ class SsaSubmodel(DynamicSubmodel):
         self.log_with_time("init: id: {}".format(id))
         self.log_with_time("init: species: {}".format(str([s.id for s in species])))
 
-    def send_initial_events(self):
+    def init_before_run(self):
         """ Send this SSA submodel's initial events
         """
         self.schedule_next_events()

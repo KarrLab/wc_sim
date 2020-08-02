@@ -62,8 +62,6 @@ class AggregateDistributedProps(ApplicationSimulationObject):   # pragma: no cov
         SimulationObject.__init__(self, name)
         self.properties = {}
 
-    def send_initial_events(self): pass
-
     def get_state(self):
         return 'object state to be provided'
 

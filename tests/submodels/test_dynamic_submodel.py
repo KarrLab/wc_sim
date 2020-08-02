@@ -232,7 +232,7 @@ class TestDsaSubmodel(unittest.TestCase):
             # map reaction id to index
             self.assertEqual(self.dsa_submodel.reactions[rxn_index].id, rxn_id)
 
-        # test send_initial_events(), schedule_next_reaction_execution() & schedule_ExecuteDsaReaction()
+        # test init_before_run(), schedule_next_reaction_execution() & schedule_ExecuteDsaReaction()
         # all of self.dsa_submodel's reactions should be scheduled to execute
         events = self.simulation_engine.event_queue.render(sim_obj=self.dsa_submodel, as_list=True)
         reaction_indices = set()
@@ -294,7 +294,7 @@ class TestDsaSubmodel(unittest.TestCase):
         self.simulation_engine.event_queue.reset()
 
         # check that event time for the initial event for reaction_5 is inf
-        self.dsa_submodel.send_initial_events()
+        self.dsa_submodel.init_before_run()
         for event in self.simulation_engine.event_queue.event_heap:
             if event.message.reaction_index == index_reaction_5:
                 self.assertEqual(event.event_time, float('inf'))

@@ -71,7 +71,7 @@ class DsaSubmodel(DynamicSubmodel):
         for index, rxn in enumerate(self.reactions):
             self.reaction_table[rxn.id] = index
 
-    def send_initial_events(self):
+    def init_before_run(self):
         """ Send this DSA submodel's initial events
 
         Schedule initial reactions at time `1 / (2 rate)` so that the linear approximation for the number

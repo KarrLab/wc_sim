@@ -1293,9 +1293,6 @@ class SpeciesPopSimObject(LocalSpeciesPopulation, ApplicationSimulationObject,
     functionality by wrapping a LocalSpeciesPopulation in a `SimulationObject`.
     """
 
-    def send_initial_events(self): pass
-    """ No initial events to send"""
-
     def get_state(self):
         return 'object state to be provided'
 

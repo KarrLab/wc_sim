@@ -1024,8 +1024,6 @@ its simulated population.
 """
 class MockSimulationTestingObject(MockSimulationObject):
 
-    def send_initial_events(self): pass
-
     def get_state(self):
         return 'object state to be provided'
 

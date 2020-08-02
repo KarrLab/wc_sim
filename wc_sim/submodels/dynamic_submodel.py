@@ -62,10 +62,6 @@ class DynamicSubmodel(ApplicationSimulationObject):
                                              f"reactions: {[reaction.id for reaction in reactions]}",
                                              sim_time=self.time)
 
-    # The next 2 methods implement the abstract methods in ApplicationSimulationObject
-    def send_initial_events(self):
-        pass    # pragma: no cover
-
     GET_STATE_METHOD_MESSAGE = 'object state to be provided by subclass'
 
     def get_state(self):

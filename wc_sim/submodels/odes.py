@@ -290,7 +290,7 @@ class OdeSubmodel(DynamicSubmodel):
         return self.solver.get_info()
 
     ### schedule and handle DES events ###
-    def send_initial_events(self):
+    def init_before_run(self):
         """ Send this ODE submodel's initial event """
         self.send_event(0, self, message_types.RunOde())
 

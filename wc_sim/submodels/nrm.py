@@ -195,7 +195,7 @@ class NrmSubmodel(DynamicSubmodel):
         next_rxn, next_time = self.execution_time_priority_queue.topitem()
         self.register_nrm_reaction(next_time, next_rxn)
 
-    def send_initial_events(self):
+    def init_before_run(self):
         """ Initialize this NRM submodel and schedule its first reaction
 
         This :obj:`ApplicationSimulationObject` method is called when a :obj:`SimulationEngine` is
