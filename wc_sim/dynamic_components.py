@@ -1094,7 +1094,7 @@ class DynamicModel(object):
         """
         rxns_modeled_by_continuous_submodels = {}
         for submodel_id, dynamic_submodel in self.dynamic_submodels.items():
-            if isinstance(dynamic_submodel, (wc_sim.submodels.fba.DfbaSubmodel,
+            if isinstance(dynamic_submodel, (wc_sim.submodels.dfba.DfbaSubmodel,
                                              wc_sim.submodels.odes.OdeSubmodel)):
                 rxns_modeled_by_continuous_submodels[submodel_id] = set(dynamic_submodel.reactions)
 
