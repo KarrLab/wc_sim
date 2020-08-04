@@ -54,22 +54,23 @@ class TestOdeSubmodel(unittest.TestCase):
 
     ### test low level methods ###
     def test_ode_submodel_init(self):
-        self.assertEqual(self.ode_submodel_1.ode_time_step, self.ode_time_step)
+        self.assertEqual(self.ode_submodel_1.time_step, self.ode_time_step)
 
         # test exceptions
         bad_ode_time_step = -2
         with self.assertRaisesRegexp(MultialgorithmError,
-            'ode_time_step must be positive, but is {}'.format(bad_ode_time_step)):
+            'OdeSubmodel submodel_1: time_step must be positive, but is {}'.format(bad_ode_time_step)):
             self.make_ode_submodel(self.mdl_1_spec, ode_time_step=bad_ode_time_step)
 
-        with self.assertRaisesRegexp(MultialgorithmError, "ode_time_step must be a number but is "):
+        with self.assertRaisesRegexp(MultialgorithmError,
+                                     "OdeSubmodel submodel_1: time_step must be a number but is"):
             self.make_ode_submodel(self.mdl_1_spec, ode_time_step=None)
 
     def test_set_up_optimizations(self):
         ode_submodel = self.ode_submodel_1
-        self.assertTrue(set(ode_submodel.ode_species_ids) == ode_submodel.ode_species_ids_set \
+        self.assertTrue(set(ode_submodel.species_ids) == ode_submodel.species_ids_set \
             == set(ode_submodel.adjustments.keys()))
-        self.assertEqual(ode_submodel.populations.shape, ((len(ode_submodel.ode_species_ids), )))
+        self.assertEqual(ode_submodel.populations.shape, ((len(ode_submodel.species_ids), )))
 
     # todo: for the next 4 tests, check results against raw properties of self.mdl_1_spec
     def test_solver_lock(self):
@@ -228,5 +229,5 @@ class TestOdeSubmodel(unittest.TestCase):
         check_next_event(0)
 
         # next RunOde event should be at custom_ode_time_step
-        custom_ode_submodel.schedule_next_ode_analysis()
+        custom_ode_submodel.schedule_next_periodic_analysis()
         check_next_event(custom_ode_time_step)

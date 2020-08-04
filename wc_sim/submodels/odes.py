@@ -19,8 +19,7 @@ from wc_sim import message_types
 from wc_sim.config import core as config_core_multialgorithm
 from wc_sim.multialgorithm_errors import DynamicMultialgorithmError, MultialgorithmError
 from wc_sim.species_populations import TempPopulationsLSP
-from wc_sim.submodels.dynamic_submodel import DynamicSubmodel
-from wc_utils.util.list import det_dedupe
+from wc_sim.submodels.dynamic_submodel import ContinuousTimeSubmodel
 
 config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
 
@@ -30,24 +29,16 @@ class WcSimOdeWarning(UserWarning):
     pass
 
 
-class OdeSubmodel(DynamicSubmodel):
+class OdeSubmodel(ContinuousTimeSubmodel):
     """ Use a system of ordinary differential equations to predict the dynamics of chemical species in a container
 
     Attributes:
-        ode_time_step (:obj:`float`): the time between ODE solutions
-        num_steps (:obj:`int`): number of steps taken
         solver (:obj:`scikits.odes.ode.ode`): the Odes ode solver
-        ode_species_ids (:obj:`list`): ids of the species used by this ODE solver
-        ode_species_ids_set (:obj:`set`): ids of the species used by this ODE solver
-        num_species (:obj:`int`): number of species used by this ODE solver
-        populations (:obj:`numpy.ndarray`): pre-allocated numpy array for storing species populations
         non_negative_populations (:obj:`numpy.ndarray`): pre-allocated numpy array for non-negative
             species populations
         zero_populations (:obj:`numpy.ndarray`): pre-allocated numpy array
         rate_of_change_expressions (:obj:`list` of :obj:`list` of :obj:`tuple`): for each species,
             a list of its (coefficient, rate law) pairs
-        adjustments (:obj:`dict`): pre-allocated adjustments for passing changes to LocalSpeciesPopulation
-        num_species (:obj:`int`): number of species in `ode_species_ids`
     """
     ABS_ODE_SOLVER_TOLERANCE = config_multialgorithm['abs_ode_solver_tolerance']
     REL_ODE_SOLVER_TOLERANCE = config_multialgorithm['rel_ode_solver_tolerance']
@@ -57,6 +48,8 @@ class OdeSubmodel(DynamicSubmodel):
 
     # register 'handle_RunOde_msg' to handle RunOde events
     event_handlers = [(message_types.RunOde, 'handle_RunOde_msg')]
+
+    time_step_message = message_types.RunOde
 
     using_solver = False
 
@@ -79,15 +72,7 @@ class OdeSubmodel(DynamicSubmodel):
             options (:obj:`dict`, optional): ODE submodel options
         """
         super().__init__(id, dynamic_model, reactions, species, dynamic_compartments,
-                         local_species_population)
-        if not isinstance(ode_time_step, (float, int)):
-            raise MultialgorithmError(f"OdeSubmodel {self.id}: ode_time_step must be a number but is "
-                                      f"{ode_time_step}")
-        if ode_time_step <= 0:
-            raise MultialgorithmError(f"OdeSubmodel {self.id}: ode_time_step must be positive, but is "
-                                      f"{ode_time_step}")
-        self.ode_time_step = ode_time_step
-        self.num_steps = 0
+                         local_species_population, ode_time_step, options)
         self.set_up_ode_submodel()
         self.set_up_optimizations()
         ode_solver_options = {'atol': self.ABS_ODE_SOLVER_TOLERANCE,
@@ -103,17 +88,10 @@ class OdeSubmodel(DynamicSubmodel):
         """ Set up an ODE submodel, including its ODE solver """
         # disable locking temporarily
         # self.get_solver_lock()
-
-        # find species in reactions modeled by this submodel
-        ode_species = []
-        for idx, rxn in enumerate(self.reactions):
-            for species_coefficient in rxn.participants:
-                species_id = species_coefficient.species.gen_id()
-                ode_species.append(species_id)
-        self.ode_species_ids = det_dedupe(ode_species)
+        self.set_up_continuous_time_submodel()
 
         # this is optimal, but costs O(|self.reactions| * |rxn.participants|)
-        tmp_coeffs_and_rate_laws = {species_id:[] for species_id in self.ode_species_ids}
+        tmp_coeffs_and_rate_laws = {species_id:[] for species_id in self.species_ids}
         for idx, rxn in enumerate(self.reactions):
             rate_law_id = rxn.rate_laws[0].id
             dynamic_rate_law = self.dynamic_model.dynamic_rate_laws[rate_law_id]
@@ -127,18 +105,12 @@ class OdeSubmodel(DynamicSubmodel):
         # then, in compute_population_change_rates() compute a vector of reaction rates R and get
         # rates of change of species from R * S
         self.rate_of_change_expressions = []
-        for species_id in self.ode_species_ids:
+        for species_id in self.species_ids:
             self.rate_of_change_expressions.append(tmp_coeffs_and_rate_laws[species_id])
 
     def set_up_optimizations(self):
         """ To improve performance, pre-compute and pre-allocate some data structures """
-        # make fixed set of species ids used by this OdeSubmodel
-        self.ode_species_ids_set = set(self.ode_species_ids)
-        # pre-allocate dict of adjustments used to pass changes to LocalSpeciesPopulation
-        self.adjustments = {species_id: None for species_id in self.ode_species_ids}
-        # pre-allocate numpy arrays for populations
-        self.num_species = len(self.ode_species_ids)
-        self.populations = np.zeros(self.num_species)
+        self.set_up_continuous_time_optimizations()
         self.non_negative_populations = np.zeros(self.num_species)
         self.zero_populations = np.zeros(self.num_species)
 
@@ -190,7 +162,7 @@ class OdeSubmodel(DynamicSubmodel):
             time (:obj:`float`): simulation time
             new_species_populations (:obj:`numpy.ndarray`): estimated populations of all species at
                 time `time`, provided by the ODE solver;
-                listed in the same order as `self.ode_species_ids`
+                listed in the same order as `self.species_ids`
             population_change_rates (:obj:`numpy.ndarray`): the rate of change of
                 `new_species_populations` at time `time`; written by this method
 
@@ -218,7 +190,7 @@ class OdeSubmodel(DynamicSubmodel):
         Args:
             time (:obj:`float`): simulation time
             new_species_populations (:obj:`numpy.ndarray`): populations of all species at time `time`,
-                listed in the same order as `self.ode_species_ids`
+                listed in the same order as `self.species_ids`
             population_change_rates (:obj:`numpy.ndarray`): the rate of change of
                 `new_species_populations` at time `time`; written by this method
         """
@@ -229,7 +201,7 @@ class OdeSubmodel(DynamicSubmodel):
         # section "Advice on controlling unphysical negative values" in
         # Hindmarsh, Serban and Reynolds, User Documentation for cvode v5.0.0, 2019
         self.non_negative_populations = np.maximum(self.zero_populations, new_species_populations)
-        temporary_populations = dict(zip(self.ode_species_ids, self.non_negative_populations))
+        temporary_populations = dict(zip(self.species_ids, self.non_negative_populations))
         with TempPopulationsLSP(self.local_species_population, temporary_populations):
 
             # flush expressions that depend on species and reactions modeled by this ODE submodel from cache
@@ -242,15 +214,6 @@ class OdeSubmodel(DynamicSubmodel):
                     species_rate_of_change += coeff * rate
                 population_change_rates[idx] = species_rate_of_change
 
-    def current_species_populations(self):
-        """ Obtain the current populations of species modeled by this ODE
-
-        The current populations are written into `self.populations`.
-        """
-        pops_dict = self.local_species_population.read(self.time, self.ode_species_ids_set, round=False)
-        for idx, species_id in enumerate(self.ode_species_ids):
-            self.populations[idx] = pops_dict[species_id]
-
     def run_ode_solver(self):
         """ Run the ODE solver for one WC simulator time step and save the species populations changes
 
@@ -258,7 +221,7 @@ class OdeSubmodel(DynamicSubmodel):
             :obj:`DynamicMultialgorithmError`: if the CVODE ODE solver indicates an error
         """
         ### run the ODE solver ###
-        end_time = self.time + self.ode_time_step
+        end_time = self.time + self.time_step
         # advance one ode_time_step
         solution_times = [self.time, end_time]
         self.current_species_populations()
@@ -274,7 +237,7 @@ class OdeSubmodel(DynamicSubmodel):
         population_changes = new_population - self.populations
         time_advance = solution_time - self.time
         population_change_rates = population_changes / time_advance
-        for idx, species_id in enumerate(self.ode_species_ids):
+        for idx, species_id in enumerate(self.species_ids):
             self.adjustments[species_id] = population_change_rates[idx]
         self.local_species_population.adjust_continuously(self.time, self.adjustments)
 
@@ -289,16 +252,7 @@ class OdeSubmodel(DynamicSubmodel):
         """
         return self.solver.get_info()
 
-    ### schedule and handle DES events ###
-    def init_before_run(self):
-        """ Send this ODE submodel's initial event """
-        self.send_event(0, self, message_types.RunOde())
-
-    def schedule_next_ode_analysis(self):
-        """ Schedule the next analysis by this ODE submodel """
-        self.num_steps += 1
-        self.send_event_absolute(self.num_steps * self.ode_time_step, self, message_types.RunOde())
-
+    ### handle DES events ###
     def handle_RunOde_msg(self, event):
         """ Handle an event containing a RunOde message
 
@@ -306,4 +260,4 @@ class OdeSubmodel(DynamicSubmodel):
             event (:obj:`Event`): a simulation event
         """
         self.run_ode_solver()
-        self.schedule_next_ode_analysis()
+        self.schedule_next_periodic_analysis()

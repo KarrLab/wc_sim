@@ -18,6 +18,7 @@ from wc_sim.debug_logs import logs as debug_logs
 from wc_sim.dynamic_components import DynamicCompartment, DynamicModel
 from wc_sim.multialgorithm_errors import (DynamicMultialgorithmError, MultialgorithmError,
                                           DynamicSpeciesPopulationError)
+from wc_utils.util.list import det_dedupe
 
 
 # TODO(Arthur): rename reactions -> dynamic reactions
@@ -240,7 +241,7 @@ class DynamicSubmodel(ApplicationSimulationObject):
 class ContinuousTimeSubmodel(DynamicSubmodel):
     """ Provide functionality that is shared by multiple continuous time submodels
 
-    Discrete time submodels represent changes in species populations as step functions.
+    Discrete time submodels like SSA represent changes in species populations as step functions.
     Continuous time submodels model changes in species populations as continuous functions, currently
     piece-wise linear functions.
     ODEs and dFBA are continuous time submodels.
@@ -251,8 +252,8 @@ class ContinuousTimeSubmodel(DynamicSubmodel):
         options (:obj:`dict`): continuous time submodel options
         species_ids (:obj:`list`): ids of the species used by this continuous time submodel
         species_ids_set (:obj:`set`): ids of the species used by this continuous time submodel
-        adjustments (:obj:`dict`): pre-allocated adjustments for passing changes to LocalSpeciesPopulation
-        num_species (:obj:`int`): number of species in `species_ids`
+        num_species (:obj:`int`): number of species in `species_ids` and `species_ids_set`
+        adjustments (:obj:`dict`): pre-allocated adjustments for passing changes to the :obj:`LocalSpeciesPopulation`
         populations (:obj:`numpy.ndarray`): pre-allocated numpy array for storing species populations
     """
     def __init__(self, id, dynamic_model, reactions, species, dynamic_compartments,
@@ -280,7 +281,7 @@ class ContinuousTimeSubmodel(DynamicSubmodel):
                 species.append(species_id)
         self.species_ids = det_dedupe(species)
 
-    def set_up_optimizations(self):
+    def set_up_continuous_time_optimizations(self):
         """ To improve performance, pre-compute and pre-allocate some data structures """
         # make fixed set of species ids used by this continuous time submodel
         self.species_ids_set = set(self.species_ids)
@@ -298,3 +299,13 @@ class ContinuousTimeSubmodel(DynamicSubmodel):
         pops_dict = self.local_species_population.read(self.time, self.species_ids_set, round=False)
         for idx, species_id in enumerate(self.species_ids):
             self.populations[idx] = pops_dict[species_id]
+
+    ### schedule DES events ###
+    def init_before_run(self):
+        """ Send this continuous time submodel's initial event """
+        self.send_event(0, self, type(self).time_step_message())
+
+    def schedule_next_periodic_analysis(self):
+        """ Schedule the next analysis by this continuous time submodel """
+        self.num_steps += 1
+        self.send_event_absolute(self.num_steps * self.time_step, self, type(self).time_step_message())

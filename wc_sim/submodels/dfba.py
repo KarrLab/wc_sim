@@ -1,6 +1,7 @@
 """ A submodel that uses Dynamic Flux Balance Analysis (dFBA) to model a set of reactions
 
 :Author: Yin Hoon Chew <yinhoon.chew@mssm.edu>
+:Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
 :Date: 2020-07-29
 :Copyright: 2016-2020, Karr Lab
 :License: MIT
@@ -15,28 +16,19 @@ from wc_sim import message_types
 from wc_sim.config import core as config_core_multialgorithm
 from wc_sim.multialgorithm_errors import DynamicMultialgorithmError, MultialgorithmError
 from wc_sim.species_populations import TempPopulationsLSP
-from wc_sim.submodels.dynamic_submodel import DynamicSubmodel
-from wc_utils.util.list import det_dedupe
+from wc_sim.submodels.dynamic_submodel import ContinuousTimeSubmodel
 
-class DfbaSubmodel(DynamicSubmodel):
+
+class DfbaSubmodel(ContinuousTimeSubmodel):
     """ Use dynamic Flux Balance Analysis to predict the dynamics of chemical species in a container
 
     Attributes:          
-        dfba_time_step (:obj:`float`): time interval between FBA optimization
         dfba_objective (:obj:`wc_lang.DfbaObjective`): dFBA objective function 
         dfba_bound_scale_factor (:obj:`float`): scaling factor multiplied by the reaction bounds 
             during optimization
         dfba_coef_scale_factor (:obj:`float`): scaling factor multiplied by the species 
             coefficients in the dFBA objective reaction during optimization
-        dfba_species_ids (:obj:`list`): ids of the species used by this dFBA solver
-        dfba_species_ids_set (:obj:`set`): ids of the species used by this dFBA solver
-        num_species (:obj:`int`): number of species used by this dFBA solver
-        populations (:obj:`numpy.ndarray`): pre-allocated numpy array for storing species populations
-        non_negative_populations (:obj:`numpy.ndarray`): pre-allocated numpy array for non-negative
-            species populations
-        zero_populations (:obj:`numpy.ndarray`): pre-allocated numpy array
         reaction_fluxes (:obj:`dict`): pre-allocated reaction fluxes
-        adjustments (:obj:`dict`): pre-allocated adjustments for passing changes to LocalSpeciesPopulation
         _conv_model (:obj:`conv_opt.Model`): linear programming model in conv_opt format
         _conv_variables (:obj:`dict`): a dictionary mapping reaction IDs to the associated 
             `conv_opt.Variable` objects
@@ -53,6 +45,8 @@ class DfbaSubmodel(DynamicSubmodel):
 
     # register 'handle_RunFba_msg' to handle RunFba events
     event_handlers = [(message_types.RunFba, 'handle_RunFba_msg')]
+
+    time_step_message = message_types.RunFba
 
     def __init__(self, id, dynamic_model, reactions, species, dynamic_compartments,
                  local_species_population, dfba_time_step, dfba_objective,  
@@ -71,7 +65,10 @@ class DfbaSubmodel(DynamicSubmodel):
             local_species_population (:obj:`LocalSpeciesPopulation`): the store that maintains this
                 dFBA submodel's species population               
             dfba_time_step (:obj:`float`): time interval between FBA optimization
+            # AG: let's talk about these arguments:
+            # AG: perhaps this should be extracted in DynamicModel.__init__(): see "create dynamic dFBA Objectives"
             dfba_objective (:obj:`wc_lang.DfbaObjective`): dFBA objective function
+            # AG: perhaps these should be in the options:
             dfba_bound_scale_factor (:obj:`float`): scaling factor multiplied by the reaction bounds 
                 during optimization
             dfba_coef_scale_factor (:obj:`float`): scaling factor multiplied by the species 
@@ -79,18 +76,10 @@ class DfbaSubmodel(DynamicSubmodel):
             options (:obj:`dict`, optional): dFBA submodel options
         """
         super().__init__(id, dynamic_model, reactions, species, dynamic_compartments,
-                         local_species_population)
-
-        if not isinstance(dfba_time_step, (float, int)):
-            raise MultialgorithmError(f"DfbaSubmodel {self.id}: dfba_time_step must be a number but is "
-                                      f"{dfba_time_step}")
-        if dfba_time_step <= 0:
-            raise MultialgorithmError("dfba_time_step must be positive, but is {}".format(dfba_time_step))
+                         local_species_population, dfba_time_step, options)
         self.dfba_objective = dfba_objective
-        self.dfba_time_step = dfba_time_step
         self.dfba_bound_scale_factor = dfba_bound_scale_factor
         self.dfba_coef_scale_factor = dfba_coef_scale_factor
-        self.options = options
 
         # log initialization data
         self.log_with_time("init: id: {}".format(id))
@@ -103,12 +92,7 @@ class DfbaSubmodel(DynamicSubmodel):
     def set_up_dfba_submodel(self):
         """ Set up a dFBA submodel, by converting to a linear programming matrix """
 
-        dfba_species = []
-        for idx, rxn in enumerate(self.reactions):
-            for species_coefficient in rxn.participants:
-                species_id = species_coefficient.species.gen_id()
-                dfba_species.append(species_id)
-        self.dfba_species_ids = det_dedupe(dfba_species)
+        self.set_up_continuous_time_submodel()
 
         ### dFBA specific code ###
         # Formulate the optimization problem using the conv_opt package
@@ -162,38 +146,16 @@ class DfbaSubmodel(DynamicSubmodel):
                 },
             })
 
-        self.schedule_next_fba_analysis()
-
-    def schedule_next_fba_analysis(self):
-        """ Schedule the next analysis by this dFBA submodel.
-        """
-        self.send_event(self.dfba_time_step, self, message_types.RunFba())
-
     def set_up_optimizations(self):
         """ To improve performance, pre-compute and pre-allocate some data structures """
-        # make fixed set of species ids used by this DfbaSubmodel
-        self.dfba_species_ids_set = set(self.dfba_species_ids)
+        self.set_up_continuous_time_optimizations()
         # pre-allocate dict of reaction fluxes
         self.reaction_fluxes = {rxn_id: None for rxn_id in self.reactions}
-        # pre-allocate dict of adjustments used to pass changes to LocalSpeciesPopulation
-        self.adjustments = {species_id: None for species_id in self.dfba_species_ids}
-        # pre-allocate numpy arrays for populations
-        self.num_species = len(self.dfba_species_ids)
-        self.populations = np.zeros(self.num_species)
-
-    def current_species_populations(self):
-        """ Obtain the current populations of species modeled by this FBA
-        The current populations are written into `self.populations`.
-        """
-        pops_dict = self.local_species_population.read(self.time, self.dfba_species_ids_set, round=False)
-        for idx, species_id in enumerate(self.dfba_species_ids):
-            self.populations[idx] = pops_dict[species_id]
 
     def determine_bounds(self):
         """ Determine the minimum and maximum bounds for each reaction. The bounds will be
             scaled by multiplying to `dfba_bound_scale_factor` and written to `self._reaction_bounds`                 
         """
-                
         #TODO: get cell_volume
         # Determine all the reaction bounds
         scale_factor = self.dfba_bound_scale_factor
@@ -245,7 +207,7 @@ class DfbaSubmodel(DynamicSubmodel):
             self._conv_variables[rxn_id].lower_bound = min_constr
             self._conv_variables[rxn_id].upper_bound = max_constr
         
-        end_time = self.time + self.dfba_time_step
+        end_time = self.time + self.time_step
         result = self._conv_model.solve()        
         if result.status_code != 0:
             raise DynamicMultialgorithmError(self.time, f"DfbaSubmodel {self.id}: No optimal solution found: "
@@ -254,10 +216,10 @@ class DfbaSubmodel(DynamicSubmodel):
         self._optimal_obj_func_value = result.value/self.dfba_bound_scale_factor*self.dfba_coef_scale_factor
         for rxn_variable in self._conv_model.variables:
             self.reaction_fluxes[rxn_variable.name] = rxn_variable.primal/self.dfba_bound_scale_factor
-        
+
         # Calculate the adjustment for each species as sum over reactions of reaction flux * stoichiometry       
         self.current_species_populations()
-        for idx, species_id in enumerate(self.dfba_species_ids):
+        for idx, species_id in enumerate(self.species_ids):
             population_change_rate = 0
             for rxn_term in self._conv_metabolite_matrices[species_id]:
                 population_change_rate += self.reaction_fluxes[rxn_term.variable.name] * rxn_term.coefficient
@@ -273,6 +235,7 @@ class DfbaSubmodel(DynamicSubmodel):
         # "continuous_submodel_flush_after_populations_change" and use it both here and in odes.py
         self.dynamic_model.fba_flush_after_populations_change(self.id)
 
+    ### handle DES events ###
     def handle_RunFba_msg(self):
         """ Handle an event containing a RunFba message
 
@@ -280,4 +243,4 @@ class DfbaSubmodel(DynamicSubmodel):
             event (:obj:`Event`): a simulation event
         """
         self.run_fba_solver()
-        self.schedule_next_fba_analysis()    
+        self.schedule_next_periodic_analysis()
