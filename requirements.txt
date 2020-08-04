@@ -1,6 +1,7 @@
 callbacks
 cement >= 3.0.0
 cobra
+conv_opt
 configobj
 de_sim
 h5py
