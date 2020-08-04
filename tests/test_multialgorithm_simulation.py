@@ -33,7 +33,7 @@ from wc_sim.run_results import RunResults
 from wc_sim.sim_config import WCSimulationConfig
 from wc_sim.simulation import Simulation
 from wc_sim.species_populations import LocalSpeciesPopulation
-from wc_sim.submodels.fba import DfbaSubmodel
+from wc_sim.submodels.dfba import DfbaSubmodel
 from wc_sim.submodels.nrm import NrmSubmodel
 from wc_sim.submodels.odes import OdeSubmodel
 from wc_sim.submodels.ssa import SsaSubmodel
