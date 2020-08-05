@@ -23,11 +23,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
     """ Use dynamic Flux Balance Analysis to predict the dynamics of chemical species in a container
 
     Attributes:          
-        dfba_objective (:obj:`wc_lang.DfbaObjective`): dFBA objective function 
-        dfba_bound_scale_factor (:obj:`float`): scaling factor multiplied by the reaction bounds 
-            during optimization
-        dfba_coef_scale_factor (:obj:`float`): scaling factor multiplied by the species 
-            coefficients in the dFBA objective reaction during optimization
+        dfba_objective (:obj:`wc_lang.DfbaObjective`): dFBA objective function
         reaction_fluxes (:obj:`dict`): pre-allocated reaction fluxes
         _conv_model (:obj:`conv_opt.Model`): linear programming model in conv_opt format
         _conv_variables (:obj:`dict`): a dictionary mapping reaction IDs to the associated 
@@ -39,6 +35,8 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             and maximum bounds as values
         _optimal_obj_func_value (:obj:`float`): the value of objective function returned by the solver            
     """
+    DFA_BOUND_SCALE_FACTOR = 1
+    DFBA_COEF_SCALE_FACTOR = 1
 
     # register the message types sent by DfbaSubmodel
     messages_sent = [message_types.RunFba]
@@ -49,8 +47,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
     time_step_message = message_types.RunFba
 
     def __init__(self, id, dynamic_model, reactions, species, dynamic_compartments,
-                 local_species_population, dfba_time_step, dfba_objective,  
-                 dfba_bound_scale_factor, dfba_coef_scale_factor, 
+                 local_species_population, dfba_time_step, dfba_objective,
                  options=None):
         """ Initialize a dFBA submodel instance
         Args:
@@ -68,18 +65,18 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             # AG: let's talk about these arguments:
             # AG: perhaps this should be extracted in DynamicModel.__init__(): see "create dynamic dFBA Objectives"
             dfba_objective (:obj:`wc_lang.DfbaObjective`): dFBA objective function
-            # AG: perhaps these should be in the options:
-            dfba_bound_scale_factor (:obj:`float`): scaling factor multiplied by the reaction bounds 
-                during optimization
-            dfba_coef_scale_factor (:obj:`float`): scaling factor multiplied by the species 
-                coefficients in the dFBA objective reaction during optimization
             options (:obj:`dict`, optional): dFBA submodel options
         """
         super().__init__(id, dynamic_model, reactions, species, dynamic_compartments,
                          local_species_population, dfba_time_step, options)
-        self.dfba_objective = dfba_objective
-        self.dfba_bound_scale_factor = dfba_bound_scale_factor
-        self.dfba_coef_scale_factor = dfba_coef_scale_factor
+        self.dfba_objective = dfba_objective        
+        self.dfba_solver_options = {'dfba_bound_scale_factor': self.DFA_BOUND_SCALE_FACTOR,
+                              'dfba_coef_scale_factor': self.DFBA_COEF_SCALE_FACTOR}
+        if options is not None:
+            if 'dfba_bound_scale_factor' in options:
+                self.dfba_solver_options['dfba_bound_scale_factor'] = options['dfba_bound_scale_factor']
+            if 'dfba_coef_scale_factor' in options:
+                self.dfba_solver_options['dfba_coef_scale_factor'] = options['dfba_coef_scale_factor']
 
         # log initialization data
         self.log_with_time("init: id: {}".format(id))
@@ -91,7 +88,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
 
     def set_up_dfba_submodel(self):
         """ Set up a dFBA submodel, by converting to a linear programming matrix """
-
+        coef_scale_factor = self.dfba_solver_options['dfba_coef_scale_factor']
         self.set_up_continuous_time_submodel()
 
         ### dFBA specific code ###
@@ -114,7 +111,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             for part in rxn.dfba_obj_species:
                 self._conv_metabolite_matrices[part.species.id].append(
                     conv_opt.LinearTerm(self._conv_variables[rxn.id], 
-                        part.value*self.dfba_coef_scale_factor))        
+                        part.value*coef_scale_factor))        
 
         for met_id, expression in self._conv_metabolite_matrices.items():
             self._conv_model.constraints.append(conv_opt.Constraint(expression, name=met_id, 
@@ -122,7 +119,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
 
         # Set up the objective function
         dfba_obj_expr_objs = self.dfba_objective.expression._parsed_expression.lin_coeffs
-        for rxn_coeffs in dfba_obj_expr_objs.keys():
+        for rxn_coeffs in dfba_obj_expr_objs.values():
             for rxn, lin_coef in rxn_coeffs.items():
                 self._conv_model.objective_terms.append(conv_opt.LinearTerm(
                     self._conv_variables[rxn.id], lin_coef))
@@ -158,15 +155,15 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         """
         #TODO: get cell_volume
         # Determine all the reaction bounds
-        scale_factor = self.dfba_bound_scale_factor
+        bound_scale_factor = self.dfba_solver_options['dfba_bound_scale_factor']
         self._reaction_bounds = {}        
         for reaction in self.reactions:
             # Set the bounds of exchange/demand/sink reactions        
             if reaction.flux_bounds:
                 rxn_bounds = reaction.flux_bounds
-                min_constr = rxn_bounds.min*cell_volume*scipy.constants.Avogadro*scale_factor if \
+                min_constr = rxn_bounds.min*cell_volume*scipy.constants.Avogadro*bound_scale_factor if \
                     rxn_bounds.min else rxn_bounds.min
-                max_constr = rxn_bounds.max*cell_volume*scipy.constants.Avogadro*scale_factor if \
+                max_constr = rxn_bounds.max*cell_volume*scipy.constants.Avogadro*bound_scale_factor if \
                     rxn_bounds.max else rxn_bounds.max                
             # Set the bounds of reactions with measured kinetic constants
             elif reaction.rate_laws:                
@@ -175,7 +172,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                     max_constr = for_ratelaw.expression._parsed_expression.eval({
                                     wc_lang.Species: {i.id: i.distribution_init_concentration.mean \
                                         for i in for_ratelaw.expression.species}
-                                        }) * scale_factor
+                                        }) * bound_scale_factor
                 else:
                     max_constr = None        
                 
@@ -184,7 +181,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                     min_constr = -rev_ratelaw.expression._parsed_expression.eval({
                                     wc_lang.Species: {i.id: i.distribution_init_concentration.mean \
                                         for i in rev_ratelaw.expression.species}
-                                        }) * scale_factor
+                                        }) * bound_scale_factor
                 elif reaction.reversible:
                     min_constr = None
                 else:
@@ -201,7 +198,8 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
 
     def run_fba_solver(self):
         """ Run the FBA solver for one time step """
-
+        bound_scale_factor = self.dfba_solver_options['dfba_bound_scale_factor']
+        coef_scale_factor = self.dfba_solver_options['dfba_coef_scale_factor']
         self.determine_bounds()
         for rxn_id, (min_constr, max_constr) in self._reaction_bounds.items():
             self._conv_variables[rxn_id].lower_bound = min_constr
@@ -213,9 +211,9 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             raise DynamicMultialgorithmError(self.time, f"DfbaSubmodel {self.id}: No optimal solution found: "
                                                         f"'{result.status_message}' "
                                                         f"for time step [{self.time}, {end_time})")
-        self._optimal_obj_func_value = result.value/self.dfba_bound_scale_factor*self.dfba_coef_scale_factor
+        self._optimal_obj_func_value = result.value / bound_scale_factor * coef_scale_factor
         for rxn_variable in self._conv_model.variables:
-            self.reaction_fluxes[rxn_variable.name] = rxn_variable.primal/self.dfba_bound_scale_factor
+            self.reaction_fluxes[rxn_variable.name] = rxn_variable.primal / bound_scale_factor
 
         # Calculate the adjustment for each species as sum over reactions of reaction flux * stoichiometry       
         self.current_species_populations()

@@ -393,8 +393,6 @@ class MultialgorithmSimulation(object):
                     self.local_species_population,
                     self.wc_sim_config.dfba_time_step,
                     lang_submodel.dfba_obj,
-                    self.wc_sim_config.dfba_bound_scale_factor,
-                    self.wc_sim_config.dfba_coef_scale_factor,
                     **get_options(self, 'DfbaSubmodel')
                 )
 
