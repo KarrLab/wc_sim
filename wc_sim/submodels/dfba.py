@@ -62,14 +62,15 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             local_species_population (:obj:`LocalSpeciesPopulation`): the store that maintains this
                 dFBA submodel's species population               
             dfba_time_step (:obj:`float`): time interval between FBA optimization
-            # AG: let's talk about these arguments:
-            # AG: perhaps this should be extracted in DynamicModel.__init__(): see "create dynamic dFBA Objectives"
-            dfba_objective (:obj:`wc_lang.DfbaObjective`): dFBA objective function
             options (:obj:`dict`, optional): dFBA submodel options
         """
         super().__init__(id, dynamic_model, reactions, species, dynamic_compartments,
                          local_species_population, dfba_time_step, options)
-        self.dfba_objective = dfba_objective        
+        dfba_objective_id = f"dfba_objective_{id}"
+        if dfba_objective_id not in dynamic_model.dynamic_dfba_objectives:
+            raise MultialgorithmError(f"cannot find dynamic_dfba_objective")
+        self.dfba_objective = dynamic_model.dynamic_dfba_objectives[dfba_objective_id].expression
+
         self.dfba_solver_options = {'dfba_bound_scale_factor': self.DFA_BOUND_SCALE_FACTOR,
                               'dfba_coef_scale_factor': self.DFBA_COEF_SCALE_FACTOR}
         if options is not None:
@@ -85,6 +86,9 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         ### dFBA specific code ###
         self.set_up_dfba_submodel()
         self.set_up_optimizations()
+        # e.g.
+        # comp = self.dynamic_model.dynamic_compartments['compartment_id']
+        # comp.volume()
 
     def set_up_dfba_submodel(self):
         """ Set up a dFBA submodel, by converting to a linear programming matrix """

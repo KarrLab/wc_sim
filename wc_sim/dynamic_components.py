@@ -808,13 +808,10 @@ class DynamicModel(object):
 
         # create dynamic dFBA Objectives
         self.dynamic_dfba_objectives = {}
-        '''
-        # todo: fix: 'DfbaObjReaction.Metabolism_biomass must be prepared to create 'dfba-obj-test_submodel''
         for dfba_objective in model.dfba_objs:
             self.dynamic_dfba_objectives[dfba_objective.id] = \
                 DynamicDfbaObjective(self, self.species_population, dfba_objective,
                                      dfba_objective.expression._parsed_expression)
-        '''
 
         # prepare dynamic expressions
         for dynamic_expression_group in [self.dynamic_observables,
