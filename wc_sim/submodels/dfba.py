@@ -147,7 +147,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         """ To improve performance, pre-compute and pre-allocate some data structures """
         self.set_up_continuous_time_optimizations()
         # pre-allocate dict of reaction fluxes
-        self.reaction_fluxes = {rxn_id: None for rxn_id in self.reactions}
+        self.reaction_fluxes = {rxn.id: None for rxn in self.reactions}
 
     def determine_bounds(self):
         """ Determine the minimum and maximum bounds for each reaction. The bounds will be
