@@ -6,6 +6,7 @@
 :License: MIT
 """
 
+import copy
 import numpy as np
 import os
 import re
@@ -46,6 +47,8 @@ class TestDfbaSubmodel(unittest.TestCase):
                 wc_lang.Parameter: {c.init_density.id: c.init_density},
                 })
         assert error is None, str(error)
+
+        self.cell_volume = init_volume.mean
 
         # Create metabolites
         for m in [1,2,3]:
@@ -164,7 +167,7 @@ class TestDfbaSubmodel(unittest.TestCase):
         r4_model_rate_law.id = r4_model_rate_law.gen_id()
 
         biomass_rxn = submodel.dfba_obj_reactions.create(id='biomass_reaction', model=model)           
-        biomass_rxn.dfba_obj_species.append(model.species.get_one(id='m3[c]').dfba_obj_species.get_or_create(value=-1))
+        biomass_rxn.dfba_obj_species.append(model.species.get_one(id='m3[c]').dfba_obj_species.get_or_create(model=model, value=-1))
         submodel.dfba_obj = wc_lang.DfbaObjective(model=model)
         submodel.dfba_obj.id = submodel.dfba_obj.gen_id()
         obj_expression = biomass_rxn.id
@@ -173,27 +176,43 @@ class TestDfbaSubmodel(unittest.TestCase):
         assert error is None, str(error)
         submodel.dfba_obj.expression = dfba_obj_expression
 
-        self.dfba_submodel_1 = self.make_dfba_submodel(self.model)
+        self.dfba_submodel_options = {
+            'dfba_bound_scale_factor': 1e2,
+            'dfba_coef_scale_factor': 10,
+            'solver': 1,
+            'presolve': 1,
+            'solver_options': {
+                'cplex': {
+                    'parameters': {
+                        'emphasis': {
+                            'numerical': 1,
+                        },
+                        'read': {
+                            'scale': 1,
+                        },
+                    },
+                },
+            }
+        }
+
+        self.dfba_submodel_1 = self.make_dfba_submodel(self.model, 
+        	submodel_options=self.dfba_submodel_options)
      
         self.config_file_modifier = TempConfigFileModifier()
 
     def tearDown(self):
         self.config_file_modifier.clean_up()
         
-    def make_dfba_submodel(self, model, dfba_time_step=1.0, submodel_name='metabolism'):
+    def make_dfba_submodel(self, model, dfba_time_step=1.0, submodel_name='metabolism', 
+    	    submodel_options=None):
         """ Make a MultialgorithmSimulation from a wc lang model """
         # assume a single submodel
         self.dfba_time_step = dfba_time_step
-        self.dfba_bound_scale_factor = 1e2
-        self.dfba_coef_scale_factor = 10
-        self.dfba_options = {
-            'dfba_bound_scale_factor': self.dfba_bound_scale_factor,
-            'dfba_coef_scale_factor': self.dfba_coef_scale_factor
-        }
+        
         de_simulation_config = SimulationConfig(time_max=10)
         wc_sim_config = WCSimulationConfig(de_simulation_config, dfba_time_step=dfba_time_step)
         multialgorithm_simulation = MultialgorithmSimulation(model, wc_sim_config, 
-        	options={'DfbaSubmodel': dict(options=self.dfba_options)})
+        	options={'DfbaSubmodel': dict(options=submodel_options)})
         simulation_engine, dynamic_model = multialgorithm_simulation.build_simulation()
         simulation_engine.initialize()
         return dynamic_model.dynamic_submodels[submodel_name]
@@ -201,6 +220,8 @@ class TestDfbaSubmodel(unittest.TestCase):
     ### test low level methods ###
     def test_dfba_submodel_init(self):
         self.assertEqual(self.dfba_submodel_1.time_step, self.dfba_time_step)
+        # test options
+        self.assertEqual(self.dfba_submodel_1.dfba_solver_options, self.dfba_submodel_options)    
 
         # test exceptions
         bad_dfba_time_step = -2
@@ -211,9 +232,37 @@ class TestDfbaSubmodel(unittest.TestCase):
         with self.assertRaisesRegexp(MultialgorithmError,
                                      "DfbaSubmodel metabolism: time_step must be a number but is"):
             self.make_dfba_submodel(self.model, dfba_time_step=None) 
+        
+        bad_solver = copy.deepcopy(self.dfba_submodel_options)
+        bad_solver['solver'] = 20
+        with self.assertRaisesRegexp(MultialgorithmError,
+                                     "DfbaSubmodel metabolism: {} is not a valid Solver".format(
+                                     	bad_solver['solver'])):
+            self.make_dfba_submodel(self.model, submodel_options=bad_solver)
 
-        # test options
-        self.assertEqual(self.dfba_submodel_1.dfba_solver_options, self.dfba_options)    
+        bad_presolve = copy.deepcopy(self.dfba_submodel_options)
+        bad_presolve['presolve'] = 20
+        with self.assertRaisesRegexp(MultialgorithmError,
+                                     "DfbaSubmodel metabolism: {} is not a valid presolve option".format(
+                                     	bad_presolve['presolve'])):
+            self.make_dfba_submodel(self.model, submodel_options=bad_presolve)
+
+        bad_solver_options = copy.deepcopy(self.dfba_submodel_options)
+        bad_solver_options['solver_options'] = {'gurobi': {'parameters': {}}}
+        with self.assertRaisesRegexp(MultialgorithmError,
+                                     "DfbaSubmodel metabolism: the solver key in"
+                                        f" solver_options is not the same as the selected solver"
+                                        f" '{bad_solver_options['solver_options']}'"):
+            self.make_dfba_submodel(self.model, submodel_options=bad_solver_options)
+
+        bad_flux_comp_id = copy.deepcopy(self.dfba_submodel_options)
+        bad_flux_comp_id['flux_bounds_volumetric_compartment_id'] = 'bad'
+        with self.assertRaisesRegexp(MultialgorithmError,
+                                     "DfbaSubmodel metabolism: the user-provided"
+                                        f" flux_bounds_volumetric_compartment_id" 
+                                        f" '{bad_flux_comp_id['flux_bounds_volumetric_compartment_id']}'"
+                                        f" is not the ID of a compartment in the model"):
+            self.make_dfba_submodel(self.model, submodel_options=bad_flux_comp_id)
 
     def test_set_up_optimizations(self):
         dfba_submodel = self.dfba_submodel_1
@@ -253,3 +302,19 @@ class TestDfbaSubmodel(unittest.TestCase):
 
         self.assertEqual({i.variable.name:i.coefficient for i in self.dfba_submodel_1._conv_model.objective_terms},
         	{'biomass_reaction': 1})
+
+    def test_determine_bounds(self):
+        self.dfba_submodel_1.determine_bounds()
+        
+        scale_factor = self.dfba_submodel_options['dfba_bound_scale_factor']
+        Av = scipy.constants.Avogadro
+        expected_results = {
+            'ex_m1': (100./Av*self.cell_volume*scale_factor, 120./Av*self.cell_volume*scale_factor), 
+            'ex_m2': (100./Av*self.cell_volume*scale_factor, 120./Av*self.cell_volume*scale_factor), 
+            'ex_m3': (0., 0.), 
+            'r1': (-100.*0.01*scale_factor, 100.*0.01*scale_factor), 
+            'r2': (-(100.*0.01*scale_factor + 100.*0.01*scale_factor), 100.*0.01*scale_factor + 200.*0.01*scale_factor), 
+            'r3': (0., 500.*0.01*scale_factor),
+            'r4': (0., 600.*0.01*scale_factor),
+        }	
+        self.assertEqual(self.dfba_submodel_1._reaction_bounds, expected_results)

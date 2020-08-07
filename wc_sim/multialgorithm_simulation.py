@@ -392,7 +392,6 @@ class MultialgorithmSimulation(object):
                     self.get_dynamic_compartments(lang_submodel),
                     self.local_species_population,
                     self.wc_sim_config.dfba_time_step,
-                    lang_submodel.dfba_obj,
                     **get_options(self, 'DfbaSubmodel')
                 )
 

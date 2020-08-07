@@ -22,9 +22,9 @@ from wc_sim.submodels.dynamic_submodel import ContinuousTimeSubmodel
 class DfbaSubmodel(ContinuousTimeSubmodel):
     """ Use dynamic Flux Balance Analysis to predict the dynamics of chemical species in a container
 
-    Attributes:          
-        dfba_objective (:obj:`wc_lang.DfbaObjective`): dFBA objective function
+    Attributes:
         reaction_fluxes (:obj:`dict`): pre-allocated reaction fluxes
+        dfba_solver_options (:obj:`dict`): options for solving DFBA submodel
         _conv_model (:obj:`conv_opt.Model`): linear programming model in conv_opt format
         _conv_variables (:obj:`dict`): a dictionary mapping reaction IDs to the associated 
             `conv_opt.Variable` objects
@@ -37,6 +37,21 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
     """
     DFA_BOUND_SCALE_FACTOR = 1
     DFBA_COEF_SCALE_FACTOR = 1
+    SOLVER = 1
+    PRESOLVE = 1
+    SOLVER_OPTIONS = {
+        'cplex': {
+            'parameters': {
+                'emphasis': {
+                    'numerical': 1,
+                },
+                'read': {
+                    'scale': 1,
+                },
+            },
+        },
+    }
+    FLUX_BOUNDS_VOLUMETRIC_COMPARTMENT_ID = 'wc'
 
     # register the message types sent by DfbaSubmodel
     messages_sent = [message_types.RunFba]
@@ -47,8 +62,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
     time_step_message = message_types.RunFba
 
     def __init__(self, id, dynamic_model, reactions, species, dynamic_compartments,
-                 local_species_population, dfba_time_step, dfba_objective,
-                 options=None):
+                 local_species_population, dfba_time_step, options=None):
         """ Initialize a dFBA submodel instance
         Args:
             id (:obj:`str`): unique id of this dFBA submodel
@@ -66,19 +80,61 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         """
         super().__init__(id, dynamic_model, reactions, species, dynamic_compartments,
                          local_species_population, dfba_time_step, options)
-        dfba_objective_id = f"dfba_objective_{id}"
+        
+        dfba_objective_id = 'dfba-obj-{}'.format(id)
         if dfba_objective_id not in dynamic_model.dynamic_dfba_objectives:
-            raise MultialgorithmError(f"cannot find dynamic_dfba_objective")
+            raise MultialgorithmError(f"DfbaSubmodel {self.id}: cannot find dynamic_dfba_objective")
         self.dfba_objective = dynamic_model.dynamic_dfba_objectives[dfba_objective_id].expression
 
-        self.dfba_solver_options = {'dfba_bound_scale_factor': self.DFA_BOUND_SCALE_FACTOR,
-                              'dfba_coef_scale_factor': self.DFBA_COEF_SCALE_FACTOR}
+        self.dfba_solver_options = {
+            'dfba_bound_scale_factor': self.DFA_BOUND_SCALE_FACTOR,
+            'dfba_coef_scale_factor': self.DFBA_COEF_SCALE_FACTOR,
+            'solver': self.SOLVER,
+            'presolve': self.PRESOLVE,
+            'solver_options': self.SOLVER_OPTIONS,
+            'flux_bounds_volumetric_compartment_id': self.FLUX_BOUNDS_VOLUMETRIC_COMPARTMENT_ID,
+        }
         if options is not None:
             if 'dfba_bound_scale_factor' in options:
+                if options['dfba_bound_scale_factor'] <= 0.:
+                    raise MultialgorithmError(f"DfbaSubmodel {self.id}: dfba_bound_scale_factor must"
+                        f" be larger than zero but is {options['dfba_bound_scale_factor']}")
                 self.dfba_solver_options['dfba_bound_scale_factor'] = options['dfba_bound_scale_factor']
             if 'dfba_coef_scale_factor' in options:
+                if options['dfba_coef_scale_factor'] <= 0.:
+                    raise MultialgorithmError(f"DfbaSubmodel {self.id}: dfba_coef_scale_factor must"
+                        f" be larger than zero but is {options['dfba_coef_scale_factor']}")
                 self.dfba_solver_options['dfba_coef_scale_factor'] = options['dfba_coef_scale_factor']
-
+            if 'solver' in options:
+                try:
+                    selected_solver = conv_opt.Solver(options['solver'])
+                except:
+                    raise MultialgorithmError(f"DfbaSubmodel {self.id}: {options['solver']}"
+                        f" is not a valid Solver")    
+                self.dfba_solver_options['solver'] = options['solver']
+            if 'presolve' in options:
+                try:
+                    selected_presolve = conv.Presolve(options['presolve'])
+                except:
+                    raise MultialgorithmError(f"DfbaSubmodel {self.id}: {options['presolve']}"
+                        f" is not a valid Presolve option")
+                self.dfba_solver_options['presolve'] = options['presolve']
+            if 'solver_options' in options:
+                selected_solver = conv_opt.Solver(self.dfba_solver_options['solver'])
+                if selected_solver.name not in options['solver_options']:
+                    raise MultialgorithmError(f"DfbaSubmodel {self.id}: the solver key in"
+                        f" solver_options is not the same as the selected solver"
+                        f" '{selected_solver.name}'")
+                self.dfba_solver_options['solver_options'] = options['solver_options']
+            if 'flux_bounds_volumetric_compartment_id' in options:
+                comp_id = options['flux_bounds_volumetric_compartment_id']
+                try:
+                    flux_bound_comp = self.dynamic_model.dynamic_compartments[comp_id]
+                except:
+                    raise MultialgorithmError(f"DfbaSubmodel {self.id}: the user-provided"
+                        f" flux_bounds_volumetric_compartment_id '{comp_id}' is not the ID"
+                        f" of a compartment in the model")      
+                                        
         # log initialization data
         self.log_with_time("init: id: {}".format(id))
         self.log_with_time("init: time_step: {}".format(str(dfba_time_step)))
@@ -86,10 +142,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         ### dFBA specific code ###
         self.set_up_dfba_submodel()
         self.set_up_optimizations()
-        # e.g.
-        # comp = self.dynamic_model.dynamic_compartments['compartment_id']
-        # comp.volume()
-
+        
     def set_up_dfba_submodel(self):
         """ Set up a dFBA submodel, by converting to a linear programming matrix """
         coef_scale_factor = self.dfba_solver_options['dfba_coef_scale_factor']
@@ -130,22 +183,11 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                 
         self._conv_model.objective_direction = conv_opt.ObjectiveDirection.maximize
 
-        #TODO: Discuss how to provide options
+        # Set options for conv_opt solver
         options = conv_opt.SolveOptions(
-            solver=conv_opt.Solver.cplex,
-            presolve=conv_opt.Presolve.on,
-            solver_options={
-                'cplex': {
-                    'parameters': {
-                        'emphasis': {
-                            'numerical': 1,
-                        },
-                        'read': {
-                            'scale': 1,
-                        },
-                    },
-                },
-            })
+            solver=conv_opt.Solver(self.dfba_solver_options['solver']),
+            presolve=conv_opt.Presolve(self.dfba_solver_options['presolve']),
+            solver_options=self.dfba_solver_options['solver_options'])
 
     def set_up_optimizations(self):
         """ To improve performance, pre-compute and pre-allocate some data structures """
@@ -157,17 +199,21 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         """ Determine the minimum and maximum bounds for each reaction. The bounds will be
             scaled by multiplying to `dfba_bound_scale_factor` and written to `self._reaction_bounds`                 
         """
-        #TODO: get cell_volume
         # Determine all the reaction bounds
         bound_scale_factor = self.dfba_solver_options['dfba_bound_scale_factor']
+        flux_comp_id = self.dfba_solver_options['flux_bounds_volumetric_compartment_id']
+        if flux_comp_id == self.FLUX_BOUNDS_VOLUMETRIC_COMPARTMENT_ID:
+            flux_comp_volume = self.dynamic_model.cell_volume() 
+        else:
+            flux_comp_volume = self.dynamic_model.dynamic_compartments[flux_comp_id].volume()    
         self._reaction_bounds = {}        
         for reaction in self.reactions:
             # Set the bounds of exchange/demand/sink reactions        
             if reaction.flux_bounds:
                 rxn_bounds = reaction.flux_bounds
-                min_constr = rxn_bounds.min*cell_volume*scipy.constants.Avogadro*bound_scale_factor if \
+                min_constr = rxn_bounds.min*flux_comp_volume*scipy.constants.Avogadro*bound_scale_factor if \
                     rxn_bounds.min else rxn_bounds.min
-                max_constr = rxn_bounds.max*cell_volume*scipy.constants.Avogadro*bound_scale_factor if \
+                max_constr = rxn_bounds.max*flux_comp_volume*scipy.constants.Avogadro*bound_scale_factor if \
                     rxn_bounds.max else rxn_bounds.max                
             # Set the bounds of reactions with measured kinetic constants
             elif reaction.rate_laws:                
