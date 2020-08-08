@@ -817,8 +817,7 @@ class DynamicModel(object):
         for dynamic_expression_group in [self.dynamic_observables,
                                          self.dynamic_functions,
                                          self.dynamic_stop_conditions,
-                                         self.dynamic_rate_laws,
-                                         self.dynamic_dfba_objectives]:
+                                         self.dynamic_rate_laws]:
             for dynamic_expression in dynamic_expression_group.values():
                 dynamic_expression.prepare()
 

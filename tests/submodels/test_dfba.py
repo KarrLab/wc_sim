@@ -181,6 +181,7 @@ class TestDfbaSubmodel(unittest.TestCase):
             'dfba_coef_scale_factor': 10,
             'solver': 1,
             'presolve': 1,
+            'flux_bounds_volumetric_compartment_id': 'wc',
             'solver_options': {
                 'cplex': {
                     'parameters': {
@@ -243,7 +244,7 @@ class TestDfbaSubmodel(unittest.TestCase):
         bad_presolve = copy.deepcopy(self.dfba_submodel_options)
         bad_presolve['presolve'] = 20
         with self.assertRaisesRegexp(MultialgorithmError,
-                                     "DfbaSubmodel metabolism: {} is not a valid presolve option".format(
+                                     "DfbaSubmodel metabolism: {} is not a valid Presolve option".format(
                                      	bad_presolve['presolve'])):
             self.make_dfba_submodel(self.model, submodel_options=bad_presolve)
 
@@ -251,8 +252,7 @@ class TestDfbaSubmodel(unittest.TestCase):
         bad_solver_options['solver_options'] = {'gurobi': {'parameters': {}}}
         with self.assertRaisesRegexp(MultialgorithmError,
                                      "DfbaSubmodel metabolism: the solver key in"
-                                        f" solver_options is not the same as the selected solver"
-                                        f" '{bad_solver_options['solver_options']}'"):
+                                        f" solver_options is not the same as the selected solver 'cplex'"):
             self.make_dfba_submodel(self.model, submodel_options=bad_solver_options)
 
         bad_flux_comp_id = copy.deepcopy(self.dfba_submodel_options)
@@ -283,7 +283,8 @@ class TestDfbaSubmodel(unittest.TestCase):
         expected_results = {
             'm1[c]': {'ex_m1': 1, 'r1': -1, 'r2': -1, 'r3': -2},
             'm2[c]': {'ex_m2': 1, 'r1': -1, 'r2': 1, 'r4': -2},
-            'm3[c]': {'ex_m3': 1, 'r1':1, 'r3': 1, 'r4': 1, 'biomass_reaction': -1*self.dfba_coef_scale_factor},
+            'm3[c]': {'ex_m3': 1, 'r1':1, 'r3': 1, 'r4': 1, 
+                      'biomass_reaction': -1*self.dfba_submodel_options['dfba_coef_scale_factor']},
         }
         test_results = {k:{i.variable.name:i.coefficient for i in v} for k,v in 
             self.dfba_submodel_1._conv_metabolite_matrices.items()}
@@ -307,10 +308,9 @@ class TestDfbaSubmodel(unittest.TestCase):
         self.dfba_submodel_1.determine_bounds()
         
         scale_factor = self.dfba_submodel_options['dfba_bound_scale_factor']
-        Av = scipy.constants.Avogadro
         expected_results = {
-            'ex_m1': (100./Av*self.cell_volume*scale_factor, 120./Av*self.cell_volume*scale_factor), 
-            'ex_m2': (100./Av*self.cell_volume*scale_factor, 120./Av*self.cell_volume*scale_factor), 
+            'ex_m1': (100.*self.cell_volume*scale_factor, 120.*self.cell_volume*scale_factor), 
+            'ex_m2': (100.*self.cell_volume*scale_factor, 120.*self.cell_volume*scale_factor), 
             'ex_m3': (0., 0.), 
             'r1': (-100.*0.01*scale_factor, 100.*0.01*scale_factor), 
             'r2': (-(100.*0.01*scale_factor + 100.*0.01*scale_factor), 100.*0.01*scale_factor + 200.*0.01*scale_factor), 
