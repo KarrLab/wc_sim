@@ -85,7 +85,8 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         
         dfba_objective_id = 'dfba-obj-{}'.format(id)
         if dfba_objective_id not in dynamic_model.dynamic_dfba_objectives:
-            raise MultialgorithmError(f"DfbaSubmodel {self.id}: cannot find dynamic_dfba_objective")
+            raise MultialgorithmError(f"DfbaSubmodel {self.id}: cannot find dynamic_dfba_objective "
+                                      f"{dfba_objective_id}")
         self.dfba_objective = dynamic_model.dynamic_dfba_objectives[dfba_objective_id].wc_lang_expression
         
         self.dfba_solver_options = {

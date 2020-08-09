@@ -82,7 +82,7 @@ class TestDynamicSubmodelStatically(unittest.TestCase):
 
     def test_get_num_submodels(self):
         for dynamic_submodel in self.dynamic_submodels.values():
-            self.assertEqual(dynamic_submodel.get_num_submodels(), 2)
+            self.assertEqual(dynamic_submodel.get_num_submodels(), 1)
 
     def expected_molar_conc(self, dynamic_submodel, species_id):
         species = list(filter(lambda s: s.id == species_id, dynamic_submodel.species))[0]
@@ -113,13 +113,8 @@ class TestDynamicSubmodelStatically(unittest.TestCase):
                     self.assertAlmostEqual(list(rates)[index], expected_rates[rxn.id])
 
     expected_enabled = {
-        'submodel_1': set([
-            'reaction_1',
-            'reaction_2',
-            '__dfba_ex_submodel_1_species_1_e',
-            '__dfba_ex_submodel_1_species_2_e',
-        ]),
         'submodel_2': set([
+            'reaction_2',
             'reaction_4',
             'reaction_3_forward',
             'reaction_3_backward',
@@ -202,7 +197,7 @@ class TestDsaSubmodel(unittest.TestCase):
         warnings.simplefilter("ignore")
         self.MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures',
                                            'test_submodel_no_shared_species.xlsx')
-        self.model = Reader().run(self.MODEL_FILENAME)[Model][0]
+        self.model = Reader().run(self.MODEL_FILENAME, validate=True)[Model][0]
         self.transform_model_for_dsa_simulation(self.model)
         prepare_model(self.model)
         self.multialgorithm_simulation, self.simulation_engine, _ = build_sim_from_model(self.model)
