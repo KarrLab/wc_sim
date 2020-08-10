@@ -48,8 +48,8 @@ class TestOdeSubmodel(unittest.TestCase):
         de_simulation_config = SimulationConfig(time_max=10)
         wc_sim_config = WCSimulationConfig(de_simulation_config, ode_time_step=ode_time_step)
         multialgorithm_simulation = MultialgorithmSimulation(model, wc_sim_config)
-        simulation_engine, dynamic_model = multialgorithm_simulation.build_simulation()
-        simulation_engine.initialize()
+        simulator, dynamic_model = multialgorithm_simulation.build_simulation()
+        simulator.initialize()
         return dynamic_model.dynamic_submodels[submodel_name]
 
     ### test low level methods ###

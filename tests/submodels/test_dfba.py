@@ -214,8 +214,8 @@ class TestDfbaSubmodel(unittest.TestCase):
         wc_sim_config = WCSimulationConfig(de_simulation_config, dfba_time_step=dfba_time_step)
         multialgorithm_simulation = MultialgorithmSimulation(model, wc_sim_config, 
         	options={'DfbaSubmodel': dict(options=submodel_options)})
-        simulation_engine, dynamic_model = multialgorithm_simulation.build_simulation()
-        simulation_engine.initialize()
+        simulator, dynamic_model = multialgorithm_simulation.build_simulation()
+        simulator.initialize()
         return dynamic_model.dynamic_submodels[submodel_name]
 
     ### test low level methods ###

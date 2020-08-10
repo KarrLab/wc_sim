@@ -9,7 +9,7 @@
 import numpy.random
 import warnings
 
-from de_sim.simulation_engine import SimulationEngine
+from de_sim.simulator import Simulator
 from de_sim.simulation_object import SimObjClassPriority
 from wc_lang import Model, Compartment, Species
 from wc_onto import onto
@@ -51,7 +51,7 @@ Output:
     * Simulation partitioned into submodels and cell state, including:
 
         * Initialized submodel and state simulation objects
-        * Initial simulation messages
+        * Initial event messages
 
 DS:
     * language model
@@ -103,7 +103,7 @@ class MultialgorithmSimulation(object):
         model (:obj:`Model`): a model description
         args (:obj:`dict`): parameters for the simulation; if `results_dir` is an entry in `args`,
             then `checkpoint_period` must also be included
-        simulation (:obj:`SimulationEngine`): the initialized simulation
+        simulation (:obj:`Simulator`): the initialized simulation
         checkpointing_sim_obj (:obj:`MultialgorithmicCheckpointingSimObj`): the checkpointing object;
             `None` if absent
         random_state (:obj:`numpy.random.RandomState`): a random state
@@ -125,7 +125,7 @@ class MultialgorithmSimulation(object):
             options (:obj:`dict`, optional): options for submodels, keyed by submodel class name
         """
         # initialize simulation infrastructure
-        self.simulation = SimulationEngine()
+        self.simulation = Simulator()
         self.random_state = RandomStateManager.instance()
 
         # create simulation attributes
@@ -169,7 +169,7 @@ class MultialgorithmSimulation(object):
         """ Prepare a multialgorithm simulation
 
         Returns:
-            :obj:`tuple` of (`SimulationEngine`, `DynamicModel`): an initialized simulation and its
+            :obj:`tuple` of (`Simulator`, `DynamicModel`): an initialized simulation and its
                 dynamic model
         """
         self.set_simultaneous_execution_priorities()

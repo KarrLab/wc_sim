@@ -6,13 +6,13 @@
 :License: MIT
 """
 
-from de_sim.simulation_message import SimulationMessage
+from de_sim.event_message import EventMessage
 from wc_sim.multialgorithm_errors import DynamicMultialgorithmError
 from wc_sim.submodels.dynamic_submodel import DynamicSubmodel
 
 
-class ExecuteDsaReaction(SimulationMessage):
-    """ A simulation message sent by a :obj:`DsaSubmodel` instance to itself
+class ExecuteDsaReaction(EventMessage):
+    """ An event message sent by a :obj:`DsaSubmodel` instance to itself
 
     Provides data needed to execute a Deterministic Simulation Algorithm reaction.
 

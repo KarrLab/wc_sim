@@ -15,8 +15,8 @@ from io import StringIO
 from wc_sim.aggregate_distributed_props import (AggregateDistributedProps,
                                                                DistributedProperty, DistributedPropertyFactory)
 from de_sim.simulation_object import SimulationObject, ApplicationSimulationObject
-from de_sim.simulation_engine import SimulationEngine
-from de_sim.simulation_message import SimulationMessage
+from de_sim.simulator import Simulator
+from de_sim.event_message import EventMessage
 from wc_sim import message_types
 from wc_sim.config import core as config_core_multialgorithm
 
@@ -104,7 +104,7 @@ class PropertyProvider(ApplicationSimulationObject):
     messages_sent = [message_types.GiveProperty]
 
 
-class GoGetProperty(SimulationMessage):
+class GoGetProperty(EventMessage):
     'Self-clocking message for test property requestor'
     attributes = ['property_name', 'time']
 
@@ -179,7 +179,7 @@ class TestAggregateDistributedProps(unittest.TestCase):
         self.PERIOD = 10
         self.property_name = 'test_prop'
         self.aggregate_distributed_props = AggregateDistributedProps('aggregate_distributed_props')
-        self.simulator = SimulationEngine()
+        self.simulator = Simulator()
 
     def make_properties_and_providers(self, num_properties, num_providers, period, num_periods,
                                       value_hist_generator):

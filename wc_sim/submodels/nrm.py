@@ -14,7 +14,7 @@ import numpy as np
 import sys
 
 from de_sim.event import Event
-from de_sim.simulation_engine import SimulationEngine
+from de_sim.simulator import Simulator
 from de_sim.simulation_object import ApplicationSimulationObject, SimulationObject
 from wc_sim import message_types
 from wc_sim.config import core as config_core_multialgorithm
@@ -198,7 +198,7 @@ class NrmSubmodel(DynamicSubmodel):
     def init_before_run(self):
         """ Initialize this NRM submodel and schedule its first reaction
 
-        This :obj:`ApplicationSimulationObject` method is called when a :obj:`SimulationEngine` is
+        This :obj:`ApplicationSimulationObject` method is called when a :obj:`Simulator` is
         initialized.
         """
         self.schedule_reaction()

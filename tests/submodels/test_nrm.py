@@ -38,7 +38,7 @@ class TestNrmSubmodel(unittest.TestCase):
         self.MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures',
                                            'test_next_reaction_method_submodel.xlsx')
         self.model = wc_lang.io.Reader().run(self.MODEL_FILENAME)[wc_lang.Model][0]
-        self.simulation_engine, self.dynamic_model = self.make_sim_w_nrm_submodel(self.model)
+        self.simulator, self.dynamic_model = self.make_sim_w_nrm_submodel(self.model)
         self.nrm_submodel = self.dynamic_model.dynamic_submodels['nrm_submodel']
 
     def test_prepare(self):
@@ -176,9 +176,9 @@ class TestNrmSubmodel(unittest.TestCase):
         # initial rate of 1/sec, which will change slowly because init. populations are 1000
         num_events = []
         for _ in range(NUM_TRIALS):
-            simulation_engine, _ = self.make_sim_w_nrm_submodel(self.model)
-            simulation_engine.initialize()
-            num_events.append(simulation_engine.simulate(RUN_TIME).num_events)
+            simulator, _ = self.make_sim_w_nrm_submodel(self.model)
+            simulator.initialize()
+            num_events.append(simulator.simulate(RUN_TIME).num_events)
         num_reactions = len(self.model.reactions)
         expected_mean_num_events = num_reactions * RUN_TIME
         sd = math.sqrt(expected_mean_num_events)

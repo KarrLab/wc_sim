@@ -232,10 +232,10 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
         de_simulation_config = SimulationConfig(time_max=10, output_dir=self.results_dir)
         wc_sim_config = WCSimulationConfig(de_simulation_config, dfba_time_step=1, checkpoint_period=10)
         multialgorithm_simulation = MultialgorithmSimulation(self.model, wc_sim_config)
-        simulation_engine, _ = multialgorithm_simulation.build_simulation()
+        simulator, _ = multialgorithm_simulation.build_simulation()
         # 3 objects: 2 submodels, and the checkpointing obj:
         expected_sim_objs = set(['CHECKPOINTING_SIM_OBJ', 'submodel_1', 'submodel_2'])
-        self.assertEqual(expected_sim_objs, set(list(simulation_engine.simulation_objects)))
+        self.assertEqual(expected_sim_objs, set(list(simulator.simulation_objects)))
         self.assertEqual(type(multialgorithm_simulation.checkpointing_sim_obj),
                          MultialgorithmicCheckpointingSimObj)
         self.assertEqual(multialgorithm_simulation.dynamic_model.get_num_submodels(), 2)
@@ -399,8 +399,8 @@ class TestRunSSASimulation(unittest.TestCase):
                                           init_vols=init_vols,
                                           submodel_framework=submodel_framework)
         multialgorithm_simulation = MultialgorithmSimulation(model, self.wc_sim_config)
-        simulation_engine, _ = multialgorithm_simulation.build_simulation()
-        return (model, multialgorithm_simulation, simulation_engine)
+        simulator, _ = multialgorithm_simulation.build_simulation()
+        return (model, multialgorithm_simulation, simulator)
 
     def checkpoint_times(self, run_time):
         """ Provide expected checkpoint times for a simulation
@@ -435,15 +435,15 @@ class TestRunSSASimulation(unittest.TestCase):
 
         final_species_counts = []
         for i in range(iterations):
-            model, multialgorithm_simulation, simulation_engine = self.make_model_and_simulation(
+            model, multialgorithm_simulation, simulator = self.make_model_and_simulation(
                 model_type,
                 num_submodels=num_submodels,
                 species_copy_numbers=initial_species_copy_numbers,
                 species_stds=initial_species_stds,
                 init_vols=init_vols)
             local_species_pop = multialgorithm_simulation.local_species_population
-            simulation_engine.initialize()
-            simulation_engine.simulate(run_time)
+            simulator.initialize()
+            simulator.simulate(run_time)
             final_species_counts.append(local_species_pop.read(run_time))
 
         mean_final_species_counts = dict.fromkeys(list(initial_species_copy_numbers.keys()), 0)
@@ -523,14 +523,14 @@ class TestRunSSASimulation(unittest.TestCase):
                                   init_vols=1E-22)
 
     def prep_simulation(self, num_ssa_submodels, submodel_framework='WC:stochastic_simulation_algorithm'):
-        model, multialgorithm_simulation, simulation_engine = self.make_model_and_simulation(
+        model, multialgorithm_simulation, simulator = self.make_model_and_simulation(
             '2 species, a pair of symmetrical reactions, and rates given by reactant population',
             num_ssa_submodels,
             init_vols=1E-18,
             submodel_framework=submodel_framework)
         local_species_pop = multialgorithm_simulation.local_species_population
-        simulation_engine.initialize()
-        return simulation_engine
+        simulator.initialize()
+        return simulator
 
     # @unittest.skip("performance scaling test; runs slowly")
     def test_performance(self):
@@ -551,21 +551,21 @@ class TestRunSSASimulation(unittest.TestCase):
             while num_ssa_submodels <= max_num_ssa_submodels:
 
                 # measure execution time
-                simulation_engine = self.prep_simulation(num_ssa_submodels,
+                simulator = self.prep_simulation(num_ssa_submodels,
                                                          submodel_framework=submodel_framework)
                 start_time = time.process_time()
-                num_events = simulation_engine.simulate(end_sim_time).num_events
+                num_events = simulator.simulate(end_sim_time).num_events
                 run_time = time.process_time() - start_time
                 unprofiled_perf.append("{}\t{}\t{:8.3f}\t{:8.3f}".format(num_ssa_submodels, num_events,
                                                                          run_time, num_events/run_time))
 
                 # profile
-                simulation_engine = self.prep_simulation(num_ssa_submodels,
+                simulator = self.prep_simulation(num_ssa_submodels,
                                                          submodel_framework=submodel_framework)
                 out_file = os.path.join(self.out_dir, "profile_out_{}.out".format(num_ssa_submodels))
-                locals = {'simulation_engine': simulation_engine,
+                locals = {'simulator': simulator,
                           'end_sim_time': end_sim_time}
-                cProfile.runctx('simulation_engine.simulate(end_sim_time)', {}, locals, filename=out_file)
+                cProfile.runctx('simulator.simulate(end_sim_time)', {}, locals, filename=out_file)
                 profile = pstats.Stats(out_file)
                 print(f"Profile for {num_ssa_submodels} instances of {framework_name}:")
                 profile.strip_dirs().sort_stats('cumulative').print_stats(15)
