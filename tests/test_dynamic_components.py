@@ -757,7 +757,7 @@ class TestDynamicModel(unittest.TestCase):
         dynamic_model.flush_after_reaction(reaction)
         self.assertEqual(len(dynamic_model.cache_manager._cache), 0)
 
-        dynamic_model.ode_flush_after_populations_change(ode_submodel_id)
+        dynamic_model.continuous_submodel_flush_after_populations_change(ode_submodel_id)
         self.assertEqual(len(dynamic_model.cache_manager._cache), 0)
 
 
@@ -777,9 +777,9 @@ class TestDynamicModel(unittest.TestCase):
         dynamic_model.flush_after_reaction(reaction)
         self.assertEqual(len(dynamic_model.cache_manager._cache), 0)
 
-        # when using EVENT_BASED invalidation, ode_flush_after_populations_change empties cache
+        # when using EVENT_BASED invalidation, continuous_submodel_flush_after_populations_change empties cache
         eval_rate_laws_in_submodel(dynamic_model, ode_submodel_id)
-        dynamic_model.ode_flush_after_populations_change(ode_submodel_id)
+        dynamic_model.continuous_submodel_flush_after_populations_change(ode_submodel_id)
         self.assertEqual(len(dynamic_model.cache_manager._cache), 0)
 
 
@@ -825,14 +825,14 @@ class TestDynamicModel(unittest.TestCase):
         for expression in get_expected_rxn_dependencies([rxn_id]):
             self.assertNotIn(expression, dynamic_model.cache_manager._cache)
 
-        # when using REACTION_DEPENDENCY_BASED invalidation, ode_flush_after_populations_change flushes
+        # when using REACTION_DEPENDENCY_BASED invalidation, continuous_submodel_flush_after_populations_change flushes
         # expressions that depend on the continuous submodel calling it
         eval_rate_laws_in_submodel(dynamic_model, ode_submodel_id)
         reaction_ids = ['reaction_3', 'reaction_8']
         self.assertLess(0, len([expr for expr in get_expected_rxn_dependencies(reaction_ids)\
                                 if expr in dynamic_model.cache_manager._cache]))
         expected_rxn_dependencies = get_expected_rxn_dependencies(reaction_ids)
-        dynamic_model.ode_flush_after_populations_change(ode_submodel_id)
+        dynamic_model.continuous_submodel_flush_after_populations_change(ode_submodel_id)
         for expression in expected_rxn_dependencies:
             self.assertNotIn(expression, dynamic_model.cache_manager._cache)
 

@@ -1149,13 +1149,13 @@ class DynamicModel(object):
         self.cache_manager.invalidate(expressions=expressions)
         self.flush_compartment_masses()
 
-    def ode_flush_after_populations_change(self, dynamic_submodel_id):
-        """ If caching is enabled, invalidate cache entries that depend on reactions modeled by an ODE submodel
+    def continuous_submodel_flush_after_populations_change(self, dynamic_submodel_id):
+        """ If caching is enabled, invalidate cache entries that depend on reactions modeled by a continuous submodel
 
-        Runs when the ODE advances time or changes species populations
+        Runs when a continuous submodel advances time or changes species populations
 
         Args:
-            dynamic_submodel_id (:obj:`str`): the id of the ODE submodel that's running
+            dynamic_submodel_id (:obj:`str`): the id of the continuous submodel that's running
         """
         self.cache_manager.invalidate(expressions=self.continuous_rxn_dependencies[dynamic_submodel_id])
         self.flush_compartment_masses()

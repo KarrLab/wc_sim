@@ -297,9 +297,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         self.local_species_population.adjust_continuously(self.time, self.adjustments)
 
         # flush expressions that depend on species and reactions modeled by this FBA submodel from cache
-        # AG: we can rename "ode_flush_after_populations_change" to
-        # "continuous_submodel_flush_after_populations_change" and use it both here and in odes.py
-        self.dynamic_model.fba_flush_after_populations_change(self.id)
+        self.dynamic_model.continuous_submodel_flush_after_populations_change(self.id)
 
     ### handle DES events ###
     def handle_RunFba_msg(self):

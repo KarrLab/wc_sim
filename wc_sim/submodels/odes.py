@@ -205,7 +205,7 @@ class OdeSubmodel(ContinuousTimeSubmodel):
         with TempPopulationsLSP(self.local_species_population, temporary_populations):
 
             # flush expressions that depend on species and reactions modeled by this ODE submodel from cache
-            self.dynamic_model.ode_flush_after_populations_change(self.id)
+            self.dynamic_model.continuous_submodel_flush_after_populations_change(self.id)
 
             for idx in range(self.num_species):
                 species_rate_of_change = 0.0
@@ -242,7 +242,7 @@ class OdeSubmodel(ContinuousTimeSubmodel):
         self.local_species_population.adjust_continuously(self.time, self.adjustments)
 
         # flush expressions that depend on species and reactions modeled by this ODE submodel from cache
-        self.dynamic_model.ode_flush_after_populations_change(self.id)
+        self.dynamic_model.continuous_submodel_flush_after_populations_change(self.id)
 
     def get_info(self):
         """ Get info from CVODE
