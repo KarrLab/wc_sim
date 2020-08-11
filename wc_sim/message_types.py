@@ -5,8 +5,8 @@
 :Copyright: 2016-2018, Karr Lab
 :License: MIT
 
-Simulation message types are subclasses of `SimulationMessage`.
-Every simulation event message contains a typed `SimulationMessage`.
+Event message types are subclasses of `EventMessage`.
+Every simulation event message contains a typed `EventMessage`.
 
 Declare
     1. For each message type which has an message, a class that represents the body
@@ -31,16 +31,16 @@ Define a class that stores the body of each message type. This avoids confusing 
 These classes should be used by all message senders and receivers.
 It is enforced by checking class names against message body types.
 
-For this sequential simulator, simulation messages are stored as a copy of or reference to sender's data structure
+For this sequential simulator, event messages are stored as a copy of or reference to sender's data structure
 # TODO(Arthur): for parallel simulation, serialize and deserialize message bodies, perhaps with Pickle
 """
 
 from collections import namedtuple
 
-from de_sim.simulation_message import SimulationMessage
+from de_sim.event_message import EventMessage
 
 
-class AdjustPopulationByDiscreteSubmodel(SimulationMessage):
+class AdjustPopulationByDiscreteSubmodel(EventMessage):
     """ A WC simulator message sent by a discrete time submodel to adjust species counts.
 
     Attributes:
@@ -84,7 +84,7 @@ class ContinuousChange(ContinuousChange_namedtuple):
         return self
 
 
-class AdjustPopulationByContinuousSubmodel(SimulationMessage):
+class AdjustPopulationByContinuousSubmodel(EventMessage):
     """ A WC simulator message sent by a continuous submodel to adjust species counts.
 
     Continuous submodels model species populations as continuous variables. They're usually
@@ -99,7 +99,7 @@ class AdjustPopulationByContinuousSubmodel(SimulationMessage):
     attributes = ['population_change']
 
 
-class GetPopulation(SimulationMessage):
+class GetPopulation(EventMessage):
     """ A WC simulator message sent by a submodel to obtain some current species populations.
 
     Attributes:
@@ -109,7 +109,7 @@ class GetPopulation(SimulationMessage):
     attributes = ['species']
 
 
-class GivePopulation(SimulationMessage):
+class GivePopulation(EventMessage):
     """ A WC simulator message sent by a species pop object to report some current species populations.
 
     Attributes:
@@ -118,7 +118,7 @@ class GivePopulation(SimulationMessage):
     attributes = ['population']
 
 
-class AggregateProperty(SimulationMessage):
+class AggregateProperty(EventMessage):
     """ A WC simulator message sent to aggregate a property
 
     Attributes:
@@ -141,7 +141,7 @@ at the requested time.
 """
 
 
-class GetHistoricalProperty(SimulationMessage):
+class GetHistoricalProperty(EventMessage):
     """ A WC simulator message sent to obtain a property at a time that's not in the future
 
     Attributes:
@@ -151,7 +151,7 @@ class GetHistoricalProperty(SimulationMessage):
     attributes = ['property_name', 'time']
 
 
-class GetCurrentProperty(SimulationMessage):
+class GetCurrentProperty(EventMessage):
     """ A WC simulator message sent to obtain a property at the receiver's current time
 
     Attributes:
@@ -160,7 +160,7 @@ class GetCurrentProperty(SimulationMessage):
     attributes = ['property_name']
 
 
-class GiveProperty(SimulationMessage):
+class GiveProperty(EventMessage):
     """ A WC simulator message sent by a simulation object to report a property
 
     Attributes:
@@ -171,7 +171,7 @@ class GiveProperty(SimulationMessage):
     attributes = ['property_name', 'time', 'value']
 
 
-class ExecuteSsaReaction(SimulationMessage):
+class ExecuteSsaReaction(EventMessage):
     """ A WC simulator message sent by an SsaSubmodel to itself to schedule an SSA reaction execution.
 
     Attributes:
@@ -180,24 +180,24 @@ class ExecuteSsaReaction(SimulationMessage):
     attributes = ['reaction_index']
 
 
-class SsaWait(SimulationMessage):
+class SsaWait(EventMessage):
     """ A WC simulator message sent by an SsaSubmodel to itself to temporarily suspend activity
     because no reactions are runnable.
     """
 
 
-class RunFba(SimulationMessage):
+class RunFba(EventMessage):
     """ A WC simulator message sent by a DfbaSubmodel to itself to schedule the next FBA execution.
     """
 
 
-class RunOde(SimulationMessage):
+class RunOde(EventMessage):
     """ A WC simulator message sent by an OdeSubmodel to itself to schedule the next solution of the
     ODE equations.
     """
 
 
-class ExecuteAndScheduleNrmReaction(SimulationMessage):
+class ExecuteAndScheduleNrmReaction(EventMessage):
     """ A WC simulator message sent by an NrmSubmodel to itself to execute a scheduled reaction and schedule the next reaction.
 
     Attributes:

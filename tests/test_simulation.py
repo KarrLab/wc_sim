@@ -18,7 +18,7 @@ import unittest
 
 from de_sim.checkpoint import Checkpoint, AccessCheckpoints
 from de_sim.config import core
-from de_sim.simulation_engine import SimulationEngine
+from de_sim.simulator import Simulator
 from wc_sim import sim_config
 from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_sim.run_results import RunResults
@@ -162,13 +162,13 @@ class TestSimulation(unittest.TestCase):
             if component != 'metadata':
                 self.assertTrue(run_results[0].get(component).equals(run_results[1].get(component)))
 
-    def test_get_simulation_engine(self):
+    def test_get_simulator(self):
         model = MakeModel.make_test_model('2 species, 1 reaction, with rates given by reactant population')
         simulation = Simulation(model)
-        self.assertEqual(simulation.get_simulation_engine(), None)
+        self.assertEqual(simulation.get_simulator(), None)
         with CaptureOutput(relay=False):
             simulation.run(time_max=5)
-        self.assertTrue(isinstance(simulation.get_simulation_engine(), SimulationEngine))
+        self.assertTrue(isinstance(simulation.get_simulator(), Simulator))
 
     def test_provide_event_counts(self):
         model = MakeModel.make_test_model('2 species, 1 reaction, with rates given by reactant population')

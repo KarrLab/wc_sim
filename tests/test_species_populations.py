@@ -20,9 +20,8 @@ import unittest
 
 from de_sim.errors import SimulatorError
 from de_sim.simulation_config import SimulationConfig
-from de_sim.simulation_engine import SimulationEngine
-from de_sim.simulation_message import SimulationMessage
-from de_sim.simulation_object import SimulationObject
+from de_sim.simulator import Simulator
+from de_sim.event_message import EventMessage
 from de_sim.testing.mock_simulation_object import MockSimulationObject
 from wc_lang.io import Reader
 from wc_sim import distributed_properties
@@ -65,7 +64,7 @@ class TestAccessSpeciesPopulations(unittest.TestCase):
 
     def setUp(self):
         self.an_ASP = AccessSpeciesPopulations(None, remote_pop_stores)
-        self.simulator = SimulationEngine()
+        self.simulator = Simulator()
 
     def test_add_species_locations(self):
 
@@ -1061,14 +1060,14 @@ class MockSimulationTestingObject(MockSimulationObject):
                      message_types.GetCurrentProperty]
 
 
-class InitMsg1(SimulationMessage):
+class InitMsg1(EventMessage):
     "Blank docstring"
 
 
 class TestSpeciesPopSimObject(unittest.TestCase):
 
     def setUp(self):
-        self.simulator = SimulationEngine()
+        self.simulator = Simulator()
         self.species_ids = 's1[c] s2[c] s3[c]'.split()
         self.initial_population = dict(zip(self.species_ids, range(3)))
         self.molecular_weight = dict(zip(self.species_ids, [10.]*3))

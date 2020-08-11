@@ -14,7 +14,7 @@ import unittest
 import warnings
 
 from de_sim.simulation_config import SimulationConfig
-from de_sim.simulation_engine import SimulationEngine
+from de_sim.simulator import Simulator
 from obj_tables.utils import get_component_by_id
 from wc_lang import Model, Species, Validator
 from wc_lang.io import Reader
@@ -48,8 +48,8 @@ def build_sim_from_model(model, time_max=10, dfba_time_step=1, ode_time_step=1, 
                                        ode_time_step=ode_time_step)
     options = {} if options is None else options
     multialgorithm_simulation = MultialgorithmSimulation(model, wc_sim_config, options=options)
-    simulation_engine, dynamic_model = multialgorithm_simulation.build_simulation()
-    return multialgorithm_simulation, simulation_engine, dynamic_model
+    simulator, dynamic_model = multialgorithm_simulation.build_simulation()
+    return multialgorithm_simulation, simulator, dynamic_model
 
 
 class TestDynamicSubmodelStatically(unittest.TestCase):
@@ -200,8 +200,8 @@ class TestDsaSubmodel(unittest.TestCase):
         self.model = Reader().run(self.MODEL_FILENAME, validate=True)[Model][0]
         self.transform_model_for_dsa_simulation(self.model)
         prepare_model(self.model)
-        self.multialgorithm_simulation, self.simulation_engine, _ = build_sim_from_model(self.model)
-        self.simulation_engine.initialize()
+        self.multialgorithm_simulation, self.simulator, _ = build_sim_from_model(self.model)
+        self.simulator.initialize()
         self.dsa_submodel_name = 'submodel_2'
         self.dsa_submodel = self.multialgorithm_simulation.dynamic_model.dynamic_submodels[self.dsa_submodel_name]
 
@@ -229,7 +229,7 @@ class TestDsaSubmodel(unittest.TestCase):
 
         # test init_before_run(), schedule_next_reaction_execution() & schedule_ExecuteDsaReaction()
         # all of self.dsa_submodel's reactions should be scheduled to execute
-        events = self.simulation_engine.event_queue.render(sim_obj=self.dsa_submodel, as_list=True)
+        events = self.simulator.event_queue.render(sim_obj=self.dsa_submodel, as_list=True)
         reaction_indices = set()
         send_time_idx, _, sender_idx, receiver_idx, event_type_idx, reaction_idx = list(range(6))
         for event_record in events[1:]:
@@ -242,7 +242,7 @@ class TestDsaSubmodel(unittest.TestCase):
 
         # test handle_ExecuteDsaReaction_msgs(): execute next reaction
         # reaction_3_forward has the highest reaction rate
-        events = self.simulation_engine.event_queue.next_events()
+        events = self.simulator.event_queue.next_events()
         self.assertEqual(len(events), 1)
         event = events[0]
         self.assertEqual(self.dsa_submodel.reactions[event.message.reaction_index].id, 'reaction_3_forward')
@@ -286,18 +286,18 @@ class TestDsaSubmodel(unittest.TestCase):
         rxn_ids_to_rxn_indices = {rxn.id: idx for idx, rxn in enumerate(self.dsa_submodel.reactions)}
         index_reaction_5 = rxn_ids_to_rxn_indices['reaction_5']
         # empty the simulator's event queue
-        self.simulation_engine.event_queue.reset()
+        self.simulator.event_queue.reset()
 
         # check that event time for the initial event for reaction_5 is inf
         self.dsa_submodel.init_before_run()
-        for event in self.simulation_engine.event_queue.event_heap:
+        for event in self.simulator.event_queue.event_heap:
             if event.message.reaction_index == index_reaction_5:
                 self.assertEqual(event.event_time, float('inf'))
 
         # when the next execution of reaction_5 is scheduled the only event should be for reaction_5 at inf
-        self.simulation_engine.event_queue.reset()
+        self.simulator.event_queue.reset()
         self.dsa_submodel.schedule_next_reaction_execution(self.dsa_submodel.reactions[index_reaction_5])
-        events = self.simulation_engine.event_queue.next_events()
+        events = self.simulator.event_queue.next_events()
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0].event_time, float('inf'))
         self.assertEqual(events[0].message.reaction_index, index_reaction_5)

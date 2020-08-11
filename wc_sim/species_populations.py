@@ -19,8 +19,7 @@ import math
 import numpy as np
 import sys
 
-from de_sim.simulation_object import (SimulationObject, ApplicationSimulationObject,
-                                      AppSimObjAndABCMeta, ApplicationSimulationObjMeta)
+from de_sim.simulation_object import (SimulationObject, SimulationObjectAndABCMeta, SimulationObjMeta)
 from de_sim.utilities import FastLogger
 from wc_sim import distributed_properties, message_types
 from wc_sim.config import core as config_core_multialgorithm
@@ -1284,8 +1283,8 @@ class MakeTestLSP(object):
 
 
 # TODO(Arthur): cover after MVP wc_sim done
-class SpeciesPopSimObject(LocalSpeciesPopulation, ApplicationSimulationObject,
-                          metaclass=AppSimObjAndABCMeta):  # pragma: no cover
+class SpeciesPopSimObject(LocalSpeciesPopulation, SimulationObject,
+                          metaclass=SimulationObjectAndABCMeta):  # pragma: no cover
     """ Maintain the population of a set of species in a simulation object that can be parallelized
 
     A whole-cell PDES must run multiple submodels in parallel. These share cell state, such as
@@ -1308,7 +1307,7 @@ class SpeciesPopSimObject(LocalSpeciesPopulation, ApplicationSimulationObject,
         For remaining args and exceptions, see `__init__()` documentation for
         `de_sim.simulation_object.SimulationObject` and `wc_sim.LocalSpeciesPopulation`.
         """
-        SimulationObject.__init__(self, name)
+        super().__init__(name)
         LocalSpeciesPopulation.__init__(self, name, initial_population, molecular_weights,
                                         initial_population_slopes, random_state=random_state)
 

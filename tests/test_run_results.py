@@ -360,7 +360,7 @@ class TestProfileRunResults(unittest.TestCase):
 
         model = MakeModel.make_test_model('1 species, 1 reaction')
         multialgorithm_simulation = MultialgorithmSimulation(model, wc_sim_config)
-        simulation_engine, _ = multialgorithm_simulation.build_simulation()
+        simulator, _ = multialgorithm_simulation.build_simulation()
         # add remaining additional species
         comp_id = model.compartments[0].id
         local_species_population = multialgorithm_simulation.local_species_population
@@ -370,9 +370,9 @@ class TestProfileRunResults(unittest.TestCase):
                                                              species_pop,
                                                              species_mw)
         wc_simulation_metadata = WCSimulationMetadata(wc_sim_config)
-        simulation_engine.initialize()
-        num_events = simulation_engine.simulate(sim_config=de_simulation_config).num_events
-        print(simulation_engine.provide_event_counts())
+        simulator.initialize()
+        num_events = simulator.simulate(sim_config=de_simulation_config).num_events
+        print(simulator.provide_event_counts())
         WCSimulationMetadata.write_dataclass(wc_simulation_metadata, run_results_dir)
 
         out_file = os.path.join(tempfile.mkdtemp(dir=self.temp_dir), 'profile.out')
