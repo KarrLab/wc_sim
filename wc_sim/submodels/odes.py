@@ -14,7 +14,6 @@ import numpy as np
 import time
 import warnings
 
-from de_sim.simulation_object import SimulationObject
 from wc_sim import message_types
 from wc_sim.config import core as config_core_multialgorithm
 from wc_sim.multialgorithm_errors import DynamicMultialgorithmError, MultialgorithmError

@@ -12,7 +12,6 @@ import numpy as np
 from scipy.constants import Avogadro
 
 from de_sim.event import Event
-from de_sim.simulation_object import SimulationObject
 from wc_sim import message_types
 from wc_sim.config import core as config_core_multialgorithm
 from wc_sim.multialgorithm_errors import MultialgorithmError, DynamicFrozenSimulationError

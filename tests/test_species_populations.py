@@ -22,7 +22,6 @@ from de_sim.errors import SimulatorError
 from de_sim.simulation_config import SimulationConfig
 from de_sim.simulator import Simulator
 from de_sim.event_message import EventMessage
-from de_sim.simulation_object import SimulationObject
 from de_sim.testing.mock_simulation_object import MockSimulationObject
 from wc_lang.io import Reader
 from wc_sim import distributed_properties

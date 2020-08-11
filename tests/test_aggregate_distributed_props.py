@@ -14,7 +14,7 @@ from io import StringIO
 
 from wc_sim.aggregate_distributed_props import (AggregateDistributedProps,
                                                                DistributedProperty, DistributedPropertyFactory)
-from de_sim.simulation_object import SimulationObject, ApplicationSimulationObject
+from de_sim.simulation_object import SimulationObject
 from de_sim.simulator import Simulator
 from de_sim.event_message import EventMessage
 from wc_sim import message_types
@@ -80,7 +80,7 @@ class TestDistributedProperty(unittest.TestCase):
             later_time, self.test_time), str(context.exception))
 
 
-class PropertyProvider(ApplicationSimulationObject):
+class PropertyProvider(SimulationObject):
 
     def __init__(self, name, test_property_hist):
         super().__init__(name)
@@ -109,7 +109,7 @@ class GoGetProperty(EventMessage):
     attributes = ['property_name', 'time']
 
 
-class PropertyRequestor(ApplicationSimulationObject):
+class PropertyRequestor(SimulationObject):
 
     def __init__(self, name, property_name, period, aggregate_distributed_props, expected_history,
                  test_case):

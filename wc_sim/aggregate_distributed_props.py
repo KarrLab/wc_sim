@@ -12,7 +12,7 @@ import builtins
 import math
 import sys
 
-from de_sim.simulation_object import Event, SimulationObject, ApplicationSimulationObject
+from de_sim.simulation_object import Event, SimulationObject
 from wc_sim.debug_logs import logs as debug_logs
 from wc_sim import message_types
 from wc_sim.config import core as config_core_multialgorithm
@@ -23,7 +23,7 @@ config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multi
 # TODO(Arthur): cover after MVP wc_sim done
 
 
-class AggregateDistributedProps(ApplicationSimulationObject):   # pragma: no cover
+class AggregateDistributedProps(SimulationObject):   # pragma: no cover
     '''Obtain and provide properties of a multi-algorithmic whole-cell model simulation
     that require retrieving distributed data.
 
@@ -59,7 +59,7 @@ class AggregateDistributedProps(ApplicationSimulationObject):   # pragma: no cov
         For remaining args and exceptions, see `__init__()` documentation for
         `de_sim.simulation_object.SimulationObject`.
         '''
-        SimulationObject.__init__(self, name)
+        super().__init__(name)
         self.properties = {}
 
     def get_state(self):

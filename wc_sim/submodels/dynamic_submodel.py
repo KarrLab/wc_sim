@@ -11,7 +11,7 @@ from de_sim.utilities import FastLogger
 from scipy.constants import Avogadro
 import numpy as np
 
-from de_sim.simulation_object import ApplicationSimulationObject
+from de_sim.simulation_object import SimulationObject
 from wc_lang import Compartment, Species, Reaction, Parameter
 from wc_sim import message_types, distributed_properties
 from wc_sim.debug_logs import logs as debug_logs
@@ -26,7 +26,7 @@ from wc_utils.util.list import det_dedupe
 # TODO(Arthur): use lists instead of sets for reproducibility
 
 
-class DynamicSubmodel(ApplicationSimulationObject):
+class DynamicSubmodel(SimulationObject):
     """ Provide generic dynamic submodel functionality
 
     All submodels are implemented as subclasses of `DynamicSubmodel`. Instances of them are combined
