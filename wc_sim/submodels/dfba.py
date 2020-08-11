@@ -281,11 +281,10 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                     population_change_rate += self.reaction_fluxes[rxn_term.variable.name] * rxn_term.coefficient
             temp_new_population = self.populations[idx] + population_change_rate * self.time_step
             if temp_new_population < 0.:
-                raise DynamicMultialgorithmError(self.time, f"DfbaSubmodel {self.id}: "
-                                                            f"Negative population found for "
-                                                            f"{species_id} from {self.populations[idx]} "
-                                                            f"to {temp_new_population} "
-                                                            f"for time step [{self.time}, {end_time}]")
+                raise DynamicMultialgorithmError(self.time, "DfbaSubmodel {}: Negative population found for "
+                                                            "{} from {} to {} for time step [{}, {}]".format(
+                                                            self.id, species_id,self.populations[idx], 
+                                                            temp_new_population, self.time, end_time))
             self.adjustments[species_id] = population_change_rate        
 
     def run_fba_solver(self):
@@ -297,7 +296,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         
         end_time = self.time + self.time_step
         result = self._conv_model.solve()        
-        if result.status_code != 0:
+        if result.status_code != conv_opt.StatusCode(0):
             raise DynamicMultialgorithmError(self.time, f"DfbaSubmodel {self.id}: "
                                                         f"No optimal solution found: "
                                                         f"'{result.status_message}' "

@@ -7,6 +7,7 @@
 """
 
 import copy
+import math
 import numpy
 import os
 import re
@@ -15,18 +16,14 @@ import unittest
 import wc_lang
 
 from de_sim.simulation_config import SimulationConfig
-from wc_lang.core import ReactionParticipantAttribute
-from wc_lang.io import Reader
 from wc_onto import onto as wc_ontology
 from wc_utils.util.units import unit_registry
-from wc_sim.dynamic_components import DynamicRateLaw
 from wc_sim.message_types import RunFba
 from wc_sim.multialgorithm_errors import DynamicMultialgorithmError, MultialgorithmError
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.sim_config import WCSimulationConfig
 from wc_sim.submodels.dfba import DfbaSubmodel
-from wc_sim.testing.make_models import MakeModel
-from wc_sim.testing.utils import read_model_for_test, TempConfigFileModifier
+from wc_sim.testing.utils import TempConfigFileModifier
 
 
 class TestDfbaSubmodel(unittest.TestCase):
@@ -56,7 +53,7 @@ class TestDfbaSubmodel(unittest.TestCase):
             	structure=wc_lang.ChemicalStructure(molecular_weight=1.))
             metabolite_species = model.species.create(species_type=metabolite_st, compartment=c)
             metabolite_species.id = metabolite_species.gen_id()
-            conc_model = model.distribution_init_concentrations.create(species=metabolite_species, mean=10.,
+            conc_model = model.distribution_init_concentrations.create(species=metabolite_species, mean=10., std=0.,
             	units=unit_registry.parse_units('molecule'))
             conc_model.id = conc_model.gen_id()
 
@@ -66,7 +63,7 @@ class TestDfbaSubmodel(unittest.TestCase):
             	structure=wc_lang.ChemicalStructure(molecular_weight=10.))
             enzyme_species = model.species.create(species_type=enzyme_st, compartment=c)
             enzyme_species.id = enzyme_species.gen_id()
-            conc_model = model.distribution_init_concentrations.create(species=enzyme_species, mean=conc,
+            conc_model = model.distribution_init_concentrations.create(species=enzyme_species, mean=conc, std=0.,
             	units=unit_registry.parse_units('molecule'))
             conc_model.id = conc_model.gen_id()
 
@@ -397,3 +394,97 @@ class TestDfbaSubmodel(unittest.TestCase):
             self.assertEqual(variable.lower_bound, new_bounds[var_id][0])
             self.assertEqual(variable.upper_bound, new_bounds[var_id][1])
             
+    def do_test_compute_population_change_rates_control_caching(self, caching_settings):
+        ### test with caching specified by caching_settings ###
+        self.config_file_modifier.write_test_config_file(caching_settings)
+
+        new_fluxes = {
+            'ex_m1': 13.2, 
+            'ex_m2': 30., 
+            'ex_m3': 0., 
+            'r1': -1.3, 
+            'r2': 0.5, 
+            'r3': 5.6,
+            'r4': 2.5,
+        }
+        self.dfba_submodel_1.reaction_fluxes = new_fluxes
+        self.dfba_submodel_1.compute_population_change_rates()
+        
+        expected_rates = {
+            'm1[c]': 1*13.2 -1*-1.3 -1*0.5 -2*5.6, 
+            'm2[c]': 1*30. -1*-1.3 +1*0.5 -2*2.5, 
+            'm3[c]': 1*0. +1*-1.3 +1*5.6 +1*2.5, 
+        }
+        self.assertEqual(self.dfba_submodel_1.adjustments, expected_rates)
+
+        new_fluxes['r2'] = 30.
+        self.dfba_submodel_1.time = 0.1
+        self.dfba_submodel_1.time_step = 1.
+        with self.assertRaisesRegexp(DynamicMultialgorithmError, 
+                                    re.escape("0.1: "
+                                    "DfbaSubmodel metabolism: Negative population found for "
+                                    "m1[c] from 10.0 to -16.7 for time step [0.1, 1.1]")):
+            self.dfba_submodel_1.compute_population_change_rates()
+
+    def test_compute_population_change_rates_control_caching(self):
+        ### test all 3 caching combinations ###
+        # NO CACHING
+        # EVENT_BASED invalidation
+        # REACTION_DEPENDENCY_BASED invalidation
+        for caching_settings in ([('expression_caching', 'False')],
+                                 [('expression_caching', 'True'),
+                                  ('cache_invalidation', 'event_based')],
+                                 [('expression_caching', 'True'),
+                                  ('cache_invalidation', 'reaction_dependency_based')]):
+            self.do_test_compute_population_change_rates_control_caching(caching_settings)
+
+    def test_current_species_populations(self):
+        self.dfba_submodel_1.current_species_populations()
+        for idx, species_id in enumerate(self.dfba_submodel_1.species_ids):
+            self.assertEqual(self.dfba_submodel_1.populations[idx], 
+                self.model.distribution_init_concentrations.get_one(
+                    species=self.model.species.get_one(id=species_id)).mean)
+
+    def test_run_fba_solver(self):
+        self.model.reactions.get_one(id='ex_m1').flux_bounds.max *= 1e11 
+        self.model.reactions.get_one(id='ex_m2').flux_bounds.max *= 1e11   
+        dfba_submodel_2 = self.make_dfba_submodel(self.model, 
+            submodel_options=self.dfba_submodel_options)
+        dfba_submodel_2.time_step = 1.
+        dfba_submodel_2.run_fba_solver()
+        
+        expected_adjustments = {'m1[c]': 0., 'm2[c]': 0., 'm3[c]': 120.*self.cell_volume*dfba_submodel_2.time_step*1e11}        
+        self.assertEqual(dfba_submodel_2._optimal_obj_func_value, 120.*self.cell_volume*1e11)
+        self.assertEqual(dfba_submodel_2.adjustments, expected_adjustments)
+        
+        species = ['m1[c]', 'm2[c]', 'm3[c]']
+        expected_population = dict(zip(species, [10, 10, 10 + 120*self.cell_volume*dfba_submodel_2.time_step*1e11]))
+        population = dfba_submodel_2.local_species_population.read(1., set(species))
+        self.assertEqual(population, expected_population)
+
+        # TODO: AssertRaiseRegexp for DynamicMultialgorithmError
+        # TODO: Assert flush expression
+
+    def test_schedule_next_fba_event(self):
+        # check that the next event is a RunFba message at time expected_time
+        def check_next_event(expected_time):
+            next_event = custom_fba_submodel.simulator.event_queue.next_events()[0]
+            self.assertEqual(next_event.creation_time, 0)
+            self.assertEqual(next_event.event_time, expected_time)
+            self.assertEqual(next_event.sending_object, custom_fba_submodel)
+            self.assertEqual(next_event.receiving_object, custom_fba_submodel)
+            self.assertEqual(type(next_event.message), RunFba)
+            self.assertTrue(custom_fba_submodel.simulator.event_queue.empty())
+
+        custom_fba_time_step = 4
+        custom_fba_submodel = self.make_dfba_submodel(self.model, dfba_time_step=custom_fba_time_step)
+        # 1 initial event is scheduled
+        self.assertEqual(custom_fba_submodel.simulator.event_queue.len(), 1)
+
+        # initial event should be at time 0
+        check_next_event(0)
+
+        # next RunFba event should be at custom_fba_time_step
+        custom_fba_submodel.schedule_next_periodic_analysis()
+        check_next_event(custom_fba_time_step)                    
+        
