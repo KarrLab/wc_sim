@@ -1307,7 +1307,7 @@ class SpeciesPopSimObject(LocalSpeciesPopulation, SimulationObject,
         For remaining args and exceptions, see `__init__()` documentation for
         `de_sim.simulation_object.SimulationObject` and `wc_sim.LocalSpeciesPopulation`.
         """
-        super().__init__(name)
+        SimulationObject.__init__(self, name)
         LocalSpeciesPopulation.__init__(self, name, initial_population, molecular_weights,
                                         initial_population_slopes, random_state=random_state)
 
