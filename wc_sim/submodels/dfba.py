@@ -33,6 +33,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         _conv_metabolite_matrices (:obj:`dict`): a dictionary mapping metabolite species IDs to lists
             of `conv_opt.LinearTerm` objects defining the reactions and stoichiometries that the 
             species participate in
+        _dfba_obj_rxn_ids (:obj:`list`): a list of IDs of DFBA objective reactions    
         _reaction_bounds (:obj:`dict`): a dictionary with reaction IDs as keys and tuples of scaled minimum
             and maximum bounds as values
         _optimal_obj_func_value (:obj:`float`): the value of objective function returned by the solver            
@@ -165,9 +166,11 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                 self._conv_metabolite_matrices[part.species.id].append(
                     conv_opt.LinearTerm(self._conv_variables[rxn.id], part.coefficient))                             
 
+        self._dfba_obj_rxn_ids = []
         for rxn_cls in self.dfba_objective.related_objects.values():
             for rxn_id, rxn in rxn_cls.items():
                 if rxn_id not in self._conv_variables:
+                    self._dfba_obj_rxn_ids.append(rxn_id)
                     self._conv_variables[rxn.id] = conv_opt.Variable(
                         name=rxn.id, type=conv_opt.VariableType.continuous, lower_bound=0)
                     self._conv_model.variables.append(self._conv_variables[rxn.id])
@@ -182,8 +185,8 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
 
         # Set up the objective function
         dfba_obj_expr_objs = self.dfba_objective.lin_coeffs
-        for rxn_coeffs in dfba_obj_expr_objs.values():
-            for rxn, lin_coef in rxn_coeffs.items():
+        for rxn_cls in dfba_obj_expr_objs.values():
+            for rxn, lin_coef in rxn_cls.items():
                 self._conv_model.objective_terms.append(conv_opt.LinearTerm(
                     self._conv_variables[rxn.id], lin_coef))
                 
@@ -218,12 +221,12 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             if reaction.flux_bounds:
                 rxn_bounds = reaction.flux_bounds
                 if rxn_bounds.min:
-                    min_constr = 0. if math.isnan(rxn_bounds.min) else \
+                    min_constr = None if math.isnan(rxn_bounds.min) else \
                         rxn_bounds.min*flux_comp_volume*scipy.constants.Avogadro*bound_scale_factor
                 else:
                     min_constr = rxn_bounds.min
                 if rxn_bounds.max:
-                    max_constr = 0. if math.isnan(rxn_bounds.max) else \
+                    max_constr = None if math.isnan(rxn_bounds.max) else \
                         rxn_bounds.max*flux_comp_volume*scipy.constants.Avogadro*bound_scale_factor
                 else:           
                     max_constr = rxn_bounds.max
@@ -258,14 +261,40 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             
             self._reaction_bounds[reaction.id] = (min_constr, max_constr)
 
+    def update_bounds(self):
+        """ Update the minimum and maximum bounds of `conv_opt.Variable` based on
+            the values in `self._reaction_bounds`
+        """
+        for rxn_id, (min_constr, max_constr) in self._reaction_bounds.items():
+            self._conv_variables[rxn_id].lower_bound = min_constr
+            self._conv_variables[rxn_id].upper_bound = max_constr
+
+    def compute_population_change_rates(self):
+        """ Compute the rate of change of the populations of species used by this DFBA """
+    
+        # Calculate the adjustment for each species as sum over reactions of reaction flux * stoichiometry       
+        end_time = self.time + self.time_step
+        self.current_species_populations()
+        for idx, species_id in enumerate(self.species_ids):
+            population_change_rate = 0
+            for rxn_term in self._conv_metabolite_matrices[species_id]:
+                if rxn_term.variable.name not in self._dfba_obj_rxn_ids:
+                    population_change_rate += self.reaction_fluxes[rxn_term.variable.name] * rxn_term.coefficient
+            temp_new_population = self.populations[idx] + population_change_rate * self.time_step
+            if temp_new_population < 0.:
+                raise DynamicMultialgorithmError(self.time, f"DfbaSubmodel {self.id}: "
+                                                            f"Negative population found for "
+                                                            f"{species_id} from {self.populations[idx]} "
+                                                            f"to {temp_new_population} "
+                                                            f"for time step [{self.time}, {end_time}]")
+            self.adjustments[species_id] = population_change_rate        
+
     def run_fba_solver(self):
         """ Run the FBA solver for one time step """
         bound_scale_factor = self.dfba_solver_options['dfba_bound_scale_factor']
         coef_scale_factor = self.dfba_solver_options['dfba_coef_scale_factor']
         self.determine_bounds()
-        for rxn_id, (min_constr, max_constr) in self._reaction_bounds.items():
-            self._conv_variables[rxn_id].lower_bound = min_constr
-            self._conv_variables[rxn_id].upper_bound = max_constr
+        self.update_bounds()
         
         end_time = self.time + self.time_step
         result = self._conv_model.solve()        
@@ -273,25 +302,14 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             raise DynamicMultialgorithmError(self.time, f"DfbaSubmodel {self.id}: "
                                                         f"No optimal solution found: "
                                                         f"'{result.status_message}' "
-                                                        f"for time step [{self.time}, {end_time})")
+                                                        f"for time step [{self.time}, {end_time}]")
         self._optimal_obj_func_value = result.value / bound_scale_factor * coef_scale_factor
         for rxn_variable in self._conv_model.variables:
-            self.reaction_fluxes[rxn_variable.name] = rxn_variable.primal / bound_scale_factor
+            if rxn_variable.name not in self._dfba_obj_rxn_ids: 
+                self.reaction_fluxes[rxn_variable.name] = rxn_variable.primal / bound_scale_factor
 
-        # Calculate the adjustment for each species as sum over reactions of reaction flux * stoichiometry       
-        self.current_species_populations()
-        for idx, species_id in enumerate(self.species_ids):
-            population_change_rate = 0
-            for rxn_term in self._conv_metabolite_matrices[species_id]:
-                population_change_rate += self.reaction_fluxes[rxn_term.variable.name] * rxn_term.coefficient
-            temp_new_population = self.populations[idx] + population_change_rate
-            if temp_new_population < 0.:
-                raise DynamicMultialgorithmError(self.time, f"DfbaSubmodel {self.id}: "
-                                                            f"Negative population found for"
-                                                            f"{species_id} from {self.populations[idx]} "
-                                                            f"to {temp_new_population} "
-                                                            f"for time step [{self.time}, {end_time})")
-            self.adjustments[species_id] = population_change_rate
+        # Compute the population change rates
+        self.compute_population_change_rates()
         
         ### store results in local_species_population ###
         self.local_species_population.adjust_continuously(self.time, self.adjustments)
