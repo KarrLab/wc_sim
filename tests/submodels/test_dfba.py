@@ -465,6 +465,23 @@ class TestDfbaSubmodel(unittest.TestCase):
         # Test flush expression
         self.assertEqual(len(dfba_submodel_2.dynamic_model.cache_manager._cache), 0)
 
+        # Test using a different solver
+        self.dfba_submodel_options['solver'] = 3
+        del self.dfba_submodel_options['solver_options']
+        dfba_submodel_2 = self.make_dfba_submodel(self.model, 
+            submodel_options=self.dfba_submodel_options)
+        dfba_submodel_2.time_step = 1.
+        dfba_submodel_2.run_fba_solver()
+        
+        expected_adjustments = {'m1[c]': 0., 'm2[c]': 0., 'm3[c]': 120.*self.cell_volume*dfba_submodel_2.time_step*1e11}        
+        self.assertEqual(dfba_submodel_2._optimal_obj_func_value, 120.*self.cell_volume*1e11)
+        self.assertEqual(dfba_submodel_2.adjustments, expected_adjustments)
+        
+        species = ['m1[c]', 'm2[c]', 'm3[c]']
+        expected_population = dict(zip(species, [10, 10, 10 + 120*self.cell_volume*dfba_submodel_2.time_step*1e11]))
+        population = dfba_submodel_2.local_species_population.read(1., set(species))
+        self.assertEqual(population, expected_population)
+
         # Test raise DynamicMultialgorithmError
         self.model.reactions.get_one(id='ex_m1').flux_bounds.min = -1000.
         self.model.reactions.get_one(id='ex_m1').flux_bounds.max = -1000.
