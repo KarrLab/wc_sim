@@ -462,9 +462,22 @@ class TestDfbaSubmodel(unittest.TestCase):
         population = dfba_submodel_2.local_species_population.read(1., set(species))
         self.assertEqual(population, expected_population)
 
-        # TODO: AssertRaiseRegexp for DynamicMultialgorithmError
-        # TODO: Assert flush expression
+        # Test flush expression
+        self.assertEqual(len(dfba_submodel_2.dynamic_model.cache_manager._cache), 0)
 
+        # Test raise DynamicMultialgorithmError
+        self.model.reactions.get_one(id='ex_m1').flux_bounds.min = -1000.
+        self.model.reactions.get_one(id='ex_m1').flux_bounds.max = -1000.
+        dfba_submodel_3 = self.make_dfba_submodel(self.model, 
+            submodel_options=self.dfba_submodel_options)
+        dfba_submodel_3.time = 0.1
+        dfba_submodel_3.time_step = 1.
+        with self.assertRaisesRegexp(DynamicMultialgorithmError, 
+                                    re.escape("0.1: "
+                                    "DfbaSubmodel metabolism: No optimal solution found: "
+                                    "'infeasible' for time step [0.1, 1.1]")):
+            dfba_submodel_3.run_fba_solver()
+        
     def test_schedule_next_fba_event(self):
         # check that the next event is a RunFba message at time expected_time
         def check_next_event(expected_time):
