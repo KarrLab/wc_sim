@@ -66,6 +66,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
     def __init__(self, id, dynamic_model, reactions, species, dynamic_compartments,
                  local_species_population, dfba_time_step, options=None):
         """ Initialize a dFBA submodel instance
+        
         Args:
             id (:obj:`str`): unique id of this dFBA submodel
             dynamic_model (:obj: `DynamicModel`): the simulation's central coordinator
@@ -79,6 +80,16 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                 dFBA submodel's species population               
             dfba_time_step (:obj:`float`): time interval between FBA optimization
             options (:obj:`dict`, optional): dFBA submodel options
+
+        Raises:
+            :obj:`MultiAlgorithmError`: if the dynamic_dfba_objective cannot be found,
+                if the provided 'dfba_bound_scale_factor' in options has a negative value,
+                if the provided 'dfba_coef_scale_factor' in options has a netaive value,
+                if the provided 'solver' in options is not a valid value,
+                if the provided 'presolve' in options is not a valid value,
+                if 'solver' value provided in the 'solver_options' in options is not the same
+                as the name of the selected `conv_opt.Solver`, or the provide
+                'flux_bounds_volumetric_compartment_id' is not a valid compartment ID in the model    
         """
         super().__init__(id, dynamic_model, reactions, species, dynamic_compartments,
                          local_species_population, dfba_time_step, options)
@@ -269,7 +280,11 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             self._conv_variables[rxn_id].upper_bound = max_constr
 
     def compute_population_change_rates(self):
-        """ Compute the rate of change of the populations of species used by this DFBA """
+        """ Compute the rate of change of the populations of species used by this DFBA 
+
+        Raises:
+            :obj:`DynamicMultiAlgorithmError`: if the simulated flux cause negative population
+        """
     
         # Calculate the adjustment for each species as sum over reactions of reaction flux * stoichiometry       
         end_time = self.time + self.time_step
@@ -288,7 +303,11 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             self.adjustments[species_id] = population_change_rate        
 
     def run_fba_solver(self):
-        """ Run the FBA solver for one time step """
+        """ Run the FBA solver for one time step 
+        
+        Raises:
+            :obj:`DynamicMultiAlgorithmError`: if no optimal solution is found
+        """
         bound_scale_factor = self.dfba_solver_options['dfba_bound_scale_factor']
         coef_scale_factor = self.dfba_solver_options['dfba_coef_scale_factor']
         self.determine_bounds()
