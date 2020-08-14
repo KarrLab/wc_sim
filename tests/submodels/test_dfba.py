@@ -6,6 +6,7 @@
 :License: MIT
 """
 
+import conv_opt
 import copy
 import math
 import numpy
@@ -180,6 +181,7 @@ class TestDfbaSubmodel(unittest.TestCase):
             'dfba_coef_scale_factor': 10,
             'solver': 1,
             'presolve': 1,
+            'optimization_type': 'maximize',
             'flux_bounds_volumetric_compartment_id': 'wc',
             'solver_options': {
                 'cplex': {
@@ -254,6 +256,13 @@ class TestDfbaSubmodel(unittest.TestCase):
                                         f" solver_options is not the same as the selected solver 'cplex'"):
             self.make_dfba_submodel(self.model, submodel_options=bad_solver_options)
 
+        bad_optimization_type = copy.deepcopy(self.dfba_submodel_options)
+        bad_optimization_type['optimization_type'] = 'bad'
+        with self.assertRaisesRegexp(MultialgorithmError,
+                                     "DfbaSubmodel metabolism: the optimization_type in"
+                                        f" options can only take 'maximize' or 'minimize' as value but is 'bad'"):
+            self.make_dfba_submodel(self.model, submodel_options=bad_optimization_type)    
+
         bad_flux_comp_id = copy.deepcopy(self.dfba_submodel_options)
         bad_flux_comp_id['flux_bounds_volumetric_compartment_id'] = 'bad'
         with self.assertRaisesRegexp(MultialgorithmError,
@@ -303,8 +312,9 @@ class TestDfbaSubmodel(unittest.TestCase):
         self.assertEqual(self.dfba_submodel_1._dfba_obj_rxn_ids, ['biomass_reaction'])
         self.assertEqual({i.variable.name:i.coefficient for i in self.dfba_submodel_1._conv_model.objective_terms},
         	{'biomass_reaction': 1})
+        self.assertEqual(self.dfba_submodel_1._conv_model.objective_direction, conv_opt.ObjectiveDirection.maximize)
 
-        # Test model where the objective function is made of dfba objective reactions and network reactions
+        # Test model where the objective function is made of dfba objective reactions and network reactions and is minimized
         obj_expression = f"biomass_reaction + 2 * r2"
         dfba_obj_expression, error = wc_lang.DfbaObjectiveExpression.deserialize(
             obj_expression, {
@@ -316,6 +326,7 @@ class TestDfbaSubmodel(unittest.TestCase):
                 })
         assert error is None, str(error)
         self.submodel.dfba_obj.expression = dfba_obj_expression
+        self.dfba_submodel_options['optimization_type'] = 'minimize'
         dfba_submodel_2 = self.make_dfba_submodel(self.model, 
         	submodel_options=self.dfba_submodel_options)
 
@@ -348,6 +359,7 @@ class TestDfbaSubmodel(unittest.TestCase):
         self.assertEqual(dfba_submodel_2._dfba_obj_rxn_ids, ['biomass_reaction'])
         self.assertEqual({i.variable.name:i.coefficient for i in dfba_submodel_2._conv_model.objective_terms},
         	{'biomass_reaction': 1, 'r2': 2})
+        self.assertEqual(dfba_submodel_2._conv_model.objective_direction, conv_opt.ObjectiveDirection.minimize)
 
 
     def test_determine_bounds(self):

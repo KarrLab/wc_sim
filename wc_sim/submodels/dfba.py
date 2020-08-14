@@ -53,6 +53,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             },
         },
     }
+    OPTIMIZATION_TYPE = 'maximize'
     FLUX_BOUNDS_VOLUMETRIC_COMPARTMENT_ID = 'wc'
 
     # register the message types sent by DfbaSubmodel
@@ -106,6 +107,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             'solver': self.SOLVER,
             'presolve': self.PRESOLVE,
             'solver_options': self.SOLVER_OPTIONS,
+            'optimization_type': self.OPTIMIZATION_TYPE,
             'flux_bounds_volumetric_compartment_id': self.FLUX_BOUNDS_VOLUMETRIC_COMPARTMENT_ID,
         }
         if options is not None:
@@ -140,6 +142,12 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                         f" solver_options is not the same as the selected solver"
                         f" '{selected_solver.name}'")
                 self.dfba_solver_options['solver_options'] = options['solver_options']
+            if 'optimization_type' in options:
+                if options['optimization_type'] not in ['maximize', 'minimize']:
+                    raise MultialgorithmError(f"DfbaSubmodel {self.id}: the optimization_type in"
+                        f" options can only take 'maximize' or 'minimize' as value but is"
+                        f" '{options['optimization_type']}'")
+                self.dfba_solver_options['optimization_type'] = options['optimization_type']            
             if 'flux_bounds_volumetric_compartment_id' in options:
                 comp_id = options['flux_bounds_volumetric_compartment_id']
                 if comp_id != self.FLUX_BOUNDS_VOLUMETRIC_COMPARTMENT_ID:
@@ -200,7 +208,10 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                 self._conv_model.objective_terms.append(conv_opt.LinearTerm(
                     self._conv_variables[rxn.id], lin_coef))
                 
-        self._conv_model.objective_direction = conv_opt.ObjectiveDirection.maximize
+        if self.dfba_solver_options['optimization_type'] == 'maximize':
+            self._conv_model.objective_direction = conv_opt.ObjectiveDirection.maximize
+        else:
+            self._conv_model.objective_direction = conv_opt.ObjectiveDirection.minimize    
 
         # Set options for conv_opt solver
         options = conv_opt.SolveOptions(
