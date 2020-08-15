@@ -124,6 +124,7 @@ class VerificationTestCaseType(Enum):
     CONTINUOUS_DETERMINISTIC = 'semantic'       # algorithms like ODE
     DISCRETE_STOCHASTIC = 'stochastic'          # algorithms like SSA
     MULTIALGORITHMIC = 'multialgorithmic'       # multiple integration algorithms
+    FLUX_BALANCE_STEADY_STATE = 'fba'           # algorithms like FBA
 
 
 class VerificationTestReader(object):
