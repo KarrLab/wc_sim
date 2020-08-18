@@ -50,7 +50,7 @@ class TestFbaVerificationTestReader(unittest.TestCase):
     def test_read_settings(self):
         settings = make_verification_test_reader('01186', 'DYNAMIC_FLUX_BALANCE_ANALYSIS').read_settings()
         some_expected_settings = dict(
-            variables=['R01', 'R26', 'OBJF'],
+            variables=['X', 'Y'],
             absolute=0.001,
             relative=0.001
         )
@@ -110,6 +110,11 @@ class TestFbaVerificationTestReader(unittest.TestCase):
         self.assertEqual(np.isnan(model.reactions.get_one(id='R02').flux_bounds.min), True)
         self.assertEqual(np.isnan(model.reactions.get_one(id='R02').flux_bounds.max), True)
         self.assertEqual(verification_test_reader.objective_direction, 'minimize')
+
+        verification_test_reader = make_verification_test_reader('01625', 'DYNAMIC_FLUX_BALANCE_ANALYSIS')
+        model = verification_test_reader.read_model()
+        self.assertEqual(model.reactions.get_one(id='R14').flux_bounds.min, 0.)
+        self.assertEqual(model.reactions.get_one(id='R14').flux_bounds.max, 0.)
 
         verification_test_reader = make_verification_test_reader('01630', 'DYNAMIC_FLUX_BALANCE_ANALYSIS')
         model = verification_test_reader.read_model()

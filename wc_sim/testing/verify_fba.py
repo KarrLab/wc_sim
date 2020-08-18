@@ -168,7 +168,10 @@ class FbaVerificationTestReader(VerificationTestReader):
             if bound.getOperation()=='greaterEqual':
                 flux_bounds[rxn_id]['lower_bound'] = bound.getValue()
             elif bound.getOperation()=='lessEqual':
-                flux_bounds[rxn_id]['upper_bound'] = bound.getValue()          
+                flux_bounds[rxn_id]['upper_bound'] = bound.getValue()
+            elif bound.getOperation()=='equal':
+                flux_bounds[rxn_id]['lower_bound'] = bound.getValue()
+                flux_bounds[rxn_id]['upper_bound'] = bound.getValue()              
 
         # Create model reactions
         for rxn in sbml_model.getListOfReactions():        	
