@@ -11,4 +11,5 @@ static_analyses:
   ignore_unused_requirements:
     - recordtype
     - scikits.odes
-  ignore_missing_requirements: []
+  ignore_missing_requirements:
+    - python-libsbml-experimental
