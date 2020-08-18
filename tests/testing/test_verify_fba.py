@@ -91,11 +91,16 @@ class TestFbaVerificationTestReader(unittest.TestCase):
         self.assertEqual(len(model.submodels), 1)
         self.assertEqual(model.submodels[0].id, verification_test_reader.test_case_num + '-dfba')
         self.assertEqual(model.submodels[0].framework, wc_onto['WC:dynamic_flux_balance_analysis'])
-        self.assertEqual(len(model.submodels[0].reactions), 26)
+        self.assertEqual(len(model.submodels[0].reactions), 30)
         self.assertEqual(model.reactions.get_one(id='R01').flux_bounds.min, 0.)
         self.assertEqual(model.reactions.get_one(id='R01').flux_bounds.max, 1.)
         self.assertEqual(model.reactions.get_one(id='R02').flux_bounds.min, -1000.)
         self.assertEqual(model.reactions.get_one(id='R02').flux_bounds.max, 1000.)
+        exchange_reactions = ['EX_T', 'EX_U', 'EX_X', 'EX_Y']
+        for rxn in exchange_reactions:
+            self.assertEqual(np.isnan(model.reactions.get_one(id=rxn).flux_bounds.min), True)
+            self.assertEqual(np.isnan(model.reactions.get_one(id=rxn).flux_bounds.max), True)
+
         self.assertEqual(verification_test_reader.objective_direction, 'maximize')
         self.assertEqual(model.submodels[0].dfba_obj.expression.expression, '1.0 * R26')
         self.assertEqual(model.submodels[0].dfba_obj.expression.reactions, [model.reactions.get_one(id='R26')])

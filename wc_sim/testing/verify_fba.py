@@ -147,6 +147,17 @@ class FbaVerificationTestReader(VerificationTestReader):
             conc_model.id = conc_model.gen_id()
             if not np.isnan(species.getInitialAmount()):
                 conc_model.mean = species.getInitialAmount()
+            # Create unbounded exchange reactions for boundary species
+            if species.getBoundaryCondition():
+                model_rxn = model.reactions.create(
+            	    id='EX_' + species.getId(), 
+            	    submodel=dfba_submodel,
+            	    reversible=True)            
+                model_rxn.participants.add(model_species.species_coefficients.get_or_create(
+          	        coefficient=-1))
+                model_rxn.flux_bounds = wc_lang.FluxBounds(units=unit_registry.parse_units('M s^-1'))
+                model_rxn.flux_bounds.min = np.nan
+                model_rxn.flux_bounds.max = np.nan    
 
         # Extract flux bounds
         flux_bounds = {}
