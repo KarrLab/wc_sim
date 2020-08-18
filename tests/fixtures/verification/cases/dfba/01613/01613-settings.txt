@@ -1,8 +1,8 @@
-start:
-duration:
-steps:
-variables: R01,R26,R10,R07,OBJF
+start: 0
+duration: 1.0
+steps: 1
+variables: X, Y
 absolute: 0.001
 relative: 0.001
-amount: 
+amount: X, Y
 concentration: 
