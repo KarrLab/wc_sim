@@ -47,7 +47,7 @@ class AdjustPopulationByDiscreteSubmodel(EventMessage):
         population_change (:obj:`dict` of `float`): map: species_id -> population_change;
             changes in the population of the identified species.
     """
-    attributes = ["population_change"]
+    msg_field_names = ["population_change"]
 
 
 ContinuousChange_namedtuple = namedtuple('ContinuousChange_namedtuple', 'change, change_rate')
@@ -96,7 +96,7 @@ class AdjustPopulationByContinuousSubmodel(EventMessage):
             identified species, and the predicted future rate of change of the species (which may be
             simply the historic rate of change).
     """
-    attributes = ['population_change']
+    msg_field_names = ['population_change']
 
 
 class GetPopulation(EventMessage):
@@ -106,7 +106,7 @@ class GetPopulation(EventMessage):
         species (:obj:`set` of `str`): set of species_ids; the species whose populations are
         requested.
     """
-    attributes = ['species']
+    msg_field_names = ['species']
 
 
 class GivePopulation(EventMessage):
@@ -115,7 +115,7 @@ class GivePopulation(EventMessage):
     Attributes:
         population (:obj:`dict` of `str`): species_id -> population; the populations of some species.
     """
-    attributes = ['population']
+    msg_field_names = ['population']
 
 
 class AggregateProperty(EventMessage):
@@ -124,7 +124,7 @@ class AggregateProperty(EventMessage):
     Attributes:
         property_name (:obj:`str`): the name of the requested property
     """
-    attributes = ['property_name']
+    msg_field_names = ['property_name']
 
 
 """
@@ -148,7 +148,7 @@ class GetHistoricalProperty(EventMessage):
         property_name (:obj:`str`): the name of the requested property
         time (`float`): the time at which the property should be measured
     """
-    attributes = ['property_name', 'time']
+    msg_field_names = ['property_name', 'time']
 
 
 class GetCurrentProperty(EventMessage):
@@ -157,7 +157,7 @@ class GetCurrentProperty(EventMessage):
     Attributes:
         property_name (:obj:`str`): the name of the requested property
     """
-    attributes = ['property_name']
+    msg_field_names = ['property_name']
 
 
 class GiveProperty(EventMessage):
@@ -168,7 +168,7 @@ class GiveProperty(EventMessage):
         time (`float`): the time at which the property was measured
         value (:obj:`object`): the value of the property at `time`
     """
-    attributes = ['property_name', 'time', 'value']
+    msg_field_names = ['property_name', 'time', 'value']
 
 
 class ExecuteSsaReaction(EventMessage):
@@ -177,7 +177,7 @@ class ExecuteSsaReaction(EventMessage):
     Attributes:
         reaction_index (int): the index of the selected reaction in `SsaSubmodel.reactions`.
     """
-    attributes = ['reaction_index']
+    msg_field_names = ['reaction_index']
 
 
 class SsaWait(EventMessage):
@@ -203,7 +203,7 @@ class ExecuteAndScheduleNrmReaction(EventMessage):
     Attributes:
         reaction_index (int): the index of the selected reaction in `NrmSubmodel.reactions`.
     """
-    attributes = ['reaction_index']
+    msg_field_names = ['reaction_index']
 
 
 ALL_MESSAGE_TYPES = [
