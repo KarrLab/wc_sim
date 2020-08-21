@@ -33,6 +33,7 @@ class FbaVerificationTestReader(VerificationTestReader):
     
     Attributes:
         expected_predictions_df (:obj:`pandas.DataFrame`): the test case's expected predictions
+        objective_direction (:obj:`str`): direction of optimization, i.e. 'maximize' or 'minimize'
     """
 
     def __init__(self, test_case_type_name, test_case_dir, test_case_num):
@@ -44,12 +45,12 @@ class FbaVerificationTestReader(VerificationTestReader):
             test_case_num (:obj:`str`): the test case's unique ID number
 
         Raises:
-            :obj:`VerificationError`: if test_case_type is not FLUX_BALANCE_STEADY_STATE   
+            :obj:`VerificationError`: if test_case_type is not DYNAMIC_FLUX_BALANCE_ANALYSIS   
         """        
         super().__init__(test_case_type_name, test_case_dir, test_case_num)
-        if self.test_case_type != VerificationTestCaseType.FLUX_BALANCE_STEADY_STATE:
+        if self.test_case_type != VerificationTestCaseType.DYNAMIC_FLUX_BALANCE_ANALYSIS:
             raise VerificationError("VerificationTestCaseType is '{}' and not "
-                                    "'FLUX_BALANCE_STEADY_STATE'".format(test_case_type_name))
+                                    "'DYNAMIC_FLUX_BALANCE_ANALYSIS'".format(test_case_type_name))
 
     def read_expected_predictions(self):
         """ Get the test case's expected predictions
@@ -101,7 +102,7 @@ class FbaVerificationTestReader(VerificationTestReader):
         
         # Create `wc_lang` model and FBA submodel
         model = wc_lang.Model(id='test_case_' + self.test_case_num)
-        fba_submodel = wc_lang.Submodel(id=self.test_case_num + '-fba', model=model, 
+        dfba_submodel = wc_lang.Submodel(id=self.test_case_num + '-dfba', model=model, 
         	framework=wc_onto['WC:dynamic_flux_balance_analysis'])
 
         sbml_doc = libsbml.SBMLReader().readSBML(self.model_filename)        
@@ -145,11 +146,18 @@ class FbaVerificationTestReader(VerificationTestReader):
             	units=unit_registry.parse_units('molecule'))
             conc_model.id = conc_model.gen_id()
             if not np.isnan(species.getInitialAmount()):
-                conc_model.mean = species.getInitialAmount() 
-
-        # Create model parameters
-        for param in sbml_model.getListOfParameters():
-            model.parameters.create(id=param.getId(), value=param.getValue())
+                conc_model.mean = species.getInitialAmount()
+            # Create unbounded exchange reactions for boundary species
+            if species.getBoundaryCondition():
+                model_rxn = model.reactions.create(
+            	    id='EX_' + species.getId(), 
+            	    submodel=dfba_submodel,
+            	    reversible=True)            
+                model_rxn.participants.add(model_species.species_coefficients.get_or_create(
+          	        coefficient=-1))
+                model_rxn.flux_bounds = wc_lang.FluxBounds(units=unit_registry.parse_units('M s^-1'))
+                model_rxn.flux_bounds.min = np.nan
+                model_rxn.flux_bounds.max = np.nan    
 
         # Extract flux bounds
         flux_bounds = {}
@@ -160,7 +168,10 @@ class FbaVerificationTestReader(VerificationTestReader):
             if bound.getOperation()=='greaterEqual':
                 flux_bounds[rxn_id]['lower_bound'] = bound.getValue()
             elif bound.getOperation()=='lessEqual':
-                flux_bounds[rxn_id]['upper_bound'] = bound.getValue()          
+                flux_bounds[rxn_id]['upper_bound'] = bound.getValue()
+            elif bound.getOperation()=='equal':
+                flux_bounds[rxn_id]['lower_bound'] = bound.getValue()
+                flux_bounds[rxn_id]['upper_bound'] = bound.getValue()              
 
         # Create model reactions
         for rxn in sbml_model.getListOfReactions():        	
@@ -168,7 +179,7 @@ class FbaVerificationTestReader(VerificationTestReader):
             
             model_rxn = model.reactions.create(
             	id=rxn.getId(), 
-            	submodel=fba_submodel,
+            	submodel=dfba_submodel,
             	reversible=rxn.getReversible())
             # Add reaction participants
             for reactant in rxn.getListOfReactants():
@@ -183,37 +194,41 @@ class FbaVerificationTestReader(VerificationTestReader):
                     species_type=model_species_type, compartment=model_compartment)
                 model_rxn.participants.add(model_species.species_coefficients.get_or_create(
           	        coefficient=reactant.getStoichiometry()))
-            # Add flux bounds or kinetic law
-            if flux_bounds:
-                model_rxn.flux_bounds = wc_lang.FluxBounds(units=unit_registry.parse_units('M s^-1'))
-                lower_bound = flux_bounds[model_rxn.id]['lower_bound']
-                model_rxn.flux_bounds.min = np.nan if np.isinf(lower_bound) else lower_bound  
-                upper_bound = flux_bounds[model_rxn.id]['upper_bound']
-                model_rxn.flux_bounds.max = np.nan if np.isinf(upper_bound) else upper_bound 
+            # Add flux bounds
+            model_rxn.flux_bounds = wc_lang.FluxBounds(units=unit_registry.parse_units('M s^-1'))
+            if flux_bounds:                
+                lower_bound = flux_bounds[model_rxn.id]['lower_bound']                
+                upper_bound = flux_bounds[model_rxn.id]['upper_bound']                
             else:
-                upper_expression = fbc_rxn.getUpperFluxBound()
-                forward_rate_law_expression, error = wc_lang.RateLawExpression.deserialize(upper_expression, {
-                    wc_lang.Parameter: {upper_expression: model.parameters.get_one(id=upper_expression)},
-                    })
-                assert error is None, str(error)
-                forward_rate_law = model.rate_laws.create(
-                    expression=forward_rate_law_expression,
-                    reaction=model_rxn,
-                    direction=wc_lang.RateLawDirection['forward'])
-                forward_model_rate_law.id = forward_model_rate_law.gen_id()
-                
-                lower_expression = fbc_rxn.getLowerFluxBound()
-                backward_rate_law_expression, error = wc_lang.RateLawExpression.deserialize(lower_expression, {
-                    wc_lang.Parameter: {lower_expression: model.parameters.get_one(id=lower_expression)},
-                    })
-                assert error is None, str(error)
-                backward_model_rate_law = model.rate_laws.create(
-                    expression=backward_rate_law_expression,
-                    reaction=model_rxn,
-                    direction=wc_lang.RateLawDirection['backward'])
-                backward_model_rate_law.id = backward_model_rate_law.gen_id()         
-            
-                #obj func
+                lower_bound_id = fbc_rxn.getLowerFluxBound()
+                lower_bound = sbml_model.getParameter(lower_bound_id).value
+                upper_bound_id = fbc_rxn.getUpperFluxBound()
+                upper_bound = sbml_model.getParameter(upper_bound_id).value
+            model_rxn.flux_bounds.min = np.nan if np.isinf(lower_bound) else lower_bound
+            model_rxn.flux_bounds.max = np.nan if np.isinf(upper_bound) else upper_bound       
+               
+        # Add objective function
+        dfba_submodel.dfba_obj = wc_lang.DfbaObjective(model=model)
+        dfba_submodel.dfba_obj.id = dfba_submodel.dfba_obj.gen_id()
+
+        sbml_objective_id = fbc_sbml_model.getListOfObjectives().getActiveObjective()
+        sbml_objective_function = fbc_sbml_model.getObjective(sbml_objective_id)
+        self.objective_direction = sbml_objective_function.getType()
+        
+        objective_terms = []
+        rxn_objects = {}
+        for rxn in sbml_objective_function.getListOfFluxObjectives():
+            rxn_id = rxn.getReaction()
+            objective_terms.append('{} * {}'.format(
+            	str(rxn.getCoefficient()), rxn_id))  
+            rxn_objects[rxn_id] = model.reactions.get_one(id=rxn_id)
+
+        obj_expression = ' + '.join(objective_terms)
+        dfba_obj_expression, error = wc_lang.DfbaObjectiveExpression.deserialize(
+        obj_expression, {wc_lang.Reaction: rxn_objects})
+        assert error is None, str(error)
+        dfba_submodel.dfba_obj.expression = dfba_obj_expression 
+
         return model  
 
 
@@ -221,11 +236,11 @@ class FbaResultsComparator(ResultsComparator):
     """ Compare simulated flux predictions against expected fluxes
 
     Attributes:
-        fba_submodel (:obj:`wc_sim.submodels.dfba.DfbaSubmodel`): FBA dynamic submodel
+        dfba_submodel (:obj:`wc_sim.submodels.dfba.DfbaSubmodel`): dynamic FBA submodel
     """
-    def __init__(self, verification_test_reader, simulation_run_results, fba_submodel):
-    	super().__init__(verification_test_reader, simulation_run_results, fba_submodel)
-    	self.fba_submodel = fba_submodel
+    def __init__(self, verification_test_reader, simulation_run_results, dfba_submodel):
+    	super().__init__(verification_test_reader, simulation_run_results, dfba_submodel)
+    	self.dfba_submodel = dfba_submodel
 
     def quantify_stoch_diff(self, evaluate=False):
         pass
@@ -239,8 +254,8 @@ class FbaResultsComparator(ResultsComparator):
         """       	
         differing_values = []        
         kwargs = self.prepare_tolerances()
-        predicted_fluxes = self.fba_submodel.reaction_fluxes
-        predicted_fluxes['OBJF'] = self.fba_submodel._optimal_obj_func_value
+        predicted_fluxes = self.dfba_submodel.reaction_fluxes
+        predicted_fluxes['OBJF'] = self.dfba_submodel._optimal_obj_func_value
         # for each prediction, determine if its value is close enough to the expected predictions
         for reaction_id in self.verification_test_reader.settings['variables']:            
             if not np.allclose(self.verification_test_reader.expected_predictions_df[species_type].values,
@@ -266,7 +281,7 @@ class FbaCaseVerifier(object):
         
         Args:
             test_cases_root_dir (:obj:`str`): pathname of directory containing test case files
-            test_case_type (:obj:`str`): the type of case, `FLUX_BALANCE_STEADY_STATE`
+            test_case_type (:obj:`str`): the type of case, `DYNAMIC_FLUX_BALANCE_ANALYSIS`
             test_case_num (:obj:`str`): unique id of a verification case
         """
         self.test_case_dir = os.path.join(test_cases_root_dir,
@@ -453,9 +468,9 @@ class FbaVerificationSuite(VerificationSuite):
         if test_case_type_name:
             if test_case_type_name not in VerificationTestCaseType.__members__:
                 raise VerificationError("Unknown VerificationTestCaseType: '{}'".format(test_case_type_name))
-            if test_case_type_name != VerificationTestCaseType.FLUX_BALANCE_STEADY_STATE:
+            if test_case_type_name != VerificationTestCaseType.DYNAMIC_FLUX_BALANCE_ANALYSID:
                 raise VerificationError("VerificationTestCaseType is '{}' and not "
-            	                    "'FLUX_BALANCE_STEADY_STATE'".format(test_case_type_name))
+            	                    "'DYNAMIC_FLUX_BALANCE_ANALYSIS'".format(test_case_type_name))
             if cases is None:
                 cases = os.listdir(os.path.join(self.cases_dir,
                                                 VerificationTestCaseType[test_case_type_name].value))

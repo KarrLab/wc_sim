@@ -12,6 +12,7 @@ obj_tables
 pandas
 pint >= 0.10
 pqdict
+python_libsbml >= 5.16.0
 python_libsedml
 recordtype
 scikits.odes
