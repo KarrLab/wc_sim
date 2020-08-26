@@ -18,13 +18,13 @@ import wc_lang
 
 from de_sim.simulation_config import SimulationConfig
 from wc_onto import onto as wc_ontology
-from wc_utils.util.units import unit_registry
 from wc_sim.message_types import RunFba
 from wc_sim.multialgorithm_errors import DynamicMultialgorithmError, MultialgorithmError
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.sim_config import WCSimulationConfig
 from wc_sim.submodels.dfba import DfbaSubmodel
-from wc_sim.testing.utils import TempConfigFileModifier
+from wc_utils.util.environ import EnvironUtils, ConfigEnvDict
+from wc_utils.util.units import unit_registry
 
 
 class TestDfbaSubmodel(unittest.TestCase):
@@ -199,11 +199,6 @@ class TestDfbaSubmodel(unittest.TestCase):
 
         self.dfba_submodel_1 = self.make_dfba_submodel(self.model, 
         	submodel_options=self.dfba_submodel_options)
-     
-        self.config_file_modifier = TempConfigFileModifier()
-
-    def tearDown(self):
-        self.config_file_modifier.clean_up()
         
     def make_dfba_submodel(self, model, dfba_time_step=1.0, submodel_name='metabolism', 
     	    submodel_options=None):
@@ -408,35 +403,40 @@ class TestDfbaSubmodel(unittest.TestCase):
             
     def do_test_compute_population_change_rates_control_caching(self, caching_settings):
         ### test with caching specified by caching_settings ###
-        self.config_file_modifier.write_test_config_file(caching_settings)
+        config_env_dict = ConfigEnvDict()
+        for caching_attr, caching_setting in caching_settings:
+            config_var_path = ['wc_sim', 'multialgorithm']
+            config_var_path.append(caching_attr)
+            config_env_dict.add_config_value(config_var_path, caching_setting)
+        with EnvironUtils.make_temp_environ(**config_env_dict.get_env_dict()):
 
-        new_fluxes = {
-            'ex_m1': 13.2, 
-            'ex_m2': 30., 
-            'ex_m3': 0., 
-            'r1': -1.3, 
-            'r2': 0.5, 
-            'r3': 5.6,
-            'r4': 2.5,
-        }
-        self.dfba_submodel_1.reaction_fluxes = new_fluxes
-        self.dfba_submodel_1.compute_population_change_rates()
-        
-        expected_rates = {
-            'm1[c]': 1*13.2 -1*-1.3 -1*0.5 -2*5.6, 
-            'm2[c]': 1*30. -1*-1.3 +1*0.5 -2*2.5, 
-            'm3[c]': 1*0. +1*-1.3 +1*5.6 +1*2.5, 
-        }
-        self.assertEqual(self.dfba_submodel_1.adjustments, expected_rates)
-
-        new_fluxes['r2'] = 30.
-        self.dfba_submodel_1.time = 0.1
-        self.dfba_submodel_1.time_step = 1.
-        with self.assertRaisesRegexp(DynamicMultialgorithmError, 
-                                    re.escape("0.1: "
-                                    "DfbaSubmodel metabolism: Negative population found for "
-                                    "m1[c] from 10.0 to -16.7 for time step [0.1, 1.1]")):
+            new_fluxes = {
+                'ex_m1': 13.2, 
+                'ex_m2': 30., 
+                'ex_m3': 0., 
+                'r1': -1.3, 
+                'r2': 0.5, 
+                'r3': 5.6,
+                'r4': 2.5,
+            }
+            self.dfba_submodel_1.reaction_fluxes = new_fluxes
             self.dfba_submodel_1.compute_population_change_rates()
+        
+            expected_rates = {
+                'm1[c]': 1*13.2 -1*-1.3 -1*0.5 -2*5.6, 
+                'm2[c]': 1*30. -1*-1.3 +1*0.5 -2*2.5, 
+                'm3[c]': 1*0. +1*-1.3 +1*5.6 +1*2.5, 
+            }
+            self.assertEqual(self.dfba_submodel_1.adjustments, expected_rates)
+
+            new_fluxes['r2'] = 30.
+            self.dfba_submodel_1.time = 0.1
+            self.dfba_submodel_1.time_step = 1.
+            with self.assertRaisesRegexp(DynamicMultialgorithmError, 
+                                        re.escape("0.1: "
+                                        "DfbaSubmodel metabolism: Negative population found for "
+                                        "m1[c] from 10.0 to -16.7 for time step [0.1, 1.1]")):
+                self.dfba_submodel_1.compute_population_change_rates()
 
     def test_compute_population_change_rates_control_caching(self):
         ### test all 3 caching combinations ###

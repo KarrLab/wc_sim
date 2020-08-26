@@ -22,7 +22,8 @@ from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.sim_config import WCSimulationConfig
 from wc_sim.submodels.odes import OdeSubmodel
 from wc_sim.testing.make_models import MakeModel
-from wc_sim.testing.utils import read_model_for_test, TempConfigFileModifier
+from wc_sim.testing.utils import read_model_for_test
+from wc_utils.util.environ import EnvironUtils, ConfigEnvDict
 
 
 class TestOdeSubmodel(unittest.TestCase):
@@ -36,10 +37,6 @@ class TestOdeSubmodel(unittest.TestCase):
                                       default_species_std=0,
                                       submodel_framework='WC:ordinary_differential_equations')
         self.ode_submodel_1 = self.make_ode_submodel(self.mdl_1_spec)
-        self.config_file_modifier = TempConfigFileModifier()
-
-    def tearDown(self):
-        self.config_file_modifier.clean_up()
 
     def make_ode_submodel(self, model, ode_time_step=1.0, submodel_name='submodel_1'):
         """ Make a MultialgorithmSimulation from a wc lang model """
@@ -119,50 +116,54 @@ class TestOdeSubmodel(unittest.TestCase):
 
     def do_test_compute_population_change_rates_control_caching(self, caching_settings):
         ### test with caching specified by caching_settings ###
-        self.config_file_modifier.write_test_config_file(caching_settings)
+        config_env_dict = ConfigEnvDict()
+        for caching_attr, caching_setting in caching_settings:
+            config_var_path = ['wc_sim', 'multialgorithm']
+            config_var_path.append(caching_attr)
+            config_env_dict.add_config_value(config_var_path, caching_setting)
+        with EnvironUtils.make_temp_environ(**config_env_dict.get_env_dict()):
+            one_rxn_exponential_file = os.path.join(os.path.dirname(__file__), '..', 'fixtures',
+                                                     'dynamic_tests', f'one_rxn_exponential.xlsx')
+            one_rxn_exp_mdl = read_model_for_test(one_rxn_exponential_file,
+                                                  integration_framework='WC:ordinary_differential_equations')
+            ode_submodel = self.make_ode_submodel(one_rxn_exp_mdl, submodel_name='submodel')
 
-        one_rxn_exponential_file = os.path.join(os.path.dirname(__file__), '..', 'fixtures',
-                                                 'dynamic_tests', f'one_rxn_exponential.xlsx')
-        one_rxn_exp_mdl = read_model_for_test(one_rxn_exponential_file,
-                                              integration_framework='WC:ordinary_differential_equations')
-        ode_submodel = self.make_ode_submodel(one_rxn_exp_mdl, submodel_name='submodel')
+            # test rxn: A[c] ==> B[c] @ 0.04 * B[c]
+            ode_submodel.current_species_populations()
+            new_species_populations = ode_submodel.populations.copy()
+            initial_population_change_rates = np.zeros(ode_submodel.num_species)
+            time = 0
+            ode_submodel.compute_population_change_rates(time, new_species_populations,
+                                                         initial_population_change_rates)
+            # slope of species populations depends linearly on [B[c]]
+            # doubling species populations should double population slopes
+            new_species_populations = 2 * new_species_populations
+            updated_population_change_rates = np.zeros(ode_submodel.num_species)
+            ode_submodel.compute_population_change_rates(time, new_species_populations,
+                                                         updated_population_change_rates)
+            np.testing.assert_allclose(2 * initial_population_change_rates, updated_population_change_rates)
 
-        # test rxn: A[c] ==> B[c] @ 0.04 * B[c]
-        ode_submodel.current_species_populations()
-        new_species_populations = ode_submodel.populations.copy()
-        initial_population_change_rates = np.zeros(ode_submodel.num_species)
-        time = 0
-        ode_submodel.compute_population_change_rates(time, new_species_populations,
-                                                     initial_population_change_rates)
-        # slope of species populations depends linearly on [B[c]]
-        # doubling species populations should double population slopes
-        new_species_populations = 2 * new_species_populations
-        updated_population_change_rates = np.zeros(ode_submodel.num_species)
-        ode_submodel.compute_population_change_rates(time, new_species_populations,
-                                                     updated_population_change_rates)
-        np.testing.assert_allclose(2 * initial_population_change_rates, updated_population_change_rates)
+            # compute_population_change_rates replaces negative species populations with 0s in the rate computation
+            # this should produce slopes of 0
+            new_species_populations.fill(-1)
+            ode_submodel.compute_population_change_rates(time, new_species_populations,
+                                                         initial_population_change_rates)
+            np.testing.assert_array_equal(initial_population_change_rates, np.zeros(ode_submodel.num_species))
 
-        # compute_population_change_rates replaces negative species populations with 0s in the rate computation
-        # this should produce slopes of 0
-        new_species_populations.fill(-1)
-        ode_submodel.compute_population_change_rates(time, new_species_populations,
-                                                     initial_population_change_rates)
-        np.testing.assert_array_equal(initial_population_change_rates, np.zeros(ode_submodel.num_species))
-
-        # create ODE submodel with caching_settings
-        ode_submodel_1 = self.make_ode_submodel(self.mdl_1_spec)
-        # test rxn: [compt_1]: spec_type_0 => spec_type_1 @ k * spec_type_0 / Avogadro / volume_compt_1
-        # doubling population should double volume, leaving the slopes of species populations unchanged
-        initial_population_change_rates = np.zeros(ode_submodel_1.num_species)
-        new_species_populations = np.full(ode_submodel_1.num_species,
-                                          self.default_species_copy_number)
-        ode_submodel_1.compute_population_change_rates(time, new_species_populations,
-                                                            initial_population_change_rates)
-        new_species_populations.fill(2 * self.default_species_copy_number)
-        updated_population_change_rates = np.zeros(ode_submodel_1.num_species)
-        ode_submodel_1.compute_population_change_rates(time, new_species_populations,
-                                                            updated_population_change_rates)
-        np.testing.assert_allclose(initial_population_change_rates, updated_population_change_rates)
+            # create ODE submodel with caching_settings
+            ode_submodel_1 = self.make_ode_submodel(self.mdl_1_spec)
+            # test rxn: [compt_1]: spec_type_0 => spec_type_1 @ k * spec_type_0 / Avogadro / volume_compt_1
+            # doubling population should double volume, leaving the slopes of species populations unchanged
+            initial_population_change_rates = np.zeros(ode_submodel_1.num_species)
+            new_species_populations = np.full(ode_submodel_1.num_species,
+                                              self.default_species_copy_number)
+            ode_submodel_1.compute_population_change_rates(time, new_species_populations,
+                                                                initial_population_change_rates)
+            new_species_populations.fill(2 * self.default_species_copy_number)
+            updated_population_change_rates = np.zeros(ode_submodel_1.num_species)
+            ode_submodel_1.compute_population_change_rates(time, new_species_populations,
+                                                                updated_population_change_rates)
+            np.testing.assert_allclose(initial_population_change_rates, updated_population_change_rates)
 
     def test_compute_population_change_rates_control_caching(self):
         ### test all 3 caching combinations ###

@@ -40,7 +40,8 @@ from wc_sim.run_results import RunResults
 from wc_sim.sim_config import WCSimulationConfig
 from wc_sim.simulation import Simulation
 from wc_sim.species_populations import LocalSpeciesPopulation, MakeTestLSP
-from wc_sim.testing.utils import read_model_for_test, TempConfigFileModifier, get_expected_dependencies
+from wc_sim.testing.utils import read_model_for_test, get_expected_dependencies
+from wc_utils.util.environ import EnvironUtils, ConfigEnvDict
 from wc_utils.util.rand import RandomStateManager
 from wc_utils.util.units import unit_registry
 import obj_tables
@@ -611,11 +612,9 @@ class TestDynamicModel(unittest.TestCase):
 
     def setUp(self):
         self.test_dir = tempfile.mkdtemp()
-        self.config_file_modifier = TempConfigFileModifier()
 
     def tearDown(self):
         shutil.rmtree(self.test_dir)
-        self.config_file_modifier.clean_up()
 
     def make_dynamic_model(self, model_filename):
         # read and initialize a model
@@ -702,9 +701,10 @@ class TestDynamicModel(unittest.TestCase):
 
         # to speed up reading model would like to save a 'compiled' model in a fixture file, like a pickle file, but pickle fails
         # scaled_down_model contains compartments with large initial accounted ratios
-        self.config_file_modifier.write_test_config_file([('max_allowed_init_accounted_fraction', 1E3)])
-        _, dynamic_model = self._make_dynamic_model(h1_model)
-        self.assertTrue(isinstance(dynamic_model.rxn_expression_dependencies, dict))
+        tmp_conf = ConfigEnvDict().prep_tmp_conf([(['wc_sim', 'multialgorithm', 'max_allowed_init_accounted_fraction'], '1E3')])
+        with EnvironUtils.make_temp_environ(**tmp_conf):
+            _, dynamic_model = self._make_dynamic_model(h1_model)
+            self.assertTrue(isinstance(dynamic_model.rxn_expression_dependencies, dict))
 
     def test_continuous_reaction_dependencies(self):
         _, dynamic_model = self.make_dynamic_model(self.DEPENDENCIES_MDL_FILE)
@@ -747,62 +747,66 @@ class TestDynamicModel(unittest.TestCase):
 
         ### test NO CACHING ###
         # all flush methods do nothing
-        self.config_file_modifier.write_test_config_file([('expression_caching', 'False')])
-        model, dynamic_model = self.make_dynamic_model(self.DEPENDENCIES_MDL_FILE)
-        cached_masses = get_cached_masses(dynamic_model)
-        dynamic_model.flush_compartment_masses()
-        self.assertEqual(cached_masses, get_cached_masses(dynamic_model))
+        tmp_conf = ConfigEnvDict().prep_tmp_conf([(['wc_sim', 'multialgorithm', 'expression_caching'], 'False')])
+        with EnvironUtils.make_temp_environ(**tmp_conf):
+            model, dynamic_model = self.make_dynamic_model(self.DEPENDENCIES_MDL_FILE)
+            cached_masses = get_cached_masses(dynamic_model)
+            dynamic_model.flush_compartment_masses()
+            self.assertEqual(cached_masses, get_cached_masses(dynamic_model))
 
-        reaction = model.get_reactions(id='reaction_1')[0]
-        dynamic_model.flush_after_reaction(reaction)
-        self.assertEqual(len(dynamic_model.cache_manager._cache), 0)
+            reaction = model.get_reactions(id='reaction_1')[0]
+            dynamic_model.flush_after_reaction(reaction)
+            self.assertEqual(len(dynamic_model.cache_manager._cache), 0)
 
-        dynamic_model.continuous_submodel_flush_after_populations_change(ode_submodel_id)
-        self.assertEqual(len(dynamic_model.cache_manager._cache), 0)
+            dynamic_model.continuous_submodel_flush_after_populations_change(ode_submodel_id)
+            self.assertEqual(len(dynamic_model.cache_manager._cache), 0)
 
 
         ### test EVENT_BASED invalidation ###
-        self.config_file_modifier.write_test_config_file([('expression_caching', 'True'),
-                                                          ('cache_invalidation', 'event_based')])
-        model, dynamic_model = self.make_dynamic_model(self.DEPENDENCIES_MDL_FILE)
-        eval_rate_laws_in_submodel(dynamic_model, dsa_submodel_id)
+        tmp_conf = ConfigEnvDict().prep_tmp_conf(((['wc_sim', 'multialgorithm', 'expression_caching'], 'True'),
+                                                  (['wc_sim', 'multialgorithm', 'cache_invalidation'], 'event_based')))
+        with EnvironUtils.make_temp_environ(**tmp_conf):
+            model, dynamic_model = self.make_dynamic_model(self.DEPENDENCIES_MDL_FILE)
+            eval_rate_laws_in_submodel(dynamic_model, dsa_submodel_id)
 
-        # when using EVENT_BASED invalidation, flush_compartment_masses does nothing
-        cached_masses = get_cached_masses(dynamic_model)
-        dynamic_model.flush_compartment_masses()
-        self.assertEqual(cached_masses, get_cached_masses(dynamic_model))
+            # when using EVENT_BASED invalidation, flush_compartment_masses does nothing
+            cached_masses = get_cached_masses(dynamic_model)
+            dynamic_model.flush_compartment_masses()
+            self.assertEqual(cached_masses, get_cached_masses(dynamic_model))
 
-        # when using EVENT_BASED invalidation, flush_after_reaction empties cache
-        reaction = model.get_reactions(id='reaction_1')[0]
-        dynamic_model.flush_after_reaction(reaction)
-        self.assertEqual(len(dynamic_model.cache_manager._cache), 0)
+            # when using EVENT_BASED invalidation, flush_after_reaction empties cache
+            reaction = model.get_reactions(id='reaction_1')[0]
+            dynamic_model.flush_after_reaction(reaction)
+            self.assertEqual(len(dynamic_model.cache_manager._cache), 0)
 
-        # when using EVENT_BASED invalidation, continuous_submodel_flush_after_populations_change empties cache
-        eval_rate_laws_in_submodel(dynamic_model, ode_submodel_id)
-        dynamic_model.continuous_submodel_flush_after_populations_change(ode_submodel_id)
-        self.assertEqual(len(dynamic_model.cache_manager._cache), 0)
+            # when using EVENT_BASED invalidation, continuous_submodel_flush_after_populations_change empties cache
+            eval_rate_laws_in_submodel(dynamic_model, ode_submodel_id)
+            dynamic_model.continuous_submodel_flush_after_populations_change(ode_submodel_id)
+            self.assertEqual(len(dynamic_model.cache_manager._cache), 0)
 
 
         ### test REACTION_DEPENDENCY_BASED invalidation ###
-        self.config_file_modifier.write_test_config_file([('expression_caching', 'True'),
-                                                          ('cache_invalidation', 'reaction_dependency_based')])
-        model, dynamic_model = self.make_dynamic_model(self.DEPENDENCIES_MDL_FILE)
-        eval_rate_laws_in_submodel(dynamic_model, dsa_submodel_id)
+        tmp_conf = ConfigEnvDict().prep_tmp_conf(((['wc_sim', 'multialgorithm', 'expression_caching'], 'True'),
+                                                  (['wc_sim', 'multialgorithm', 'cache_invalidation'],
+                                                   'reaction_dependency_based')))
+        with EnvironUtils.make_temp_environ(**tmp_conf):
+            model, dynamic_model = self.make_dynamic_model(self.DEPENDENCIES_MDL_FILE)
+            eval_rate_laws_in_submodel(dynamic_model, dsa_submodel_id)
 
-        # when using REACTION_DEPENDENCY_BASED invalidation,
-        # flush_compartment_masses deletes all compartment mass cache entries
-        cached_masses = get_cached_masses(dynamic_model)
-        for key in cached_masses:
-            cached_masses[key] = NOT_FOUND
-        dynamic_model.flush_compartment_masses()
-        self.assertEqual(cached_masses, get_cached_masses(dynamic_model))
+            # when using REACTION_DEPENDENCY_BASED invalidation,
+            # flush_compartment_masses deletes all compartment mass cache entries
+            cached_masses = get_cached_masses(dynamic_model)
+            for key in cached_masses:
+                cached_masses[key] = NOT_FOUND
+            dynamic_model.flush_compartment_masses()
+            self.assertEqual(cached_masses, get_cached_masses(dynamic_model))
 
-        # when using REACTION_DEPENDENCY_BASED invalidation, flush_after_reaction flushes dependent expressions
-        # reaction_10 has no dependencies
-        reaction = model.get_reactions(id='reaction_10')[0]
-        cache_copy = copy.copy(dynamic_model.cache_manager._cache)
-        dynamic_model.flush_after_reaction(reaction)
-        self.assertEqual(dynamic_model.cache_manager._cache, cache_copy)
+            # when using REACTION_DEPENDENCY_BASED invalidation, flush_after_reaction flushes dependent expressions
+            # reaction_10 has no dependencies
+            reaction = model.get_reactions(id='reaction_10')[0]
+            cache_copy = copy.copy(dynamic_model.cache_manager._cache)
+            dynamic_model.flush_after_reaction(reaction)
+            self.assertEqual(dynamic_model.cache_manager._cache, cache_copy)
 
         def get_expected_rxn_dependencies(reaction_ids):
             """ Get dynamic expressions that are known to depend on reactions
@@ -843,29 +847,33 @@ class TestDynamicModel(unittest.TestCase):
 
         # must suspend rounding by DynamicSpeciesState.get_population() because DynamicSpeciesStates
         # and submodels share a RandomState, so if rounding is used it changes stochastic algorithms
-        def suspend_rounding_in_config(unittest, replacements):
-            suspend_rounding = [('default_rounding', 'False')]
-            unittest.config_file_modifier.write_test_config_file(replacements + suspend_rounding)
+        # todo: remove this suspention of rounding when submodels and the Local Species Populattion use different RandomStates
+        tmp_conf = ConfigEnvDict().prep_tmp_conf([(['wc_sim', 'multialgorithm', 'default_rounding'], 'False')])
+        with EnvironUtils.make_temp_environ(**tmp_conf):
+            model = Reader().run(model_file)[Model][0]
+            # change DSA submodel to another framework
+            for submodel in model.submodels:
+                if wc_utils.util.ontology.are_terms_equivalent(submodel.framework,
+                                                               onto['WC:deterministic_simulation_algorithm']):
+                    submodel.framework = onto[framework]
+            simulation = Simulation(model)
+            results_dir = tempfile.mkdtemp(dir=self.test_dir)
+            kwargs = dict(time_max=time_max, results_dir=results_dir, checkpoint_period=1, seed=seed,
+                          ode_time_step=1, progress_bar=False, verbose=False)
+            tmp_conf = ConfigEnvDict().prep_tmp_conf([(['wc_sim', 'multialgorithm', 'expression_caching'], 'False')])
+            with EnvironUtils.make_temp_environ(**tmp_conf):
+                run_results_no_caching = RunResults(simulation.run(**kwargs).results_dir)
 
-        model = Reader().run(model_file)[Model][0]
-        # change DSA submodel to another framework
-        for submodel in model.submodels:
-            if wc_utils.util.ontology.are_terms_equivalent(submodel.framework,
-                                                           onto['WC:deterministic_simulation_algorithm']):
-                submodel.framework = onto[framework]
-        simulation = Simulation(model)
-        results_dir = tempfile.mkdtemp(dir=self.test_dir)
-        kwargs = dict(time_max=time_max, results_dir=results_dir, checkpoint_period=1, seed=seed,
-                      ode_time_step=1, progress_bar=False, verbose=False)
-        suspend_rounding_in_config(self, [('expression_caching', 'False')])
-        run_results_no_caching = RunResults(simulation.run(**kwargs).results_dir)
-        self.config_file_modifier.clean_up()
-        for caching_settings in alternative_caching_settings:
-            suspend_rounding_in_config(self, caching_settings)
-            kwargs['results_dir'] = tempfile.mkdtemp(dir=self.test_dir)
-            run_results_caching = RunResults(simulation.run(**kwargs).results_dir)
-            self.assertTrue(run_results_no_caching.semantically_equal(run_results_caching, debug=True))
-            self.config_file_modifier.clean_up()
+            for caching_settings in alternative_caching_settings:
+                config_env_dict = ConfigEnvDict()
+                for caching_attr, caching_setting in caching_settings:
+                    config_var_path = ['wc_sim', 'multialgorithm']
+                    config_var_path.append(caching_attr)
+                    config_env_dict.add_config_value(config_var_path, caching_setting)
+                with EnvironUtils.make_temp_environ(**config_env_dict.get_env_dict()):
+                    kwargs['results_dir'] = tempfile.mkdtemp(dir=self.test_dir)
+                    run_results_caching = RunResults(simulation.run(**kwargs).results_dir)
+                    self.assertTrue(run_results_no_caching.semantically_equal(run_results_caching, debug=True))
 
     def test_expression_dependency_dynamics(self):
         # ensure that models with expressions that depend on reactions generates
@@ -951,10 +959,6 @@ class TestCacheManager(unittest.TestCase):
         self.dyn_function = self.dynamic_objects[self.fun1]
         self.dyn_function_2 = self.dynamic_objects[self.fun2]
         self.dyn_stop_cond = self.dynamic_objects[self.stop_cond]
-        self.config_file_modifier = TempConfigFileModifier()
-
-    def tearDown(self):
-        self.config_file_modifier.clean_up()
 
     def test(self):
         ### test arguments
@@ -1055,15 +1059,17 @@ class TestCacheManager(unittest.TestCase):
         self.assertTrue(isinstance(cache_manager.caching(), bool))
 
         # no caching
-        self.config_file_modifier.write_test_config_file([('expression_caching', 'False'),])
-        cache_manager = CacheManager()
-        self.assertEqual(cache_manager.caching(), False)
+        tmp_conf = ConfigEnvDict().prep_tmp_conf([(['wc_sim', 'multialgorithm', 'expression_caching'], 'False')])
+        with EnvironUtils.make_temp_environ(**tmp_conf):
+            cache_manager = CacheManager()
+            self.assertEqual(cache_manager.caching(), False)
 
         # bad cache_invalidation
-        self.config_file_modifier.write_test_config_file([('expression_caching', 'True'),
-                                                          ('cache_invalidation', "'invalid'")])
-        with self.assertRaisesRegex(MultialgorithmError, "cache_invalidation .* not in"):
-            CacheManager()
+        tmp_conf = ConfigEnvDict().prep_tmp_conf(((['wc_sim', 'multialgorithm', 'expression_caching'], 'True'),
+                                                  (['wc_sim', 'multialgorithm', 'cache_invalidation'], "'invalid'")))
+        with EnvironUtils.make_temp_environ(**tmp_conf):
+            with self.assertRaisesRegex(MultialgorithmError, "cache_invalidation .* not in"):
+                CacheManager()
 
     def test_caching_stats(self):
         cache_manager = CacheManager(caching_active=True, cache_invalidation='reaction_dependency_based')

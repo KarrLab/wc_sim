@@ -29,7 +29,8 @@ from wc_sim.simulation import Simulation
 from wc_sim.submodels.dynamic_submodel import DynamicSubmodel
 from wc_sim.submodels.testing.deterministic_simulation_algorithm import DsaSubmodel, ExecuteDsaReaction
 from wc_sim.testing.make_models import MakeModel
-from wc_sim.testing.utils import read_model_for_test, TempConfigFileModifier
+from wc_sim.testing.utils import read_model_for_test
+from wc_utils.util.environ import EnvironUtils, ConfigEnvDict
 from wc_utils.util.ontology import are_terms_equivalent
 from wc_utils.util.rand import RandomStateManager
 from wc_utils.util.string import indent_forest
@@ -70,11 +71,6 @@ class TestDynamicSubmodelStatically(unittest.TestCase):
         multialgorithm_simulation = MultialgorithmSimulation(self.model, wc_sim_config)
         _, self.dynamic_model = multialgorithm_simulation.build_simulation()
         self.dynamic_submodels = self.dynamic_model.dynamic_submodels
-
-        self.config_file_modifier = TempConfigFileModifier()
-
-    def tearDown(self):
-        self.config_file_modifier.clean_up()
 
     def test_get_state(self):
         for dynamic_submodel in self.dynamic_submodels.values():
@@ -169,26 +165,28 @@ class TestDynamicSubmodelStatically(unittest.TestCase):
         self.do_test_execute_reaction('reaction_2', {'species_1[c]': 1, 'species_3[c]': 1})
 
     def test_flush_after_reaction(self):
-        self.config_file_modifier.write_test_config_file([('expression_caching', 'True'),
-                                                          ('cache_invalidation', "'reaction_dependency_based'")])
-        dependencies_mdl_file = os.path.join(os.path.dirname(__file__), '..', 'fixtures', 'test_dependencies.xlsx')
-        model = Reader().run(dependencies_mdl_file)[Model][0]
-        _, _, dynamic_model = build_sim_from_model(model)
+        tmp_conf = ConfigEnvDict().prep_tmp_conf(((['wc_sim', 'multialgorithm', 'expression_caching'], 'True'),
+                                                  (['wc_sim', 'multialgorithm', 'cache_invalidation'],
+                                                   'reaction_dependency_based')))
+        with EnvironUtils.make_temp_environ(**tmp_conf):
+            dependencies_mdl_file = os.path.join(os.path.dirname(__file__), '..', 'fixtures', 'test_dependencies.xlsx')
+            model = Reader().run(dependencies_mdl_file)[Model][0]
+            _, _, dynamic_model = build_sim_from_model(model)
 
-        # eval DynamicFunction function_4
-        function_4 = dynamic_model.dynamic_functions['function_4']
-        val = function_4.eval(0)
-        self.assertEqual(dynamic_model.cache_manager.get(function_4), val)
-        test_submodel = dynamic_model.dynamic_submodels['dsa_submodel']
-        reactions = {rxn.id: rxn for rxn in test_submodel.reactions}
-        test_submodel.dynamic_model.flush_after_reaction(reactions['reaction_1'])
-        with self.assertRaisesRegex(MultialgorithmError, 'dynamic expression .* not in cache'):
-            dynamic_model.cache_manager.get(function_4)
+            # eval DynamicFunction function_4
+            function_4 = dynamic_model.dynamic_functions['function_4']
+            val = function_4.eval(0)
+            self.assertEqual(dynamic_model.cache_manager.get(function_4), val)
+            test_submodel = dynamic_model.dynamic_submodels['dsa_submodel']
+            reactions = {rxn.id: rxn for rxn in test_submodel.reactions}
+            test_submodel.dynamic_model.flush_after_reaction(reactions['reaction_1'])
+            with self.assertRaisesRegex(MultialgorithmError, 'dynamic expression .* not in cache'):
+                dynamic_model.cache_manager.get(function_4)
 
-        # since reaction_10 has no dependencies, it tests the if statement in flush_after_reaction()
-        cache_copy = copy.deepcopy(dynamic_model.cache_manager._cache)
-        test_submodel.dynamic_model.flush_after_reaction(reactions['reaction_10'])
-        self.assertEqual(cache_copy, dynamic_model.cache_manager._cache)
+            # since reaction_10 has no dependencies, it tests the if statement in flush_after_reaction()
+            cache_copy = copy.deepcopy(dynamic_model.cache_manager._cache)
+            test_submodel.dynamic_model.flush_after_reaction(reactions['reaction_10'])
+            self.assertEqual(cache_copy, dynamic_model.cache_manager._cache)
 
 
 class TestDsaSubmodel(unittest.TestCase):
