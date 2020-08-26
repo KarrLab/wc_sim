@@ -30,7 +30,7 @@ from wc_sim.submodels.dynamic_submodel import DynamicSubmodel
 from wc_sim.submodels.testing.deterministic_simulation_algorithm import DsaSubmodel, ExecuteDsaReaction
 from wc_sim.testing.make_models import MakeModel
 from wc_sim.testing.utils import read_model_for_test
-from wc_utils.util.environ import EnvironUtils, ConfigEnvDict
+from wc_utils.util.environ import EnvironUtils
 from wc_utils.util.ontology import are_terms_equivalent
 from wc_utils.util.rand import RandomStateManager
 from wc_utils.util.string import indent_forest
@@ -165,10 +165,9 @@ class TestDynamicSubmodelStatically(unittest.TestCase):
         self.do_test_execute_reaction('reaction_2', {'species_1[c]': 1, 'species_3[c]': 1})
 
     def test_flush_after_reaction(self):
-        tmp_conf = ConfigEnvDict().prep_tmp_conf(((['wc_sim', 'multialgorithm', 'expression_caching'], 'True'),
-                                                  (['wc_sim', 'multialgorithm', 'cache_invalidation'],
-                                                   'reaction_dependency_based')))
-        with EnvironUtils.make_temp_environ(**tmp_conf):
+        with EnvironUtils.temp_config_env(((['wc_sim', 'multialgorithm', 'expression_caching'], 'True'),
+                                           (['wc_sim', 'multialgorithm', 'cache_invalidation'],
+                                            'reaction_dependency_based'))):
             dependencies_mdl_file = os.path.join(os.path.dirname(__file__), '..', 'fixtures', 'test_dependencies.xlsx')
             model = Reader().run(dependencies_mdl_file)[Model][0]
             _, _, dynamic_model = build_sim_from_model(model)
