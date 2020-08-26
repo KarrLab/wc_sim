@@ -12,6 +12,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 from pprint import pprint, pformat
 from scipy.constants import Avogadro
 import inspect
+import libsbml
 import math
 import matplotlib.pyplot as plt
 import numpy as np
@@ -24,7 +25,9 @@ import time
 import traceback
 import warnings
 
-from wc_lang.core import ReactionParticipantAttribute, Model
+from wc_lang.core import (ReactionParticipantAttribute, Model, Submodel, InitVolume,
+                          FunctionExpression, ChemicalStructure, FluxBounds, DfbaObjective,
+                          DfbaObjectiveExpression, Compartment, Parameter, Reaction) 
 from wc_lang.io import Reader
 from wc_onto import onto
 from wc_sim.config import core as config_core_multialgorithm
@@ -33,8 +36,10 @@ from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_sim.run_results import RunResults
 from wc_sim.simulation import Simulation
 from wc_sim.testing.make_models import MakeModel
+from wc_utils.util import chem
 from wc_utils.util.dict import DictUtil
 from wc_utils.util.misc import geometric_iterator
+from wc_utils.util.units import unit_registry
 from wc_utils.util.ontology import are_terms_equivalent
 
 config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
@@ -124,7 +129,7 @@ class VerificationTestCaseType(Enum):
     CONTINUOUS_DETERMINISTIC = 'semantic'       # algorithms like ODE
     DISCRETE_STOCHASTIC = 'stochastic'          # algorithms like SSA
     MULTIALGORITHMIC = 'multialgorithmic'       # multiple integration algorithms
-    DYNAMIC_FLUX_BALANCE_ANALYSIS = 'dfba'           # algorithms like dFBA
+    DYNAMIC_FLUX_BALANCE_ANALYSIS = 'dfba'      # algorithms like dFBA
 
 
 class VerificationTestReader(object):
@@ -205,7 +210,8 @@ class VerificationTestReader(object):
             raise VerificationError("times in settings '{}' differ from times in expected predictions '{}'".format(
                 self.settings_file, expected_predictions_file))
 
-        if self.test_case_type == VerificationTestCaseType.CONTINUOUS_DETERMINISTIC:
+        if self.test_case_type in [VerificationTestCaseType.CONTINUOUS_DETERMINISTIC,
+                                   VerificationTestCaseType.DYNAMIC_FLUX_BALANCE_ANALYSIS]:
             # expected predictions should contain time and the amount or concentration of each species
             # todo: use more SBML test suite cases and obtain expected predictions as amount or concentration
             expected_columns = set(self.settings['amount'])
@@ -257,22 +263,164 @@ class VerificationTestReader(object):
 
             return derivatives
 
-    def read_model(self, model_file_suffix='-wc_lang.xlsx'):
+    def read_model(self, sbml_version='l3v2', model_file_suffix='-wc_lang.xlsx'):
         """  Read a model into a `wc_lang` representation
 
         Args:
-            model_file_suffix (:obj:`str`, optional): the name suffix for the model
+            sbml_version (:obj:`str`, optional): SBML version, default is 
+                Level 3 Version 2 (l3v2)
+            model_file_suffix (:obj:`str`, optional): the name suffix for the model 
+                file if a `wc_lang.Model` file already exists
 
         Returns:
-            :obj:`wc_lang.Model`: the root of the test case's `wc_lang` model
+            :obj:`wc_lang.Model`: the `wc_lang` model
 
         Raises:
-            :obj:`VerificationError`: if an SBML model is read
+            :obj:`VerificationError`: if a dFBA SBML model file does not exist, 
+                or if an SBML model is read for non-dFBA models
         """
-        self.model_filename = os.path.join(self.test_case_dir, self.test_case_num + model_file_suffix)
-        if self.model_filename.endswith(self.SBML_FILE_SUFFIX):
-            raise VerificationError(f"SBML files not supported: model filename: '{self.model_filename}'")
-        return Reader().run(self.model_filename, validate=True)[Model][0]
+        if self.test_case_type == VerificationTestCaseType.DYNAMIC_FLUX_BALANCE_ANALYSIS:
+            
+            self.model_filename = os.path.join(self.test_case_dir, 
+                self.test_case_num + '-sbml-' + sbml_version + self.SBML_FILE_SUFFIX)
+            if not os.path.exists(self.model_filename):
+                raise VerificationError("Test case model file '{}' does not exists".format(
+                    self.model_filename))
+
+            # Create `wc_lang` model and FBA submodel
+            model = Model(id='test_case_' + self.test_case_num, version='1')
+            dfba_submodel = Submodel(id=self.test_case_num + '_dfba', model=model, 
+                framework=onto['WC:dynamic_flux_balance_analysis'])
+
+            sbml_doc = libsbml.SBMLReader().readSBML(self.model_filename)        
+            sbml_model = sbml_doc.getModel()
+            fbc_sbml_model = sbml_model.getPlugin('fbc')
+
+            compartment_list = sbml_model.getListOfCompartments()
+            # Add compartment volume and density to fulfill wc_sim validation
+            init_volume = InitVolume(distribution=onto['WC:normal_distribution'], 
+                        mean=1., std=0)
+            model_compartment = model.compartments.create(id=compartment_list[0].getId(), 
+                init_volume=init_volume)
+            model_compartment.init_density = model.parameters.create(id='density_' + model_compartment.id, 
+                value=1., units=unit_registry.parse_units('g l^-1'))
+            volume = model.functions.create(id='volume_' + model_compartment.id, 
+                units=unit_registry.parse_units('l'))
+            volume.expression, error = FunctionExpression.deserialize(
+                f'{model_compartment.id} / {model_compartment.init_density.id}', 
+                {
+                    Compartment: {model_compartment.id: model_compartment},
+                    Parameter: {model_compartment.init_density.id: model_compartment.init_density},
+                })
+            assert error is None, str(error)
+            
+            # Create model species
+            for species in sbml_model.getListOfSpecies():
+                fbc_species = species.getPlugin('fbc')
+                charge = fbc_species.getCharge()
+                formula = chem.EmpiricalFormula(fbc_species.getChemicalFormula())
+                
+                model_species_type = model.species_types.create(id=species.getId())
+                model_species_type.structure = ChemicalStructure(
+                    charge=charge, empirical_formula=formula, molecular_weight=formula.get_molecular_weight())
+                model_species = model.species.create(species_type=model_species_type, compartment=model_compartment)
+                model_species.id = model_species.gen_id()   
+                # Add concentration to fulfill wc_sim validation            
+                conc_model = model.distribution_init_concentrations.create(species=model_species, mean=1000., std=0.,
+                    units=unit_registry.parse_units('molecule'))
+                conc_model.id = conc_model.gen_id()
+                if not np.isnan(species.getInitialAmount()):
+                    conc_model.mean = species.getInitialAmount()
+                # Create unbounded exchange reactions for boundary species
+                if species.getBoundaryCondition():
+                    model_rxn = model.reactions.create(
+                        id='EX_' + species.getId(), 
+                        submodel=dfba_submodel,
+                        reversible=True)            
+                    model_rxn.participants.add(model_species.species_coefficients.get_or_create(
+                        coefficient=-1))
+                    model_rxn.flux_bounds = FluxBounds(units=unit_registry.parse_units('M s^-1'))
+                    model_rxn.flux_bounds.min = np.nan
+                    model_rxn.flux_bounds.max = np.nan    
+
+            # Extract flux bounds
+            flux_bounds = {}
+            for bound in fbc_sbml_model.getListOfFluxBounds():
+                rxn_id = bound.getReaction()
+                if rxn_id not in flux_bounds:
+                    flux_bounds[rxn_id] = {'lower_bound': None, 'upper_bound': None}
+                if bound.getOperation()=='greaterEqual':
+                    flux_bounds[rxn_id]['lower_bound'] = bound.getValue()
+                elif bound.getOperation()=='lessEqual':
+                    flux_bounds[rxn_id]['upper_bound'] = bound.getValue()
+                elif bound.getOperation()=='equal':
+                    flux_bounds[rxn_id]['lower_bound'] = bound.getValue()
+                    flux_bounds[rxn_id]['upper_bound'] = bound.getValue()              
+
+            # Create model reactions
+            for rxn in sbml_model.getListOfReactions():         
+                fbc_rxn = rxn.getPlugin('fbc')  
+                
+                model_rxn = model.reactions.create(
+                    id=rxn.getId(), 
+                    submodel=dfba_submodel,
+                    reversible=rxn.getReversible())
+                # Add reaction participants
+                for reactant in rxn.getListOfReactants():
+                    model_species_type = model.species_types.get_one(id=reactant.getSpecies())
+                    model_species = model.species.get_one(
+                        species_type=model_species_type, compartment=model_compartment)
+                    model_rxn.participants.add(model_species.species_coefficients.get_or_create(
+                        coefficient=reactant.getStoichiometry()))
+                for product in rxn.getListOfProducts():
+                    model_species_type = model.species_types.get_one(id=reactant.getSpecies())
+                    model_species = model.species.get_one(
+                        species_type=model_species_type, compartment=model_compartment)
+                    model_rxn.participants.add(model_species.species_coefficients.get_or_create(
+                        coefficient=reactant.getStoichiometry()))
+                # Add flux bounds
+                model_rxn.flux_bounds = FluxBounds(units=unit_registry.parse_units('M s^-1'))
+                if flux_bounds:                
+                    lower_bound = flux_bounds[model_rxn.id]['lower_bound']                
+                    upper_bound = flux_bounds[model_rxn.id]['upper_bound']                
+                else:
+                    lower_bound_id = fbc_rxn.getLowerFluxBound()
+                    lower_bound = sbml_model.getParameter(lower_bound_id).value
+                    upper_bound_id = fbc_rxn.getUpperFluxBound()
+                    upper_bound = sbml_model.getParameter(upper_bound_id).value
+                model_rxn.flux_bounds.min = np.nan if np.isinf(lower_bound) else lower_bound
+                model_rxn.flux_bounds.max = np.nan if np.isinf(upper_bound) else upper_bound       
+                   
+            # Add objective function
+            dfba_submodel.dfba_obj = DfbaObjective(model=model)
+            dfba_submodel.dfba_obj.id = dfba_submodel.dfba_obj.gen_id()
+
+            sbml_objective_id = fbc_sbml_model.getListOfObjectives().getActiveObjective()
+            sbml_objective_function = fbc_sbml_model.getObjective(sbml_objective_id)
+            self.objective_direction = sbml_objective_function.getType()
+            
+            objective_terms = []
+            rxn_objects = {}
+            for rxn in sbml_objective_function.getListOfFluxObjectives():
+                rxn_id = rxn.getReaction()
+                objective_terms.append('{} * {}'.format(
+                    str(rxn.getCoefficient()), rxn_id))  
+                rxn_objects[rxn_id] = model.reactions.get_one(id=rxn_id)
+
+            obj_expression = ' + '.join(objective_terms)
+            dfba_obj_expression, error = DfbaObjectiveExpression.deserialize(
+            obj_expression, {Reaction: rxn_objects})
+            assert error is None, str(error)
+            dfba_submodel.dfba_obj.expression = dfba_obj_expression
+        
+        else:
+
+            self.model_filename = os.path.join(self.test_case_dir, self.test_case_num + model_file_suffix)
+            if self.model_filename.endswith(self.SBML_FILE_SUFFIX):
+                raise VerificationError(f"SBML files not supported: model filename: '{self.model_filename}'")
+            model = Reader().run(self.model_filename, validate=True)[Model][0]
+        
+        return model 
 
     def get_species_id(self, species_type):
         """ Get the species id of a species type
@@ -332,7 +480,8 @@ class ResultsComparator(object):
     Attributes:
         verification_test_reader (:obj:`VerificationTestReader`): the test case's reader
         simulation_run_results (:obj:`RunResults` or :obj:`list` of :obj:`RunResults`): simulation run results;
-            results for 1 run of a CONTINUOUS_DETERMINISTIC integration, or a :obj:`list` of results
+            results for 1 run of a CONTINUOUS_DETERMINISTIC integration, results for 1 run 
+            of a DYNAMIC_FLUX_BALANCE_ANALYSIS simulation, or a :obj:`list` of results
             for multiple runs of a stochastic integrator
         n_runs (:obj:`int`): number off runs of a stochastic integrator
         default_tolerances (:obj:`dict`): default tolerance specifications for ODE integrator
@@ -444,6 +593,16 @@ class ResultsComparator(object):
                     concentrations_df[species_id].values, **kwargs):
                     differing_values.append(species_type)
             return differing_values or False
+
+        if self.verification_test_reader.test_case_type == VerificationTestCaseType.DYNAMIC_FLUX_BALANCE_ANALYSIS:
+            populations_df = self.simulation_run_results.get('populations')
+            # for each prediction, determine if its trajectory is equal to the expected prediction
+            for species_type in self.verification_test_reader.settings['amount']:
+                species_id = self.verification_test_reader.get_species_id(species_type)
+                if not np.array_equal(self.verification_test_reader.expected_predictions_df[species_type].values,
+                    populations_df[species_id].values):
+                    differing_values.append(species_type)
+            return differing_values or False    
 
         if self.verification_test_reader.test_case_type in [VerificationTestCaseType.DISCRETE_STOCHASTIC,
                                                             VerificationTestCaseType.MULTIALGORITHMIC]:
@@ -593,7 +752,8 @@ class CaseVerifier(object):
         Raises:
             :obj:`VerificationError`: if 'duration' or 'steps' are missing from settings, or
                 settings requires simulation to start at time other than 0, or
-                `evaluate` is `True` and test_case_type is CONTINUOUS_DETERMINISTIC
+                `evaluate` is `True` and test_case_type is CONTINUOUS_DETERMINISTIC or 
+                DYNAMIC_FLUX_BALANCE_ANALYSIS
         """
 
         # check settings
@@ -610,9 +770,10 @@ class CaseVerifier(object):
         if 'start' in settings and settings['start'] != 0:
             raise VerificationError("non-zero start setting ({}) not supported".format(settings['start']))
 
-        if self.verification_test_reader.test_case_type == VerificationTestCaseType.CONTINUOUS_DETERMINISTIC \
-            and evaluate:
-                raise VerificationError("evaluate is True and test_case_type is CONTINUOUS_DETERMINISTIC")
+        if self.verification_test_reader.test_case_type in [VerificationTestCaseType.CONTINUOUS_DETERMINISTIC,
+            VerificationTestCaseType.DYNAMIC_FLUX_BALANCE_ANALYSIS] and evaluate:
+                raise VerificationError("evaluate is True and test_case_type is {}".format(
+                    self.verification_test_reader.test_case_type))
 
         # prepare for simulation
         self.tmp_results_dir = tmp_results_dir = tempfile.mkdtemp()
@@ -636,6 +797,18 @@ class CaseVerifier(object):
             ## 2. compare results
             self.results_comparator = ResultsComparator(self.verification_test_reader, self.simulation_run_results)
             self.comparison_result = self.results_comparator.differs()
+
+        if self.verification_test_reader.test_case_type == VerificationTestCaseType.DYNAMIC_FLUX_BALANCE_ANALYSIS:
+            ## 1. run simulation
+            simulation = Simulation(self.verification_test_reader.model)
+            dfba_time_step = settings['duration']/settings['steps']
+            simul_kwargs['options'] = dict(DfbaSubmodel=dict(options=dict(dfba_time_step=dfba_time_step)))
+            results_dir = simulation.run(**simul_kwargs).results_dir
+            self.simulation_run_results = RunResults(results_dir)
+
+            ## 2. compare results
+            self.results_comparator = ResultsComparator(self.verification_test_reader, self.simulation_run_results)
+            self.comparison_result = self.results_comparator.differs()    
 
         if self.verification_test_reader.test_case_type in [VerificationTestCaseType.DISCRETE_STOCHASTIC,
                                                             VerificationTestCaseType.MULTIALGORITHMIC]:
@@ -697,9 +870,17 @@ class CaseVerifier(object):
             summary.append("submodel {}:".format(sm.id))
             summary.append("framework {}:".format(sm.framework.name.title()))
             for rxn in sm.reactions:
-                summary.append("rxn & rl '{}': {}, {}".format(rxn.id,
-                    reaction_participant_attribute.serialize(rxn.participants),
-                    rxn.rate_laws[0].expression.serialize()))
+                if rxn.rate_laws:
+                    summary.append("rxn & rl '{}': {}, {}".format(rxn.id,
+                        reaction_participant_attribute.serialize(rxn.participants),
+                        rxn.rate_laws[0].expression.serialize()))
+                elif rxn.flux_bounds:
+                    summary.append("rxn & bounds '{}': {}, ({}, {})".format(rxn.id,
+                        reaction_participant_attribute.serialize(rxn.participants),
+                        rxn.flux_bounds.min, rxn.flux_bounds.max))
+                else:
+                    summary.append("rxn '{}': {}".format(rxn.id,
+                        reaction_participant_attribute.serialize(rxn.participants)))            
         for param in mdl.get_parameters():
             summary.append("param: {}={} ({})".format(param.id, param.value, param.units))
         for func in mdl.get_functions():
@@ -1271,6 +1452,9 @@ class MultialgModelVerificationFuture(object):    # pragma: no cover
 
             if case_type == VerificationTestCaseType.CONTINUOUS_DETERMINISTIC:
                 pass
+
+            if case_type == VerificationTestCaseType.DYNAMIC_FLUX_BALANCE_ANALYSIS:
+                pass    
 
         def get_typed_case_dir(self):
             return self.case_dir
