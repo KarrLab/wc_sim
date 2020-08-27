@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<sbml xmlns:html="http://www.w3.org/1999/xhtml" xmlns="http://www.sbml.org/sbml/level3/version2/core" xmlns:fbc="http://www.sbml.org/sbml/level3/version1/fbc/version2" level="3" version="2" fbc:required="false">
-  <model id="case01618" fbc:strict="false">
+<sbml xmlns:html="http://www.w3.org/1999/xhtml" xmlns:fbc="http://www.sbml.org/sbml/level3/version1/fbc/version2" xmlns="http://www.sbml.org/sbml/level3/version1/core" level="3" version="1" fbc:required="false">
+  <model id="case01619" fbc:strict="false">
     <listOfCompartments>
-      <compartment id="Cell" name="Cell" size="1" constant="true"/>
+      <compartment id="Cell" name="Cell" size="1" constant="false"/>
     </listOfCompartments>
     <listOfSpecies>
       <species metaid="meta_A" id="A" name="A" compartment="Cell" initialConcentration="0" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false" fbc:charge="1" fbc:chemicalFormula="C2H6O"/>
@@ -32,22 +32,18 @@
     <listOfParameters>
       <parameter sboTerm="SBO:0000625" id="fb_0" value="0" constant="true"/>
       <parameter sboTerm="SBO:0000625" id="fb_1" value="1" constant="true"/>
-      <parameter sboTerm="SBO:0000625" id="fb_1000" constant="true"/>
-      <parameter sboTerm="SBO:0000625" id="fb_n1000" value="-1000" constant="true"/>
+      <parameter sboTerm="SBO:0000625" id="fb_inf" value="-3" constant="true"/>
+      <parameter sboTerm="SBO:0000625" id="fb_ninf" value="-INF" constant="true"/>
     </listOfParameters>
     <listOfInitialAssignments>
-      <initialAssignment symbol="fb_1000">
+      <initialAssignment symbol="fb_inf">
         <math xmlns="http://www.w3.org/1998/Math/MathML">
-          <apply>
-            <times/>
-            <cn type="integer"> 100 </cn>
-            <cn type="integer"> 10 </cn>
-          </apply>
+          <infinity/>
         </math>
       </initialAssignment>
     </listOfInitialAssignments>
     <listOfReactions>
-      <reaction metaid="meta_R16" id="R16" name="R16" reversible="false" fbc:lowerFluxBound="fb_0" fbc:upperFluxBound="fb_1000">
+      <reaction metaid="meta_R16" id="R16" name="R16" reversible="false" fast="false" fbc:lowerFluxBound="fb_0" fbc:upperFluxBound="fb_inf">
         <notes>
           <body xmlns="http://www.w3.org/1999/xhtml">
             <p>subsystem: C3</p>
@@ -65,7 +61,7 @@
           <speciesReference species="M" stoichiometry="1" constant="true"/>
         </listOfProducts>
       </reaction>
-      <reaction metaid="meta_R14" id="R14" name="R14" reversible="true" fbc:lowerFluxBound="fb_n1000" fbc:upperFluxBound="fb_1000">
+      <reaction metaid="meta_R14" id="R14" name="R14" reversible="true" fast="false" fbc:lowerFluxBound="fb_ninf" fbc:upperFluxBound="fb_inf">
         <notes>
           <body xmlns="http://www.w3.org/1999/xhtml">
             <p>subsystem: C3</p>
@@ -83,7 +79,7 @@
           <speciesReference species="L" stoichiometry="1" constant="true"/>
         </listOfProducts>
       </reaction>
-      <reaction metaid="meta_R15" id="R15" name="R15" reversible="false" fbc:lowerFluxBound="fb_0" fbc:upperFluxBound="fb_1000">
+      <reaction metaid="meta_R15" id="R15" name="R15" reversible="false" fast="false" fbc:lowerFluxBound="fb_0" fbc:upperFluxBound="fb_inf">
         <notes>
           <body xmlns="http://www.w3.org/1999/xhtml">
             <p>subsystem: C3</p>
@@ -101,7 +97,7 @@
           <speciesReference species="Q" stoichiometry="1" constant="true"/>
         </listOfProducts>
       </reaction>
-      <reaction metaid="meta_R12" id="R12" name="R12" reversible="false" fbc:lowerFluxBound="fb_0" fbc:upperFluxBound="fb_1000">
+      <reaction metaid="meta_R12" id="R12" name="R12" reversible="false" fast="false" fbc:lowerFluxBound="fb_0" fbc:upperFluxBound="fb_inf">
         <notes>
           <body xmlns="http://www.w3.org/1999/xhtml">
             <p>subsystem: L</p>
@@ -119,7 +115,7 @@
           <speciesReference species="J" stoichiometry="1" constant="true"/>
         </listOfProducts>
       </reaction>
-      <reaction metaid="meta_R07" id="R07" name="R07" reversible="false" fbc:lowerFluxBound="fb_0" fbc:upperFluxBound="fb_1000">
+      <reaction metaid="meta_R07" id="R07" name="R07" reversible="false" fast="false" fbc:lowerFluxBound="fb_0" fbc:upperFluxBound="fb_inf">
         <notes>
           <body xmlns="http://www.w3.org/1999/xhtml">
             <p>subsystem: C2</p>
@@ -137,7 +133,7 @@
           <speciesReference species="F" stoichiometry="1" constant="true"/>
         </listOfProducts>
       </reaction>
-      <reaction metaid="meta_R13" id="R13" name="R13" reversible="false" fbc:lowerFluxBound="fb_0" fbc:upperFluxBound="fb_1000">
+      <reaction metaid="meta_R13" id="R13" name="R13" reversible="false" fast="false" fbc:lowerFluxBound="fb_0" fbc:upperFluxBound="fb_inf">
         <notes>
           <body xmlns="http://www.w3.org/1999/xhtml">
             <p>subsystem: C3</p>
@@ -155,7 +151,7 @@
           <speciesReference species="K" stoichiometry="1" constant="true"/>
         </listOfProducts>
       </reaction>
-      <reaction metaid="meta_R01" id="R01" name="R01" reversible="false" fbc:lowerFluxBound="fb_0" fbc:upperFluxBound="fb_1">
+      <reaction metaid="meta_R01" id="R01" name="R01" reversible="false" fast="false" fbc:lowerFluxBound="fb_0" fbc:upperFluxBound="fb_1">
         <notes>
           <body xmlns="http://www.w3.org/1999/xhtml">
             <p>subsystem: L</p>
@@ -173,7 +169,7 @@
           <speciesReference species="A" stoichiometry="1" constant="true"/>
         </listOfProducts>
       </reaction>
-      <reaction metaid="meta_R17" id="R17" name="R17" reversible="false" fbc:lowerFluxBound="fb_0" fbc:upperFluxBound="fb_1000">
+      <reaction metaid="meta_R17" id="R17" name="R17" reversible="false" fast="false" fbc:lowerFluxBound="fb_0" fbc:upperFluxBound="fb_inf">
         <notes>
           <body xmlns="http://www.w3.org/1999/xhtml">
             <p>subsystem: C3</p>
@@ -191,7 +187,7 @@
           <speciesReference species="N" stoichiometry="1" constant="true"/>
         </listOfProducts>
       </reaction>
-      <reaction metaid="meta_R03" id="R03" name="R03" reversible="true" fbc:lowerFluxBound="fb_n1000" fbc:upperFluxBound="fb_1000">
+      <reaction metaid="meta_R03" id="R03" name="R03" reversible="true" fast="false" fbc:lowerFluxBound="fb_ninf" fbc:upperFluxBound="fb_inf">
         <notes>
           <body xmlns="http://www.w3.org/1999/xhtml">
             <p>subsystem: C1</p>
@@ -209,7 +205,7 @@
           <speciesReference species="C" stoichiometry="1" constant="true"/>
         </listOfProducts>
       </reaction>
-      <reaction metaid="meta_R02" id="R02" name="R02" reversible="true" fbc:lowerFluxBound="fb_n1000" fbc:upperFluxBound="fb_1000">
+      <reaction metaid="meta_R02" id="R02" name="R02" reversible="true" fast="false" fbc:lowerFluxBound="fb_ninf" fbc:upperFluxBound="fb_inf">
         <notes>
           <body xmlns="http://www.w3.org/1999/xhtml">
             <p>subsystem: C1</p>
@@ -227,7 +223,7 @@
           <speciesReference species="B" stoichiometry="1" constant="true"/>
         </listOfProducts>
       </reaction>
-      <reaction metaid="meta_R05" id="R05" name="R05" reversible="false" fbc:lowerFluxBound="fb_0" fbc:upperFluxBound="fb_1000">
+      <reaction metaid="meta_R05" id="R05" name="R05" reversible="false" fast="false" fbc:lowerFluxBound="fb_0" fbc:upperFluxBound="fb_inf">
         <notes>
           <body xmlns="http://www.w3.org/1999/xhtml">
             <p>subsystem: L</p>
@@ -245,7 +241,7 @@
           <speciesReference species="D" stoichiometry="1" constant="true"/>
         </listOfProducts>
       </reaction>
-      <reaction metaid="meta_R04" id="R04" name="R04" reversible="true" fbc:lowerFluxBound="fb_n1000" fbc:upperFluxBound="fb_1000">
+      <reaction metaid="meta_R04" id="R04" name="R04" reversible="true" fast="false" fbc:lowerFluxBound="fb_ninf" fbc:upperFluxBound="fb_inf">
         <notes>
           <body xmlns="http://www.w3.org/1999/xhtml">
             <p>subsystem: C1</p>
@@ -263,7 +259,7 @@
           <speciesReference species="B" stoichiometry="1" constant="true"/>
         </listOfProducts>
       </reaction>
-      <reaction metaid="meta_R10" id="R10" name="R10" reversible="false" fbc:lowerFluxBound="fb_0" fbc:upperFluxBound="fb_1000">
+      <reaction metaid="meta_R10" id="R10" name="R10" reversible="false" fast="false" fbc:lowerFluxBound="fb_0" fbc:upperFluxBound="fb_inf">
         <notes>
           <body xmlns="http://www.w3.org/1999/xhtml">
             <p>subsystem: C2</p>
@@ -281,7 +277,7 @@
           <speciesReference species="H" stoichiometry="1" constant="true"/>
         </listOfProducts>
       </reaction>
-      <reaction metaid="meta_R06" id="R06" name="R06" reversible="false" fbc:lowerFluxBound="fb_0" fbc:upperFluxBound="fb_1000">
+      <reaction metaid="meta_R06" id="R06" name="R06" reversible="false" fast="false" fbc:lowerFluxBound="fb_0" fbc:upperFluxBound="fb_inf">
         <notes>
           <body xmlns="http://www.w3.org/1999/xhtml">
             <p>subsystem: C2</p>
@@ -299,7 +295,7 @@
           <speciesReference species="E" stoichiometry="1" constant="true"/>
         </listOfProducts>
       </reaction>
-      <reaction metaid="meta_R09" id="R09" name="R09" reversible="false" fbc:lowerFluxBound="fb_0" fbc:upperFluxBound="fb_1000">
+      <reaction metaid="meta_R09" id="R09" name="R09" reversible="false" fast="false" fbc:lowerFluxBound="fb_0" fbc:upperFluxBound="fb_inf">
         <notes>
           <body xmlns="http://www.w3.org/1999/xhtml">
             <p>subsystem: C2</p>
@@ -317,7 +313,7 @@
           <speciesReference species="G" stoichiometry="1" constant="true"/>
         </listOfProducts>
       </reaction>
-      <reaction metaid="meta_R08" id="R08" name="R08" reversible="false" fbc:lowerFluxBound="fb_0" fbc:upperFluxBound="fb_1000">
+      <reaction metaid="meta_R08" id="R08" name="R08" reversible="false" fast="false" fbc:lowerFluxBound="fb_0" fbc:upperFluxBound="fb_inf">
         <notes>
           <body xmlns="http://www.w3.org/1999/xhtml">
             <p>subsystem: C2</p>
@@ -335,7 +331,7 @@
           <speciesReference species="I" stoichiometry="1" constant="true"/>
         </listOfProducts>
       </reaction>
-      <reaction metaid="meta_R11" id="R11" name="R11" reversible="false" fbc:lowerFluxBound="fb_0" fbc:upperFluxBound="fb_1000">
+      <reaction metaid="meta_R11" id="R11" name="R11" reversible="false" fast="false" fbc:lowerFluxBound="fb_0" fbc:upperFluxBound="fb_inf">
         <notes>
           <body xmlns="http://www.w3.org/1999/xhtml">
             <p>subsystem: C2</p>
@@ -353,7 +349,7 @@
           <speciesReference species="I" stoichiometry="1" constant="true"/>
         </listOfProducts>
       </reaction>
-      <reaction metaid="meta_R18" id="R18" name="R18" reversible="false" fbc:lowerFluxBound="fb_0" fbc:upperFluxBound="fb_1000">
+      <reaction metaid="meta_R18" id="R18" name="R18" reversible="false" fast="false" fbc:lowerFluxBound="fb_0" fbc:upperFluxBound="fb_inf">
         <notes>
           <body xmlns="http://www.w3.org/1999/xhtml">
             <p>subsystem: C3</p>
@@ -371,7 +367,7 @@
           <speciesReference species="Q" stoichiometry="1" constant="true"/>
         </listOfProducts>
       </reaction>
-      <reaction metaid="meta_R19" id="R19" name="R19" reversible="true" fbc:lowerFluxBound="fb_n1000" fbc:upperFluxBound="fb_1000">
+      <reaction metaid="meta_R19" id="R19" name="R19" reversible="true" fast="false" fbc:lowerFluxBound="fb_ninf" fbc:upperFluxBound="fb_inf">
         <notes>
           <body xmlns="http://www.w3.org/1999/xhtml">
             <p>subsystem: C3</p>
@@ -389,7 +385,7 @@
           <speciesReference species="O" stoichiometry="1" constant="true"/>
         </listOfProducts>
       </reaction>
-      <reaction metaid="meta_R26" id="R26" name="R26" reversible="false" fbc:lowerFluxBound="fb_0" fbc:upperFluxBound="fb_1000">
+      <reaction metaid="meta_R26" id="R26" name="R26" reversible="false" fast="false" fbc:lowerFluxBound="fb_0" fbc:upperFluxBound="fb_inf">
         <notes>
           <body xmlns="http://www.w3.org/1999/xhtml">
             <p>subsystem: L</p>
@@ -407,7 +403,7 @@
           <speciesReference species="Y" stoichiometry="1" constant="true"/>
         </listOfProducts>
       </reaction>
-      <reaction metaid="meta_R25" id="R25" name="R25" reversible="false" fbc:lowerFluxBound="fb_0" fbc:upperFluxBound="fb_1000">
+      <reaction metaid="meta_R25" id="R25" name="R25" reversible="false" fast="false" fbc:lowerFluxBound="fb_0" fbc:upperFluxBound="fb_inf">
         <notes>
           <body xmlns="http://www.w3.org/1999/xhtml">
             <p>subsystem: L</p>
@@ -427,7 +423,7 @@
           <speciesReference species="U" stoichiometry="1" constant="true"/>
         </listOfProducts>
       </reaction>
-      <reaction metaid="meta_R24" id="R24" name="R24" reversible="false" fbc:lowerFluxBound="fb_0" fbc:upperFluxBound="fb_1000">
+      <reaction metaid="meta_R24" id="R24" name="R24" reversible="false" fast="false" fbc:lowerFluxBound="fb_0" fbc:upperFluxBound="fb_inf">
         <notes>
           <body xmlns="http://www.w3.org/1999/xhtml">
             <p>subsystem: C4</p>
@@ -445,7 +441,7 @@
           <speciesReference species="S" stoichiometry="1" constant="true"/>
         </listOfProducts>
       </reaction>
-      <reaction metaid="meta_R23" id="R23" name="R23" reversible="true" fbc:lowerFluxBound="fb_n1000" fbc:upperFluxBound="fb_1000">
+      <reaction metaid="meta_R23" id="R23" name="R23" reversible="true" fast="false" fbc:lowerFluxBound="fb_ninf" fbc:upperFluxBound="fb_inf">
         <notes>
           <body xmlns="http://www.w3.org/1999/xhtml">
             <p>subsystem: C4</p>
@@ -463,7 +459,7 @@
           <speciesReference species="S" stoichiometry="1" constant="true"/>
         </listOfProducts>
       </reaction>
-      <reaction metaid="meta_R22" id="R22" name="R22" reversible="false" fbc:lowerFluxBound="fb_0" fbc:upperFluxBound="fb_1000">
+      <reaction metaid="meta_R22" id="R22" name="R22" reversible="false" fast="false" fbc:lowerFluxBound="fb_0" fbc:upperFluxBound="fb_inf">
         <notes>
           <body xmlns="http://www.w3.org/1999/xhtml">
             <p>subsystem: L</p>
@@ -481,7 +477,7 @@
           <speciesReference species="R" stoichiometry="1" constant="true"/>
         </listOfProducts>
       </reaction>
-      <reaction metaid="meta_R21" id="R21" name="R21" reversible="true" fbc:lowerFluxBound="fb_n1000" fbc:upperFluxBound="fb_1000">
+      <reaction metaid="meta_R21" id="R21" name="R21" reversible="true" fast="false" fbc:lowerFluxBound="fb_ninf" fbc:upperFluxBound="fb_inf">
         <notes>
           <body xmlns="http://www.w3.org/1999/xhtml">
             <p>subsystem: C3</p>
@@ -499,7 +495,7 @@
           <speciesReference species="L" stoichiometry="1" constant="true"/>
         </listOfProducts>
       </reaction>
-      <reaction metaid="meta_R20" id="R20" name="R20" reversible="true" fbc:lowerFluxBound="fb_n1000" fbc:upperFluxBound="fb_1000">
+      <reaction metaid="meta_R20" id="R20" name="R20" reversible="true" fast="false" fbc:lowerFluxBound="fb_ninf" fbc:upperFluxBound="fb_inf">
         <notes>
           <body xmlns="http://www.w3.org/1999/xhtml">
             <p>subsystem: C3</p>
@@ -519,7 +515,7 @@
       </reaction>
     </listOfReactions>
     <fbc:listOfObjectives fbc:activeObjective="OBJF">
-      <fbc:objective id="OBJF" fbc:id="OBJF" fbc:type="minimize">
+      <fbc:objective fbc:id="OBJF" fbc:type="maximize">
         <fbc:listOfFluxObjectives>
           <fbc:fluxObjective fbc:reaction="R26" fbc:coefficient="1"/>
         </fbc:listOfFluxObjectives>
