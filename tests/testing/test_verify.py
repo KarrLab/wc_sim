@@ -206,6 +206,10 @@ class TestVerificationTestReader(unittest.TestCase):
         self.assertEqual(np.isnan(model.reactions.get_one(id='R02').flux_bounds.max), True)
         self.assertEqual(verification_test_reader.objective_direction, 'minimize')
 
+        verification_test_reader = make_verification_test_reader('01619', 'DYNAMIC_FLUX_BALANCE_ANALYSIS')
+        model = verification_test_reader.read_model()        
+        self.assertEqual(np.isnan(model.reactions.get_one(id='R16').flux_bounds.max), True)
+
         verification_test_reader = make_verification_test_reader('01625', 'DYNAMIC_FLUX_BALANCE_ANALYSIS')
         model = verification_test_reader.read_model()
         self.assertEqual(model.reactions.get_one(id='R14').flux_bounds.min, 0.)
@@ -927,14 +931,8 @@ class RunVerificationSuite(unittest.TestCase):
             '01614',
             '01615',
             '01617',
-            '01618',
             '01619',
-            '01620',
             '01622',
-            '01624',
-            '01625',
-            '01628',
-            '01629',
             '01630',
         ]
         self.multialgorithmic_test_cases = [

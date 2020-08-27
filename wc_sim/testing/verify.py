@@ -39,6 +39,7 @@ from wc_sim.simulation import Simulation
 from wc_sim.testing.make_models import MakeModel
 from wc_utils.util import chem
 from wc_utils.util.dict import DictUtil
+from wc_utils.util.environ import EnvironUtils, ConfigEnvDict
 from wc_utils.util.misc import geometric_iterator
 from wc_utils.util.units import unit_registry
 from wc_utils.util.ontology import are_terms_equivalent
@@ -386,9 +387,17 @@ class VerificationTestReader(object):
                     upper_bound = flux_bounds[model_rxn.id]['upper_bound']
                 else:
                     lower_bound_id = fbc_rxn.getLowerFluxBound()
-                    lower_bound = sbml_model.getParameter(lower_bound_id).value
+                    if sbml_model.getInitialAssignment(lower_bound_id):
+                        astnode = sbml_model.getInitialAssignment(lower_bound_id).math
+                        lower_bound = float(libsbml.formulaToL3String(astnode))
+                    else:    
+                        lower_bound = sbml_model.getParameter(lower_bound_id).value
                     upper_bound_id = fbc_rxn.getUpperFluxBound()
-                    upper_bound = sbml_model.getParameter(upper_bound_id).value
+                    if sbml_model.getInitialAssignment(upper_bound_id):
+                        astnode = sbml_model.getInitialAssignment(upper_bound_id).math
+                        upper_bound = float(libsbml.formulaToL3String(astnode))
+                    else:
+                        upper_bound = sbml_model.getParameter(upper_bound_id).value
                 model_rxn.flux_bounds.min = np.nan if np.isinf(lower_bound) else lower_bound
                 model_rxn.flux_bounds.max = np.nan if np.isinf(upper_bound) else upper_bound
 
@@ -803,8 +812,9 @@ class CaseVerifier(object):
             ## 1. run simulation
             simulation = Simulation(self.verification_test_reader.model)
             dfba_time_step = settings['duration']/settings['steps']
-            simul_kwargs['options'] = dict(DfbaSubmodel=dict(options=dict(dfba_time_step=dfba_time_step)))
-            results_dir = simulation.run(**simul_kwargs).results_dir
+            simul_kwargs['dfba_time_step'] = dfba_time_step
+            with EnvironUtils.temp_config_env([(['wc_lang', 'validation', 'validate_element_charge_balance'], 'False')]):
+                results_dir = simulation.run(**simul_kwargs).results_dir
             self.simulation_run_results = RunResults(results_dir)
 
             ## 2. compare results
