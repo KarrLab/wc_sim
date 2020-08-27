@@ -701,8 +701,7 @@ class TestDynamicModel(unittest.TestCase):
 
         # to speed up reading model would like to save a 'compiled' model in a fixture file, like a pickle file, but pickle fails
         # scaled_down_model contains compartments with large initial accounted ratios
-        tmp_conf = ConfigEnvDict().prep_tmp_conf([(['wc_sim', 'multialgorithm', 'max_allowed_init_accounted_fraction'], '1E3')])
-        with EnvironUtils.make_temp_environ(**tmp_conf):
+        with EnvironUtils.temp_config_env([(['wc_sim', 'multialgorithm', 'max_allowed_init_accounted_fraction'], '1E3')]):
             _, dynamic_model = self._make_dynamic_model(h1_model)
             self.assertTrue(isinstance(dynamic_model.rxn_expression_dependencies, dict))
 
@@ -747,8 +746,7 @@ class TestDynamicModel(unittest.TestCase):
 
         ### test NO CACHING ###
         # all flush methods do nothing
-        tmp_conf = ConfigEnvDict().prep_tmp_conf([(['wc_sim', 'multialgorithm', 'expression_caching'], 'False')])
-        with EnvironUtils.make_temp_environ(**tmp_conf):
+        with EnvironUtils.temp_config_env([(['wc_sim', 'multialgorithm', 'expression_caching'], 'False')]):
             model, dynamic_model = self.make_dynamic_model(self.DEPENDENCIES_MDL_FILE)
             cached_masses = get_cached_masses(dynamic_model)
             dynamic_model.flush_compartment_masses()
@@ -763,9 +761,8 @@ class TestDynamicModel(unittest.TestCase):
 
 
         ### test EVENT_BASED invalidation ###
-        tmp_conf = ConfigEnvDict().prep_tmp_conf(((['wc_sim', 'multialgorithm', 'expression_caching'], 'True'),
-                                                  (['wc_sim', 'multialgorithm', 'cache_invalidation'], 'event_based')))
-        with EnvironUtils.make_temp_environ(**tmp_conf):
+        with EnvironUtils.temp_config_env(((['wc_sim', 'multialgorithm', 'expression_caching'], 'True'),
+                                           (['wc_sim', 'multialgorithm', 'cache_invalidation'], 'event_based'))):
             model, dynamic_model = self.make_dynamic_model(self.DEPENDENCIES_MDL_FILE)
             eval_rate_laws_in_submodel(dynamic_model, dsa_submodel_id)
 
@@ -786,10 +783,9 @@ class TestDynamicModel(unittest.TestCase):
 
 
         ### test REACTION_DEPENDENCY_BASED invalidation ###
-        tmp_conf = ConfigEnvDict().prep_tmp_conf(((['wc_sim', 'multialgorithm', 'expression_caching'], 'True'),
-                                                  (['wc_sim', 'multialgorithm', 'cache_invalidation'],
-                                                   'reaction_dependency_based')))
-        with EnvironUtils.make_temp_environ(**tmp_conf):
+        with EnvironUtils.temp_config_env(((['wc_sim', 'multialgorithm', 'expression_caching'], 'True'),
+                                           (['wc_sim', 'multialgorithm', 'cache_invalidation'],
+                                            'reaction_dependency_based'))):
             model, dynamic_model = self.make_dynamic_model(self.DEPENDENCIES_MDL_FILE)
             eval_rate_laws_in_submodel(dynamic_model, dsa_submodel_id)
 
@@ -848,8 +844,7 @@ class TestDynamicModel(unittest.TestCase):
         # must suspend rounding by DynamicSpeciesState.get_population() because DynamicSpeciesStates
         # and submodels share a RandomState, so if rounding is used it changes stochastic algorithms
         # todo: remove this suspention of rounding when submodels and the Local Species Populattion use different RandomStates
-        tmp_conf = ConfigEnvDict().prep_tmp_conf([(['wc_sim', 'multialgorithm', 'default_rounding'], 'False')])
-        with EnvironUtils.make_temp_environ(**tmp_conf):
+        with EnvironUtils.temp_config_env([(['wc_sim', 'multialgorithm', 'default_rounding'], 'False')]):
             model = Reader().run(model_file)[Model][0]
             # change DSA submodel to another framework
             for submodel in model.submodels:
@@ -860,8 +855,7 @@ class TestDynamicModel(unittest.TestCase):
             results_dir = tempfile.mkdtemp(dir=self.test_dir)
             kwargs = dict(time_max=time_max, results_dir=results_dir, checkpoint_period=1, seed=seed,
                           ode_time_step=1, progress_bar=False, verbose=False)
-            tmp_conf = ConfigEnvDict().prep_tmp_conf([(['wc_sim', 'multialgorithm', 'expression_caching'], 'False')])
-            with EnvironUtils.make_temp_environ(**tmp_conf):
+            with EnvironUtils.temp_config_env([(['wc_sim', 'multialgorithm', 'expression_caching'], 'False')]):
                 run_results_no_caching = RunResults(simulation.run(**kwargs).results_dir)
 
             for caching_settings in alternative_caching_settings:
@@ -1059,15 +1053,13 @@ class TestCacheManager(unittest.TestCase):
         self.assertTrue(isinstance(cache_manager.caching(), bool))
 
         # no caching
-        tmp_conf = ConfigEnvDict().prep_tmp_conf([(['wc_sim', 'multialgorithm', 'expression_caching'], 'False')])
-        with EnvironUtils.make_temp_environ(**tmp_conf):
+        with EnvironUtils.temp_config_env([(['wc_sim', 'multialgorithm', 'expression_caching'], 'False')]):
             cache_manager = CacheManager()
             self.assertEqual(cache_manager.caching(), False)
 
         # bad cache_invalidation
-        tmp_conf = ConfigEnvDict().prep_tmp_conf(((['wc_sim', 'multialgorithm', 'expression_caching'], 'True'),
-                                                  (['wc_sim', 'multialgorithm', 'cache_invalidation'], "'invalid'")))
-        with EnvironUtils.make_temp_environ(**tmp_conf):
+        with EnvironUtils.temp_config_env(((['wc_sim', 'multialgorithm', 'expression_caching'], 'True'),
+                                           (['wc_sim', 'multialgorithm', 'cache_invalidation'], "'invalid'"))):
             with self.assertRaisesRegex(MultialgorithmError, "cache_invalidation .* not in"):
                 CacheManager()
 
