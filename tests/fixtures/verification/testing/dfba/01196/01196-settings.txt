@@ -1,8 +1,8 @@
-start:
-duration:
-steps:
-variables: OBJF
+start: 0.0
+duration: 1.0
+steps: 1
+variables: X, Y
 absolute: 0.001
 relative: 0.001
-amount: 
+amount: X, Y
 concentration: 

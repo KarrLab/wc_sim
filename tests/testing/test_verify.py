@@ -731,6 +731,12 @@ class TestVerificationSuite(unittest.TestCase):
         self.assertEqual(verification_suite.results.pop().result_type,
                          VerificationResultType.CASE_VERIFIED)
 
+        # test dfba submodels
+        verification_suite = VerificationSuite(TEST_CASES)
+        verification_suite._run_test('DYNAMIC_FLUX_BALANCE_ANALYSIS', test_case_num)
+        self.assertEqual(verification_suite.results.pop().result_type,
+                         VerificationResultType.CASE_VERIFIED)
+
         # be verbose
         verification_suite = VerificationSuite(TEST_CASES)
         with CaptureOutput(relay=False) as capturer:
@@ -751,12 +757,6 @@ class TestVerificationSuite(unittest.TestCase):
         verification_suite._run_test('invalid_case_type_name', test_case_num)
         results = verification_suite.get_results()
         self.assertEqual(results.pop().result_type, VerificationResultType.CASE_UNREADABLE)
-
-        # test dfba submodels
-        verification_suite = VerificationSuite(TEST_CASES)
-        verification_suite._run_test('DYNAMIC_FLUX_BALANCE_ANALYSIS', test_case_num)
-        self.assertEqual(verification_suite.results.pop().result_type,
-                         VerificationResultType.CASE_VERIFIED)
 
         # test stochastic submodels
         verification_suite._run_test('DISCRETE_STOCHASTIC', test_case_num, evaluate=True)
