@@ -775,7 +775,7 @@ class TestVerificationSuite(unittest.TestCase):
                          VerificationResultType.FAILED_VERIFICATION_RUN)
 
         verification_suite = VerificationSuite(TEST_CASES)
-        verification_suite._run_test('DYNAMIC_FLUX_BALANCE_ANALYSIS', '01196_infeasible')
+        verification_suite._run_test('DYNAMIC_FLUX_BALANCE_ANALYSIS', '01196')
         self.assertEqual(verification_suite.results.pop().result_type,
                          VerificationResultType.FAILED_VERIFICATION_RUN)
 
@@ -833,7 +833,7 @@ class TestVerificationSuite(unittest.TestCase):
         results = self.verification_suite.run('DYNAMIC_FLUX_BALANCE_ANALYSIS', ['00001'])
         self.assertEqual(results[-1].result_type, VerificationResultType.CASE_VERIFIED)
 
-        results = self.verification_suite.run('DYNAMIC_FLUX_BALANCE_ANALYSIS', ['00001', '01196_infeasible'])
+        results = self.verification_suite.run('DYNAMIC_FLUX_BALANCE_ANALYSIS', ['00001', '01196'])
         expected_types = [VerificationResultType.CASE_VERIFIED, VerificationResultType.FAILED_VERIFICATION_RUN]
         result_types = [result_tuple.result_type for result_tuple in results[-2:]]
         self.assertEqual(expected_types, result_types)
