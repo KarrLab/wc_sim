@@ -345,7 +345,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         self.dynamic_model.continuous_submodel_flush_after_populations_change(self.id)
 
     ### handle DES events ###
-    def handle_RunFba_msg(self):
+    def handle_RunFba_msg(self, event):
         """ Handle an event containing a RunFba message
 
         Args:
