@@ -1023,9 +1023,6 @@ its simulated population.
 """
 class MockSimulationTestingObject(MockSimulationObject):
 
-    def get_state(self):
-        return 'object state to be provided'
-
     def send_debugging_events(self, species_pop_sim_obj, update_time, update_message, update_msg_body,
                               get_pop_time, get_pop_msg_body):
         self.send_event(update_time, species_pop_sim_obj, update_msg_body)

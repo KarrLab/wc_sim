@@ -1292,9 +1292,6 @@ class SpeciesPopSimObject(LocalSpeciesPopulation, SimulationObject,
     functionality by wrapping a LocalSpeciesPopulation in a `SimulationObject`.
     """
 
-    def get_state(self):
-        return 'object state to be provided'
-
     def __init__(self, name, initial_population, molecular_weights, initial_population_slopes=None,
                  random_state=None, retain_history=True):
         """ Initialize a SpeciesPopSimObject object
