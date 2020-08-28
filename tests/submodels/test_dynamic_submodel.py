@@ -72,10 +72,6 @@ class TestDynamicSubmodelStatically(unittest.TestCase):
         _, self.dynamic_model = multialgorithm_simulation.build_simulation()
         self.dynamic_submodels = self.dynamic_model.dynamic_submodels
 
-    def test_get_state(self):
-        for dynamic_submodel in self.dynamic_submodels.values():
-            self.assertEqual(dynamic_submodel.get_state(), DynamicSubmodel.GET_STATE_METHOD_MESSAGE)
-
     def test_get_num_submodels(self):
         for dynamic_submodel in self.dynamic_submodels.values():
             self.assertEqual(dynamic_submodel.get_num_submodels(), 1)

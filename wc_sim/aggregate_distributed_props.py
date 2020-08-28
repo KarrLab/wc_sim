@@ -62,9 +62,6 @@ class AggregateDistributedProps(SimulationObject):   # pragma: no cover
         super().__init__(name)
         self.properties = {}
 
-    def get_state(self):
-        return 'object state to be provided'
-
     def add_property(self, distributed_property):
         '''Add a DistributedProperty
 

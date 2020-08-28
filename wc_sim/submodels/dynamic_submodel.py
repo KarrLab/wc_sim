@@ -63,11 +63,6 @@ class DynamicSubmodel(SimulationObject):
                                              f"reactions: {[reaction.id for reaction in reactions]}",
                                              sim_time=self.time)
 
-    GET_STATE_METHOD_MESSAGE = 'object state to be provided by subclass'
-
-    def get_state(self):
-        return DynamicSubmodel.GET_STATE_METHOD_MESSAGE
-
     def prepare(self):
         """ If necessary, prepare a submodel after the :obj:`DynamicModel` has been fully initialized
         """
