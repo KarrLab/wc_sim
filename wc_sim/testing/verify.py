@@ -617,12 +617,13 @@ class ResultsComparator(object):
             return differing_values or False
 
         if self.verification_test_reader.test_case_type == VerificationTestCaseType.DYNAMIC_FLUX_BALANCE_ANALYSIS:
+            kwargs = self.prepare_tolerances()
             populations_df = self.simulation_run_results.get('populations')
             # for each prediction, determine if its trajectory is equal to the expected prediction
             for species_type in self.verification_test_reader.settings['amount']:
                 species_id = self.verification_test_reader.get_species_id(species_type)
-                if not np.array_equal(self.verification_test_reader.expected_predictions_df[species_type].values,
-                    populations_df[species_id].values):
+                if not np.allclose(self.verification_test_reader.expected_predictions_df[species_type].values,
+                    populations_df[species_id].values, **kwargs):
                     differing_values.append(species_type)
             return differing_values or False
 
