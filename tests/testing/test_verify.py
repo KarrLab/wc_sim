@@ -191,6 +191,10 @@ class TestVerificationTestReader(unittest.TestCase):
         self.assertEqual(model.reactions.get_one(id='R01').flux_bounds.max, 1.)
         self.assertEqual(model.reactions.get_one(id='R02').flux_bounds.min, -1000.)
         self.assertEqual(model.reactions.get_one(id='R02').flux_bounds.max, 1000.)
+        attr = wc_lang.core.ReactionParticipantAttribute()
+        self.assertEqual(attr.serialize(model.reactions.get_one(id='R01').participants), '[Cell]: X ==> A')
+        self.assertEqual(attr.serialize(model.reactions.get_one(id='R25').participants), '[Cell]: A + T ==> (5.000000e-01) S + U')
+        self.assertEqual(attr.serialize(model.reactions.get_one(id='EX_T').participants), '[Cell]: T ==> ')
         exchange_reactions = ['EX_T', 'EX_U', 'EX_X', 'EX_Y']
         for rxn in exchange_reactions:
             self.assertEqual(np.isnan(model.reactions.get_one(id=rxn).flux_bounds.min), True)

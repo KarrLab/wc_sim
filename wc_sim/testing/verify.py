@@ -373,13 +373,13 @@ class VerificationTestReader(object):
                     model_species = model.species.get_one(
                         species_type=model_species_type, compartment=model_compartment)
                     model_rxn.participants.add(model_species.species_coefficients.get_or_create(
-                        coefficient=reactant.getStoichiometry()))
+                        coefficient=-reactant.getStoichiometry()))
                 for product in rxn.getListOfProducts():
-                    model_species_type = model.species_types.get_one(id=reactant.getSpecies())
+                    model_species_type = model.species_types.get_one(id=product.getSpecies())
                     model_species = model.species.get_one(
                         species_type=model_species_type, compartment=model_compartment)
                     model_rxn.participants.add(model_species.species_coefficients.get_or_create(
-                        coefficient=reactant.getStoichiometry()))
+                        coefficient=product.getStoichiometry()))
                 # Add flux bounds
                 model_rxn.flux_bounds = FluxBounds(units=unit_registry.parse_units('M s^-1'))
                 if flux_bounds:                
