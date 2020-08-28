@@ -186,7 +186,7 @@ class TestVerificationTestReader(unittest.TestCase):
         self.assertEqual(len(model.submodels), 1)
         self.assertEqual(model.submodels[0].id, verification_test_reader.test_case_num + '_dfba')
         self.assertEqual(model.submodels[0].framework, onto['WC:dynamic_flux_balance_analysis'])
-        self.assertEqual(len(model.submodels[0].reactions), 30)
+        self.assertEqual(len(model.submodels[0].reactions), 26)
         self.assertEqual(model.reactions.get_one(id='R01').flux_bounds.min, 0.)
         self.assertEqual(model.reactions.get_one(id='R01').flux_bounds.max, 1./Avogadro)
         self.assertEqual(model.reactions.get_one(id='R02').flux_bounds.min, -1000./Avogadro)
@@ -194,14 +194,13 @@ class TestVerificationTestReader(unittest.TestCase):
         attr = wc_lang.core.ReactionParticipantAttribute()
         self.assertEqual(attr.serialize(model.reactions.get_one(id='R01').participants), '[Cell]: X ==> A')
         self.assertEqual(attr.serialize(model.reactions.get_one(id='R25').participants), '[Cell]: A + T ==> (5.000000e-01) S + U')
-        self.assertEqual(attr.serialize(model.reactions.get_one(id='EX_T').participants), '[Cell]: T ==> ')
-        exchange_reactions = ['EX_T', 'EX_U', 'EX_X', 'EX_Y']
-        for rxn in exchange_reactions:
-            self.assertEqual(np.isnan(model.reactions.get_one(id=rxn).flux_bounds.min), True)
-            self.assertEqual(np.isnan(model.reactions.get_one(id=rxn).flux_bounds.max), True)
-
+        self.assertEqual({i.species.id:i.value for i in model.dfba_obj_reactions.get_one(id='EX_T').dfba_obj_species}, 
+            {'T[Cell]': 1.0})
+        self.assertEqual({i.species.id:i.value for i in model.dfba_obj_reactions.get_one(id='EX_U').dfba_obj_species}, 
+            {'U[Cell]': -1.0})
+                
         self.assertEqual(verification_test_reader.objective_direction, 'maximize')
-        self.assertEqual(model.submodels[0].dfba_obj.expression.expression, '1.0 * R26')
+        self.assertEqual(model.submodels[0].dfba_obj.expression.expression, '1.0 * R26 + 0.0 * EX_T + 0.0 * EX_U + 0.0 * EX_X + 0.0 * EX_Y')
         self.assertEqual(model.submodels[0].dfba_obj.expression.reactions, [model.reactions.get_one(id='R26')])
 
         verification_test_reader = make_verification_test_reader('01189', 'DYNAMIC_FLUX_BALANCE_ANALYSIS')

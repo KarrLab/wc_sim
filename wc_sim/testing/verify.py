@@ -28,7 +28,8 @@ import warnings
 
 from wc_lang.core import (ReactionParticipantAttribute, Model, Submodel, InitVolume,
                           FunctionExpression, ChemicalStructure, FluxBounds, DfbaObjective,
-                          DfbaObjectiveExpression, Compartment, Parameter, Reaction)
+                          DfbaObjectiveExpression, Compartment, Parameter, Reaction,
+                          DfbaObjReaction)
 from wc_lang.io import Reader
 from wc_onto import onto
 from wc_sim.config import core as config_core_multialgorithm
@@ -333,18 +334,16 @@ class VerificationTestReader(object):
                 conc_model.id = conc_model.gen_id()
                 if not np.isnan(species.getInitialAmount()):
                     conc_model.mean = species.getInitialAmount()
-                # Create unbounded exchange reactions for boundary species
+                # Create exchange reactions for boundary species as dfba_obj_reactions
                 if species.getBoundaryCondition():
-                    model_rxn = model.reactions.create(
+                    model_rxn = model.dfba_obj_reactions.create(
                         id='EX_' + species.getId(),
-                        submodel=dfba_submodel,
-                        reversible=True)
-                    model_rxn.participants.add(model_species.species_coefficients.get_or_create(
-                        coefficient=-1))
-                    model_rxn.flux_bounds = FluxBounds(units=unit_registry.parse_units('M s^-1'))
-                    model_rxn.flux_bounds.min = np.nan
-                    model_rxn.flux_bounds.max = np.nan
-
+                        submodel=dfba_submodel)
+                    obj_species = model_species.dfba_obj_species.get_or_create(
+                        model=model, value=-1)                    
+                    model_rxn.dfba_obj_species.add(obj_species)
+                    obj_species.id = obj_species.gen_id()
+                    
             # Extract flux bounds
             flux_bounds = {}
             for bound in fbc_sbml_model.getListOfFluxBounds():
@@ -374,12 +373,20 @@ class VerificationTestReader(object):
                         species_type=model_species_type, compartment=model_compartment)
                     model_rxn.participants.add(model_species.species_coefficients.get_or_create(
                         coefficient=-reactant.getStoichiometry()))
+                    if model.dfba_obj_reactions.get_one(id='EX_' + reactant.getSpecies()):
+                        model.dfba_obj_reactions.get_one(
+                            id='EX_' + reactant.getSpecies()).dfba_obj_species.get_one(
+                            species=model_species).value = reactant.getStoichiometry()
                 for product in rxn.getListOfProducts():
                     model_species_type = model.species_types.get_one(id=product.getSpecies())
                     model_species = model.species.get_one(
                         species_type=model_species_type, compartment=model_compartment)
                     model_rxn.participants.add(model_species.species_coefficients.get_or_create(
                         coefficient=product.getStoichiometry()))
+                    if model.dfba_obj_reactions.get_one(id='EX_' + product.getSpecies()):
+                        model.dfba_obj_reactions.get_one(
+                            id='EX_' + product.getSpecies()).dfba_obj_species.get_one(
+                            species=model_species).value = -product.getStoichiometry()
                 # Add flux bounds
                 model_rxn.flux_bounds = FluxBounds(units=unit_registry.parse_units('M s^-1'))
                 if flux_bounds:                
@@ -416,10 +423,15 @@ class VerificationTestReader(object):
                 objective_terms.append('{} * {}'.format(
                     str(rxn.getCoefficient()), rxn_id))
                 rxn_objects[rxn_id] = model.reactions.get_one(id=rxn_id)
+            # Add exchange reactions for boundary species with zero coefficient
+            obj_rxn_objects = {}
+            for ex_rxn in model.dfba_obj_reactions:
+                objective_terms.append('{} * {}'.format(0.0, ex_rxn.id))
+                obj_rxn_objects[ex_rxn.id] = ex_rxn
 
             obj_expression = ' + '.join(objective_terms)
             dfba_obj_expression, error = DfbaObjectiveExpression.deserialize(
-            obj_expression, {Reaction: rxn_objects})
+            obj_expression, {Reaction: rxn_objects, DfbaObjReaction: obj_rxn_objects})
             assert error is None, str(error)
             dfba_submodel.dfba_obj.expression = dfba_obj_expression
 
