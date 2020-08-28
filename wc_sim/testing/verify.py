@@ -1,5 +1,6 @@
 """
 :Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
+:Author: Yin Hoon Chew <yinhoon.chew@mssm.edu>
 :Date: 2018-09-17
 :Copyright: 2018, Karr Lab
 :License: MIT
@@ -27,7 +28,7 @@ import warnings
 
 from wc_lang.core import (ReactionParticipantAttribute, Model, Submodel, InitVolume,
                           FunctionExpression, ChemicalStructure, FluxBounds, DfbaObjective,
-                          DfbaObjectiveExpression, Compartment, Parameter, Reaction) 
+                          DfbaObjectiveExpression, Compartment, Parameter, Reaction)
 from wc_lang.io import Reader
 from wc_onto import onto
 from wc_sim.config import core as config_core_multialgorithm
@@ -38,6 +39,7 @@ from wc_sim.simulation import Simulation
 from wc_sim.testing.make_models import MakeModel
 from wc_utils.util import chem
 from wc_utils.util.dict import DictUtil
+from wc_utils.util.environ import EnvironUtils, ConfigEnvDict
 from wc_utils.util.misc import geometric_iterator
 from wc_utils.util.units import unit_registry
 from wc_utils.util.ontology import are_terms_equivalent
@@ -267,20 +269,20 @@ class VerificationTestReader(object):
         """  Read a model into a `wc_lang` representation
 
         Args:
-            sbml_version (:obj:`str`, optional): SBML version, default is 
+            sbml_version (:obj:`str`, optional): SBML version, default is
                 Level 3 Version 2 (l3v2)
-            model_file_suffix (:obj:`str`, optional): the name suffix for the model 
+            model_file_suffix (:obj:`str`, optional): the name suffix for the model
                 file if a `wc_lang.Model` file already exists
 
         Returns:
             :obj:`wc_lang.Model`: the `wc_lang` model
 
         Raises:
-            :obj:`VerificationError`: if a dFBA SBML model file does not exist, 
+            :obj:`VerificationError`: if a dFBA SBML model file does not exist,
                 or if an SBML model is read for non-dFBA models
         """
         if self.test_case_type == VerificationTestCaseType.DYNAMIC_FLUX_BALANCE_ANALYSIS:
-            
+
             self.model_filename = os.path.join(self.test_case_dir, 
                 self.test_case_num + '-sbml-' + sbml_version + self.SBML_FILE_SUFFIX)
             if not os.path.exists(self.model_filename):
@@ -292,40 +294,40 @@ class VerificationTestReader(object):
             dfba_submodel = Submodel(id=self.test_case_num + '_dfba', model=model, 
                 framework=onto['WC:dynamic_flux_balance_analysis'])
 
-            sbml_doc = libsbml.SBMLReader().readSBML(self.model_filename)        
+            sbml_doc = libsbml.SBMLReader().readSBML(self.model_filename)
             sbml_model = sbml_doc.getModel()
             fbc_sbml_model = sbml_model.getPlugin('fbc')
 
             compartment_list = sbml_model.getListOfCompartments()
             # Add compartment volume and density to fulfill wc_sim validation
-            init_volume = InitVolume(distribution=onto['WC:normal_distribution'], 
+            init_volume = InitVolume(distribution=onto['WC:normal_distribution'],
                         mean=1., std=0)
-            model_compartment = model.compartments.create(id=compartment_list[0].getId(), 
+            model_compartment = model.compartments.create(id=compartment_list[0].getId(),
                 init_volume=init_volume)
-            model_compartment.init_density = model.parameters.create(id='density_' + model_compartment.id, 
+            model_compartment.init_density = model.parameters.create(id='density_' + model_compartment.id,
                 value=1., units=unit_registry.parse_units('g l^-1'))
-            volume = model.functions.create(id='volume_' + model_compartment.id, 
+            volume = model.functions.create(id='volume_' + model_compartment.id,
                 units=unit_registry.parse_units('l'))
             volume.expression, error = FunctionExpression.deserialize(
-                f'{model_compartment.id} / {model_compartment.init_density.id}', 
+                f'{model_compartment.id} / {model_compartment.init_density.id}',
                 {
                     Compartment: {model_compartment.id: model_compartment},
                     Parameter: {model_compartment.init_density.id: model_compartment.init_density},
                 })
             assert error is None, str(error)
-            
+
             # Create model species
             for species in sbml_model.getListOfSpecies():
                 fbc_species = species.getPlugin('fbc')
                 charge = fbc_species.getCharge()
                 formula = chem.EmpiricalFormula(fbc_species.getChemicalFormula())
-                
+
                 model_species_type = model.species_types.create(id=species.getId())
                 model_species_type.structure = ChemicalStructure(
                     charge=charge, empirical_formula=formula, molecular_weight=formula.get_molecular_weight())
                 model_species = model.species.create(species_type=model_species_type, compartment=model_compartment)
-                model_species.id = model_species.gen_id()   
-                # Add concentration to fulfill wc_sim validation            
+                model_species.id = model_species.gen_id()
+                # Add concentration to fulfill wc_sim validation
                 conc_model = model.distribution_init_concentrations.create(species=model_species, mean=1000., std=0.,
                     units=unit_registry.parse_units('molecule'))
                 conc_model.id = conc_model.gen_id()
@@ -334,14 +336,14 @@ class VerificationTestReader(object):
                 # Create unbounded exchange reactions for boundary species
                 if species.getBoundaryCondition():
                     model_rxn = model.reactions.create(
-                        id='EX_' + species.getId(), 
+                        id='EX_' + species.getId(),
                         submodel=dfba_submodel,
-                        reversible=True)            
+                        reversible=True)
                     model_rxn.participants.add(model_species.species_coefficients.get_or_create(
                         coefficient=-1))
                     model_rxn.flux_bounds = FluxBounds(units=unit_registry.parse_units('M s^-1'))
                     model_rxn.flux_bounds.min = np.nan
-                    model_rxn.flux_bounds.max = np.nan    
+                    model_rxn.flux_bounds.max = np.nan
 
             # Extract flux bounds
             flux_bounds = {}
@@ -355,14 +357,14 @@ class VerificationTestReader(object):
                     flux_bounds[rxn_id]['upper_bound'] = bound.getValue()
                 elif bound.getOperation()=='equal':
                     flux_bounds[rxn_id]['lower_bound'] = bound.getValue()
-                    flux_bounds[rxn_id]['upper_bound'] = bound.getValue()              
+                    flux_bounds[rxn_id]['upper_bound'] = bound.getValue()
 
             # Create model reactions
-            for rxn in sbml_model.getListOfReactions():         
-                fbc_rxn = rxn.getPlugin('fbc')  
-                
+            for rxn in sbml_model.getListOfReactions():
+                fbc_rxn = rxn.getPlugin('fbc')
+
                 model_rxn = model.reactions.create(
-                    id=rxn.getId(), 
+                    id=rxn.getId(),
                     submodel=dfba_submodel,
                     reversible=rxn.getReversible())
                 # Add reaction participants
@@ -381,16 +383,24 @@ class VerificationTestReader(object):
                 # Add flux bounds
                 model_rxn.flux_bounds = FluxBounds(units=unit_registry.parse_units('M s^-1'))
                 if flux_bounds:                
-                    lower_bound = flux_bounds[model_rxn.id]['lower_bound']                
-                    upper_bound = flux_bounds[model_rxn.id]['upper_bound']                
+                    lower_bound = flux_bounds[model_rxn.id]['lower_bound']
+                    upper_bound = flux_bounds[model_rxn.id]['upper_bound']
                 else:
                     lower_bound_id = fbc_rxn.getLowerFluxBound()
-                    lower_bound = sbml_model.getParameter(lower_bound_id).value
+                    if sbml_model.getInitialAssignment(lower_bound_id):
+                        astnode = sbml_model.getInitialAssignment(lower_bound_id).math
+                        lower_bound = float(libsbml.formulaToL3String(astnode))
+                    else:    
+                        lower_bound = sbml_model.getParameter(lower_bound_id).value
                     upper_bound_id = fbc_rxn.getUpperFluxBound()
-                    upper_bound = sbml_model.getParameter(upper_bound_id).value
+                    if sbml_model.getInitialAssignment(upper_bound_id):
+                        astnode = sbml_model.getInitialAssignment(upper_bound_id).math
+                        upper_bound = float(libsbml.formulaToL3String(astnode))
+                    else:
+                        upper_bound = sbml_model.getParameter(upper_bound_id).value
                 model_rxn.flux_bounds.min = np.nan if np.isinf(lower_bound) else lower_bound
-                model_rxn.flux_bounds.max = np.nan if np.isinf(upper_bound) else upper_bound       
-                   
+                model_rxn.flux_bounds.max = np.nan if np.isinf(upper_bound) else upper_bound
+
             # Add objective function
             dfba_submodel.dfba_obj = DfbaObjective(model=model)
             dfba_submodel.dfba_obj.id = dfba_submodel.dfba_obj.gen_id()
@@ -398,13 +408,13 @@ class VerificationTestReader(object):
             sbml_objective_id = fbc_sbml_model.getListOfObjectives().getActiveObjective()
             sbml_objective_function = fbc_sbml_model.getObjective(sbml_objective_id)
             self.objective_direction = sbml_objective_function.getType()
-            
+
             objective_terms = []
             rxn_objects = {}
             for rxn in sbml_objective_function.getListOfFluxObjectives():
                 rxn_id = rxn.getReaction()
                 objective_terms.append('{} * {}'.format(
-                    str(rxn.getCoefficient()), rxn_id))  
+                    str(rxn.getCoefficient()), rxn_id))
                 rxn_objects[rxn_id] = model.reactions.get_one(id=rxn_id)
 
             obj_expression = ' + '.join(objective_terms)
@@ -412,14 +422,14 @@ class VerificationTestReader(object):
             obj_expression, {Reaction: rxn_objects})
             assert error is None, str(error)
             dfba_submodel.dfba_obj.expression = dfba_obj_expression
-        
+
         else:
 
             self.model_filename = os.path.join(self.test_case_dir, self.test_case_num + model_file_suffix)
             if self.model_filename.endswith(self.SBML_FILE_SUFFIX):
                 raise VerificationError(f"SBML files not supported: model filename: '{self.model_filename}'")
             model = Reader().run(self.model_filename, validate=True)[Model][0]
-        
+
         return model 
 
     def get_species_id(self, species_type):
@@ -602,7 +612,7 @@ class ResultsComparator(object):
                 if not np.array_equal(self.verification_test_reader.expected_predictions_df[species_type].values,
                     populations_df[species_id].values):
                     differing_values.append(species_type)
-            return differing_values or False    
+            return differing_values or False
 
         if self.verification_test_reader.test_case_type in [VerificationTestCaseType.DISCRETE_STOCHASTIC,
                                                             VerificationTestCaseType.MULTIALGORITHMIC]:
@@ -802,13 +812,14 @@ class CaseVerifier(object):
             ## 1. run simulation
             simulation = Simulation(self.verification_test_reader.model)
             dfba_time_step = settings['duration']/settings['steps']
-            simul_kwargs['options'] = dict(DfbaSubmodel=dict(options=dict(dfba_time_step=dfba_time_step)))
-            results_dir = simulation.run(**simul_kwargs).results_dir
+            simul_kwargs['dfba_time_step'] = dfba_time_step
+            with EnvironUtils.temp_config_env([(['wc_lang', 'validation', 'validate_element_charge_balance'], 'False')]):
+                results_dir = simulation.run(**simul_kwargs).results_dir
             self.simulation_run_results = RunResults(results_dir)
 
             ## 2. compare results
             self.results_comparator = ResultsComparator(self.verification_test_reader, self.simulation_run_results)
-            self.comparison_result = self.results_comparator.differs()    
+            self.comparison_result = self.results_comparator.differs()
 
         if self.verification_test_reader.test_case_type in [VerificationTestCaseType.DISCRETE_STOCHASTIC,
                                                             VerificationTestCaseType.MULTIALGORITHMIC]:
@@ -880,7 +891,7 @@ class CaseVerifier(object):
                         rxn.flux_bounds.min, rxn.flux_bounds.max))
                 else:
                     summary.append("rxn '{}': {}".format(rxn.id,
-                        reaction_participant_attribute.serialize(rxn.participants)))            
+                        reaction_participant_attribute.serialize(rxn.participants)))
         for param in mdl.get_parameters():
             summary.append("param: {}={} ({})".format(param.id, param.value, param.units))
         for func in mdl.get_functions():
@@ -1454,7 +1465,7 @@ class MultialgModelVerificationFuture(object):    # pragma: no cover
                 pass
 
             if case_type == VerificationTestCaseType.DYNAMIC_FLUX_BALANCE_ANALYSIS:
-                pass    
+                pass
 
         def get_typed_case_dir(self):
             return self.case_dir

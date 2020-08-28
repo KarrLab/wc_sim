@@ -1,5 +1,6 @@
 """
 :Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
+:Author: Yin Hoon Chew <yinhoon.chew@mssm.edu>
 :Date: 2018-09-25
 :Copyright: 2018, Karr Lab
 :License: MIT
@@ -205,6 +206,10 @@ class TestVerificationTestReader(unittest.TestCase):
         self.assertEqual(np.isnan(model.reactions.get_one(id='R02').flux_bounds.max), True)
         self.assertEqual(verification_test_reader.objective_direction, 'minimize')
 
+        verification_test_reader = make_verification_test_reader('01619', 'DYNAMIC_FLUX_BALANCE_ANALYSIS')
+        model = verification_test_reader.read_model()        
+        self.assertEqual(np.isnan(model.reactions.get_one(id='R16').flux_bounds.max), True)
+
         verification_test_reader = make_verification_test_reader('01625', 'DYNAMIC_FLUX_BALANCE_ANALYSIS')
         model = verification_test_reader.read_model()
         self.assertEqual(model.reactions.get_one(id='R14').flux_bounds.min, 0.)
@@ -215,14 +220,14 @@ class TestVerificationTestReader(unittest.TestCase):
         self.assertEqual(model.reactions.get_one(id='R01').flux_bounds.min, 0.)
         self.assertEqual(model.reactions.get_one(id='R01').flux_bounds.max, 1.)
         self.assertEqual(np.isnan(model.reactions.get_one(id='R20').flux_bounds.min), True)
-        self.assertEqual(np.isnan(model.reactions.get_one(id='R20').flux_bounds.max), True)        
-        
+        self.assertEqual(np.isnan(model.reactions.get_one(id='R20').flux_bounds.max), True)
+
         # test exception
         verification_test_reader = make_verification_test_reader('00003', 'DYNAMIC_FLUX_BALANCE_ANALYSIS')
         with self.assertRaisesRegexp(VerificationError, 
             "Test case model file '.*00003-sbml-l3v2.xml' does not exists"):
             verification_test_reader.read_model()
-        
+
         verification_test_reader = make_verification_test_reader('00001', 'DISCRETE_STOCHASTIC')
         with self.assertRaisesRegexp(VerificationError, "SBML files not supported"):
             model_file_suffix = f"-test_file{VerificationTestReader.SBML_FILE_SUFFIX}"
@@ -543,7 +548,7 @@ class TestCaseVerifier(unittest.TestCase):
         self.test_case_num = '00001'
         self.tmp_dir = os.path.join(os.path.dirname(__file__), 'tmp')
         self.case_verifiers = {}
-        self.model_types = ['DISCRETE_STOCHASTIC', 'CONTINUOUS_DETERMINISTIC', 
+        self.model_types = ['DISCRETE_STOCHASTIC', 'CONTINUOUS_DETERMINISTIC',
                             'DYNAMIC_FLUX_BALANCE_ANALYSIS']
         for model_type in self.model_types:
             self.case_verifiers[model_type] = CaseVerifier(TEST_CASES, model_type, self.test_case_num,
@@ -576,7 +581,7 @@ class TestCaseVerifier(unittest.TestCase):
             self.case_verifiers['CONTINUOUS_DETERMINISTIC'].verify_model(evaluate=True)
 
         with self.assertRaises(VerificationError):
-            self.case_verifiers['DYNAMIC_FLUX_BALANCE_ANALYSIS'].verify_model(evaluate=True)    
+            self.case_verifiers['DYNAMIC_FLUX_BALANCE_ANALYSIS'].verify_model(evaluate=True)
 
     def make_plot_file(self, model_type, case=None):
         if case is None:
@@ -926,14 +931,8 @@ class RunVerificationSuite(unittest.TestCase):
             '01614',
             '01615',
             '01617',
-            '01618',
             '01619',
-            '01620',
             '01622',
-            '01624',
-            '01625',
-            '01628',
-            '01629',
             '01630',
         ]
         self.multialgorithmic_test_cases = [
@@ -986,7 +985,7 @@ class RunVerificationSuite(unittest.TestCase):
         if case_type == 'DYNAMIC_FLUX_BALANCE_ANALYSIS':
             for dfba_test_case in verification_cases:
                 self.verification_suite.run(case_type, [dfba_test_case], verbose=True)
-                record_results(self.verification_suite)        
+                record_results(self.verification_suite)
 
         if case_type == 'MULTIALGORITHMIC':
             for multialg_test_case in verification_cases:
@@ -1014,7 +1013,7 @@ class RunVerificationSuite(unittest.TestCase):
         self.run_verification_cases('CONTINUOUS_DETERMINISTIC', self.ode_test_cases)
 
     def test_verification_flux_balance_analysis(self):
-        self.run_verification_cases('DYNAMIC_FLUX_BALANCE_ANALYSIS', self.dfba_test_cases)    
+        self.run_verification_cases('DYNAMIC_FLUX_BALANCE_ANALYSIS', self.dfba_test_cases)
 
     def test_verification_multialgorithmic(self):
         self.run_verification_cases('MULTIALGORITHMIC', self.multialgorithmic_test_cases)
