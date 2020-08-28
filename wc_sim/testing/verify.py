@@ -398,8 +398,8 @@ class VerificationTestReader(object):
                         upper_bound = float(libsbml.formulaToL3String(astnode))
                     else:
                         upper_bound = sbml_model.getParameter(upper_bound_id).value
-                model_rxn.flux_bounds.min = np.nan if np.isinf(lower_bound) else lower_bound
-                model_rxn.flux_bounds.max = np.nan if np.isinf(upper_bound) else upper_bound
+                model_rxn.flux_bounds.min = np.nan if np.isinf(lower_bound) else lower_bound/Avogadro
+                model_rxn.flux_bounds.max = np.nan if np.isinf(upper_bound) else upper_bound/Avogadro
 
             # Add objective function
             dfba_submodel.dfba_obj = DfbaObjective(model=model)
