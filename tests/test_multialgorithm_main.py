@@ -31,7 +31,7 @@ class SimControllerTestCase(unittest.TestCase):
         self.checkpoints_dir = tempfile.mkdtemp()
         self.args = Namespace(
             model_file=self.MODEL_FILENAME,
-            time_max=100,
+            max_time=100,
             checkpoint_period=4,
             checkpoints_dir=self.checkpoints_dir,
             dfba_time_step=5

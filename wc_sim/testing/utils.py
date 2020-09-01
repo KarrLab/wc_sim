@@ -298,7 +298,7 @@ def verify_independently_solved_model(test_case, model_filename, results_dir):
         model = read_model_for_test(model_filename, integration_framework=f'WC:{integration_framework}')
 
         # simulate model
-        time_max = model.parameters.get_one(id='time_max').value
+        max_time = model.parameters.get_one(id='time_max').value
         checkpoint_period = model.parameters.get_one(id='checkpoint_period').value
         args = dict(results_dir=results_dir,
                     checkpoint_period=checkpoint_period,
@@ -306,7 +306,7 @@ def verify_independently_solved_model(test_case, model_filename, results_dir):
                     progress_bar=True)
         simulation = Simulation(model)
         start_time = time.perf_counter()
-        results_dir = simulation.run(time_max=time_max, **args).results_dir
+        results_dir = simulation.run(max_time=max_time, **args).results_dir
         elapsed_rt = time.perf_counter() - start_time
         print(f'ran {os.path.basename(model_filename)} with {integration_framework} in '
               f'{elapsed_rt:.2e} (sec)')

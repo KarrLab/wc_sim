@@ -43,8 +43,8 @@ def prepare_model(model):
         raise ValueError(indent_forest(['The model is invalid:', [errors]]))
 
 
-def build_sim_from_model(model, time_max=10, dfba_time_step=1, ode_time_step=1, options=None):
-    de_simulation_config = SimulationConfig(time_max=time_max)
+def build_sim_from_model(model, max_time=10, dfba_time_step=1, ode_time_step=1, options=None):
+    de_simulation_config = SimulationConfig(max_time=max_time)
     wc_sim_config = WCSimulationConfig(de_simulation_config, dfba_time_step=dfba_time_step,
                                        ode_time_step=ode_time_step)
     options = {} if options is None else options
@@ -66,7 +66,7 @@ class TestDynamicSubmodelStatically(unittest.TestCase):
             for conc in self.model.distribution_init_concentrations:
                 conc.std = std_init_concentrations
 
-        de_simulation_config = SimulationConfig(time_max=10)
+        de_simulation_config = SimulationConfig(max_time=10)
         wc_sim_config = WCSimulationConfig(de_simulation_config, ode_time_step=2, dfba_time_step=5)
         multialgorithm_simulation = MultialgorithmSimulation(self.model, wc_sim_config)
         _, self.dynamic_model = multialgorithm_simulation.build_simulation()
@@ -299,5 +299,5 @@ class TestDsaSubmodel(unittest.TestCase):
         model = MakeModel.make_test_model('1 species, 1 reaction')
         self.transform_model_for_dsa_simulation(model)
         simulation = Simulation(model)
-        num_events = simulation.run(time_max=100).num_events
+        num_events = simulation.run(max_time=100).num_events
         self.assertGreater(num_events, 0)

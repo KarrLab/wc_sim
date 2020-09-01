@@ -23,8 +23,8 @@ class TestWCSimulationMetadata(unittest.TestCase):
 
     def setUp(self):
         self.tempdir = tempfile.mkdtemp()
-        self.time_max = 5
-        self.de_simulation_config = SimulationConfig(time_max=self.time_max)
+        self.max_time = 5
+        self.de_simulation_config = SimulationConfig(max_time=self.max_time)
         self.wc_sim_config = WCSimulationConfig(self.de_simulation_config)
         self.wc_simulation_metadata = WCSimulationMetadata(self.wc_sim_config)
 
@@ -42,7 +42,7 @@ class TestWCSimulationMetadata(unittest.TestCase):
         self.github_repo.delete_test_repo()
 
     def test_init(self):
-        self.assertEqual(self.wc_simulation_metadata.wc_sim_config.de_simulation_config.time_max, self.time_max)
+        self.assertEqual(self.wc_simulation_metadata.wc_sim_config.de_simulation_config.max_time, self.max_time)
 
         with self.assertRaisesRegex(MultialgorithmError, 'must be a RepositoryMetadata'):
             self.wc_simulation_metadata.wc_simulator_repo = 1
@@ -78,7 +78,7 @@ class TestWCSimulationMetadata(unittest.TestCase):
         wc_simulation_metadata_equal.set_wc_model_repo(self.file_in_git_repo)
         self.assertTrue(self.wc_simulation_metadata.semantically_equal(wc_simulation_metadata_equal))
 
-        wc_simulation_metadata_equal.wc_sim_config = WCSimulationConfig(SimulationConfig(time_max=1))
+        wc_simulation_metadata_equal.wc_sim_config = WCSimulationConfig(SimulationConfig(max_time=1))
         self.assertFalse(self.wc_simulation_metadata.semantically_equal(wc_simulation_metadata_equal))
         wc_simulation_metadata_equal.wc_sim_config = self.wc_sim_config
         self.assertTrue(self.wc_simulation_metadata.semantically_equal(wc_simulation_metadata_equal))

@@ -57,13 +57,13 @@ exp_avg_species = {
 }
 
 init_time = 0.
-time_max = 8 * 60 * 60.
+max_time = 8 * 60 * 60.
 checkpoint_period = 1.
 
 numpy.random.seed(seed=0)
 
 
-def sim_ssa(rxns, rate_params, init_species, init_time, time_max, checkpoint_period):
+def sim_ssa(rxns, rate_params, init_species, init_time, max_time, checkpoint_period):
     """ Simulate model with SSA
 
     Args:
@@ -72,7 +72,7 @@ def sim_ssa(rxns, rate_params, init_species, init_time, time_max, checkpoint_per
         init_species (:obj:`dict` of :obj:`int`):
             initial copy numbers of RNAs and proteins
         init_time (:obj:`float`): initial time (seconds)
-        time_max (:obj:`float`): simulation length (seconds)
+        max_time (:obj:`float`): simulation length (seconds)
         checkpoint_period (:obj:`float`): interval to log simulation results (seconds)
 
     Returns:
@@ -85,13 +85,13 @@ def sim_ssa(rxns, rate_params, init_species, init_time, time_max, checkpoint_per
     species = copy.deepcopy(init_species)
     time = init_time
 
-    n_log = int((time_max - init_time) / checkpoint_period)
+    n_log = int((max_time - init_time) / checkpoint_period)
     species_log = {}
     time_log = numpy.full((n_log, ), init_time)
     for species_id, init_val in species.items():
         species_log[species_id] = numpy.full((n_log, ), init_val)
 
-    while time < time_max:
+    while time < max_time:
         locals = {**species, **rate_params}
         props = [eval(rxn['rate_law'], locals) for rxn in rxns]
         tot_prop = numpy.sum(props)
@@ -111,7 +111,7 @@ def sim_ssa(rxns, rate_params, init_species, init_time, time_max, checkpoint_per
     return (species_log, time_log)
 
 
-def sim_ode(rxns, rate_params, init_species, init_time, time_max, checkpoint_period):
+def sim_ode(rxns, rate_params, init_species, init_time, max_time, checkpoint_period):
     """ Simulate model with ODE integration
 
     Args:
@@ -120,14 +120,14 @@ def sim_ode(rxns, rate_params, init_species, init_time, time_max, checkpoint_per
         init_species (:obj:`dict` of :obj:`int`):
             initial copy numbers of RNAs and proteins
         init_time (:obj:`float`): initial time (seconds)
-        time_max (:obj:`float`): simulation length (seconds)
+        max_time (:obj:`float`): simulation length (seconds)
         checkpoint_period (:obj:`float`): interval to log simulation results (seconds)
 
     Returns:
         :obj:`dict` of :obj:`numpy.ndarray` of :obj:`int`: copy number dynamics of RNAs and proteins
         :obj:`numpy.ndarray` of :obj:`float`: time (seconds)
     """
-    time_log = numpy.linspace(init_time, time_max, num=int((time_max-init_time)/checkpoint_period) + 1)
+    time_log = numpy.linspace(init_time, max_time, num=int((max_time-init_time)/checkpoint_period) + 1)
     species_ids = list(init_species.keys())
     init_ys = numpy.array([init_species[species_id] for species_id in species_ids])
 
@@ -148,7 +148,7 @@ def sim_ode(rxns, rate_params, init_species, init_time, time_max, checkpoint_per
     return (species_log, time_log)
 
 
-def sim_hyb(rxns, rate_params, init_species, init_time, time_max, checkpoint_period):
+def sim_hyb(rxns, rate_params, init_species, init_time, max_time, checkpoint_period):
     """ Simulate model with SSA/ODE hybrid
 
     Args:
@@ -157,7 +157,7 @@ def sim_hyb(rxns, rate_params, init_species, init_time, time_max, checkpoint_per
         init_species (:obj:`dict` of :obj:`int`):
             initial copy numbers of RNAs and proteins
         init_time (:obj:`float`): initial time (seconds)
-        time_max (:obj:`float`): simulation length (seconds)
+        max_time (:obj:`float`): simulation length (seconds)
         checkpoint_period (:obj:`float`): interval to log simulation results (seconds)
 
     Returns:
@@ -176,13 +176,13 @@ def sim_hyb(rxns, rate_params, init_species, init_time, time_max, checkpoint_per
     species = copy.deepcopy(init_species)
     time = init_time
 
-    n_log = int((time_max - init_time) / checkpoint_period)
+    n_log = int((max_time - init_time) / checkpoint_period)
     species_log = {}
     time_log = numpy.full((n_log, ), init_time)
     for species_id, init_val in species.items():
         species_log[species_id] = numpy.full((n_log, ), init_val)
 
-    while time < time_max:
+    while time < max_time:
         # select and fire next SSA reaction
         locals = {**species, **rate_params}
         props = [eval(rxn['rate_law'], locals) for rxn in rxns_ssa]
@@ -254,9 +254,9 @@ def plot(
     pyplot.close(fig)
 
 
-ssa_species_log, ssa_time_log = sim_ssa(rxns, rate_params, init_species, init_time, time_max, checkpoint_period)
-ode_species_log, ode_time_log = sim_ode(rxns, rate_params, init_species, init_time, time_max, checkpoint_period)
-hyb_species_log, hyb_time_log = sim_hyb(rxns, rate_params, init_species, init_time, time_max, checkpoint_period)
+ssa_species_log, ssa_time_log = sim_ssa(rxns, rate_params, init_species, init_time, max_time, checkpoint_period)
+ode_species_log, ode_time_log = sim_ode(rxns, rate_params, init_species, init_time, max_time, checkpoint_period)
+hyb_species_log, hyb_time_log = sim_hyb(rxns, rate_params, init_species, init_time, max_time, checkpoint_period)
 plot(ssa_species_log, ssa_time_log,
      ode_species_log, ode_time_log,
      hyb_species_log, hyb_time_log,

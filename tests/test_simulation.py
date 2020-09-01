@@ -37,10 +37,10 @@ class TestSimulation(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.test_dir)
 
-    def run_simulation(self, simulation, time_max=100):
-        checkpoint_period = min(10, time_max)
+    def run_simulation(self, simulation, max_time=100):
+        checkpoint_period = min(10, max_time)
         with CaptureOutput(relay=False):
-            simulation_rv = simulation.run(time_max=time_max, results_dir=self.results_dir,
+            simulation_rv = simulation.run(max_time=max_time, results_dir=self.results_dir,
                                             checkpoint_period=checkpoint_period)
         self.assertTrue(0 < simulation_rv.num_events)
         self.assertTrue(os.path.isdir(simulation_rv.results_dir))
@@ -58,7 +58,7 @@ class TestSimulation(unittest.TestCase):
             simulation._prepare()
 
     def test_simulation_model_in_file(self):
-        self.run_simulation(Simulation(TOY_MODEL_FILENAME), time_max=5)
+        self.run_simulation(Simulation(TOY_MODEL_FILENAME), max_time=5)
 
     def test_simulation_model_in_memory(self):
         model = MakeModel.make_test_model('2 species, 1 reaction', transform_prep_and_check=False)
@@ -71,13 +71,13 @@ class TestSimulation(unittest.TestCase):
 
     def test_simulate_wo_output_files(self):
         with CaptureOutput(relay=False):
-            simulation_rv = Simulation(TOY_MODEL_FILENAME).run(time_max=5)
+            simulation_rv = Simulation(TOY_MODEL_FILENAME).run(max_time=5)
         self.assertTrue(0 < simulation_rv.num_events)
         self.assertEqual(simulation_rv.results_dir, None)
 
     def test_run(self):
         with CaptureOutput(relay=False):
-            simulation_rv = Simulation(TOY_MODEL_FILENAME).run(time_max=2,
+            simulation_rv = Simulation(TOY_MODEL_FILENAME).run(max_time=2,
                                                                results_dir=self.results_dir,
                                                                checkpoint_period=1)
 
@@ -90,7 +90,7 @@ class TestSimulation(unittest.TestCase):
 
         # test performance profiling and verbose to stdout
         with CaptureOutput(relay=False) as capturer:
-            simulation_rv = Simulation(TOY_MODEL_FILENAME).run(time_max=2,
+            simulation_rv = Simulation(TOY_MODEL_FILENAME).run(max_time=2,
                                                                profile=True,
                                                                verbose=True)
             expected_patterns =['function calls',
@@ -102,7 +102,7 @@ class TestSimulation(unittest.TestCase):
             self.assertTrue(isinstance(simulation_rv.profile_stats, pstats.Stats))
 
         with self.assertRaisesRegex(MultialgorithmError, 'cannot be simulated .* it contains no submodels'):
-            Simulation(TOY_MODEL_FILENAME).run(time_max=5,
+            Simulation(TOY_MODEL_FILENAME).run(max_time=5,
                                                results_dir=tempfile.mkdtemp(dir=self.test_dir),
                                                checkpoint_period=1,
                                                submodels_to_skip=['test_submodel'])
@@ -111,7 +111,7 @@ class TestSimulation(unittest.TestCase):
         # test memory use profile to measurements file
         results_dir = tempfile.mkdtemp(dir=self.test_dir)
         # set object_memory_change_interval=50 because the simulation has about 200 events
-        Simulation(TOY_MODEL_FILENAME).run(time_max=2,
+        Simulation(TOY_MODEL_FILENAME).run(max_time=2,
                                            results_dir=results_dir,
                                            checkpoint_period=1,
                                            object_memory_change_interval=50)
@@ -131,7 +131,7 @@ class TestSimulation(unittest.TestCase):
         for seed in seeds:
             tmp_results_dir = tempfile.mkdtemp()
             with CaptureOutput(relay=False):
-                simulation_rv = Simulation(TOY_MODEL_FILENAME).run(time_max=5,
+                simulation_rv = Simulation(TOY_MODEL_FILENAME).run(max_time=5,
                                                                    results_dir=tmp_results_dir,
                                                                    checkpoint_period=5, seed=seed)
             results[seed] = {}
@@ -148,7 +148,7 @@ class TestSimulation(unittest.TestCase):
         for rep in range(2):
             tmp_results_dir = tempfile.mkdtemp()
             with CaptureOutput(relay=False):
-                simulation_rv = Simulation(TOY_MODEL_FILENAME).run(time_max=5,
+                simulation_rv = Simulation(TOY_MODEL_FILENAME).run(max_time=5,
                                                                    results_dir=tmp_results_dir,
                                                                    checkpoint_period=5, seed=seed)
             results[rep] = {}
@@ -167,7 +167,7 @@ class TestSimulation(unittest.TestCase):
         simulation = Simulation(model)
         self.assertEqual(simulation.get_simulator(), None)
         with CaptureOutput(relay=False):
-            simulation.run(time_max=5)
+            simulation.run(max_time=5)
         self.assertTrue(isinstance(simulation.get_simulator(), Simulator))
 
     def test_provide_event_counts(self):
@@ -175,5 +175,5 @@ class TestSimulation(unittest.TestCase):
         simulation = Simulation(model)
         self.assertTrue('execute run() to obtain event counts' in simulation.provide_event_counts())
         with CaptureOutput(relay=False):
-            simulation.run(time_max=100)
+            simulation.run(max_time=100)
         self.assertTrue('Event type' in simulation.provide_event_counts())

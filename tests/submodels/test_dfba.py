@@ -206,7 +206,7 @@ class TestDfbaSubmodel(unittest.TestCase):
         # assume a single submodel
         self.dfba_time_step = dfba_time_step
 
-        de_simulation_config = SimulationConfig(time_max=10)
+        de_simulation_config = SimulationConfig(max_time=10)
         wc_sim_config = WCSimulationConfig(de_simulation_config, dfba_time_step=dfba_time_step)
         multialgorithm_simulation = MultialgorithmSimulation(model, wc_sim_config,
         	options={'DfbaSubmodel': dict(options=submodel_options)})

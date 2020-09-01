@@ -447,7 +447,7 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         model = read_model_for_test(self.MODEL_FILENAME)
 
         # create dynamic model
-        de_simulation_config = SimulationConfig(time_max=10)
+        de_simulation_config = SimulationConfig(max_time=10)
         wc_sim_config = WCSimulationConfig(de_simulation_config)
         self.multialgorithm_simulation = MultialgorithmSimulation(model, wc_sim_config)
         _, dynamic_model = self.multialgorithm_simulation.build_simulation()

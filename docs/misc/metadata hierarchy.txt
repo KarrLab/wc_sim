@@ -33,7 +33,7 @@ class SimulationMetadata(EnhancedDataClass): # Represents the metadata of a disc
     simulator RepositoryMetadata: metadata about this simulator's git repository **
 
 class SimulationConfig(EnhancedDataClass): *** X
-    time_max float: maximum simulation time **
+    max_time float: maximum simulation time **
     time_init float: time at which a simulation starts **
     stop_condition function: a simulation terminates if the function returns `True` *
     output_dir str: directory for saving metadata *

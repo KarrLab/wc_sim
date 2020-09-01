@@ -26,7 +26,7 @@ import wc_lang
 class TestWCSimulationConfig(unittest.TestCase):
 
     def setUp(self):
-        self.de_simulation_config = SimulationConfig(time_max=10)
+        self.de_simulation_config = SimulationConfig(max_time=10)
 
     def test_simulation_configuration(self):
         """ Test simulation configuration correctly represented """
@@ -150,7 +150,7 @@ class TestWCSimulationConfig(unittest.TestCase):
         self.assertTrue(cfg_equal.semantically_equal(cfg))
 
         # vary de_simulation_config
-        cfg.de_simulation_config = SimulationConfig(time_max=100)
+        cfg.de_simulation_config = SimulationConfig(max_time=100)
         self.assertFalse(cfg.semantically_equal(cfg_equal))
         cfg.de_simulation_config = self.de_simulation_config
 
@@ -257,7 +257,7 @@ class TestPerturbation(unittest.TestCase):
 class TestSedMlImportExport(unittest.TestCase):
 
     def setUp(self):
-        self.de_simulation_config = SimulationConfig(time_max=10)
+        self.de_simulation_config = SimulationConfig(max_time=10)
 
     def test_sedml_import_export(self):
         """ Test SED-ML import/export of simulation configurations """
@@ -309,7 +309,7 @@ class TestSedMlImportExport(unittest.TestCase):
         cfg2 = SedMl.read(file_name)
 
         # check sim_config correctly imported/exported
-        # self.assertEqual(time_max, cfg2.time_max)
+        # self.assertEqual(max_time, cfg2.max_time)
         self.assertEqual(ode_time_step, cfg2.ode_time_step)
         self.assertEqual(random_seed, cfg2.random_seed)
 

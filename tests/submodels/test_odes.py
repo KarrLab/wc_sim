@@ -42,7 +42,7 @@ class TestOdeSubmodel(unittest.TestCase):
         """ Make a MultialgorithmSimulation from a wc lang model """
         # assume a single submodel
         self.ode_time_step = ode_time_step
-        de_simulation_config = SimulationConfig(time_max=10)
+        de_simulation_config = SimulationConfig(max_time=10)
         wc_sim_config = WCSimulationConfig(de_simulation_config, ode_time_step=ode_time_step)
         multialgorithm_simulation = MultialgorithmSimulation(model, wc_sim_config)
         simulator, dynamic_model = multialgorithm_simulation.build_simulation()

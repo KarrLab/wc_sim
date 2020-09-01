@@ -41,7 +41,7 @@ from wc_sim.run_results import RunResults
     one run:
         model = ... model object or model file
         simulation = Simulation(model)
-        events, results_dir = simulation.run(time_max, results_dir, checkpoint_period)
+        events, results_dir = simulation.run(max_time, results_dir, checkpoint_period)
         run_results = RunResults(results_dir)
 
     batch run:
@@ -99,13 +99,13 @@ class Simulation(object):
     SimulationReturnValue.results_dir.__doc__ = 'Directory containing results, if provided'
     SimulationReturnValue.profile_stats.__doc__ = 'A :obj:`pstats.Stats` instance of a profile, if requested'
 
-    def run(self, time_max, results_dir=None, progress_bar=True, checkpoint_period=None,
+    def run(self, max_time, results_dir=None, progress_bar=True, checkpoint_period=None,
             seed=None, ode_time_step=None, dfba_time_step=None, profile=False, submodels_to_skip=None,
             verbose=True, object_memory_change_interval=0, options=None):
         """ Run one simulation
 
         Args:
-            time_max (:obj:`float`): the maximum time of a simulation; a stop condition may end it
+            max_time (:obj:`float`): the maximum time of a simulation; a stop condition may end it
                 earlier (sec)
             results_dir (:obj:`str`, optional): path to a directory in which results are stored
             progress_bar (:obj:`bool`, optional): whether to show the progress of a simulation in
@@ -137,7 +137,7 @@ class Simulation(object):
 
         # create simulation configurations
         # create and validate DE sim configuration
-        self.de_sim_config = SimulationConfig(time_max, output_dir=results_dir, progress=progress_bar,
+        self.de_sim_config = SimulationConfig(max_time, output_dir=results_dir, progress=progress_bar,
                                               profile=profile,
                                               object_memory_change_interval=object_memory_change_interval)
         self.de_sim_config.validate()

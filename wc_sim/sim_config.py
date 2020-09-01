@@ -120,8 +120,8 @@ class WCSimulationConfig(EnhancedDataClass):
         de_sim_config = self.de_simulation_config
 
         # Max time must be positive
-        if de_sim_config.time_max <= 0:
-            raise MultialgorithmError("Maximum time ({de_sim_config.time_max}) must be positive")
+        if de_sim_config.max_time <= 0:
+            raise MultialgorithmError("Maximum time ({de_sim_config.max_time}) must be positive")
 
         if de_sim_config.output_dir is None and self.checkpoint_period is not None:
             raise MultialgorithmError(f"a data directory (self.de_simulation_config.output_dir) must be "
@@ -147,8 +147,8 @@ class WCSimulationConfig(EnhancedDataClass):
         """
         de_sim_cfg = self.de_simulation_config
         if getattr(self, periodic_attr) is not None and \
-            (de_sim_cfg.time_max - de_sim_cfg.time_init) / getattr(self, periodic_attr) % 1 != 0:
-            raise MultialgorithmError(f'(time_max - time_init) ({de_sim_cfg.time_max} - {de_sim_cfg.time_init}) '
+            (de_sim_cfg.max_time - de_sim_cfg.time_init) / getattr(self, periodic_attr) % 1 != 0:
+            raise MultialgorithmError(f'(max_time - time_init) ({de_sim_cfg.max_time} - {de_sim_cfg.time_init}) '
                                       f'must be a multiple of {periodic_attr} ({getattr(self, periodic_attr)})')
 
     def apply_changes(self, model):
@@ -178,7 +178,7 @@ class WCSimulationConfig(EnhancedDataClass):
         Returns:
             :obj:`int`: number of simulation timesteps
         """
-        return int((self.de_simulation_config.time_max - self.de_simulation_config.time_init) / self.ode_time_step)
+        return int((self.de_simulation_config.max_time - self.de_simulation_config.time_init) / self.ode_time_step)
 
     def semantically_equal(self, other):
         """ Are two instances semantically equal with respect to a simulation's predictions?
@@ -397,8 +397,8 @@ class SedMl(object):
         # time
         sim = cfg_ml.getSimulation(0)
         time_init = sim.getOutputStartTime()
-        time_max = sim.getOutputEndTime()
-        ode_time_step = (time_max - time_init) / sim.getNumberOfPoints()
+        max_time = sim.getOutputEndTime()
+        ode_time_step = (max_time - time_init) / sim.getNumberOfPoints()
 
         # algorithm parameters
         alg = sim.getAlgorithm()
@@ -415,7 +415,7 @@ class SedMl(object):
                 opt_config['random_seed'] = int(opt_config['random_seed'])
 
         """ build simulation configuration object """
-        de_simulation_config = SimulationConfig(time_max=time_max, time_init=time_init)
+        de_simulation_config = SimulationConfig(max_time=max_time, time_init=time_init)
         cfg = WCSimulationConfig(de_simulation_config=de_simulation_config,
                                  ode_time_step=ode_time_step,
                                  changes=changes, perturbations=perturbations,
@@ -465,8 +465,8 @@ class SedMl(object):
         sim = cfg_ml.createUniformTimeCourse()
         sim.setInitialTime(cfg.de_simulation_config.time_init)
         sim.setOutputStartTime(cfg.de_simulation_config.time_init)
-        sim.setOutputEndTime(cfg.de_simulation_config.time_max)
-        duration = cfg.de_simulation_config.time_max - cfg.de_simulation_config.time_init
+        sim.setOutputEndTime(cfg.de_simulation_config.max_time)
+        duration = cfg.de_simulation_config.max_time - cfg.de_simulation_config.time_init
         sim.setNumberOfPoints(int(duration / cfg.ode_time_step))
 
         # simulation algorithm

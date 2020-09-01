@@ -29,7 +29,7 @@ class TestNrmSubmodel(unittest.TestCase):
 
     def make_sim_w_nrm_submodel(self, model):
         wc_lang.transform.PrepForWcSimTransform().run(model)
-        de_simulation_config = SimulationConfig(time_max=10)
+        de_simulation_config = SimulationConfig(max_time=10)
         wc_sim_config = WCSimulationConfig(de_simulation_config, ode_time_step=1)
         multialgorithm_simulation = MultialgorithmSimulation(model, wc_sim_config)
         return multialgorithm_simulation.build_simulation()

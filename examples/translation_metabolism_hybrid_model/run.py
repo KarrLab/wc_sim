@@ -17,7 +17,7 @@ import wc_lang.io
 model_filename = 'model.xlsx'
 results_parent_dirname = 'results'
 checkpoint_period = 100.
-time_max = 3600. * 8.
+max_time = 3600. * 8.
 
 # read model
 model = wc_lang.io.Reader().run(model_filename)[wc_lang.Model][0]
@@ -25,7 +25,7 @@ model = wc_lang.io.Reader().run(model_filename)[wc_lang.Model][0]
 # run simulation
 seed = 100
 sim = Simulation(model)
-results_dirname = sim.run(time_max=time_max,
+results_dirname = sim.run(max_time=max_time,
                            seed=seed,
                            results_dir=results_parent_dirname,
                            checkpoint_period=checkpoint_period).results_dir

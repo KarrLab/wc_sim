@@ -49,7 +49,7 @@ class SimController(cement.Controller):
             (['model_file'], dict(
                 type=str,
                 help="an Excel file containing a model, or a glob matching tab- or comma-delimited files storing a model")),
-            (['time_max'], dict(
+            (['max_time'], dict(
                 type=float,
                 help="maximum time for the simulation (sec)")),
             (['--results-dir'], dict(
@@ -82,7 +82,7 @@ class SimController(cement.Controller):
     def _default(self):
         args = self.app.pargs
         simulation = Simulation(args.model_file)
-        simulation.run(time_max=args.time_max,
+        simulation.run(max_time=args.max_time,
                        results_dir=args.results_dir,
                        checkpoint_period=args.checkpoint_period,
                        dfba_time_step=args.dfba_time_step,

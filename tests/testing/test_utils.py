@@ -27,7 +27,7 @@ class TestTestingUtils(unittest.TestCase):
         self.results_dir = tempfile.mkdtemp(dir=self.tmp_dir)
         self.args = dict(results_dir=tempfile.mkdtemp(dir=self.tmp_dir),
                          checkpoint_period=1)
-        de_simulation_config = SimulationConfig(time_max=10, output_dir=tempfile.mkdtemp(dir=self.tmp_dir))
+        de_simulation_config = SimulationConfig(max_time=10, output_dir=tempfile.mkdtemp(dir=self.tmp_dir))
         self.wc_sim_config = WCSimulationConfig(de_simulation_config, checkpoint_period=1)
 
     def tearDown(self):
@@ -63,7 +63,7 @@ class TestTestingUtils(unittest.TestCase):
 
         # test dynamics
         simulation = Simulation(model)
-        results_dir = simulation.run(time_max=2, **self.args).results_dir
+        results_dir = simulation.run(max_time=2, **self.args).results_dir
         nan = float('NaN')
         check_simul_results(self, dynamic_model, results_dir,
                            expected_initial_values=expected_initial_values,

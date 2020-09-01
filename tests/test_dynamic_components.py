@@ -61,7 +61,7 @@ class TestInitialDynamicComponentsComprehensively(unittest.TestCase):
     def setUp(self):
         self.model_file = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_dynamic_expressions.xlsx')
         self.model = Reader().run(self.model_file)[Model][0]
-        de_simulation_config = SimulationConfig(time_max=10)
+        de_simulation_config = SimulationConfig(max_time=10)
         wc_sim_config = WCSimulationConfig(de_simulation_config)
         multialgorithm_simulation = MultialgorithmSimulation(self.model, wc_sim_config)
         _, self.dynamic_model = multialgorithm_simulation.build_simulation()
@@ -622,7 +622,7 @@ class TestDynamicModel(unittest.TestCase):
         return self._make_dynamic_model(model)
 
     def _make_dynamic_model(self, model):
-        de_simulation_config = SimulationConfig(time_max=10)
+        de_simulation_config = SimulationConfig(max_time=10)
         wc_sim_config = WCSimulationConfig(de_simulation_config, ode_time_step=2, dfba_time_step=5)
         multialgorithm_simulation = MultialgorithmSimulation(model, wc_sim_config)
         _, dynamic_model = multialgorithm_simulation.build_simulation()
@@ -658,7 +658,7 @@ class TestDynamicModel(unittest.TestCase):
 
         for compartment in model.get_compartments():
             compartment.biological_type = onto['WC:extracellular_compartment']
-        de_simulation_config = SimulationConfig(time_max=10)
+        de_simulation_config = SimulationConfig(max_time=10)
         wc_sim_config = WCSimulationConfig(de_simulation_config)
         multialgorithm_simulation = MultialgorithmSimulation(model, wc_sim_config)
         multialgorithm_simulation.initialize_components()
@@ -836,7 +836,7 @@ class TestDynamicModel(unittest.TestCase):
         for expression in expected_rxn_dependencies:
             self.assertNotIn(expression, dynamic_model.cache_manager._cache)
 
-    def do_test_expression_dependency_dynamics(self, model_file, framework, time_max,
+    def do_test_expression_dependency_dynamics(self, model_file, framework, max_time,
                                                alternative_caching_settings, seed=17):
 
         ### test with caching specified by alternative_caching_settings ###
@@ -853,7 +853,7 @@ class TestDynamicModel(unittest.TestCase):
                     submodel.framework = onto[framework]
             simulation = Simulation(model)
             results_dir = tempfile.mkdtemp(dir=self.test_dir)
-            kwargs = dict(time_max=time_max, results_dir=results_dir, checkpoint_period=1, seed=seed,
+            kwargs = dict(max_time=max_time, results_dir=results_dir, checkpoint_period=1, seed=seed,
                           ode_time_step=1, progress_bar=False, verbose=False)
             with EnvironUtils.temp_config_env([(['wc_sim', 'multialgorithm', 'expression_caching'], 'False')]):
                 run_results_no_caching = RunResults(simulation.run(**kwargs).results_dir)
@@ -891,7 +891,7 @@ class TestDynamicModel(unittest.TestCase):
         # read model while ignoring missing models
         model = read_model_for_test(self.MODEL_FILENAME)
         # create dynamic model
-        de_simulation_config = SimulationConfig(time_max=10)
+        de_simulation_config = SimulationConfig(max_time=10)
         wc_sim_config = WCSimulationConfig(de_simulation_config, submodels_to_skip=['submodel_1'])
         multialgorithm_simulation = MultialgorithmSimulation(model, wc_sim_config)
         _, dynamic_model = multialgorithm_simulation.build_simulation()

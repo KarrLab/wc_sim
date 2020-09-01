@@ -46,7 +46,7 @@ class TestRunResults(unittest.TestCase):
         cls.max_time = 30
 
         with CaptureOutput(relay=True):
-            cls.results_dir_1_cmpt = simulation.run(time_max=cls.max_time,
+            cls.results_dir_1_cmpt = simulation.run(max_time=cls.max_time,
                                                     results_dir=tempfile.mkdtemp(dir=cls.temp_dir),
                                                     checkpoint_period=cls.checkpoint_period,
                                                     verbose=False).results_dir
@@ -61,7 +61,7 @@ class TestRunResults(unittest.TestCase):
         comp_e.biological_type = comp_c.biological_type
         simulation = Simulation(model)
         with CaptureOutput(relay=False):
-            cls.results_dir_dyn_aggr = simulation.run(time_max=cls.max_time,
+            cls.results_dir_dyn_aggr = simulation.run(max_time=cls.max_time,
                                                       results_dir=tempfile.mkdtemp(dir=cls.temp_dir),
                                                       checkpoint_period=cls.checkpoint_period).results_dir
 
@@ -204,13 +204,13 @@ class TestRunResults(unittest.TestCase):
         metadata_attrs = hdf5_file[RunResults.METADATA_GROUP].attrs
         self.assertEqual(metadata_attrs['wc_sim_metadata.wc_sim_config.checkpoint_period'],
                          self.checkpoint_period)
-        self.assertEqual(metadata_attrs['de_sim_metadata.simulation_config.time_max'], self.max_time)
+        self.assertEqual(metadata_attrs['de_sim_metadata.simulation_config.max_time'], self.max_time)
 
     def test_get_metadata(self):
         sim_metadata = self.run_results_1_cmpt.get_metadata()
         self.assertEqual(sim_metadata['wc_sim_metadata']['wc_sim_config']['checkpoint_period'],
                          self.checkpoint_period)
-        self.assertEqual(sim_metadata['de_sim_metadata']['simulation_config']['time_max'], self.max_time)
+        self.assertEqual(sim_metadata['de_sim_metadata']['simulation_config']['max_time'], self.max_time)
 
     def test_semantically_equal(self):
         self.assertTrue(self.run_results_1_cmpt.semantically_equal(self.run_results_1_cmpt))
@@ -228,7 +228,7 @@ class TestRunResults(unittest.TestCase):
                                           submodel_framework='WC:deterministic_simulation_algorithm')
         simulation = Simulation(model)
         new_tmp_dir = os.path.join(tempfile.mkdtemp(dir=self.temp_dir), 'empty_dir')
-        run_kwargs = dict(time_max=5,
+        run_kwargs = dict(max_time=5,
                           results_dir=new_tmp_dir,
                           checkpoint_period=self.checkpoint_period,
                           verbose=False,
@@ -353,7 +353,7 @@ class TestProfileRunResults(unittest.TestCase):
         run_results_dir = os.path.join(tempfile.mkdtemp(dir=self.temp_dir), 'run_results_dir')
         os.mkdir(run_results_dir)
 
-        de_simulation_config = SimulationConfig(time_max=num_checkpoints-1, output_dir=run_results_dir)
+        de_simulation_config = SimulationConfig(max_time=num_checkpoints-1, output_dir=run_results_dir)
         de_simulation_config.validate()
         wc_sim_config = WCSimulationConfig(de_simulation_config, checkpoint_period=1)
         wc_sim_config.validate()

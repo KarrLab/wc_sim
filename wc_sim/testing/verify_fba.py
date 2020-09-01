@@ -304,7 +304,7 @@ class FbaCaseVerifier(object):
         """
         # prepare for simulation
         self.tmp_results_dir = tmp_results_dir = tempfile.mkdtemp()
-        simul_kwargs = dict(time_max=1.,
+        simul_kwargs = dict(max_time=1.,
                             checkpoint_period=1.,
                             results_dir=tmp_results_dir,
                             verbose=False,

@@ -22,7 +22,7 @@ class TestSsaSubmodel(unittest.TestCase):
 
     def make_ssa_submodel(self, model, default_center_of_mass=None):
         PrepForWcSimTransform().run(model)
-        de_simulation_config = SimulationConfig(time_max=10)
+        de_simulation_config = SimulationConfig(max_time=10)
         wc_sim_config = WCSimulationConfig(de_simulation_config)
         multialgorithm_simulation = MultialgorithmSimulation(model, wc_sim_config)
         multialgorithm_simulation.build_simulation()

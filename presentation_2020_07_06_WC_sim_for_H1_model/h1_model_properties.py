@@ -30,7 +30,7 @@ H1_MODEL_SCALED_DOWN = os.path.join(os.path.dirname(__file__), '..', '..', 'h1_h
 def make_dynamic_model(model_filename):
     # read and initialize a model
     model = wc_lang.io.Reader().run(model_filename, validate=False)[wc_lang.Model][0]
-    de_simulation_config = SimulationConfig(time_max=10)
+    de_simulation_config = SimulationConfig(max_time=10)
     wc_sim_config = WCSimulationConfig(de_simulation_config, ode_time_step=2)
     multialgorithm_simulation = MultialgorithmSimulation(model, wc_sim_config)
     _, dynamic_model = multialgorithm_simulation.build_simulation()

@@ -86,7 +86,7 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
         for conc in self.model.distribution_init_concentrations:
             conc.std = 0.
         PrepForWcSimTransform().run(self.model)
-        de_simulation_config = SimulationConfig(time_max=10)
+        de_simulation_config = SimulationConfig(max_time=10)
         self.wc_sim_config = WCSimulationConfig(de_simulation_config, dfba_time_step=1)
         self.multialgorithm_simulation = MultialgorithmSimulation(self.model, self.wc_sim_config)
         self.test_dir = tempfile.mkdtemp()
@@ -218,7 +218,7 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
         for dynamic_compartment in self.multialgorithm_simulation.dynamic_model.dynamic_compartments.values():
             self.assertTrue(isinstance(dynamic_compartment.species_population, LocalSpeciesPopulation))
 
-        de_simulation_config = SimulationConfig(time_max=10, output_dir=self.results_dir)
+        de_simulation_config = SimulationConfig(max_time=10, output_dir=self.results_dir)
         wc_sim_config = WCSimulationConfig(de_simulation_config, dfba_time_step=1, checkpoint_period=10)
         multialg_sim = MultialgorithmSimulation(self.model, wc_sim_config)
         multialg_sim.initialize_components()
@@ -229,7 +229,7 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
         self.assertTrue(isinstance(multialg_sim.dynamic_model, DynamicModel))
 
     def test_build_simulation(self):
-        de_simulation_config = SimulationConfig(time_max=10, output_dir=self.results_dir)
+        de_simulation_config = SimulationConfig(max_time=10, output_dir=self.results_dir)
         wc_sim_config = WCSimulationConfig(de_simulation_config, dfba_time_step=1, checkpoint_period=10)
         multialgorithm_simulation = MultialgorithmSimulation(self.model, wc_sim_config)
         simulator, _ = multialgorithm_simulation.build_simulation()
@@ -309,7 +309,7 @@ class TestMultialgorithmSimulationDynamically(unittest.TestCase):
         self.results_dir = tempfile.mkdtemp(dir=self.tmp_dir)
         self.models = ['static', 'one_reaction_linear', 'one_rxn_exponential', 'one_exchange_rxn_compt_growth',
                        'stop_conditions']
-        de_simulation_config = SimulationConfig(time_max=20, output_dir=tempfile.mkdtemp(dir=self.tmp_dir))
+        de_simulation_config = SimulationConfig(max_time=20, output_dir=tempfile.mkdtemp(dir=self.tmp_dir))
         self.wc_sim_config = WCSimulationConfig(de_simulation_config, checkpoint_period=1)
 
     def tearDown(self):
@@ -378,7 +378,7 @@ class TestRunSSASimulation(unittest.TestCase):
 
     def setUp(self):
         self.results_dir = tempfile.mkdtemp()
-        de_simulation_config = SimulationConfig(time_max=10, output_dir=self.results_dir)
+        de_simulation_config = SimulationConfig(max_time=10, output_dir=self.results_dir)
         self.wc_sim_config = WCSimulationConfig(de_simulation_config, dfba_time_step=1, checkpoint_period=10)
         self.out_dir = tempfile.mkdtemp()
 
