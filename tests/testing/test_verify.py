@@ -186,18 +186,21 @@ class TestVerificationTestReader(unittest.TestCase):
         self.assertEqual(len(model.submodels), 1)
         self.assertEqual(model.submodels[0].id, verification_test_reader.test_case_num + '_dfba')
         self.assertEqual(model.submodels[0].framework, onto['WC:dynamic_flux_balance_analysis'])
-        self.assertEqual(len(model.submodels[0].reactions), 30)
+        self.assertEqual(len(model.submodels[0].reactions), 26)
         self.assertEqual(model.reactions.get_one(id='R01').flux_bounds.min, 0.)
-        self.assertEqual(model.reactions.get_one(id='R01').flux_bounds.max, 1.)
-        self.assertEqual(model.reactions.get_one(id='R02').flux_bounds.min, -1000.)
-        self.assertEqual(model.reactions.get_one(id='R02').flux_bounds.max, 1000.)
-        exchange_reactions = ['EX_T', 'EX_U', 'EX_X', 'EX_Y']
-        for rxn in exchange_reactions:
-            self.assertEqual(np.isnan(model.reactions.get_one(id=rxn).flux_bounds.min), True)
-            self.assertEqual(np.isnan(model.reactions.get_one(id=rxn).flux_bounds.max), True)
-
+        self.assertEqual(model.reactions.get_one(id='R01').flux_bounds.max, 1./Avogadro)
+        self.assertEqual(model.reactions.get_one(id='R02').flux_bounds.min, -1000./Avogadro)
+        self.assertEqual(model.reactions.get_one(id='R02').flux_bounds.max, 1000./Avogadro)
+        attr = wc_lang.core.ReactionParticipantAttribute()
+        self.assertEqual(attr.serialize(model.reactions.get_one(id='R01').participants), '[Cell]: X ==> A')
+        self.assertEqual(attr.serialize(model.reactions.get_one(id='R25').participants), '[Cell]: A + T ==> (5.000000e-01) S + U')
+        self.assertEqual({i.species.id:i.value for i in model.dfba_obj_reactions.get_one(id='EX_T').dfba_obj_species}, 
+            {'T[Cell]': 1.0})
+        self.assertEqual({i.species.id:i.value for i in model.dfba_obj_reactions.get_one(id='EX_U').dfba_obj_species}, 
+            {'U[Cell]': -1.0})
+                
         self.assertEqual(verification_test_reader.objective_direction, 'maximize')
-        self.assertEqual(model.submodels[0].dfba_obj.expression.expression, '1.0 * R26')
+        self.assertEqual(model.submodels[0].dfba_obj.expression.expression, '1.0 * R26 + 0.0 * EX_T + 0.0 * EX_U + 0.0 * EX_X + 0.0 * EX_Y')
         self.assertEqual(model.submodels[0].dfba_obj.expression.reactions, [model.reactions.get_one(id='R26')])
 
         verification_test_reader = make_verification_test_reader('01189', 'DYNAMIC_FLUX_BALANCE_ANALYSIS')
@@ -218,7 +221,7 @@ class TestVerificationTestReader(unittest.TestCase):
         verification_test_reader = make_verification_test_reader('01630', 'DYNAMIC_FLUX_BALANCE_ANALYSIS')
         model = verification_test_reader.read_model()
         self.assertEqual(model.reactions.get_one(id='R01').flux_bounds.min, 0.)
-        self.assertEqual(model.reactions.get_one(id='R01').flux_bounds.max, 1.)
+        self.assertEqual(model.reactions.get_one(id='R01').flux_bounds.max, 1./Avogadro)
         self.assertEqual(np.isnan(model.reactions.get_one(id='R20').flux_bounds.min), True)
         self.assertEqual(np.isnan(model.reactions.get_one(id='R20').flux_bounds.max), True)
 
@@ -731,6 +734,12 @@ class TestVerificationSuite(unittest.TestCase):
         self.assertEqual(verification_suite.results.pop().result_type,
                          VerificationResultType.CASE_VERIFIED)
 
+        # test dfba submodels
+        verification_suite = VerificationSuite(TEST_CASES)
+        verification_suite._run_test('DYNAMIC_FLUX_BALANCE_ANALYSIS', test_case_num)
+        self.assertEqual(verification_suite.results.pop().result_type,
+                         VerificationResultType.CASE_VERIFIED)
+
         # be verbose
         verification_suite = VerificationSuite(TEST_CASES)
         with CaptureOutput(relay=False) as capturer:
@@ -752,12 +761,6 @@ class TestVerificationSuite(unittest.TestCase):
         results = verification_suite.get_results()
         self.assertEqual(results.pop().result_type, VerificationResultType.CASE_UNREADABLE)
 
-        # test dfba submodels
-        verification_suite = VerificationSuite(TEST_CASES)
-        verification_suite._run_test('DYNAMIC_FLUX_BALANCE_ANALYSIS', test_case_num)
-        self.assertEqual(verification_suite.results.pop().result_type,
-                         VerificationResultType.CASE_VERIFIED)
-
         # test stochastic submodels
         verification_suite._run_test('DISCRETE_STOCHASTIC', test_case_num, evaluate=True)
         last_result = results.pop()
@@ -775,7 +778,7 @@ class TestVerificationSuite(unittest.TestCase):
                          VerificationResultType.FAILED_VERIFICATION_RUN)
 
         verification_suite = VerificationSuite(TEST_CASES)
-        verification_suite._run_test('DYNAMIC_FLUX_BALANCE_ANALYSIS', '01196_infeasible')
+        verification_suite._run_test('DYNAMIC_FLUX_BALANCE_ANALYSIS', '01196')
         self.assertEqual(verification_suite.results.pop().result_type,
                          VerificationResultType.FAILED_VERIFICATION_RUN)
 
@@ -833,7 +836,7 @@ class TestVerificationSuite(unittest.TestCase):
         results = self.verification_suite.run('DYNAMIC_FLUX_BALANCE_ANALYSIS', ['00001'])
         self.assertEqual(results[-1].result_type, VerificationResultType.CASE_VERIFIED)
 
-        results = self.verification_suite.run('DYNAMIC_FLUX_BALANCE_ANALYSIS', ['00001', '01196_infeasible'])
+        results = self.verification_suite.run('DYNAMIC_FLUX_BALANCE_ANALYSIS', ['00001', '01196'])
         expected_types = [VerificationResultType.CASE_VERIFIED, VerificationResultType.FAILED_VERIFICATION_RUN]
         result_types = [result_tuple.result_type for result_tuple in results[-2:]]
         self.assertEqual(expected_types, result_types)
