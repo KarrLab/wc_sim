@@ -85,7 +85,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         Raises:
             :obj:`MultiAlgorithmError`: if the dynamic_dfba_objective cannot be found,
                 if the provided 'dfba_bound_scale_factor' in options has a negative value,
-                if the provided 'dfba_coef_scale_factor' in options has a netaive value,
+                if the provided 'dfba_coef_scale_factor' in options has a negative value,
                 if the provided 'solver' in options is not a valid value,
                 if the provided 'presolve' in options is not a valid value,
                 if 'solver' value provided in the 'solver_options' in options is not the same

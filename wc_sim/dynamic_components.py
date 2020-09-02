@@ -35,12 +35,6 @@ import wc_sim.submodels
     memoize performance comparison
 
 Expression eval design:
-    Algorithms:
-        evaling expression model types:
-            special cases:
-                :obj:`wc_lang.DfbaObjective`: used by FBA, so express as needed by the FBA solver
-        evaling other model types used by expressions:
-            Reaction and BiomassReaction: flux units in :obj:`wc_lang.DfbaObjective`?
     Optimizations:
         fast access to species counts and concentrations:
             eliminate lookups, extra objects and memory allocation/deallocation
