@@ -18,6 +18,7 @@ import abc
 import math
 import numpy as np
 import sys
+import warnings
 
 from de_sim.simulation_object import (SimulationObject, SimulationObjectAndABCMeta, SimulationObjMeta)
 from de_sim.utilities import FastLogger
@@ -26,7 +27,7 @@ from wc_sim.config import core as config_core_multialgorithm
 from wc_sim.debug_logs import logs as debug_logs
 from wc_sim.model_utilities import ModelUtilities
 from wc_sim.multialgorithm_errors import (DynamicSpeciesPopulationError, DynamicNegativePopulationError,
-                                          SpeciesPopulationError)
+                                          SpeciesPopulationError, MultialgorithmWarning)
 from wc_utils.util.dict import DictUtil
 from wc_utils.util.rand import RandomStateManager
 import wc_lang
@@ -957,6 +958,10 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             population_slopes (:obj:`dict` of :obj:`float`): map: species_id -> population_slope;
                 updated population slopes for some, or all, species populations
 
+        Warns:
+            :obj:`MultialgorithmWarning`: generates a warning if any species populations are predicted to have
+                negative populations at the end of the time step
+
         Raises:
             :obj:`DynamicSpeciesPopulationError`: if any adjustment attempts to change the population slope
                 of an unknown species,
@@ -965,14 +970,23 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self._check_species(time, set(population_slopes.keys()))
         self.time = time
 
+        negative_pops_predicted = []
         errors = []
         for species_id, population_slope in population_slopes.items():
             try:
-                self._population[species_id].continuous_adjustment(time, population_slope)
+                predicted_pop = self._population[species_id].continuous_adjustment(time, population_slope)
+                if predicted_pop is not None and predicted_pop < 0:
+                    negative_pops_predicted.append((species_id, predicted_pop))
                 self._update_access_times(time, [species_id])
                 self.log_event('continuous_adjustment', self._population[species_id])
             except (DynamicSpeciesPopulationError, DynamicNegativePopulationError) as e:
                 errors.append(str(e))
+
+        if negative_pops_predicted:
+            species_and_pops = '\n'.join(sorted([f"{sid}: {pred_pop:.2f}" for sid, pred_pop in negative_pops_predicted]))
+            warnings.warn(f"adjust_continuously at {time:.2E} predicts negative populations at next time step:\n" +
+                          species_and_pops, MultialgorithmWarning)
+
         if errors:
             self.fast_debug_file_logger.fast_log("LocalSpeciesPopulation.adjust_continuously: error: on species {}: {}".format(
                                                  species_id, '\n'.join(errors)), sim_time=self.time)
@@ -1630,7 +1644,9 @@ class DynamicSpeciesState(object):
                 species at the provided time
 
         Returns:
-            :obj:`int`: the species' adjusted population, rounded to an integer
+            :obj:`float`: the species' estimated population in one time step in the future, as predicted
+                by the new slope, with the time between continuous updates used to predict the next time step;
+                :obj:`None` is returned if no previous continuous_adjustment has been made
 
         Raises:
             :obj:`DynamicSpeciesPopulationError`: if an initial population slope was not provided, or
@@ -1646,21 +1662,26 @@ class DynamicSpeciesState(object):
                 f"continuous_adjustment(): DynamicSpeciesState for '{self.species_name}' needs "
                 f"self.modeled_continuously==True")
         self._validate_adjustment_time(time, 'continuous_adjustment')
+        # predicted population in one time step, used for tuning a model
+        population_in_one_time_step = None
         # self.continuous_time is None until the first continuous_adjustment()
         if self.continuous_time is not None:
-            if self.last_population + \
-                self.population_slope * (time - self.continuous_time) < self.MINIMUM_ALLOWED_POPULATION:
+            new_population = self.last_population + self.population_slope * (time - self.continuous_time)
+            if new_population < self.MINIMUM_ALLOWED_POPULATION:
                 raise DynamicNegativePopulationError(time, 'continuous_adjustment', self.species_name,
                                                      self.last_population,
                                                      self.population_slope * (time - self.continuous_time),
                                                      delta_time=time - self.continuous_time)
             # add the population change since the last continuous_adjustment
-            self.last_population += self.population_slope * (time - self.continuous_time)
+            self.last_population = new_population
+            time_step = time - self.continuous_time
+            population_in_one_time_step = new_population + population_slope * time_step
+
         self.continuous_time = time
         self.population_slope = population_slope
         self._update_last_adjustment_time(time)
         self._record_operation_in_hist(time, 'continuous_adjustment', population_slope)
-        return self.get_population(time)
+        return population_in_one_time_step
 
     def set_temp_population_value(self, population):
         """ Set a temporary population

@@ -30,19 +30,6 @@ import wc_sim.config
 import wc_sim.submodels
 
 
-'''
-# old TODOs:
-    memoize performance comparison
-
-Expression eval design:
-    Optimizations:
-        fast access to species counts and concentrations:
-            eliminate lookups, extra objects and memory allocation/deallocation
-        for maximum speed, don't use eval() -- convert expressions into trees, & use an evaluator that
-            can process operators, literals, and Python functions
-            estimate how much this would improve performance
-'''
-
 # mapping from wc_lang Models to DynamicComponents
 WC_LANG_MODEL_TO_DYNAMIC_MODEL = {}
 
