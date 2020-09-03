@@ -64,7 +64,7 @@ class AccessSpeciesPopulationInterface(metaclass=abc.ABCMeta):   # pragma: no co
         raise NotImplemented
 
     @abc.abstractmethod
-    def adjust_continuously(self, time, adjustments):
+    def adjust_continuously(self, time, adjustments, time_step=None):
         """ A continuous submodel adjusts the population of a set of species at a particular simulation time """
         raise NotImplemented
 
@@ -947,7 +947,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         return mass_adjustments
         '''
 
-    def adjust_continuously(self, time, population_slopes):
+    def adjust_continuously(self, time, population_slopes, time_step=None):
         """ A continuous submodel adjusts the population slopes of a set of species at simulation time `time`
 
         Species retain the population slopes to interpolate the population until the next
@@ -957,6 +957,8 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             time (:obj:`float`): the time at which the population is being adjusted
             population_slopes (:obj:`dict` of :obj:`float`): map: species_id -> population_slope;
                 updated population slopes for some, or all, species populations
+            time_step (:obj:`float`, optional): the time step used by the continuous submodel; if provided,
+                will be used by `continuous_adjustment` to estimate the predicted populations in a time step
 
         Warns:
             :obj:`MultialgorithmWarning`: generates a warning if any species populations are predicted to have
@@ -974,7 +976,9 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         errors = []
         for species_id, population_slope in population_slopes.items():
             try:
-                predicted_pop = self._population[species_id].continuous_adjustment(time, population_slope)
+                predicted_pop = self._population[species_id].continuous_adjustment(time,
+                                                                                   population_slope,
+                                                                                   time_step=time_step)
                 if predicted_pop is not None and predicted_pop < 0:
                     negative_pops_predicted.append((species_id, predicted_pop))
                 self._update_access_times(time, [species_id])
@@ -984,7 +988,11 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
 
         if negative_pops_predicted:
             species_and_pops = '\n'.join(sorted([f"{sid}: {pred_pop:.2f}" for sid, pred_pop in negative_pops_predicted]))
-            warnings.warn(f"adjust_continuously at {time:.2E} predicts negative populations at next time step:\n" +
+            next_time_step = ''
+            if time_step is not None:
+                next_time_step = f' {time + time_step:.2E}'
+            warnings.warn(f"adjust_continuously at {time:.2E} predicts negative populations at "
+                          f"next time step{next_time_step}:\n" +
                           species_and_pops, MultialgorithmWarning)
 
         if errors:
@@ -1624,7 +1632,7 @@ class DynamicSpeciesState(object):
         self._record_operation_in_hist(time, 'discrete_adjustment', population_change)
         return self.get_population(time)
 
-    def continuous_adjustment(self, time, population_slope):
+    def continuous_adjustment(self, time, population_slope, time_step=None):
         """ A continuous-time submodel adjusts the species' state
 
         A continuous-time submodel, such as an ordinary differential equation (ODE) or a dynamic flux
@@ -1642,6 +1650,8 @@ class DynamicSpeciesState(object):
                 integrations.
             population_slope (:obj:`float` or :obj:`int`): the predicted rate of change of the
                 species at the provided time
+            time_step (:obj:`float`, optional): the time step used by the continuous submodel; if provided,
+                will be used to compute the return value; otherwise the time step will be estimated
 
         Returns:
             :obj:`float`: the species' estimated population in one time step in the future, as predicted
@@ -1662,8 +1672,6 @@ class DynamicSpeciesState(object):
                 f"continuous_adjustment(): DynamicSpeciesState for '{self.species_name}' needs "
                 f"self.modeled_continuously==True")
         self._validate_adjustment_time(time, 'continuous_adjustment')
-        # predicted population in one time step, used for tuning a model
-        population_in_one_time_step = None
         # self.continuous_time is None until the first continuous_adjustment()
         if self.continuous_time is not None:
             new_population = self.last_population + self.population_slope * (time - self.continuous_time)
@@ -1674,8 +1682,15 @@ class DynamicSpeciesState(object):
                                                      delta_time=time - self.continuous_time)
             # add the population change since the last continuous_adjustment
             self.last_population = new_population
-            time_step = time - self.continuous_time
-            population_in_one_time_step = new_population + population_slope * time_step
+
+        # predicted population in one time step, used for tuning models
+        if time_step is not None:
+            population_in_one_time_step = self.last_population + population_slope * time_step
+        elif self.continuous_time is not None:
+            estimated_time_step = time - self.continuous_time
+            population_in_one_time_step = self.last_population + population_slope * estimated_time_step
+        else:
+            population_in_one_time_step = None
 
         self.continuous_time = time
         self.population_slope = population_slope

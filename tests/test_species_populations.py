@@ -393,7 +393,8 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
                                                    random_state=RandomStateManager.instance())
         self.assertEqual(local_species_pop.get_continuous_species(), set())
 
-    def test_adjust_continuously_with_neg_pop_warning(self):
+    def do_test_adjust_continuously_with_neg_pop_warning(self, time_step=None):
+        # use time_step in the call to adjust_continuously
         # update a subset of the species with negative slopes that lead to warning of negative population
         with warnings.catch_warnings(record=True) as w:
             random.shuffle(self.species_ids)
@@ -405,7 +406,7 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
             neg_pop_slope = -10
             for species in species_w_negative_warnings:
                 slopes[species] = neg_pop_slope
-            self.local_species_pop.adjust_continuously(1, slopes)
+            self.local_species_pop.adjust_continuously(1, slopes, time_step=time_step)
             msg = str(w[-1].message)
             self.assertIn("predicts negative populations at next time step", msg)
             species_id_positions = []
@@ -414,6 +415,13 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
                 species_id_positions.append(msg.find(id))
             # ensure that the list of species are sorted:
             self.assertEqual(sorted(species_id_positions), species_id_positions)
+
+    def test_adjust_continuously_with_neg_pop_warning(self):
+        # test when adjust_continuously() does not provide time_step
+        self.do_test_adjust_continuously_with_neg_pop_warning()
+
+        # test the case when adjust_continuously() provides time_step
+        self.do_test_adjust_continuously_with_neg_pop_warning(time_step=3)
 
     def test_adjustment_exceptions(self):
         with warnings.catch_warnings():
@@ -779,6 +787,16 @@ class TestDynamicSpeciesState(unittest.TestCase):
         time += time_step
         slope = 0
         self.assertEqual(s1.continuous_adjustment(time, slope), expected_pop_in_one_time_step)
+
+        # dynamic species modeled only by a continuous submodel, with time_step provided by adjust_continuously
+        pop = 2
+        s1a = DynamicSpeciesState('s1a[c]', self.random_state, pop, modeled_continuously=True)
+        # set population slope
+        time = 0
+        slope = 1
+        time_step = 2
+        expected_pop = pop + slope * time_step
+        self.assertEqual(s1a.continuous_adjustment(time, slope, time_step=time_step), expected_pop)
 
         # dynamic species modeled by both continuous and discrete
         pop = 2
