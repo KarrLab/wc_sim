@@ -250,22 +250,9 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         else:
             flux_comp_volume = self.dynamic_model.dynamic_compartments[flux_comp_id].volume()
         self._reaction_bounds = {}
-        for reaction in self.reactions:
-            # Set the bounds of exchange/demand/sink reactions
-            if reaction.flux_bounds:
-                rxn_bounds = reaction.flux_bounds
-                if rxn_bounds.min:
-                    min_constr = None if math.isnan(rxn_bounds.min) else \
-                        rxn_bounds.min*flux_comp_volume*scipy.constants.Avogadro*bound_scale_factor
-                else:
-                    min_constr = rxn_bounds.min
-                if rxn_bounds.max:
-                    max_constr = None if math.isnan(rxn_bounds.max) else \
-                        rxn_bounds.max*flux_comp_volume*scipy.constants.Avogadro*bound_scale_factor
-                else:
-                    max_constr = rxn_bounds.max
+        for reaction in self.reactions:            
             # Set the bounds of reactions with measured kinetic constants
-            elif reaction.rate_laws:
+            if reaction.rate_laws:
                 for_ratelaw = reaction.rate_laws.get_one(direction=wc_lang.RateLawDirection.forward)
                 if for_ratelaw:
                     max_constr = for_ratelaw.expression._parsed_expression.eval({
@@ -285,6 +272,19 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                     min_constr = None
                 else:
                     min_constr = 0.
+            # Set the bounds of exchange/demand/sink reactions
+            elif reaction.flux_bounds:
+                rxn_bounds = reaction.flux_bounds
+                if rxn_bounds.min:
+                    min_constr = None if math.isnan(rxn_bounds.min) else \
+                        rxn_bounds.min*flux_comp_volume*scipy.constants.Avogadro*bound_scale_factor
+                else:
+                    min_constr = rxn_bounds.min
+                if rxn_bounds.max:
+                    max_constr = None if math.isnan(rxn_bounds.max) else \
+                        rxn_bounds.max*flux_comp_volume*scipy.constants.Avogadro*bound_scale_factor
+                else:
+                    max_constr = rxn_bounds.max        
             # Set other reactions to be unbounded
             else:
                 max_constr = None

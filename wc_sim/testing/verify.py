@@ -846,7 +846,10 @@ class CaseVerifier(object):
             else:
                 num_runs = self.default_num_stochastic_runs
             self.num_runs = num_runs
-
+            # set dfba_time_step in case there is a dfba submodel in the multialgorithmic case
+            dfba_time_step = settings['duration']/settings['steps']
+            simul_kwargs['dfba_time_step'] = dfba_time_step
+            
             ## retry on failure
             # if failure, rerun and evaluate; correct simulations will fail to verify
             # (100*(p-value threshold)) percent of the time
