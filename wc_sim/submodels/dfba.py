@@ -24,6 +24,19 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
     """ Use dynamic Flux Balance Analysis to predict the dynamics of chemical species in a container
 
     Attributes:
+        DFA_BOUND_SCALE_FACTOR (:obj:`float`, optional): scaling factor for the reaction bounds, 
+            the default value is 1
+        DFBA_COEF_SCALE_FACTOR (:obj:`float`, optional): scaling factor for the stoichiometric 
+            coefficients in the objective reactions, the default value is 1
+        SOLVER (:obj:`int`, optional): enumeration value for the selected solver in conv_opt, the default
+            value is 1 (cplex)
+        PRESOLVE (:obj:`int`, optional): enumeration value for the presolve model in conv_opt, the default
+            value is 1 (on)
+        SOLVER_OPTIONS (:obj:`dict`, optional): parameters for the solver
+        OPTIMIZATION_TYPE (:obj:`str`, optional): direction of optimization, i.e.
+            'maximize' (the default value) or 'minimize'     
+        FLUX_BOUNDS_VOLUMETRIC_COMPARTMENT_ID (:obj:`str`, optional): id of the compartment where the 
+            measured flux bounds are normalized to, the default is the whole-cell                 
         reaction_fluxes (:obj:`dict`): pre-allocated reaction fluxes
         dfba_solver_options (:obj:`dict`): options for solving DFBA submodel
         _conv_model (:obj:`conv_opt.Model`): linear programming model in conv_opt format

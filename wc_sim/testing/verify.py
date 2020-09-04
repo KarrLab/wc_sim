@@ -828,6 +828,8 @@ class CaseVerifier(object):
             simul_kwargs['dfba_time_step'] = dfba_time_step
             simul_kwargs['options'] = dict(DfbaSubmodel=dict(options=dict(
                 optimization_type=self.verification_test_reader.objective_direction)))
+            # validate_element_charge_balance is switched off 
+            # otherwise, reactions in the test cases and exchange reactions will not pass
             with EnvironUtils.temp_config_env([(['wc_lang', 'validation', 'validate_element_charge_balance'], 'False')]):
                 results_dir = simulation.run(**simul_kwargs).results_dir
             self.simulation_run_results = RunResults(results_dir)
