@@ -748,13 +748,49 @@ class TestDynamicSpeciesState(unittest.TestCase):
     def setUp(self):
         self.random_state = RandomStateManager.instance()
 
+    def test_dynamic_species_state_init(self):
+        # dynamic species modeled only by discrete submodel(s)
+        pop = 10
+        species_name = 's0[c]'
+        s0 = DynamicSpeciesState('s0[c]', self.random_state, pop)
+        self.assertEqual(s0.species_name, species_name)
+        self.assertEqual(s0.random_state, self.random_state)
+        self.assertEqual(s0.last_population, pop)
+        self.assertEqual(s0.last_adjustment_time, -float('inf'))
+        self.assertEqual(s0.last_read_time, -float('inf'))
+        self.assertEqual(s0._temp_population_value, None)
+        self.assertEqual(s0.default_rounding, None)
+        # todo: self.assertEqual(s0.get_population(0), pop)
+
+        # dynamic species modeled by a continuous submodel
+        submodel_id = 'ode'
+        s1 = DynamicSpeciesState('s1[c]', self.random_state, 1.5, cont_submodel_ids=[submodel_id])
+        self.assertEqual(s1.population_slopes[submodel_id], 0.)
+        self.assertEqual(s1.continuous_time, None)
+
+        # test asserts
+        with self.assertRaisesRegex(AssertionError, 'population must be >= 0'):
+            DynamicSpeciesState('s0[c]', self.random_state, -1)
+
+        with self.assertRaisesRegex(AssertionError, 'cont_submodel_ids must be None or a list'):
+            DynamicSpeciesState('s0[c]', self.random_state, pop, cont_submodel_ids=3)
+
+        with self.assertRaisesRegex(AssertionError,
+                                    "a species population modeled by a discrete submodel must be a non-negative"):
+            DynamicSpeciesState('s0[c]', self.random_state, 1.5)
+
+    def test_modeled_continuously(self):
+        s0 = DynamicSpeciesState('s0[c]', self.random_state, pop)
+        self.assertFalse(s0.modeled_continuously())
+
+        s1 = DynamicSpeciesState('s1[c]', self.random_state, 1.5, cont_submodel_ids=['ode'])
+        self.assertTrue(s1.modeled_continuously())
+
     def test_dynamic_species_state(self):
 
         # dynamic species modeled only by discrete submodel(s)
         pop = 10
         s0 = DynamicSpeciesState('s0[c]', self.random_state, pop)
-        self.assertEqual(s0.compartment_id, 'c')
-        self.assertEqual(s0.get_population(0), pop)
         time = 0
         adjustment = 1
         pop += adjustment

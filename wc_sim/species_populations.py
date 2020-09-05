@@ -1408,6 +1408,7 @@ class SpeciesPopSimObject(LocalSpeciesPopulation, SimulationObject,
 
 # todo: support multiple continuous-time algorithms by additive Superposition of their slopes
 class DynamicSpeciesState(object):
+    # TODO: multiple continuous submodels: update docstring
     """ Track the population of a single species in a multi-algorithmic model
 
     A species is a shared object that can be read and written by multiple submodels in a
@@ -1471,11 +1472,10 @@ class DynamicSpeciesState(object):
         random_state (:obj:`np.random.RandomState`): a shared PRNG, used to round populations to integers
         last_population (:obj:`float`): species population at the most recent adjustment
         # TODO: multiple continuous submodels: drop modeled_continuously; replace with a method
-        modeled_continuously (:obj:`bool`): whether one of the submodels modeling the species is a
-            continuous submodel; must be set at initialization
-        # TODO: multiple continuous submodels: make population_slope a dict indexed by entries in cont_submodel_id
-        population_slope (:obj:`float`): if a continuous submodel is modeling the species, the rate of
-            change to the population provided by the most recent adjustment by a continuous model
+        # TODO: multiple continuous submodels: make population_slopes a dict indexed by entries in cont_submodel_ids
+        population_slopes (:obj:`dict`): if continuous submodel(s) are modeling the species, a map from
+            continuous submodel id to the rate of change of the population provided by the most recent
+            adjustment by the continuous submodel
         # TODO: multiple continuous submodels: perhaps initialize to initial time
         continuous_time (:obj:`float`): if a continuous submodel is modeling the species, the time of
             the most recent adjustment by any continuous model; initialized to `None` to indicate that a
@@ -1492,14 +1492,13 @@ class DynamicSpeciesState(object):
     MINIMUM_ALLOWED_POPULATION = config_multialgorithm['minimum_allowed_population']
 
     # use __slots__ to save space
-    # TODO: multiple continuous submodels: drop modeled_continuously, add cont_submodel_ids
-    # TODO: multiple continuous submodels: DynamicSpecies history: skip; perhaps fix later
-    __slots__ = ['species_name', 'compartment_id', 'random_state', 'last_population', 'modeled_continuously',
-                 'population_slope', 'continuous_time', 'last_adjustment_time', 'last_read_time',
+    # TODO: multiple continuous submodels: drop modeled_continuously, will be replaced by method
+    __slots__ = ['species_name', 'compartment_id', 'random_state', 'last_population',
+                 'population_slopes', 'continuous_time', 'last_adjustment_time', 'last_read_time',
                  '_record_history', '_history', '_temp_population_value', 'default_rounding']
 
     # TODO: multiple continuous submodels: drop modeled_continuously, add cont_submodel_ids
-    def __init__(self, species_name, random_state, initial_population, modeled_continuously=False,
+    def __init__(self, species_name, random_state, initial_population, cont_submodel_ids=None,
                  record_history=False, default_rounding=None):
         """ Initialize a species object, defaulting to a simulation time start time of 0
 
@@ -1508,8 +1507,7 @@ class DynamicSpeciesState(object):
                 reporting, logging, debugging, etc.
             random_state (:obj:`np.random.RandomState`): a shared PRNG
             initial_population (:obj:`int`): non-negative number; initial population of the species
-            modeled_continuously (:obj:`bool`, optional): whether a continuous submodel models this species;
-                default=`False`
+            cont_submodel_ids (:obj:`list`, optional): ids of continuous submodels that model this species
             record_history (:obj:`bool`, optional): whether to record a history of all operations;
                 default=`False`
             default_rounding (:obj:`bool`, optional): whether species populations are rounded when
@@ -1517,29 +1515,42 @@ class DynamicSpeciesState(object):
         """
         self.species_name = species_name
         _, self.compartment_id = ModelUtilities.parse_species_id(species_name)
-        assert 0 <= initial_population, f"DynamicSpeciesState '{species_name}': population should be >= 0"
-        # if a population is not modeled continuously then it must be a non-negative integer
-        assert modeled_continuously or float(initial_population).is_integer(), \
-            (f"DynamicSpeciesState '{species_name}': discrete population must be a "
-             f"non-negative integer, but {initial_population} isn't")
+        assert 0 <= initial_population, f"DynamicSpeciesState '{species_name}': population must be >= 0"
+        assert cont_submodel_ids is None or isinstance(cont_submodel_ids, list), \
+            (f"DynamicSpeciesState '{species_name}': cont_submodel_ids must be None or a list "
+             f"but is a(n) {type(cont_submodel_ids).__name__}")
+        # if a species is not modeled continuously then its initial population must be a non-negative integer
+        assert cont_submodel_ids is not None or float(initial_population).is_integer(), \
+            (f"DynamicSpeciesState '{species_name}': a species population modeled by a discrete submodel "
+             f"must be a non-negative integer, but {initial_population} isn't")
         self.random_state = random_state
         self.last_population = initial_population
-        self.modeled_continuously = modeled_continuously
-        # TODO: multiple continuous submodels: replace modeled_continuously with cont_submodel_ids
-        if modeled_continuously:
+        # TODO: multiple continuous submodels: replace modeled_continuously with method
+        if cont_submodel_ids is not None:
             # TODO: multiple continuous submodels: make a collection; perhaps initialize to 0
-            self.population_slope = None
+            self.population_slopes = dict.fromkeys(cont_submodel_ids, 0.)
+            # TODO: multiple continuous submodels: perehaps require an initial time that defaults to 0
             # continuous_time is None indicates that a continuous_adjustment() has not been made yet
             self.continuous_time = None
         self.last_adjustment_time = -float('inf')
         self.last_read_time = -float('inf')
         # TODO: multiple continuous submodels: DynamicSpecies history: skip; perhaps fix later
+        '''
         self._record_history = record_history
         if record_history:
             self._history = []
             self._record_operation_in_hist(0, 'initialize', initial_population)
+        '''
         self._temp_population_value = None
         self.default_rounding = default_rounding
+
+    def modeled_continuously(self):
+        """ Indicate whether this :obj: `DynamicSpeciesState` is modeled by any continuous submodels
+
+        Returns:
+            :obj:`bool`: whether this :obj: `DynamicSpeciesState` is modeled by any continuous submodels
+        """
+        return hasattr(self, 'population_slopes')
 
     def _update_last_adjustment_time(self, adjustment_time):
         """ Advance the last adjustment time to `adjustment_time`
@@ -1692,28 +1703,28 @@ class DynamicSpeciesState(object):
         # self.continuous_time is None until the first continuous_adjustment()
         # TODO: multiple continuous submodels: START reference the population_slope used by the submodel
         if self.continuous_time is not None:
-            new_population = self.last_population + self.population_slope * (time - self.continuous_time)
+            new_population = self.last_population + self.population_slopes * (time - self.continuous_time)
             if new_population < self.MINIMUM_ALLOWED_POPULATION:
                 raise DynamicNegativePopulationError(time, 'continuous_adjustment', self.species_name,
                                                      self.last_population,
-                                                     self.population_slope * (time - self.continuous_time),
+                                                     self.population_slopes * (time - self.continuous_time),
                                                      delta_time=time - self.continuous_time)
             # add the population change since the last continuous_adjustment
             self.last_population = new_population
 
         # predicted population in one time step, used for tuning models
         if time_step is not None:
-            population_in_one_time_step = self.last_population + population_slope * time_step
+            population_in_one_time_step = self.last_population + population_slopes * time_step
         # TODO: multiple continuous submodels: rm this elif
         elif self.continuous_time is not None:
             estimated_time_step = time - self.continuous_time
-            population_in_one_time_step = self.last_population + population_slope * estimated_time_step
+            population_in_one_time_step = self.last_population + population_slopes * estimated_time_step
         else:
             population_in_one_time_step = None
 
         self.continuous_time = time
         # TODO: multiple continuous submodels: assign to population_slope for cont_submodel_id
-        self.population_slope = population_slope
+        self.population_slopes = population_slope
         self._update_last_adjustment_time(time)
         # TODO: multiple continuous submodels: DynamicSpecies history: skip; perhaps fix later
         self._record_operation_in_hist(time, 'continuous_adjustment', population_slope)
@@ -1754,7 +1765,7 @@ class DynamicSpeciesState(object):
         """ Provide the species' population at time `time`
 
         If one of the submodel(s) predicting the species' population is a continuous-time model,
-        then use the species' last `population_slope` to interpolate the current population, as
+        then use the species' last `population_slopes` to interpolate the current population, as
         described in the class documentation.
 
         Clearly, species populations in biological systems are non-negative integers. However,
@@ -1799,17 +1810,17 @@ class DynamicSpeciesState(object):
             return self.last_population
         else:
             interpolation = 0.
-            # TODO: multiple continuous submodels: START: reference the continuous_time, last_population, population_slope used by submodelS
+            # TODO: multiple continuous submodels: START: reference the population_slope used by submodelS
             if self.continuous_time is not None:
                 if interpolate is None:
                     interpolate = config_multialgorithm['interpolate']
                 if interpolate:
-                    interpolation = (time - self.continuous_time) * self.population_slope
+                    interpolation = (time - self.continuous_time) * self.population_slopes
                     if self.last_population + interpolation < self.MINIMUM_ALLOWED_POPULATION:
                         raise DynamicNegativePopulationError(time, 'get_population', self.species_name,
                             self.last_population, interpolation, time - self.continuous_time)
             float_copy_number = self.last_population + interpolation
-            # TODO: multiple continuous submodels: END: reference the continuous_time, last_population, population_slope used by submodelS
+            # TODO: multiple continuous submodels: END: reference the population_slope used by submodelS
             if not temporary_mode:
                 self._update_last_read_time(time)
             # if round then round the return value to an integer, otherwise don't
@@ -1833,18 +1844,21 @@ class DynamicSpeciesState(object):
         else:
             raise SpeciesPopulationError('history not recorded')
 
+    # TODO: multiple continuous submodels: update
     def __str__(self):
         if self.modeled_continuously:
-            return "species_name: {}; last_population: {}; continuous_time: {}; population_slope: {}".format(
-                self.species_name, self.last_population, self.continuous_time, self.population_slope)
+            return "species_name: {}; last_population: {}; continuous_time: {}; population_slopes: {}".format(
+                self.species_name, self.last_population, self.continuous_time, self.population_slopes)
         else:
             return f"species_name: {self.species_name}; last_population: {self.last_population}"
 
+    # TODO: multiple continuous submodels: update
     @staticmethod
     def heading():
         """ Return a heading for a tab-separated table of species data """
-        return '\t'.join('species_name last_population continuous_time population_slope'.split())
+        return '\t'.join('species_name last_population continuous_time population_slopes'.split())
 
+    # TODO: multiple continuous submodels: update
     def row(self):
         """ Return a row for a tab-separated table of species data """
         if self.modeled_continuously:
@@ -1852,6 +1866,6 @@ class DynamicSpeciesState(object):
                 return "{}\t{:.2f}".format(self.species_name, self.last_population)
             else:
                 return "{}\t{:.2f}\t{:.2f}\t{:.2f}".format(self.species_name, self.last_population,
-                self.continuous_time, self.population_slope)
+                self.continuous_time, self.population_slopes)
         else:
             return "{}\t{:.2f}".format(self.species_name, self.last_population)
