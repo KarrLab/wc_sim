@@ -281,7 +281,7 @@ class MultialgorithmSimulation(object):
 
         # Species used by continuous time submodels (like DFBA and ODE) need initial population slopes
         # which indicate that the species is modeled by a continuous time submodel.
-        # TODO(Arthur): support non-zero initial population slopes; calculate them with initial runs of dFBA and ODE submodels
+        # TODO: multiple continuous submodels: instead of initial_population_slopes use cont_submodel_ids
         init_pop_slopes = {}
         for submodel in self.model.get_submodels():
             if submodel.id in self.skipped_submodels():
