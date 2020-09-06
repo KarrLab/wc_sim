@@ -760,12 +760,12 @@ class TestDynamicSpeciesState(unittest.TestCase):
         self.assertEqual(s0.last_read_time, -float('inf'))
         self.assertEqual(s0._temp_population_value, None)
         self.assertEqual(s0.default_rounding, None)
-        # todo: self.assertEqual(s0.get_population(0), pop)
+        self.assertEqual(s0.get_population(0), pop)
 
         # dynamic species modeled by a continuous submodel
         submodel_id = 'ode'
         s1 = DynamicSpeciesState('s1[c]', self.random_state, 1.5, cont_submodel_ids=[submodel_id])
-        self.assertEqual(s1.population_slopes[submodel_id], 0.)
+        self.assertEqual(s1.population_slopes[submodel_id], None)
         self.assertEqual(s1.continuous_time, None)
 
         # test asserts
@@ -780,13 +780,73 @@ class TestDynamicSpeciesState(unittest.TestCase):
             DynamicSpeciesState('s0[c]', self.random_state, 1.5)
 
     def test_modeled_continuously(self):
-        s0 = DynamicSpeciesState('s0[c]', self.random_state, pop)
+        s0 = DynamicSpeciesState('s0[c]', self.random_state, 3)
         self.assertFalse(s0.modeled_continuously())
 
         s1 = DynamicSpeciesState('s1[c]', self.random_state, 1.5, cont_submodel_ids=['ode'])
         self.assertTrue(s1.modeled_continuously())
 
-    def test_dynamic_species_state(self):
+    def test_validation(self):
+        ### dynamic species modeled only by a discrete submodel ###
+        ds_discrete = DynamicSpeciesState('ds_discrete[c]', self.random_state, 0)
+        self.assertTrue(ds_discrete.last_adjustment_time == ds_discrete.last_read_time == -float('inf'))
+        time = 1
+        ds_discrete.get_population(time)
+        self.assertEqual(ds_discrete.last_read_time, time)
+        time = 3
+        ds_discrete.discrete_adjustment(time, 0)
+        self.assertEqual(ds_discrete.last_adjustment_time, time)
+
+        # test exceptions
+        with self.assertRaisesRegex(DynamicSpeciesPopulationError,
+                                    "get_population\(\): .*: read_time is earlier than latest "
+                                    "prior adjustment: "):
+            ds_discrete.get_population(time-1)
+
+        time = 5
+        ds_discrete.get_population(time)
+        with self.assertRaisesRegex(DynamicSpeciesPopulationError,
+                                    "discrete_adjustment\(\): .*: adjustment_time is earlier than "
+                                    "latest prior read: "):
+            ds_discrete.discrete_adjustment(time-1, 0)
+
+        time = 6
+        ds_discrete.discrete_adjustment(time, 0)
+        with self.assertRaisesRegex(DynamicSpeciesPopulationError,
+                                    "discrete_adjustment\(\): .*: adjustment_time is earlier than "
+                                    "latest prior adjustment: "):
+            ds_discrete.discrete_adjustment(time-1, 0)
+
+        ### dynamic species modeled by both continuous and discrete ###
+        cont_submodel_id = 'ode'
+        ds_hybrid = DynamicSpeciesState('ds_hybrid[c]', self.random_state, 0,
+                                        cont_submodel_ids=[cont_submodel_id])
+        time = 0
+        ds_hybrid.continuous_adjustment(time, cont_submodel_id, 0)
+        self.assertEqual(ds_hybrid.last_adjustment_time, time)
+
+        # test exceptions
+        time = 2
+        ds_hybrid.get_population(time)
+        with self.assertRaisesRegex(DynamicSpeciesPopulationError,
+                                    "continuous_adjustment\(\): .*: adjustment_time is earlier than "
+                                    "latest prior read: "):
+            ds_hybrid.continuous_adjustment(time-1, cont_submodel_id, 0)
+
+        time = 4
+        ds_hybrid.continuous_adjustment(time, cont_submodel_id, 0)
+        with self.assertRaisesRegex(DynamicSpeciesPopulationError,
+                                    "continuous_adjustment\(\): .*: adjustment_time is earlier than "
+                                    "latest prior adjustment: "):
+            ds_hybrid.continuous_adjustment(time-1, cont_submodel_id, 0)
+
+        # test failure to set modeled_continuously
+        ds_discrete_2 = DynamicSpeciesState('ds_discrete_2[c]', self.random_state, 0)
+        with self.assertRaisesRegex(DynamicSpeciesPopulationError,
+                                    "DynamicSpeciesState for .* needs self.modeled_continuously\(\) == True"):
+            ds_discrete_2.continuous_adjustment(time, cont_submodel_id, 0)
+
+    def test_discrete_adjustment(self):
 
         # dynamic species modeled only by discrete submodel(s)
         pop = 10
@@ -802,6 +862,10 @@ class TestDynamicSpeciesState(unittest.TestCase):
         self.assertEqual(s0.discrete_adjustment(time, adjustment), pop)
         time += 1
         self.assertEqual(s0.get_population(time), pop)
+
+        # dynamic species modeled by a continuous submodel
+
+    def test_dynamic_species_state(self):
 
         ### TODO: multiple continuous submodels: drop modeled_continuously, add cont_submodel_ids ###
         # dynamic species modeled only by a continuous submodel
@@ -956,66 +1020,6 @@ class TestDynamicSpeciesState(unittest.TestCase):
         time = 1
         s1.get_population(time)
         self.assertEqual(s1.last_read_time, time)
-
-    def test_validation(self):
-        ### dynamic species modeled only by a discrete submodel ###
-        ds_discrete = DynamicSpeciesState('ds_discrete[c]', self.random_state, 0)
-        self.assertTrue(ds_discrete.last_adjustment_time == ds_discrete.last_read_time == -float('inf'))
-        time = 1
-        ds_discrete.get_population(time)
-        self.assertEqual(ds_discrete.last_read_time, time)
-        time = 3
-        ds_discrete.discrete_adjustment(time, 0)
-        self.assertEqual(ds_discrete.last_adjustment_time, time)
-
-        # test exceptions
-        with self.assertRaisesRegex(DynamicSpeciesPopulationError,
-                                    "get_population\(\): .*: read_time is earlier than latest "
-                                    "prior adjustment: "):
-            ds_discrete.get_population(time-1)
-
-        time = 5
-        ds_discrete.get_population(time)
-        with self.assertRaisesRegex(DynamicSpeciesPopulationError,
-                                    "discrete_adjustment\(\): .*: adjustment_time is earlier than "
-                                    "latest prior read: "):
-            ds_discrete.discrete_adjustment(time-1, 0)
-
-        time = 6
-        ds_discrete.discrete_adjustment(time, 0)
-        with self.assertRaisesRegex(DynamicSpeciesPopulationError,
-                                    "discrete_adjustment\(\): .*: adjustment_time is earlier than "
-                                    "latest prior adjustment: "):
-            ds_discrete.discrete_adjustment(time-1, 0)
-
-        ### dynamic species modeled by both continuous and discrete ###
-        ### TODO: multiple continuous submodels: drop modeled_continuously, add cont_submodel_ids ###
-        ds_hybrid = DynamicSpeciesState('ds_hybrid[c]', self.random_state, 0, modeled_continuously=True)
-        time = 0
-        ds_hybrid.continuous_adjustment(time, 0)
-        self.assertEqual(ds_hybrid.last_adjustment_time, time)
-
-        # test exceptions
-        time = 2
-        ds_hybrid.get_population(time)
-        with self.assertRaisesRegex(DynamicSpeciesPopulationError,
-                                    "continuous_adjustment\(\): .*: adjustment_time is earlier than "
-                                    "latest prior read: "):
-            ds_hybrid.continuous_adjustment(time-1, 0)
-
-        time = 4
-        ds_hybrid.continuous_adjustment(time, 0)
-        with self.assertRaisesRegex(DynamicSpeciesPopulationError,
-                                    "continuous_adjustment\(\): .*: adjustment_time is earlier than "
-                                    "latest prior adjustment: "):
-            ds_hybrid.continuous_adjustment(time-1, 0)
-
-        # test failure to set modeled_continuously
-        ### TODO: multiple continuous submodels: drop modeled_continuously, add cont_submodel_ids ###
-        ds_discrete_2 = DynamicSpeciesState('ds_discrete_2[c]', self.random_state, 0)
-        with self.assertRaisesRegex(DynamicSpeciesPopulationError,
-                                    "DynamicSpeciesState for .* needs self.modeled_continuously==True"):
-            ds_discrete_2.continuous_adjustment(time, 0)
 
     def test_raise_NegativePopulationError(self):
         # dynamic species modeled by just discrete submodels

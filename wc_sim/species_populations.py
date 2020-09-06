@@ -1471,8 +1471,6 @@ class DynamicSpeciesState(object):
             at run-time
         random_state (:obj:`np.random.RandomState`): a shared PRNG, used to round populations to integers
         last_population (:obj:`float`): species population at the most recent adjustment
-        # TODO: multiple continuous submodels: drop modeled_continuously; replace with a method
-        # TODO: multiple continuous submodels: make population_slopes a dict indexed by entries in cont_submodel_ids
         population_slopes (:obj:`dict`): if continuous submodel(s) are modeling the species, a map from
             continuous submodel id to the rate of change of the population provided by the most recent
             adjustment by the continuous submodel
@@ -1492,12 +1490,10 @@ class DynamicSpeciesState(object):
     MINIMUM_ALLOWED_POPULATION = config_multialgorithm['minimum_allowed_population']
 
     # use __slots__ to save space
-    # TODO: multiple continuous submodels: drop modeled_continuously, will be replaced by method
     __slots__ = ['species_name', 'compartment_id', 'random_state', 'last_population',
                  'population_slopes', 'continuous_time', 'last_adjustment_time', 'last_read_time',
                  '_record_history', '_history', '_temp_population_value', 'default_rounding']
 
-    # TODO: multiple continuous submodels: drop modeled_continuously, add cont_submodel_ids
     def __init__(self, species_name, random_state, initial_population, cont_submodel_ids=None,
                  record_history=False, default_rounding=None):
         """ Initialize a species object, defaulting to a simulation time start time of 0
@@ -1507,7 +1503,8 @@ class DynamicSpeciesState(object):
                 reporting, logging, debugging, etc.
             random_state (:obj:`np.random.RandomState`): a shared PRNG
             initial_population (:obj:`int`): non-negative number; initial population of the species
-            cont_submodel_ids (:obj:`list`, optional): ids of continuous submodels that model this species
+            cont_submodel_ids (:obj:`list` of :obj:`str`, optional): ids of continuous submodels
+                that model this species
             record_history (:obj:`bool`, optional): whether to record a history of all operations;
                 default=`False`
             default_rounding (:obj:`bool`, optional): whether species populations are rounded when
@@ -1525,12 +1522,11 @@ class DynamicSpeciesState(object):
              f"must be a non-negative integer, but {initial_population} isn't")
         self.random_state = random_state
         self.last_population = initial_population
-        # TODO: multiple continuous submodels: replace modeled_continuously with method
         if cont_submodel_ids is not None:
-            # TODO: multiple continuous submodels: make a collection; perhaps initialize to 0
-            self.population_slopes = dict.fromkeys(cont_submodel_ids, 0.)
+            # initialize population_slopes to None for each submodel
+            self.population_slopes = dict.fromkeys(cont_submodel_ids, None)
             # TODO: multiple continuous submodels: perehaps require an initial time that defaults to 0
-            # continuous_time is None indicates that a continuous_adjustment() has not been made yet
+            # continuous_time is None indicates that no continuous_adjustment() has been made yet
             self.continuous_time = None
         self.last_adjustment_time = -float('inf')
         self.last_read_time = -float('inf')
@@ -1629,137 +1625,30 @@ class DynamicSpeciesState(object):
             operation = self.Operation[method]
             self._history.append(self.HistoryRecord(time, operation, argument))
 
-    def discrete_adjustment(self, time, population_change):
-        """ Make a discrete adjustment of the species' population
-
-        A submodel running a discrete-time integration algorithm, such as the stochastic simulation
-        algorithm (SSA), must use this method to adjust its species' populations.
+    def continuous_change(self, time):
+        """ Provide the total change species population since the last adjustment
 
         Args:
-            time (:obj:`float`): the simulation time at which the predicted change occurs; this time is
-                used by `get_population` to interpolate continuous-time predictions between integrations
-            population_change (:obj:`float`): the modeled increase or decrease in the species' population
+            time (:obj:`float`): the simulation time at which the predicted change occurs; `time` is
+                used by to interpolate continuous-time predictions in between continuous adjustments
 
         Returns:
             :obj:`int`: an integer approximation of the species' adjusted population
 
         Raises:
-            :obj:`DynamicNegativePopulationError`: if the predicted population at `time` is negative or
-                if decreasing the population by `population_change` would make the population negative
+            :obj:`DynamicSpeciesPopulationError`: if the `population_slope` has not been set for some
+                continuous submodels
         """
-        self._validate_adjustment_time(time, 'discrete_adjustment')
-        current_population = self.get_population(time)
-        if current_population + population_change < self.MINIMUM_ALLOWED_POPULATION:
-            raise DynamicNegativePopulationError(time, 'discrete_adjustment', self.species_name,
-                                                 self.last_population, population_change)
-        self.last_population += population_change
-        self._update_last_adjustment_time(time)
-        # TODO: multiple continuous submodels: DynamicSpecies history: skip; perhaps fix later
-        self._record_operation_in_hist(time, 'discrete_adjustment', population_change)
-        return self.get_population(time)
-
-    # TODO: multiple continuous submodels: need a submodel identifier, cont_submodel_id
-    def continuous_adjustment(self, time, population_slope, time_step=None):
-        """ A continuous-time submodel adjusts the species' state
-
-        A continuous-time submodel, such as an ordinary differential equation (ODE) or a dynamic flux
-        balance analysis (FBA) model, uses this method to adjust the species' state. Each
-        integration of a continuous-time model must predict a species' population change and the
-        population's short-term future rate of change, i.e., its `population_slope`. Further, since an
-        integration of a continuous-time model at the current time must depend on this species'
-        population just before the integration, we assume that `population_change` incorporates
-        population changes predicted by the `population_slope` provided by the previous
-        `continuous_adjustment` call.
-
-        Args:
-            time (:obj:`float`): the simulation time at which the predicted change occurs; this time is
-                used by `get_population` to interpolate continuous-time predictions between
-                integrations.
-            population_slope (:obj:`float` or :obj:`int`): the predicted rate of change of the
-                species at the provided time
-            time_step (:obj:`float`, optional): the time step used by the continuous submodel; if provided,
-                will be used to compute the return value; otherwise the time step will be estimated
-
-        Returns:
-            :obj:`float`: the species' estimated population in one time step in the future, as predicted
-                by the new slope, with the time between continuous updates used to predict the next time step;
-                :obj:`None` is returned if no previous continuous_adjustment has been made
-
-        Raises:
-            :obj:`DynamicSpeciesPopulationError`: if an initial population slope was not provided, or
-                if `time` is not greater than the time of the most recent `continuous_adjustment` call
-            :obj:`DynamicNegativePopulationError`: if updating the population based on the previous
-                `population_slope` makes the population go negative
-        """
-        assert isinstance(population_slope, (float, int)), \
-            (f"continuous_adjustment of species '{self.species_name}': population_slope "
-             f"(type=='{type(population_slope).__name__}') must be an int or float")
-        # TODO: multiple continuous submodels: use method, change exception text
-        if not self.modeled_continuously:
-            raise DynamicSpeciesPopulationError(time,
-                f"continuous_adjustment(): DynamicSpeciesState for '{self.species_name}' needs "
-                f"self.modeled_continuously==True")
-        self._validate_adjustment_time(time, 'continuous_adjustment')
-        # self.continuous_time is None until the first continuous_adjustment()
-        # TODO: multiple continuous submodels: START reference the population_slope used by the submodel
-        if self.continuous_time is not None:
-            new_population = self.last_population + self.population_slopes * (time - self.continuous_time)
-            if new_population < self.MINIMUM_ALLOWED_POPULATION:
-                raise DynamicNegativePopulationError(time, 'continuous_adjustment', self.species_name,
-                                                     self.last_population,
-                                                     self.population_slopes * (time - self.continuous_time),
-                                                     delta_time=time - self.continuous_time)
-            # add the population change since the last continuous_adjustment
-            self.last_population = new_population
-
-        # predicted population in one time step, used for tuning models
-        if time_step is not None:
-            population_in_one_time_step = self.last_population + population_slopes * time_step
-        # TODO: multiple continuous submodels: rm this elif
-        elif self.continuous_time is not None:
-            estimated_time_step = time - self.continuous_time
-            population_in_one_time_step = self.last_population + population_slopes * estimated_time_step
-        else:
-            population_in_one_time_step = None
-
-        self.continuous_time = time
-        # TODO: multiple continuous submodels: assign to population_slope for cont_submodel_id
-        self.population_slopes = population_slope
-        self._update_last_adjustment_time(time)
-        # TODO: multiple continuous submodels: DynamicSpecies history: skip; perhaps fix later
-        self._record_operation_in_hist(time, 'continuous_adjustment', population_slope)
-        # TODO: multiple continuous submodels: END reference the continuous_time, last_population, population_slope used by the submodel
-        return population_in_one_time_step
-
-    def set_temp_population_value(self, population):
-        """ Set a temporary population
-
-        Save a temporary population for a temporary, exploratory computation, like the right-hand-side
-        function used to solve ODEs.
-        The time associated with a temporary population value is not provided or needed.
-        These values aren't saved in the history.
-
-        Args:
-            population (:obj:`float`): the temporary population
-        """
-        self._temp_population_value = population
-
-    def get_temp_population_value(self):
-        """ Get the temporary population
-
-        Provide a temporary population that has been stored for temporary, exploratory computations,
-        like the right-hand-side function used to solve ODEs.
-
-        Returns:
-            :obj:`obj`: if the temporary population is set, the species' population as a :obj:`float`,
-                otherwise :obj:`None`
-        """
-        return self._temp_population_value
-
-    def clear_temp_population_value(self):
-        """ Clear a temporary population value
-        """
-        self._temp_population_value = None
+        self._validate_read_time(time, 'continuous_change')
+        errors = []
+        for submodel_id, population_slope in self.population_slopes.items():
+            if population_slope is None:
+                errors.append(submodel_id)
+        if errors:
+            raise DynamicSpeciesPopulationError(f"continuous_change: population_slope(s) for submodel(s) "
+                                                f"{', '.join(errors)} are None")
+        delta_time = time - self.continuous_time
+        return delta_time * sum(self.population_slopes.values())
 
     def get_population(self, time, interpolate=None, round=None, temporary_mode=False):
         """ Provide the species' population at time `time`
@@ -1802,7 +1691,7 @@ class DynamicSpeciesState(object):
         if round is None:
             round = self.default_rounding
         self._validate_read_time(time, 'get_population')
-        if not self.modeled_continuously:
+        if not self.modeled_continuously():
             if not temporary_mode:
                 self._update_last_read_time(time)
             # self.last_population does not need to be rounded as discrete submodels only change
@@ -1810,17 +1699,15 @@ class DynamicSpeciesState(object):
             return self.last_population
         else:
             interpolation = 0.
-            # TODO: multiple continuous submodels: START: reference the population_slope used by submodelS
             if self.continuous_time is not None:
                 if interpolate is None:
                     interpolate = config_multialgorithm['interpolate']
                 if interpolate:
-                    interpolation = (time - self.continuous_time) * self.population_slopes
+                    interpolation = self.continuous_change(time)
                     if self.last_population + interpolation < self.MINIMUM_ALLOWED_POPULATION:
                         raise DynamicNegativePopulationError(time, 'get_population', self.species_name,
                             self.last_population, interpolation, time - self.continuous_time)
             float_copy_number = self.last_population + interpolation
-            # TODO: multiple continuous submodels: END: reference the population_slope used by submodelS
             if not temporary_mode:
                 self._update_last_read_time(time)
             # if round then round the return value to an integer, otherwise don't
@@ -1828,6 +1715,141 @@ class DynamicSpeciesState(object):
                 # this cannot return a negative number
                 return self.random_state.round(float_copy_number)
             return float_copy_number
+
+    def discrete_adjustment(self, time, population_change):
+        """ Make a discrete adjustment of the species' population
+
+        A submodel running a discrete-time integration algorithm, such as the stochastic simulation
+        algorithm (SSA), must use this method to adjust its species' populations.
+
+        Args:
+            time (:obj:`float`): the simulation time at which the predicted change occurs; this time is
+                used by `get_population` to interpolate continuous-time predictions between integrations
+            population_change (:obj:`float`): the modeled increase or decrease in the species' population
+
+        Returns:
+            :obj:`int`: an integer approximation of the species' adjusted population
+
+        Raises:
+            :obj:`DynamicNegativePopulationError`: if the predicted population at `time` is negative or
+                if decreasing the population by `population_change` would make the population negative
+        """
+        self._validate_adjustment_time(time, 'discrete_adjustment')
+        current_population = self.get_population(time)
+        if current_population + population_change < self.MINIMUM_ALLOWED_POPULATION:
+            raise DynamicNegativePopulationError(time, 'discrete_adjustment', self.species_name,
+                                                 self.last_population, population_change)
+        self.last_population += population_change
+        self._update_last_adjustment_time(time)
+        # TODO: multiple continuous submodels: DynamicSpecies history: skip; perhaps fix later
+        # self._record_operation_in_hist(time, 'discrete_adjustment', population_change)
+        return self.get_population(time)
+
+    def continuous_adjustment(self, time, cont_submodel_id, population_slope, time_step=None):
+        # TODO: multiple continuous submodels: update docstring
+        """ A continuous-time submodel adjusts the species' state
+
+        A continuous-time submodel, such as an ordinary differential equation (ODE) or a dynamic flux
+        balance analysis (FBA) model, uses this method to adjust the species' state. Each
+        integration of a continuous-time model must predict a species' population change and the
+        population's short-term future rate of change, i.e., its `population_slope`. Further, since an
+        integration of a continuous-time model at the current time must depend on this species'
+        population just before the integration, we assume that `population_change` incorporates
+        population changes predicted by the `population_slope` provided by the previous
+        `continuous_adjustment` call.
+
+        Args:
+            time (:obj:`float`): the simulation time at which the predicted change occurs; this time is
+                used by `get_population` to interpolate continuous-time predictions between
+                integrations.
+            cont_submodel_id (:obj:`str`): the id of the continuous submodel that is adjusting its predicted
+                `population_slope`
+            population_slope (:obj:`float` or :obj:`int`): the predicted rate of change of the
+                species at the provided time
+            time_step (:obj:`float`, optional): the time step used by the continuous submodel; if provided,
+                will be used to compute the return value; otherwise the time step will be estimated
+
+        Returns:
+            :obj:`float`: the species' estimated population in one time step in the future, as predicted
+                by the new slope, with the time between continuous updates used to predict the next time step;
+                :obj:`None` is returned if no previous continuous_adjustment has been made
+
+        Raises:
+            :obj:`DynamicSpeciesPopulationError`: if an initial population slope was not provided, or
+                if `time` is not greater than the time of the most recent `continuous_adjustment` call
+            :obj:`DynamicNegativePopulationError`: if updating the population based on the previous
+                `population_slope` makes the population go negative
+        """
+        assert isinstance(population_slope, (float, int)), \
+            (f"continuous_adjustment of species '{self.species_name}': population_slope "
+             f"(type=='{type(population_slope).__name__}') must be an int or float")
+        if not self.modeled_continuously():
+            raise DynamicSpeciesPopulationError(time,
+                f"continuous_adjustment(): DynamicSpeciesState for '{self.species_name}' needs "
+                f"self.modeled_continuously() == True")
+        self._validate_adjustment_time(time, 'continuous_adjustment')
+        # self.continuous_time is None until the first continuous_adjustment()
+        if self.continuous_time is not None:
+            new_population = self.last_population + self.continuous_change(time)
+            if new_population < self.MINIMUM_ALLOWED_POPULATION:
+                raise DynamicNegativePopulationError(time, 'continuous_adjustment', self.species_name,
+                                                     self.last_population,
+                                                     self.continuous_change(time),
+                                                     delta_time=time - self.continuous_time)
+            # add the population change since the last continuous_adjustment
+            self.last_population = new_population
+
+        # TODO: multiple continuous submodels: START reference all self.population_slopes
+        population_in_one_time_step = None
+        '''
+        # predicted population in one time step, used for tuning models
+        if time_step is not None:
+            population_in_one_time_step = self.last_population + population_slope * time_step
+        # TODO: multiple continuous submodels: rm this elif
+        elif self.continuous_time is not None:
+            estimated_time_step = time - self.continuous_time
+            population_in_one_time_step = self.last_population + population_slope * estimated_time_step
+        else:
+            population_in_one_time_step = None
+        '''
+
+        self.continuous_time = time
+        self.population_slopes[cont_submodel_id] = population_slope
+        self._update_last_adjustment_time(time)
+        # TODO: multiple continuous submodels: DynamicSpecies history: skip; perhaps fix later
+        # self._record_operation_in_hist(time, 'continuous_adjustment', population_slope)
+        # TODO: multiple continuous submodels: END reference all self.population_slopes
+        return population_in_one_time_step
+
+    def set_temp_population_value(self, population):
+        """ Set a temporary population
+
+        Save a temporary population for a temporary, exploratory computation, like the right-hand-side
+        function used to solve ODEs.
+        The time associated with a temporary population value is not provided or needed.
+        These values aren't saved in the history.
+
+        Args:
+            population (:obj:`float`): the temporary population
+        """
+        self._temp_population_value = population
+
+    def get_temp_population_value(self):
+        """ Get the temporary population
+
+        Provide a temporary population that has been stored for temporary, exploratory computations,
+        like the right-hand-side function used to solve ODEs.
+
+        Returns:
+            :obj:`obj`: if the temporary population is set, the species' population as a :obj:`float`,
+                otherwise :obj:`None`
+        """
+        return self._temp_population_value
+
+    def clear_temp_population_value(self):
+        """ Clear a temporary population value
+        """
+        self._temp_population_value = None
 
     # TODO: multiple continuous submodels: DynamicSpecies history: skip; perhaps fix later
     def get_history(self):
@@ -1846,7 +1868,7 @@ class DynamicSpeciesState(object):
 
     # TODO: multiple continuous submodels: update
     def __str__(self):
-        if self.modeled_continuously:
+        if self.modeled_continuously():
             return "species_name: {}; last_population: {}; continuous_time: {}; population_slopes: {}".format(
                 self.species_name, self.last_population, self.continuous_time, self.population_slopes)
         else:
@@ -1861,7 +1883,7 @@ class DynamicSpeciesState(object):
     # TODO: multiple continuous submodels: update
     def row(self):
         """ Return a row for a tab-separated table of species data """
-        if self.modeled_continuously:
+        if self.modeled_continuously():
             if self.continuous_time is None:
                 return "{}\t{:.2f}".format(self.species_name, self.last_population)
             else:
