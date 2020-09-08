@@ -1219,20 +1219,19 @@ class TestDynamicSpeciesState(unittest.TestCase):
         max = 10 + binom.ppf(0.99, n=samples, p=0.5) / samples
         self.assertTrue(min <= mean <= max)
 
-    # TODO: multiple continuous submodels: fix history later
-    @unittest.skip("# TODO: multiple continuous submodels")
     def test_history(self):
         pop = 10
-        ds = DynamicSpeciesState('s[c]', self.random_state, pop, cont_submodel_ids=['ode'],
+        submodel_id = 'ode'
+        ds = DynamicSpeciesState('s[c]', self.random_state, pop, cont_submodel_ids=[submodel_id],
                                  record_history=True)
         slope = -2
-        ds.continuous_adjustment(1, 'ode', slope)
+        ds.continuous_adjustment(1, submodel_id, slope)
         discrete_adjustment = 3
         ds.discrete_adjustment(2, discrete_adjustment)
         HistoryRecord = DynamicSpeciesState.HistoryRecord
         Operation = DynamicSpeciesState.Operation
         expected_history = [HistoryRecord(0, Operation['initialize'], pop),
-                            HistoryRecord(1, Operation['continuous_adjustment'], slope),
+                            HistoryRecord(1, Operation['continuous_adjustment'], (submodel_id, slope)),
                             HistoryRecord(2, Operation['discrete_adjustment'], discrete_adjustment)]
         self.assertEqual(ds.get_history(), expected_history)
 

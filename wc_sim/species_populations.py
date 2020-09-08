@@ -1527,13 +1527,10 @@ class DynamicSpeciesState(object):
             self.continuous_time = None
         self.last_adjustment_time = -float('inf')
         self.last_read_time = -float('inf')
-        # TODO: multiple continuous submodels: fix history later
-        '''
         self._record_history = record_history
         if record_history:
             self._history = []
             self._record_operation_in_hist(0, 'initialize', initial_population)
-        '''
         self._temp_population_value = None
         self.default_rounding = default_rounding
 
@@ -1606,17 +1603,16 @@ class DynamicSpeciesState(object):
     HistoryRecord.__doc__ += ': entry in a DynamicSpeciesState history'
     HistoryRecord.time.__doc__ = 'simulation time of the operation'
     HistoryRecord.operation.__doc__ = 'type of the operation'
-    HistoryRecord.argument.__doc__ = "operation's argument: initialize: population; "\
-        "discrete_adjustment: population_change; continuous_adjustment: population_slope"
+    HistoryRecord.argument.__doc__ = "operation's argument(s): initialize: population; "\
+        "discrete_adjustment: population_change; continuous_adjustment: cont_model_id, population_slope"
 
-    # TODO: multiple continuous submodels: fix history later
-    def _record_operation_in_hist(self, time, method, argument):    # pragma: no cover
+    def _record_operation_in_hist(self, time, method, argument):
         """ Record a history entry
 
         Args:
             time (:obj:`float`): simulation time of the operation
             method (:obj:`str`): the operation type
-            argument (:obj:`float`): the operation's argument
+            argument (:obj:`obj`): the operation's argument
         """
         if self._record_history:
             operation = self.Operation[method]
@@ -1750,8 +1746,7 @@ class DynamicSpeciesState(object):
                                                  self.last_population, population_change)
         self.last_population += population_change
         self._update_last_adjustment_time(time)
-        # TODO: multiple continuous submodels: fix history later
-        # self._record_operation_in_hist(time, 'discrete_adjustment', population_change)
+        self._record_operation_in_hist(time, 'discrete_adjustment', population_change)
         return self.get_population(time)
 
     def continuous_adjustment(self, time, cont_submodel_id, population_slope, time_step=None):
@@ -1811,8 +1806,7 @@ class DynamicSpeciesState(object):
         self.continuous_time = time
         self.population_slopes[cont_submodel_id] = population_slope
         self._update_last_adjustment_time(time)
-        # TODO: multiple continuous submodels: fix history later
-        # self._record_operation_in_hist(time, 'continuous_adjustment', population_slope)
+        self._record_operation_in_hist(time, 'continuous_adjustment', (cont_submodel_id, population_slope))
 
         # compute the predicted population in one time step, used for tuning models
         population_in_one_time_step = None
@@ -1851,8 +1845,7 @@ class DynamicSpeciesState(object):
         """
         self._temp_population_value = None
 
-    # TODO: multiple continuous submodels: fix history later
-    def get_history(self):  # pragma: no cover
+    def get_history(self):
         """ Obtain this `DynamicSpeciesState`'s history
 
         Returns:
