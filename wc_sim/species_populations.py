@@ -574,8 +574,8 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self.temporary_mode = False
         self.default_rounding = default_rounding
 
-        # if retain_history:
-        #    self._initialize_history()
+        if retain_history:
+            self._initialize_history()
 
         unknown_weights = set(initial_population.keys()) - set(molecular_weights.keys())
         if unknown_weights:
@@ -626,8 +626,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self._molecular_weights[species_id] = molecular_weight
 
         self.last_access_time[species_id] = self.time
-        # TODO: multiple continuous submodels: fix history later
-        # self._add_to_history(species_id)
+        self._add_to_history(species_id)
 
     def _add_to_cached_species_ids(self, id):
         """ Add a species ID to the cached species IDs
@@ -1078,8 +1077,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self.fast_debug_file_logger.fast_log('LocalSpeciesPopulation.log_event: ' + '\t'.join(values),
                                              sim_time=self.time)
 
-    # TODO: multiple continuous submodels: fix history later
-    def _initialize_history(self):  # pragma: no cover
+    def _initialize_history(self):
         """ Initialize the population history with current population """
         self._history = {}
         self._history['time'] = [self.time]  # a list of times at which population is recorded
@@ -1087,7 +1085,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         # the population of species_id at the times history is recorded
         self._history['population'] = {}
 
-    def _add_to_history(self, species_id):  # pragma: no cover
+    def _add_to_history(self, species_id):
         """ Add a species to the history
 
         Args:
@@ -1097,7 +1095,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             population = self.read_one(self.time, species_id)
             self._history['population'][species_id] = [population]
 
-    def _recording_history(self):  # pragma: no cover
+    def _recording_history(self):
         """ Is history being recorded?
 
         Returns:
@@ -1105,7 +1103,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         """
         return hasattr(self, '_history')
 
-    def _record_history(self):  # pragma: no cover
+    def _record_history(self):
         """ Record the current population in the history
 
         Snapshot the current population of all species in the history. The current time
@@ -1124,7 +1122,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             self._history['population'][species_id].append(population)
 
     # TODO(Arthur): fix this docstring
-    def report_history(self, numpy_format=False, species_type_ids=None, compartment_ids=None):  # pragma: no cover
+    def report_history(self, numpy_format=False, species_type_ids=None, compartment_ids=None):
         """ Provide the time and species count history
 
         Args:
@@ -1167,7 +1165,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         else:
             return self._history
 
-    def history_debug(self):  # pragma: no cover
+    def history_debug(self):
         """ Provide some of the history in a string
 
         Provide a string containing the start and end time of the history and

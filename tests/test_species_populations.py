@@ -560,7 +560,6 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         self.local_species_pop.read_into_array(0, self.species_ids, populations)
         self.assertTrue(np.array_equiv(populations, np.fromiter(self.species_nums, np.float64)))
 
-    @unittest.skip("testing")
     def test_history(self):
         an_LSP_wo_recording_history = LocalSpeciesPopulation('test',
                                                              self.init_populations,
