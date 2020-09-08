@@ -64,8 +64,8 @@ class AccessSpeciesPopulationInterface(metaclass=abc.ABCMeta):   # pragma: no co
         raise NotImplemented
 
     @abc.abstractmethod
-    def adjust_continuously(self, time, adjustments, time_step=None):
-        """ A continuous submodel adjusts the population of a set of species at a particular simulation time """
+    def adjust_continuously(self, time, cont_submodel_id, population_slopes, time_step=None):
+        """ A continuous submodel adjusts the rate of change of a set of species at a particular simulation time """
         raise NotImplemented
 
 
@@ -537,8 +537,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
     """
     # TODO(Arthur): support tracking the population history of species added at any time in the simulation
     # TODO(Arthur): molecular_weights should accept MW of each species type, like the model does
-    # TODO: multiple continuous submodels: instead of initial_population_slopes, get ids of continuous submodels for each species: cont_submodel_ids
-    def __init__(self, name, initial_population, molecular_weights, initial_population_slopes=None,
+    def __init__(self, name, initial_population, molecular_weights, cont_submodel_ids=None,
                  initial_time=0, random_state=None, retain_history=True, default_rounding=None):
         """ Initialize a :obj:`LocalSpeciesPopulation` object
 
@@ -551,10 +550,8 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
                 dict: species_id -> initial_population
             molecular_weights (:obj:`dict` of :obj:`float`): map: species_id -> molecular_weight,
                 provided for computing the mass of lists of species in a `LocalSpeciesPopulation`
-            initial_population_slopes (:obj:`dict` of :obj:`float`, optional): map: species_id -> initial_slope;
-                initial rate of change must be provided for all species whose populations are predicted
-                by a submodel that uses a continuous integration algorithm. These are ignored for
-                species not specified in `initial_population`.
+            cont_submodel_ids (:obj:`dict`, optional): map: :obj:`str` species_id -> :obj:`list` of :obj:`str`, for each
+                species, the ids of continuous submodels that model the species
             initial_time (:obj:`float`, optional): the initialization time; defaults to 0
             random_state (:obj:`np.random.RandomState`, optional): a PRNG used by all `DynamicSpeciesState`
             retain_history (:obj:`bool`, optional): whether to retain species population history
@@ -577,9 +574,8 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self.temporary_mode = False
         self.default_rounding = default_rounding
 
-        # TODO: multiple continuous submodels: skip, & fix later, perhaps
-        if retain_history:
-            self._initialize_history()
+        # if retain_history:
+        #    self._initialize_history()
 
         unknown_weights = set(initial_population.keys()) - set(molecular_weights.keys())
         if unknown_weights:
@@ -589,11 +585,10 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
                                              ', '.join([f"'{str(uw)}'" for uw in unknown_weights])))
 
         for species_id in initial_population:
-            # TODO: multiple continuous submodels: if cont_submodel_ids ...
-            if initial_population_slopes is not None and species_id in initial_population_slopes:
+            if cont_submodel_ids is not None and species_id in cont_submodel_ids:
                 self.init_cell_state_species(species_id, initial_population[species_id],
                                              molecular_weights[species_id],
-                                             initial_population_slopes[species_id])
+                                             cont_submodel_ids[species_id])
             else:
                 self.init_cell_state_species(species_id, initial_population[species_id],
                                              molecular_weights[species_id])
@@ -602,22 +597,21 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self.fast_debug_file_logger = FastLogger(debug_logs.get_log('wc.debug.file'), 'debug')
         self.fast_debug_file_logger.fast_log("LocalSpeciesPopulation.__init__: initial_population: {}".format(
                                              DictUtil.to_string_sorted_by_key(initial_population)), sim_time=self.time)
-        # TODO: multiple continuous submodels: drop
-        self.fast_debug_file_logger.fast_log("LocalSpeciesPopulation.__init__: initial_population_slopes: {}".format(
-                                             DictUtil.to_string_sorted_by_key(initial_population_slopes)),
+        self.fast_debug_file_logger.fast_log("LocalSpeciesPopulation.__init__: cont_submodel_ids: {}".format(
+                                             DictUtil.to_string_sorted_by_key(cont_submodel_ids)),
                                              sim_time=self.time)
 
-    # TODO: multiple continuous submodels: pass continuous submodel ids, not initial_population_slope
-    def init_cell_state_species(self, species_id, population, molecular_weight, initial_population_slope=None):
-        """ Initialize a species with the given population and population slope
+    def init_cell_state_species(self, species_id, population, molecular_weight, cont_submodel_ids=None):
+        """ Initialize a species with the given population and ids of continuous submodels that model it
 
-        Add a species to the cell state. The species' population is set at the current time.
+        Add a species to the cell state.
 
         Args:
             species_id (:obj:`str`): the species' globally unique identifier
             population (:obj:`float`): initial population of the species
             molecular_weight (:obj:`float`): molecular weight of the species
-            initial_population_slope (:obj:`float`, optional): an initial rate of change for the species
+            cont_submodel_ids (:obj:`list` of :obj:`str`, optional): ids of continuous submodels
+                that model this species
 
         Raises:
             :obj:`SpeciesPopulationError`: if the species is already stored by this LocalSpeciesPopulation
@@ -625,20 +619,15 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         if species_id in self._population:
             raise SpeciesPopulationError("species_id '{}' already stored by this "
                                          "LocalSpeciesPopulation".format(species_id))
-        # TODO: multiple continuous submodels: drop
-        modeled_continuously = initial_population_slope is not None
-        # TODO: multiple continuous submodels: cont_submodel_ids ...
         self._population[species_id] = DynamicSpeciesState(species_id, self.random_state, population,
-                                                           modeled_continuously=modeled_continuously,
+                                                           cont_submodel_ids=cont_submodel_ids,
                                                            default_rounding=self.default_rounding)
         self._add_to_cached_species_ids(species_id)
         self._molecular_weights[species_id] = molecular_weight
 
-        # TODO: multiple continuous submodels: drop
-        if modeled_continuously:
-            self._population[species_id].continuous_adjustment(self.time, initial_population_slope)
         self.last_access_time[species_id] = self.time
-        self._add_to_history(species_id)
+        # TODO: multiple continuous submodels: perhaps fix later
+        # self._add_to_history(species_id)
 
     def _add_to_cached_species_ids(self, id):
         """ Add a species ID to the cached species IDs
@@ -739,9 +728,8 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             :obj:`set` of :obj:`str`: IDs of the species that are modeled continuously
         """
         continuously_modeled_species = set()
-        # TODO: multiple continuous submodels: use dynamic_species_state.modeled_continuously()
         for species_id, dynamic_species_state in self._population.items():
-            if dynamic_species_state.modeled_continuously:
+            if dynamic_species_state.modeled_continuously():
                 continuously_modeled_species.add(species_id)
         return continuously_modeled_species
 
@@ -954,8 +942,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         return mass_adjustments
         '''
 
-    # TODO: multiple continuous submodels: need a submodel identifier: submodel_id
-    def adjust_continuously(self, time, population_slopes, time_step=None):
+    def adjust_continuously(self, time, cont_submodel_id, population_slopes, time_step=None):
         """ A continuous submodel adjusts the population slopes of a set of species at simulation time `time`
 
         Species retain the population slopes to interpolate the population until the next
@@ -963,10 +950,11 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
 
         Args:
             time (:obj:`float`): the time at which the population is being adjusted
+            cont_submodel_id (:obj:`str`): the id of the continuous submodel that's adjusting the population slopes
             population_slopes (:obj:`dict` of :obj:`float`): map: species_id -> population_slope;
                 updated population slopes for some, or all, species populations
             time_step (:obj:`float`, optional): the time step used by the continuous submodel; if provided,
-                will be used by `continuous_adjustment` to estimate the predicted populations in a time step
+                will be used by `continuous_adjustment` to estimate the predicted populations one time step in the future
 
         Warns:
             :obj:`MultialgorithmWarning`: generates a warning if any species populations are predicted to have
@@ -984,12 +972,13 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         errors = []
         for species_id, population_slope in population_slopes.items():
             try:
-                # TODO: multiple continuous submodels: pass submodel_id
-                predicted_pop = self._population[species_id].continuous_adjustment(time,
+
+                pop_in_1_step = self._population[species_id].continuous_adjustment(time,
+                                                                                   cont_submodel_id,
                                                                                    population_slope,
                                                                                    time_step=time_step)
-                if predicted_pop is not None and predicted_pop < 0:
-                    negative_pops_predicted.append((species_id, predicted_pop))
+                if pop_in_1_step is not None and pop_in_1_step < 0:
+                    negative_pops_predicted.append((species_id, pop_in_1_step))
                 self._update_access_times(time, [species_id])
                 self.log_event('continuous_adjustment', self._population[species_id])
             except (DynamicSpeciesPopulationError, DynamicNegativePopulationError) as e:
@@ -1091,7 +1080,8 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self.fast_debug_file_logger.fast_log('LocalSpeciesPopulation.log_event: ' + '\t'.join(values),
                                              sim_time=self.time)
 
-    def _initialize_history(self):
+    # TODO: multiple continuous submodels: update and test the history operations
+    def _initialize_history(self):  # pragma: no cover
         """ Initialize the population history with current population """
         self._history = {}
         self._history['time'] = [self.time]  # a list of times at which population is recorded
@@ -1099,7 +1089,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         # the population of species_id at the times history is recorded
         self._history['population'] = {}
 
-    def _add_to_history(self, species_id):
+    def _add_to_history(self, species_id):  # pragma: no cover
         """ Add a species to the history
 
         Args:
@@ -1109,7 +1099,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             population = self.read_one(self.time, species_id)
             self._history['population'][species_id] = [population]
 
-    def _recording_history(self):
+    def _recording_history(self):  # pragma: no cover
         """ Is history being recorded?
 
         Returns:
@@ -1117,7 +1107,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         """
         return hasattr(self, '_history')
 
-    def _record_history(self):
+    def _record_history(self):  # pragma: no cover
         """ Record the current population in the history
 
         Snapshot the current population of all species in the history. The current time
@@ -1136,7 +1126,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             self._history['population'][species_id].append(population)
 
     # TODO(Arthur): fix this docstring
-    def report_history(self, numpy_format=False, species_type_ids=None, compartment_ids=None):
+    def report_history(self, numpy_format=False, species_type_ids=None, compartment_ids=None):  # pragma: no cover
         """ Provide the time and species count history
 
         Args:
@@ -1179,7 +1169,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         else:
             return self._history
 
-    def history_debug(self):
+    def history_debug(self):  # pragma: no cover
         """ Provide some of the history in a string
 
         Provide a string containing the start and end time of the history and
@@ -1264,9 +1254,8 @@ class MakeTestLSP(object):
     DEFAULT_ALL_POPS = 1E6
     DEFAULT_ALL_MOL_WEIGHTS = 50
 
-    # TODO: multiple continuous submodels: instead of initial_population_slopes, get ids of continuous submodels for each species
     def __init__(self, name=None, initial_population=None, molecular_weights=None,
-                 initial_population_slopes=None, record_history=False, **kwargs):
+                 cont_submodel_ids=None, record_history=False, **kwargs):
         """ Initialize a `MakeTestLSP` object
 
         All initialized arguments are applied to the local species population being created.
@@ -1281,9 +1270,8 @@ class MakeTestLSP(object):
                 dict: species_id -> initial_population
             molecular_weights (:obj:`dict` of :obj:`float`, optional): map: species_id -> molecular_weight,
                 provided for computing the mass of lists of species in a `LocalSpeciesPopulation`
-            initial_population_slopes (:obj:`dict` of :obj:`float`, optional): map: species_id -> initial_population_slope;
-                initial population slopes for all species whose populations are estimated by a continuous
-                submodel. Population slopes are ignored for species not specified in initial_population.
+            cont_submodel_ids (:obj:`dict`, optional): map: :obj:`str` species_id -> :obj:`list` of :obj:`str`, for each
+                species, the ids of continuous submodels that model the species
             record_history (:obj:`bool`, optional): whether to record the history of operations
         """
         name = 'test_lsp' if name is None else name
@@ -1309,7 +1297,7 @@ class MakeTestLSP(object):
         random_state = RandomStateManager.instance()
         self.local_species_pop = LocalSpeciesPopulation(name, self.initial_population,
                                                         self.molecular_weights,
-                                                        initial_population_slopes=initial_population_slopes,
+                                                        cont_submodel_ids=cont_submodel_ids,
                                                         random_state=random_state,
                                                         retain_history=record_history)
 
@@ -1492,6 +1480,7 @@ class DynamicSpeciesState(object):
                  'population_slopes', 'continuous_time', 'last_adjustment_time', 'last_read_time',
                  '_record_history', '_history', '_temp_population_value', 'default_rounding']
 
+    # TODO: multiple continuous submodels: perhaps pass initial_time, & raise error if first continuous_adjustment doesn't use the time
     def __init__(self, species_name, random_state, initial_population, cont_submodel_ids=None,
                  record_history=False, default_rounding=None):
         """ Initialize a species object, defaulting to a simulation time start time of 0
