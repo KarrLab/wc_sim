@@ -6,6 +6,7 @@
 :License: MIT
 """
 
+import collections
 import numpy.random
 import warnings
 
@@ -279,17 +280,16 @@ class MultialgorithmSimulation(object):
         """
         molecular_weights = self.molecular_weights_for_species()
 
-        # Species used by continuous time submodels (like DFBA and ODE) need initial population slopes
-        # which indicate that the species is modeled by a continuous time submodel.
-        # TODO: multiple continuous submodels: instead of initial_population_slopes use cont_submodel_ids
-        init_pop_slopes = {}
+        # Species used by continuous time submodels (like DFBA and ODE) need
+        # the ids of the continuous submodel(s) that model them
+        cont_submodel_ids = collections.defaultdict(list)
         for submodel in self.model.get_submodels():
             if submodel.id in self.skipped_submodels():
                 continue
             if are_terms_equivalent(submodel.framework, onto['WC:ordinary_differential_equations']) or \
                     are_terms_equivalent(submodel.framework, onto['WC:dynamic_flux_balance_analysis']):
                 for species in submodel.get_children(kind='submodel', __type=Species):
-                    init_pop_slopes[species.id] = 0.0
+                    cont_submodel_ids[species.id].append(submodel.id)
 
         config_multialgorithm = config_core_multialgorithm.get_config()['wc_sim']['multialgorithm']
         default_rounding = config_multialgorithm['default_rounding']
@@ -297,7 +297,7 @@ class MultialgorithmSimulation(object):
             'LSP_' + self.model.id,
             self.init_populations,
             molecular_weights,
-            initial_population_slopes=init_pop_slopes,
+            cont_submodel_ids=cont_submodel_ids,
             random_state=self.random_state,
             retain_history=retain_history,
             default_rounding=default_rounding)

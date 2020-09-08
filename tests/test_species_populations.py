@@ -482,7 +482,6 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         self.local_species_pop.concentrations_api_off()
         self.assertFalse(self.local_species_pop.concentrations_api())
 
-    @unittest.skip("testing")
     def make_dynamic_model(self):
 
         # read model while ignoring missing models
@@ -500,7 +499,6 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
             self.compt_accounted_volumes[dynamic_compartment.id] = dynamic_compartment.accounted_volume()
         return dynamic_model
 
-    @unittest.skip("testing")
     def test_accounted_volumes_for_species(self):
         dynamic_model = self.make_dynamic_model()
         species_ids = ['specie_3[c]', 'specie_2[e]', 'specie_3[e]']
@@ -517,7 +515,6 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         with self.assertRaises(DynamicSpeciesPopulationError):
             self.local_species_population._accounted_volumes_for_species(time, [], dynamic_model)
 
-    @unittest.skip("testing")
     def test_populations_to_concentrations(self):
         dynamic_model = self.make_dynamic_model()
         species_ids = ['specie_3[c]']
@@ -533,7 +530,6 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         expected_concentration = populations[0] / (Avogadro * volumes['c'])
         self.assertEqual(concentrations[0], expected_concentration)
 
-    @unittest.skip("testing")
     def test_populations_to_concentrations_and_concentrations_to_populations(self):
         dynamic_model = self.make_dynamic_model()
         species_ids = ['specie_3[c]', 'specie_2[e]', 'specie_3[e]']
@@ -1054,6 +1050,69 @@ class TestDynamicSpeciesState(unittest.TestCase):
         time += time_step
         self.assertEqual(s4.get_population(time), pop + slope * time_step)
 
+    def test_get_population_and_continuous_adjustment_w_async_timesteps(self):
+
+        # test 2 continuous submodels, with asynchronous time steps
+
+        # these lists provide (time, population slope) pairs for two submodels, ode1 and ode2:
+        ode1_time_slope_pairs = [(0, -2),
+                                 (2, -1),
+                                 (4,  0),
+                                 (6,  1),
+                                 (8,  2)]
+
+        ode2_time_slope_pairs = [(0,  1),
+                                 (5, -1)]
+
+        # expected (time, population) coordinates of the piecewise linear superposition of ode1 and ode2
+        init_pop = 5
+        exp_pwl_superpos = [(0, init_pop),
+                            (2, init_pop - 2),
+                            (4, init_pop - 2),
+                            (5, init_pop - 1),
+                            (6, init_pop - 2),
+                            (8, init_pop - 2),
+                            (10, init_pop),
+                            (12, init_pop)]  # a sentinel to simplify the code
+
+        # check the prediction at each adjustment and halfway between each pair of adjustments
+        exp_pwl_times = [time for time, _ in exp_pwl_superpos[:-1]] # skip the sentinel
+        exp_and_intermediate_times = []
+        prev = None
+        for exp_pwl_time in exp_pwl_times:
+            if prev is not None:
+                exp_and_intermediate_times.append((prev + exp_pwl_time)/2.)
+            exp_and_intermediate_times.append(exp_pwl_time)
+            prev = exp_pwl_time
+
+        # define a piecewise function for the expected populations
+        def exp_pop_at_time(time):
+            # return the population at time `time` based on the piecewise linear function in exp_pwl_superpos
+            for i, (t_e, p_e) in enumerate(exp_pwl_superpos):
+                if time < t_e:
+                    # start of the linear segment
+                    start = exp_pwl_superpos[i-1]
+                    t_s, p_s = start
+                    slope = (p_e - p_s)/(t_e - t_s)
+                    return p_s + slope * (time - t_s)
+
+        # make species s, which is modeled by ode1 and ode2
+        s = DynamicSpeciesState('s[c]', self.random_state, init_pop, cont_submodel_ids=['ode1', 'ode2'])
+
+        # execute the continuous adjustments for ode1 and ode2 in non-decreasing time order and
+        # check the prediction at each adjustment and halfway between each pair of adjustments
+        for time in exp_and_intermediate_times:
+
+            for t_ode1, slope in ode1_time_slope_pairs:
+                if t_ode1 == time:
+                    s.continuous_adjustment(t_ode1, 'ode1', slope)
+
+            for t_ode2, slope in ode2_time_slope_pairs:
+                if t_ode2 == time:
+                    s.continuous_adjustment(t_ode2, 'ode2', slope)
+
+            self.assertEqual(exp_pop_at_time(time), s.get_population(time))
+
     def test_get_population_with_temporary_mode_on_or_off(self):
 
         pop = 10
@@ -1161,15 +1220,14 @@ class TestDynamicSpeciesState(unittest.TestCase):
         max = 10 + binom.ppf(0.99, n=samples, p=0.5) / samples
         self.assertTrue(min <= mean <= max)
 
-    # TODO: multiple continuous submodels: DynamicSpecies history: skip; perhaps fix later
+    # TODO: multiple continuous submodels: fix history later
     @unittest.skip("# TODO: multiple continuous submodels")
     def test_history(self):
         pop = 10
-        ### TODO: multiple continuous submodels: drop modeled_continuously, add cont_submodel_ids ###
-        ds = DynamicSpeciesState('s[c]', self.random_state, pop, modeled_continuously=True,
+        ds = DynamicSpeciesState('s[c]', self.random_state, pop, cont_submodel_ids=['ode'],
                                  record_history=True)
         slope = -2
-        ds.continuous_adjustment(1, slope)
+        ds.continuous_adjustment(1, 'ode', slope)
         discrete_adjustment = 3
         ds.discrete_adjustment(2, discrete_adjustment)
         HistoryRecord = DynamicSpeciesState.HistoryRecord

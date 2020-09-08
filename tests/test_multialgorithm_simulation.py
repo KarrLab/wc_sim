@@ -178,17 +178,19 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
         self.assertEqual(local_species_population._molecular_weights,
             self.multialgorithm_simulation.molecular_weights_for_species())
 
-        # test the initial population slopes
+        # test the ids of the continuous submodel(s)
         # continuous adjustments are only allowed on species used by continuous submodels
         used_by_continuous_submodels = \
             ['species_1[e]', 'species_2[e]', 'species_1[c]', 'species_2[c]', 'species_3[c]']
         adjustments = {species_id: 0. for species_id in used_by_continuous_submodels}
-        self.assertEqual(local_species_population.adjust_continuously(1, adjustments), None)
+        self.assertEqual(local_species_population.adjust_continuously(0, 'submodel_1', adjustments), None)
         not_in_a_reaction = ['H2O[e]', 'H2O[c]']
         used_by_discrete_submodels = ['species_4[c]', 'species_5[c]', 'species_6[c]']
         adjustments = {species_id: 0. for species_id in used_by_discrete_submodels + not_in_a_reaction}
         with self.assertRaises(DynamicSpeciesPopulationError):
-            local_species_population.adjust_continuously(2, adjustments)
+            local_species_population.adjust_continuously(2, 'submodel_1', adjustments)
+
+        # TODO: multiple continuous submodels: test with multiple submodels in cont_submodel_ids
 
     def test_set_simultaneous_execution_priorities(self):
         expected_order_of_sim_obj_classes = [SsaSubmodel,

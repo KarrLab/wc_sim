@@ -626,7 +626,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self._molecular_weights[species_id] = molecular_weight
 
         self.last_access_time[species_id] = self.time
-        # TODO: multiple continuous submodels: perhaps fix later
+        # TODO: multiple continuous submodels: fix history later
         # self._add_to_history(species_id)
 
     def _add_to_cached_species_ids(self, id):
@@ -986,9 +986,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
 
         if negative_pops_predicted:
             species_and_pops = '\n'.join(sorted([f"{sid}: {pred_pop:.2f}" for sid, pred_pop in negative_pops_predicted]))
-            next_time_step = ''
-            if time_step is not None:
-                next_time_step = f' {time + time_step:.2E}'
+            next_time_step = f' {time + time_step:.2E}'
             warnings.warn(f"adjust_continuously at {time:.2E} predicts negative populations at "
                           f"next time step{next_time_step}:\n" +
                           species_and_pops, MultialgorithmWarning)
@@ -1080,7 +1078,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         self.fast_debug_file_logger.fast_log('LocalSpeciesPopulation.log_event: ' + '\t'.join(values),
                                              sim_time=self.time)
 
-    # TODO: multiple continuous submodels: update and test the history operations
+    # TODO: multiple continuous submodels: fix history later
     def _initialize_history(self):  # pragma: no cover
         """ Initialize the population history with current population """
         self._history = {}
@@ -1395,60 +1393,75 @@ class SpeciesPopSimObject(LocalSpeciesPopulation, SimulationObject,
 
 
 class DynamicSpeciesState(object):
-    # TODO: multiple continuous submodels: update docstring
     """ Track the population of a single species in a multi-algorithmic model
 
-    A species is a shared object that can be read and written by multiple submodels in a
-    multi-algorithmic model. We assume that a sequence of accesses of a species instance will
-    occur in non-decreasing simulation time order.
+    A :obj:`DynamicSpeciesState` is a shared object that can be accessed by multiple submodels in a
+    multi-algorithmic model. We call it a dynamic species.
+    The accesses to a dynamic species can be categorized into 'write' and 'read' types.
+    Write accesses, called *adjustment*\ s, change a dynamic species' state.
+    The read accesses, `continuous_change()` and `get_population()`, retrieve information from a dynamic species' state
+    but do not change the state.
+    In order to satisfy temporal causality
+    a sequence of accesses of a `DynamicSpeciesState` instance must satisfy the following synchronization constraints:
+
+    * Write accesses must occur in non-decreasing time order
+    * Every read access must occur at a time greater than or equal to the largest time of all preceeding write accesses
+    * Every write access must occur at a time greater than or equal to the largest time of all preceeding read accesses
+
+    The `_validate_adjustment_time()` and `_validate_read_time()` methods enforce these constraints.
+
+    Note that these rules allow multiple simultaneous accesses, with causal relationships that depend on
+    the execution order that occur at a particular time.
+    For example, at time *t* a reaction modeled by a discrete SSA submodel might update a species population, and
+    then use the updated population to compute a reaction's rate law.
 
     Consider a multi-algorithmic model that contains both submodels that execute discrete-time algorithms,
     like the stochastic simulation algorithm (SSA), and submodels that execute continuous-time integration
     algorithms, like ODEs and FBA.
     Discrete-time algorithms change system state at discrete time instants. Continuous-time
-    algorithms approximate species populations as continuous variables, and solve for these variables
-    at time instants determined by the algorithm. At these instants, continuous-time models typically
-    estimate a species' population, or the population's rate of change, or both. We assume this behavior.
+    algorithms approximate species populations as continuous variables, and obtain for the predicted rate-of-change of
+    these variables at time instants determined by the algorithm. We assume this behavior.
 
-    A species' state in a multi-algorithmic model may be modeled by multiple submodels that model
+    A dynamic species' state in a multi-algorithmic model may be modeled by multiple submodels that model
     reactions in which the species participates. These can be multiple discrete-time submodels and
-    at most one continuous-time submodel. (If multiple continuous-time submodels were allowed to
-    predict reactions that involve a species, a mechanism would be needed to reconsile conflicting
-    `population_slope` values. We have not addressed that issue yet.)
-
+    multiple continuous-time submodels.
     Discrete-time and continuous-time models adjust the state of a species by the methods
     `discrete_adjustment()` and `continuous_adjustment()`, respectively. These adjustments take the
     following forms,
 
     * `discrete_adjustment(time, population_change)`
-    * `continuous_adjustment(time, population_slope)`
+    * `continuous_adjustment(time, continuous_submodel_id, population_slope)`
 
     where `time` is the time at which that change takes place, `population_change` is the increase or
-    decrease in the species' population, and `population_slope` is the predicted future rate of
-    change of the population.
+    decrease in the species' population,
+    `continuous_submodel_id` is the id of the continuous submodel making the adjustment,
+    and `population_slope` is the predicted future rate of change of the population.
 
-    To improve the accuracy of multi-algorithmic models, we support linear interpolation of
-    population predictions for species modeled by a continuous-time submodel. An interpolated
-    prediction is based on the most recent continuous-time population slope prediction. Thus, we assume
-    that a population modeled by a continuous model is adjusted sufficiently frequently
-    that the most recent adjustment accurately estimates population slope.
+    To improve the accuracy of multi-algorithmic models, we linearally interpolate
+    population predictions for species modeled by continuous-time submodels.
+    Interpolated predictions are based on the latest population slope predictions
+    made by the continuous submodels modeling a species.
+    Thus, we assume that a species population modeled by continuous models is adjusted sufficiently frequently
+    that the latest adjustments accurately estimate population slopes.
 
     A species instance stores the most recent value of the species' population in `last_population`,
-    which is initialized when the instance is created. If a species is modeled by a
-    continuous-time submodel, it also stores the species' rate of change in `population_slope` and the time
+    which is initialized when the instance is created.
+    If a species is modeled by one or more
+    continuous-time submodels, it also stores the species' latest rate of change for
+    each continuous-time submodel in `population_slopes` and the time
     of the most recent `continuous_adjustment` in `continuous_time`. Interpolation determines the
     population prediction `p` at time `t` as::
 
         interpolation = 0
         if modeled_continuously:
-            interpolation = (t - continuous_time)*population_slope
+            interpolation = (t - continuous_time) * sum(population_slopes)
         p = last_population + interpolation
 
     This approach is completely general, and can be applied to any simulation value
     whose dynamics are predicted by a multi-algorithmic model.
 
-    Population values returned by methods in :obj:`DynamicSpeciesState` use stochastic rounding to
-    provide integer values and avoid systematic rounding bias. See more detail in `get_population`'s
+    Population values returned by methods in :obj:`DynamicSpeciesState` use stochastic rounding by default to
+    provide integer values and avoid systematic rounding bias. See more detail in `get_population`\ 's
     docstring.
 
     Attributes:
@@ -1516,7 +1529,7 @@ class DynamicSpeciesState(object):
             self.continuous_time = None
         self.last_adjustment_time = -float('inf')
         self.last_read_time = -float('inf')
-        # TODO: multiple continuous submodels: DynamicSpecies history: skip; perhaps fix later
+        # TODO: multiple continuous submodels: fix history later
         '''
         self._record_history = record_history
         if record_history:
@@ -1598,8 +1611,8 @@ class DynamicSpeciesState(object):
     HistoryRecord.argument.__doc__ = "operation's argument: initialize: population; "\
         "discrete_adjustment: population_change; continuous_adjustment: population_slope"
 
-    # TODO: multiple continuous submodels: DynamicSpecies history: skip; perhaps fix later
-    def _record_operation_in_hist(self, time, method, argument):
+    # TODO: multiple continuous submodels: fix history later
+    def _record_operation_in_hist(self, time, method, argument):    # pragma: no cover
         """ Record a history entry
 
         Args:
@@ -1739,7 +1752,7 @@ class DynamicSpeciesState(object):
                                                  self.last_population, population_change)
         self.last_population += population_change
         self._update_last_adjustment_time(time)
-        # TODO: multiple continuous submodels: DynamicSpecies history: skip; perhaps fix later
+        # TODO: multiple continuous submodels: fix history later
         # self._record_operation_in_hist(time, 'discrete_adjustment', population_change)
         return self.get_population(time)
 
@@ -1800,7 +1813,7 @@ class DynamicSpeciesState(object):
         self.continuous_time = time
         self.population_slopes[cont_submodel_id] = population_slope
         self._update_last_adjustment_time(time)
-        # TODO: multiple continuous submodels: DynamicSpecies history: skip; perhaps fix later
+        # TODO: multiple continuous submodels: fix history later
         # self._record_operation_in_hist(time, 'continuous_adjustment', population_slope)
 
         # compute the predicted population in one time step, used for tuning models
@@ -1840,8 +1853,8 @@ class DynamicSpeciesState(object):
         """
         self._temp_population_value = None
 
-    # TODO: multiple continuous submodels: DynamicSpecies history: skip; perhaps fix later
-    def get_history(self):
+    # TODO: multiple continuous submodels: fix history later
+    def get_history(self):  # pragma: no cover
         """ Obtain this `DynamicSpeciesState`'s history
 
         Returns:

@@ -238,7 +238,8 @@ class OdeSubmodel(ContinuousTimeSubmodel):
         population_change_rates = population_changes / time_advance
         for idx, species_id in enumerate(self.species_ids):
             self.adjustments[species_id] = population_change_rates[idx]
-        self.local_species_population.adjust_continuously(self.time, self.adjustments, time_step=self.time_step)
+        self.local_species_population.adjust_continuously(self.time, self.id, self.adjustments,
+                                                          time_step=self.time_step)
 
         # flush expressions that depend on species and reactions modeled by this ODE submodel from cache
         self.dynamic_model.continuous_submodel_flush_after_populations_change(self.id)
