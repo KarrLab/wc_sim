@@ -939,6 +939,7 @@ class RunVerificationSuite(unittest.TestCase):
             '01630',
         ]
         self.multialgorithmic_test_cases = [
+            '00001',
             '00007',
             '00030',
         ]
