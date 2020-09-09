@@ -298,3 +298,15 @@ Performance summary for Next Reaction Method on 2020-07-01:
 8	2672	   6.672	 400.494
 32	10572	  29.895	 353.639
 
+Performance summary for Stochastic Simulation Algorithm on 2020-09-08:
+# SSA submodels	# events	run time (s)	reactions/s
+2	642	   0.475	1351.633
+8	2523	   1.743	1447.526
+32	10685	   7.867	1358.156
+
+Performance summary for Next Reaction Method on 2020-09-08:
+# NRM submodels	# events	run time (s)	reactions/s
+2	619	   0.299	2072.588
+8	2636	   1.196	2203.191
+32	10625	   5.043	2107.088
+
