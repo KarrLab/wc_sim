@@ -428,15 +428,6 @@ class TestDfbaSubmodel(unittest.TestCase):
             }
             self.assertEqual(self.dfba_submodel_1.adjustments, expected_rates)
 
-            new_fluxes['r2'] = 30.
-            self.dfba_submodel_1.time = 0.1
-            self.dfba_submodel_1.time_step = 1.
-            with self.assertRaisesRegexp(DynamicMultialgorithmError,
-                                        re.escape("0.1: "
-                                        "DfbaSubmodel metabolism: Negative population found for "
-                                        "m1[c] from 10.0 to -16.7 for time step [0.1, 1.1]")):
-                self.dfba_submodel_1.compute_population_change_rates()
-
     def test_compute_population_change_rates_control_caching(self):
         ### test all 3 caching combinations ###
         # NO CACHING

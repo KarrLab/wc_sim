@@ -305,9 +305,6 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
 
     def compute_population_change_rates(self):
         """ Compute the rate of change of the populations of species used by this DFBA
-
-        Raises:
-            :obj:`DynamicMultiAlgorithmError`: if the simulated flux cause negative population
         """
         # Calculate the adjustment for each species as sum over reactions of reaction flux * stoichiometry
         end_time = self.time + self.time_step
@@ -317,12 +314,6 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             for rxn_term in self._conv_metabolite_matrices[species_id]:
                 if rxn_term.variable.name not in self._dfba_obj_rxn_ids:
                     population_change_rate += self.reaction_fluxes[rxn_term.variable.name] * rxn_term.coefficient
-            temp_new_population = self.populations[idx] + population_change_rate * self.time_step
-            if temp_new_population < 0.:
-                raise DynamicMultialgorithmError(self.time, "DfbaSubmodel {}: Negative population found for "
-                                                            "{} from {} to {} for time step [{}, {}]".format(
-                                                            self.id, species_id,self.populations[idx], 
-                                                            temp_new_population, self.time, end_time))
             self.adjustments[species_id] = population_change_rate
 
     def run_fba_solver(self):
