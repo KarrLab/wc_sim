@@ -984,7 +984,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
                 errors.append(str(e))
 
         if negative_pops_predicted:
-            species_and_pops = '\n'.join(sorted([f"{sid}: {pred_pop:.2f}" for sid, pred_pop in negative_pops_predicted]))
+            species_and_pops = '\n'.join(sorted([f"{sid}: {pred_pop:.2E}" for sid, pred_pop in negative_pops_predicted]))
             next_time_step = f' {time + time_step:.2E}'
             warnings.warn(f"adjust_continuously at {time:.2E} predicts negative populations at "
                           f"next time step{next_time_step}:\n" +

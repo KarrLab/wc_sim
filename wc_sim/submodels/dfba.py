@@ -24,36 +24,36 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
     """ Use dynamic Flux Balance Analysis to predict the dynamics of chemical species in a container
 
     Attributes:
-        DFA_BOUND_SCALE_FACTOR (:obj:`float`, optional): scaling factor for the reaction bounds, 
-            the default value is 1
-        DFBA_COEF_SCALE_FACTOR (:obj:`float`, optional): scaling factor for the stoichiometric 
-            coefficients in the objective reactions, the default value is 1
-        SOLVER (:obj:`int`, optional): enumeration value for the selected solver in conv_opt, the default
+        DFBA_BOUND_SCALE_FACTOR (:obj:`float`): scaling factor for the reaction bounds, 
+            the default value is 1.
+        DFBA_COEF_SCALE_FACTOR (:obj:`float`): scaling factor for the stoichiometric
+            coefficients in the objective reactions, the default value is 1.
+        SOLVER (:obj:`int`): enumeration value for the selected solver in conv_opt, the default
             value is 1 (cplex)
-        PRESOLVE (:obj:`int`, optional): enumeration value for the presolve model in conv_opt, the default
+        PRESOLVE (:obj:`int`): enumeration value for the presolve model in conv_opt, the default
             value is 1 (on)
-        SOLVER_OPTIONS (:obj:`dict`, optional): parameters for the solver
-        OPTIMIZATION_TYPE (:obj:`str`, optional): direction of optimization, i.e.
-            'maximize' (the default value) or 'minimize'     
-        FLUX_BOUNDS_VOLUMETRIC_COMPARTMENT_ID (:obj:`str`, optional): id of the compartment where the 
-            measured flux bounds are normalized to, the default is the whole-cell                 
-        reaction_fluxes (:obj:`dict`): pre-allocated reaction fluxes
+        SOLVER_OPTIONS (:obj:`dict`): parameters for the solver
+        OPTIMIZATION_TYPE (:obj:`str`): direction of optimization, i.e.
+            'maximize' (the default value) or 'minimize'
+        FLUX_BOUNDS_VOLUMETRIC_COMPARTMENT_ID (:obj:`str`): id of the compartment where the
+            measured flux bounds are normalized to, the default is the whole-cell
+        reaction_fluxes (:obj:`dict`): reaction fluxes data structure, which is pre-allocated
         dfba_solver_options (:obj:`dict`): options for solving DFBA submodel
         _conv_model (:obj:`conv_opt.Model`): linear programming model in conv_opt format
         _conv_variables (:obj:`dict`): a dictionary mapping reaction IDs to the associated
             `conv_opt.Variable` objects
         _conv_metabolite_matrices (:obj:`dict`): a dictionary mapping metabolite species IDs to lists
-            of `conv_opt.LinearTerm` objects defining the reactions and stoichiometries that the
-            species participate in
+            of :obj:`conv_opt.LinearTerm` objects; each :obj:`conv_opt.LinearTerm` associates a
+            a reaction that the species participates in with the species' stoichiometry in the reaction
         _dfba_obj_rxn_ids (:obj:`list`): a list of IDs of DFBA objective reactions
-        _reaction_bounds (:obj:`dict`): a dictionary with reaction IDs as keys and tuples of scaled minimum
-            and maximum bounds as values
+        _reaction_bounds (:obj:`dict`): a dictionary that maps reaction IDs to tuples of scaled minimum
+            and maximum bounds
         _optimal_obj_func_value (:obj:`float`): the value of objective function returned by the solver
     """
-    DFA_BOUND_SCALE_FACTOR = 1
-    DFBA_COEF_SCALE_FACTOR = 1
-    SOLVER = 1
-    PRESOLVE = 1
+    DFBA_BOUND_SCALE_FACTOR = 1.
+    DFBA_COEF_SCALE_FACTOR = 1.
+    SOLVER = 1  # could this be conv_opt.Solver.cplex? that would clarify the solver, and link directly to conv_opt.Solver
+    PRESOLVE = 1    # same idea here
     SOLVER_OPTIONS = {
         'cplex': {
             'parameters': {
@@ -80,7 +80,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
     def __init__(self, id, dynamic_model, reactions, species, dynamic_compartments,
                  local_species_population, dfba_time_step, options=None):
         """ Initialize a dFBA submodel instance
-        
+
         Args:
             id (:obj:`str`): unique id of this dFBA submodel
             dynamic_model (:obj: `DynamicModel`): the simulation's central coordinator
@@ -115,7 +115,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         self.dfba_objective = dynamic_model.dynamic_dfba_objectives[dfba_objective_id].wc_lang_expression
 
         self.dfba_solver_options = {
-            'dfba_bound_scale_factor': self.DFA_BOUND_SCALE_FACTOR,
+            'dfba_bound_scale_factor': self.DFBA_BOUND_SCALE_FACTOR,
             'dfba_coef_scale_factor': self.DFBA_COEF_SCALE_FACTOR,
             'solver': self.SOLVER,
             'presolve': self.PRESOLVE,
@@ -136,6 +136,12 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                 self.dfba_solver_options['dfba_coef_scale_factor'] = options['dfba_coef_scale_factor']
             if 'solver' in options:
                 try:
+                    # AG: rather than making options['solver'] an integer that must match the values in conv_opt.Solver()
+                    # they can be the names it uses, e.g.:
+                    # options['solver'] = 'cplex'
+                    # Solver[options['solver']] gets the cplex solver
+                    # Solver[options['solver'].lower()] would also accept mixed case names
+                    # same idea would apply for presolve
                     selected_solver = conv_opt.Solver(options['solver'])
                 except:
                     raise MultialgorithmError(f"DfbaSubmodel {self.id}: {options['solver']}"
@@ -207,11 +213,11 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                     self._conv_model.variables.append(self._conv_variables[rxn.id])
                     for part in rxn.dfba_obj_species:
                         self._conv_metabolite_matrices[part.species.id].append(
-                            conv_opt.LinearTerm(self._conv_variables[rxn.id], 
+                            conv_opt.LinearTerm(self._conv_variables[rxn.id],
                                 part.value*coef_scale_factor))
 
         for met_id, expression in self._conv_metabolite_matrices.items():
-            self._conv_model.constraints.append(conv_opt.Constraint(expression, name=met_id, 
+            self._conv_model.constraints.append(conv_opt.Constraint(expression, name=met_id,
                 upper_bound=0.0, lower_bound=0.0))
 
         # Set up the objective function
@@ -221,6 +227,12 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                 self._conv_model.objective_terms.append(conv_opt.LinearTerm(
                     self._conv_variables[rxn.id], lin_coef))
 
+        # this doesn't fully capture conv_opt.ObjectiveDirection, which has 4 values
+        # an alternative might be
+        # if self.dfba_solver_options['optimization_type'] in conv_opt.ObjectiveDirection.__members__:
+        #     self._conv_model.objective_direction = conv_opt.ObjectiveDirection[self.dfba_solver_options['optimization_type']]
+        # else:
+        #     raise exception ...
         if self.dfba_solver_options['optimization_type'] == 'maximize':
             self._conv_model.objective_direction = conv_opt.ObjectiveDirection.maximize
         else:
@@ -240,7 +252,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
 
     def determine_bounds(self):
         """ Determine the minimum and maximum bounds for each reaction. The bounds will be
-            scaled by multiplying to `dfba_bound_scale_factor` and written to `self._reaction_bounds`
+            scaled by multiplying by `dfba_bound_scale_factor` and written to `self._reaction_bounds`
         """
         # Determine all the reaction bounds
         bound_scale_factor = self.dfba_solver_options['dfba_bound_scale_factor']
@@ -250,7 +262,8 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         else:
             flux_comp_volume = self.dynamic_model.dynamic_compartments[flux_comp_id].volume()
         self._reaction_bounds = {}
-        for reaction in self.reactions:            
+        for reaction in self.reactions:
+
             # Set the bounds of reactions with measured kinetic constants
             if reaction.rate_laws:
                 for_ratelaw = reaction.rate_laws.get_one(direction=wc_lang.RateLawDirection.forward)
@@ -272,6 +285,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                     min_constr = None
                 else:
                     min_constr = 0.
+
             # Set the bounds of exchange/demand/sink reactions
             elif reaction.flux_bounds:
                 rxn_bounds = reaction.flux_bounds
@@ -284,7 +298,8 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                     max_constr = None if math.isnan(rxn_bounds.max) else \
                         rxn_bounds.max*flux_comp_volume*scipy.constants.Avogadro*bound_scale_factor
                 else:
-                    max_constr = rxn_bounds.max        
+                    max_constr = rxn_bounds.max
+
             # Set other reactions to be unbounded
             else:
                 max_constr = None
@@ -336,7 +351,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                                                         f"for time step [{self.time}, {end_time}]")
         self._optimal_obj_func_value = result.value / bound_scale_factor * coef_scale_factor
         for rxn_variable in self._conv_model.variables:
-            if rxn_variable.name not in self._dfba_obj_rxn_ids: 
+            if rxn_variable.name not in self._dfba_obj_rxn_ids:
                 self.reaction_fluxes[rxn_variable.name] = rxn_variable.primal / bound_scale_factor
 
         # Compute the population change rates
