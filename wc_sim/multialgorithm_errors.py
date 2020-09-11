@@ -100,8 +100,7 @@ class DynamicNegativePopulationError(DynamicMultialgorithmError):
         self.last_population = last_population
         self.population_decrease = population_decrease
         self.delta_time = delta_time
-        message = str(self)
-        super().__init__(time, message)
+        super().__init__(time, 'negative population predicted')
 
     def __eq__(self, other):
         """ Determine whether two instances have the same content """
@@ -117,8 +116,13 @@ class DynamicNegativePopulationError(DynamicMultialgorithmError):
                      self.delta_time))
 
     def __str__(self):
-        rv = "{}(): negative population predicted for '{}', with decline from {:g} to {:g}".format(
-            self.method, self.species, self.last_population,
+        """ Provide a readable `DynamicNegativePopulationError` which contains all its attributes
+
+        Returns:
+            :obj:`str`: a readable representation of this `DynamicNegativePopulationError`
+        """
+        rv = "at {:g}: {}(): negative population predicted for '{}', with decline from {:g} to {:g}".format(
+            self.time, self.method, self.species, self.last_population,
             self.last_population + self.population_decrease)
         if self.delta_time is None:
             return rv
