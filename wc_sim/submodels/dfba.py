@@ -299,6 +299,19 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                         rxn_bounds.max*flux_comp_volume*scipy.constants.Avogadro*bound_scale_factor
                 else:
                     max_constr = rxn_bounds.max
+                # TODO: further bound exchange and growth reactions:
+                # bound exchange/demand/sink reactions so they do not cause negative species populations
+                # if reaction r transports species x[c] out of c (& no other reaction transports x[c] into c)
+                # then bound the maximum flux of r, flux(r) (1/s) <= -p(x, t) * s(r, x) / dt
+                # I don't understand flux bounds units of unit_registry.parse_units('M s^-1') elsewhere
+                # where t = self.time, p(x, t) = population of x at time t,
+                # dt = self.time_step and s(r, x) = stoichiometry of x in r
+                # let flux_r = flux(r)
+                # then
+                # if max_constr is None:
+                #     max_constr = flux_r
+                # else:
+                #     max_constr = min(max_constr, flux_r)
 
             # Set other reactions to be unbounded
             else:

@@ -269,6 +269,8 @@ class VerificationTestReader(object):
     def read_model(self, sbml_version='l3v2', model_file_suffix='-wc_lang.xlsx'):
         """  Read a model into a `wc_lang` representation
 
+        dFBA test cases are read directly from SBML, whereas other cases are read from WC Lang spreadsheets.
+
         Args:
             sbml_version (:obj:`str`, optional): SBML version, default is
                 Level 3 Version 2 (l3v2)
@@ -284,7 +286,7 @@ class VerificationTestReader(object):
         """
         if self.test_case_type == VerificationTestCaseType.DYNAMIC_FLUX_BALANCE_ANALYSIS:
 
-            self.model_filename = os.path.join(self.test_case_dir, 
+            self.model_filename = os.path.join(self.test_case_dir,
                 self.test_case_num + '-sbml-' + sbml_version + self.SBML_FILE_SUFFIX)
             if not os.path.exists(self.model_filename):
                 raise VerificationError("Test case model file '{}' does not exists".format(
@@ -292,7 +294,7 @@ class VerificationTestReader(object):
 
             # Create `wc_lang` model and FBA submodel
             model = Model(id='test_case_' + self.test_case_num, version='1')
-            dfba_submodel = Submodel(id=self.test_case_num + '_dfba', model=model, 
+            dfba_submodel = Submodel(id=self.test_case_num + '_dfba', model=model,
                 framework=onto['WC:dynamic_flux_balance_analysis'])
 
             sbml_doc = libsbml.SBMLReader().readSBML(self.model_filename)
@@ -340,10 +342,10 @@ class VerificationTestReader(object):
                         id='EX_' + species.getId(),
                         submodel=dfba_submodel)
                     obj_species = model_species.dfba_obj_species.get_or_create(
-                        model=model, value=-1)                    
+                        model=model, value=-1)
                     model_rxn.dfba_obj_species.add(obj_species)
                     obj_species.id = obj_species.gen_id()
-                    
+
             # Extract flux bounds
             flux_bounds = {}
             for bound in fbc_sbml_model.getListOfFluxBounds():
@@ -389,7 +391,7 @@ class VerificationTestReader(object):
                             species=model_species).value = -product.getStoichiometry()
                 # Add flux bounds
                 model_rxn.flux_bounds = FluxBounds(units=unit_registry.parse_units('M s^-1'))
-                if flux_bounds:                
+                if flux_bounds:
                     lower_bound = flux_bounds[model_rxn.id]['lower_bound']
                     upper_bound = flux_bounds[model_rxn.id]['upper_bound']
                 else:
@@ -397,7 +399,7 @@ class VerificationTestReader(object):
                     if sbml_model.getInitialAssignment(lower_bound_id):
                         astnode = sbml_model.getInitialAssignment(lower_bound_id).math
                         lower_bound = float(libsbml.formulaToL3String(astnode))
-                    else:    
+                    else:
                         lower_bound = sbml_model.getParameter(lower_bound_id).value
                     upper_bound_id = fbc_rxn.getUpperFluxBound()
                     if sbml_model.getInitialAssignment(upper_bound_id):
@@ -442,7 +444,7 @@ class VerificationTestReader(object):
                 raise VerificationError(f"SBML files not supported: model filename: '{self.model_filename}'")
             model = Reader().run(self.model_filename, validate=True)[Model][0]
 
-        return model 
+        return model
 
     def get_species_id(self, species_type):
         """ Get the species id of a species type
@@ -502,7 +504,7 @@ class ResultsComparator(object):
     Attributes:
         verification_test_reader (:obj:`VerificationTestReader`): the test case's reader
         simulation_run_results (:obj:`RunResults` or :obj:`list` of :obj:`RunResults`): simulation run results;
-            results for 1 run of a CONTINUOUS_DETERMINISTIC integration, results for 1 run 
+            results for 1 run of a CONTINUOUS_DETERMINISTIC integration, results for 1 run
             of a DYNAMIC_FLUX_BALANCE_ANALYSIS simulation, or a :obj:`list` of results
             for multiple runs of a stochastic integrator
         n_runs (:obj:`int`): number off runs of a stochastic integrator
@@ -775,7 +777,7 @@ class CaseVerifier(object):
         Raises:
             :obj:`VerificationError`: if 'duration' or 'steps' are missing from settings, or
                 settings requires simulation to start at time other than 0, or
-                `evaluate` is `True` and test_case_type is CONTINUOUS_DETERMINISTIC or 
+                `evaluate` is `True` and test_case_type is CONTINUOUS_DETERMINISTIC or
                 DYNAMIC_FLUX_BALANCE_ANALYSIS
         """
 
@@ -828,7 +830,7 @@ class CaseVerifier(object):
             simul_kwargs['dfba_time_step'] = dfba_time_step
             simul_kwargs['options'] = dict(DfbaSubmodel=dict(options=dict(
                 optimization_type=self.verification_test_reader.objective_direction)))
-            # validate_element_charge_balance is switched off 
+            # validate_element_charge_balance is switched off
             # otherwise, reactions in the test cases and exchange reactions will not pass
             with EnvironUtils.temp_config_env([(['wc_lang', 'validation', 'validate_element_charge_balance'], 'False')]):
                 results_dir = simulation.run(**simul_kwargs).results_dir
@@ -849,7 +851,7 @@ class CaseVerifier(object):
             # set dfba_time_step in case there is a dfba submodel in the multialgorithmic case
             dfba_time_step = settings['duration']/settings['steps']
             simul_kwargs['dfba_time_step'] = dfba_time_step
-            
+
             ## retry on failure
             # if failure, rerun and evaluate; correct simulations will fail to verify
             # (100*(p-value threshold)) percent of the time
