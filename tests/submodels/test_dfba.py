@@ -179,8 +179,8 @@ class TestDfbaSubmodel(unittest.TestCase):
         self.dfba_submodel_options = {
             'dfba_bound_scale_factor': 1e2,
             'dfba_coef_scale_factor': 10,
-            'solver': 1,
-            'presolve': 1,
+            'solver': 'cplex',
+            'presolve': 'on',
             'optimization_type': 'maximize',
             'flux_bounds_volumetric_compartment_id': 'wc',
             'solver_options': {
@@ -231,14 +231,14 @@ class TestDfbaSubmodel(unittest.TestCase):
             self.make_dfba_submodel(self.model, dfba_time_step=None)
         
         bad_solver = copy.deepcopy(self.dfba_submodel_options)
-        bad_solver['solver'] = 20
+        bad_solver['solver'] = 'cp'
         with self.assertRaisesRegexp(MultialgorithmError,
                                      "DfbaSubmodel metabolism: {} is not a valid Solver".format(
                                      	bad_solver['solver'])):
             self.make_dfba_submodel(self.model, submodel_options=bad_solver)
 
         bad_presolve = copy.deepcopy(self.dfba_submodel_options)
-        bad_presolve['presolve'] = 20
+        bad_presolve['presolve'] = 'of'
         with self.assertRaisesRegexp(MultialgorithmError,
                                      "DfbaSubmodel metabolism: {} is not a valid Presolve option".format(
                                      	bad_presolve['presolve'])):
@@ -255,7 +255,7 @@ class TestDfbaSubmodel(unittest.TestCase):
         bad_optimization_type['optimization_type'] = 'bad'
         with self.assertRaisesRegexp(MultialgorithmError,
                                      "DfbaSubmodel metabolism: the optimization_type in"
-                                        f" options can only take 'maximize' or 'minimize' as value but is 'bad'"):
+                                        f" options can only take 'maximize', 'max', 'minimize' or 'min' as value but is 'bad'"):
             self.make_dfba_submodel(self.model, submodel_options=bad_optimization_type)
 
         bad_flux_comp_id = copy.deepcopy(self.dfba_submodel_options)
@@ -468,7 +468,7 @@ class TestDfbaSubmodel(unittest.TestCase):
         self.assertEqual(len(dfba_submodel_2.dynamic_model.cache_manager._cache), 0)
 
         # Test using a different solver
-        self.dfba_submodel_options['solver'] = 3
+        self.dfba_submodel_options['solver'] = 'glpk'
         del self.dfba_submodel_options['solver_options']
         dfba_submodel_2 = self.make_dfba_submodel(self.model,
             submodel_options=self.dfba_submodel_options)

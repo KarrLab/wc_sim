@@ -28,13 +28,13 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             the default value is 1.
         DFBA_COEF_SCALE_FACTOR (:obj:`float`): scaling factor for the stoichiometric
             coefficients in the objective reactions, the default value is 1.
-        SOLVER (:obj:`int`): enumeration value for the selected solver in conv_opt, the default
-            value is 1 (cplex)
-        PRESOLVE (:obj:`int`): enumeration value for the presolve model in conv_opt, the default
-            value is 1 (on)
+        SOLVER (:obj:`str`): name of the selected solver in conv_opt, the default
+            value is 'cplex'
+        PRESOLVE (:obj:`str`): presolve mode in conv_opt ('auto', 'on', 'off'), the default
+            value is 'on'
         SOLVER_OPTIONS (:obj:`dict`): parameters for the solver
-        OPTIMIZATION_TYPE (:obj:`str`): direction of optimization, i.e.
-            'maximize' (the default value) or 'minimize'
+        OPTIMIZATION_TYPE (:obj:`str`): direction of optimization ('maximize', 'max', 
+            'minimize', 'min'), the default value is 'maximize'
         FLUX_BOUNDS_VOLUMETRIC_COMPARTMENT_ID (:obj:`str`): id of the compartment where the
             measured flux bounds are normalized to, the default is the whole-cell
         reaction_fluxes (:obj:`dict`): reaction fluxes data structure, which is pre-allocated
@@ -52,8 +52,8 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
     """
     DFBA_BOUND_SCALE_FACTOR = 1.
     DFBA_COEF_SCALE_FACTOR = 1.
-    SOLVER = 1  # could this be conv_opt.Solver.cplex? that would clarify the solver, and link directly to conv_opt.Solver
-    PRESOLVE = 1    # same idea here
+    SOLVER = 'cplex'
+    PRESOLVE = 'on'
     SOLVER_OPTIONS = {
         'cplex': {
             'parameters': {
@@ -135,36 +135,25 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                         f" be larger than zero but is {options['dfba_coef_scale_factor']}")
                 self.dfba_solver_options['dfba_coef_scale_factor'] = options['dfba_coef_scale_factor']
             if 'solver' in options:
-                try:
-                    # AG: rather than making options['solver'] an integer that must match the values in conv_opt.Solver()
-                    # they can be the names it uses, e.g.:
-                    # options['solver'] = 'cplex'
-                    # Solver[options['solver']] gets the cplex solver
-                    # Solver[options['solver'].lower()] would also accept mixed case names
-                    # same idea would apply for presolve
-                    selected_solver = conv_opt.Solver(options['solver'])
-                except:
+                if options['solver'] not in conv_opt.Solver.__members__:
                     raise MultialgorithmError(f"DfbaSubmodel {self.id}: {options['solver']}"
                         f" is not a valid Solver")
                 self.dfba_solver_options['solver'] = options['solver']
             if 'presolve' in options:
-                try:
-                    selected_presolve = conv_opt.Presolve(options['presolve'])
-                except:
+                if options['presolve'] not in conv_opt.Presolve.__members__:
                     raise MultialgorithmError(f"DfbaSubmodel {self.id}: {options['presolve']}"
                         f" is not a valid Presolve option")
                 self.dfba_solver_options['presolve'] = options['presolve']
-            if 'solver_options' in options:
-                selected_solver = conv_opt.Solver(self.dfba_solver_options['solver'])
-                if selected_solver.name not in options['solver_options']:
+            if 'solver_options' in options:                
+                if self.dfba_solver_options['solver'] not in options['solver_options']:
                     raise MultialgorithmError(f"DfbaSubmodel {self.id}: the solver key in"
                         f" solver_options is not the same as the selected solver"
-                        f" '{selected_solver.name}'")
+                        f" '{self.dfba_solver_options['solver']}'")
                 self.dfba_solver_options['solver_options'] = options['solver_options']
             if 'optimization_type' in options:
-                if options['optimization_type'] not in ['maximize', 'minimize']:
+                if options['optimization_type'] not in conv_opt.ObjectiveDirection.__members__:
                     raise MultialgorithmError(f"DfbaSubmodel {self.id}: the optimization_type in"
-                        f" options can only take 'maximize' or 'minimize' as value but is"
+                        f" options can only take 'maximize', 'max', 'minimize' or 'min' as value but is"
                         f" '{options['optimization_type']}'")
                 self.dfba_solver_options['optimization_type'] = options['optimization_type']
             if 'flux_bounds_volumetric_compartment_id' in options:
@@ -227,21 +216,12 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                 self._conv_model.objective_terms.append(conv_opt.LinearTerm(
                     self._conv_variables[rxn.id], lin_coef))
 
-        # this doesn't fully capture conv_opt.ObjectiveDirection, which has 4 values
-        # an alternative might be
-        # if self.dfba_solver_options['optimization_type'] in conv_opt.ObjectiveDirection.__members__:
-        #     self._conv_model.objective_direction = conv_opt.ObjectiveDirection[self.dfba_solver_options['optimization_type']]
-        # else:
-        #     raise exception ...
-        if self.dfba_solver_options['optimization_type'] == 'maximize':
-            self._conv_model.objective_direction = conv_opt.ObjectiveDirection.maximize
-        else:
-            self._conv_model.objective_direction = conv_opt.ObjectiveDirection.minimize
-
+        self._conv_model.objective_direction = conv_opt.ObjectiveDirection[self.dfba_solver_options['optimization_type']]
+        
         # Set options for conv_opt solver
         options = conv_opt.SolveOptions(
-            solver=conv_opt.Solver(self.dfba_solver_options['solver']),
-            presolve=conv_opt.Presolve(self.dfba_solver_options['presolve']),
+            solver=conv_opt.Solver[self.dfba_solver_options['solver']],
+            presolve=conv_opt.Presolve[self.dfba_solver_options['presolve']],
             solver_options=self.dfba_solver_options['solver_options'])
 
     def set_up_optimizations(self):
