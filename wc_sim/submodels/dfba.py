@@ -109,9 +109,9 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                          local_species_population, dfba_time_step, options)
 
         dfba_objective_id = 'dfba-obj-{}'.format(id)
-        if dfba_objective_id not in dynamic_model.dynamic_dfba_objectives:
+        if dfba_objective_id not in dynamic_model.dynamic_dfba_objectives: # pragma: no cover
             raise MultialgorithmError(f"DfbaSubmodel {self.id}: cannot find dynamic_dfba_objective "
-                                      f"{dfba_objective_id}")
+                                      f"{dfba_objective_id}") # pragma: no cover
         self.dfba_objective = dynamic_model.dynamic_dfba_objectives[dfba_objective_id].wc_lang_expression
 
         self.dfba_solver_options = {

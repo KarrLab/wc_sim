@@ -230,6 +230,20 @@ class TestDfbaSubmodel(unittest.TestCase):
                                      "DfbaSubmodel metabolism: time_step must be a number but is"):
             self.make_dfba_submodel(self.model, dfba_time_step=None)
         
+        bad_dfba_bound_scale_factor = copy.deepcopy(self.dfba_submodel_options)
+        bad_dfba_bound_scale_factor['dfba_bound_scale_factor'] = -2.
+        with self.assertRaisesRegexp(MultialgorithmError,
+                                     "DfbaSubmodel metabolism: dfba_bound_scale_factor must"
+                                        f" be larger than zero but is -2."):
+            self.make_dfba_submodel(self.model, submodel_options=bad_dfba_bound_scale_factor)
+
+        bad_dfba_coef_scale_factor = copy.deepcopy(self.dfba_submodel_options)
+        bad_dfba_coef_scale_factor['dfba_coef_scale_factor'] = -2.
+        with self.assertRaisesRegexp(MultialgorithmError,
+                                     "DfbaSubmodel metabolism: dfba_coef_scale_factor must"
+                                        f" be larger than zero but is -2."):
+            self.make_dfba_submodel(self.model, submodel_options=bad_dfba_coef_scale_factor)     
+
         bad_solver = copy.deepcopy(self.dfba_submodel_options)
         bad_solver['solver'] = 'cp'
         with self.assertRaisesRegexp(MultialgorithmError,
@@ -373,15 +387,37 @@ class TestDfbaSubmodel(unittest.TestCase):
             for ind,val in enumerate(v):
                 self.assertAlmostEqual(val, expected_results[k][ind], delta=1e-09)
 
+        # Test changing flux_bounds_volumetric_compartment_id
+        new_options = copy.deepcopy(self.dfba_submodel_options)
+        new_options['flux_bounds_volumetric_compartment_id'] = 'c'
+        new_submodel = self.make_dfba_submodel(self.model, submodel_options=new_options) 
+        new_submodel.determine_bounds()
+        for k,v in new_submodel._reaction_bounds.items():
+            for ind,val in enumerate(v):
+                self.assertAlmostEqual(val, expected_results[k][ind], delta=1e-09)
+
+        del self.model.reactions.get_one(id='r1').rate_laws[0]        
+        del self.model.reactions.get_one(id='r2').rate_laws[1]
+        self.model.reactions.get_one(id='ex_m1').flux_bounds = None
+        self.model.reactions.get_one(id='ex_m1').reversible = True
+        self.model.reactions.get_one(id='ex_m2').flux_bounds = None
         self.model.reactions.get_one(id='ex_m3').flux_bounds.max = numpy.nan
         self.model.reactions.get_one(id='ex_m3').flux_bounds.min = numpy.nan
         dfba_submodel_2 = self.make_dfba_submodel(self.model,
         	submodel_options=self.dfba_submodel_options)
         dfba_submodel_2.determine_bounds()
-        expected_results['ex_m3'] = (None, None)
+        expected_results_2 = {
+            'ex_m1': (None, None),
+            'ex_m2': (0., None),
+            'ex_m3': (None, None),
+            'r1': (-1.*1*scale_factor, None),
+            'r2': (None, 1.*1*scale_factor + 2.*1*scale_factor),
+            'r3': (0., 5.*1*scale_factor),
+            'r4': (0., 6.*1*scale_factor),
+        }
         for k,v in dfba_submodel_2._reaction_bounds.items():
             for ind,val in enumerate(v):
-                self.assertAlmostEqual(val, expected_results[k][ind], delta=1e-09)
+                self.assertAlmostEqual(val, expected_results_2[k][ind], delta=1e-09)
 
     def test_update_bounds(self):
         new_bounds = {
