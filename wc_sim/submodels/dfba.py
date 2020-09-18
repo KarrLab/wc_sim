@@ -165,6 +165,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                         raise MultialgorithmError(f"DfbaSubmodel {self.id}: the user-provided"
                             f" flux_bounds_volumetric_compartment_id '{comp_id}' is not the ID"
                             f" of a compartment in the model")
+                self.dfba_solver_options['flux_bounds_volumetric_compartment_id'] = comp_id
 
         # log initialization data
         self.log_with_time("init: id: {}".format(id))
