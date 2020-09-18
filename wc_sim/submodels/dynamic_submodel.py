@@ -54,7 +54,9 @@ class DynamicSubmodel(SimulationObject):
         self.id = id
         self.dynamic_model = dynamic_model
         self.reactions = reactions
+        # to avoid array creation & destruction costs, pre-allocate & reuse self.rates & self.enabled
         self.rates = np.full(len(self.reactions), np.nan)
+        self.enabled = np.full(len(self.reactions), np.nan)
         self.species = species
         self.dynamic_compartments = dynamic_compartments
         self.local_species_population = local_species_population
@@ -141,6 +143,9 @@ class DynamicSubmodel(SimulationObject):
             if rxn.rate_laws:
                 self.rates[idx_reaction] = self.calc_reaction_rate(rxn)
 
+        # To reduce the chance that a scheduled reaction cannot execute,
+        # assign a rate of 0 to reactions that aren't enabled
+        self.rates = self.rates * self.identify_enabled_reactions()
         if self.fast_debug_file_logger.is_active():
             msg = 'DynamicSubmodel.calc_reaction_rates: reactions and rates: ' + \
                 str([(self.reactions[i].id, self.rates[i]) for i in range(len(self.reactions))])
@@ -177,12 +182,12 @@ class DynamicSubmodel(SimulationObject):
             :obj:`np.array`: an array indexed by reaction number; 0 indicates reactions without adequate
                 species counts
         """
-        enabled = np.full(len(self.reactions), 1)
+        self.enabled.fill(1)
         for idx_reaction, rxn in enumerate(self.reactions):
             if not self.enabled_reaction(rxn):
-                enabled[idx_reaction] = 0
+                self.enabled[idx_reaction] = 0
 
-        return enabled
+        return self.enabled
 
     def execute_reaction(self, reaction):
         """ Update species counts to reflect the execution of a reaction
@@ -270,7 +275,7 @@ class ContinuousTimeSubmodel(DynamicSubmodel):
 
         # find species in reactions modeled by this continuous time submodel
         species = []
-        for idx, rxn in enumerate(self.reactions):
+        for rxn in self.reactions:
             for species_coefficient in rxn.participants:
                 species_id = species_coefficient.species.gen_id()
                 species.append(species_id)

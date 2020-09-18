@@ -91,7 +91,7 @@ class OdeSubmodel(ContinuousTimeSubmodel):
 
         # this is optimal, but costs O(|self.reactions| * |rxn.participants|)
         tmp_coeffs_and_rate_laws = {species_id:[] for species_id in self.species_ids}
-        for idx, rxn in enumerate(self.reactions):
+        for rxn in self.reactions:
             rate_law_id = rxn.rate_laws[0].id
             dynamic_rate_law = self.dynamic_model.dynamic_rate_laws[rate_law_id]
             for species_coefficient in rxn.participants:

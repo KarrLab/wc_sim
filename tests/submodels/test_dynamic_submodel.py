@@ -98,11 +98,23 @@ class TestDynamicSubmodelStatically(unittest.TestCase):
             'reaction_2': 0.0,
             'reaction_4': expected_rate_reaction_4_forward
         }
-        for dynamic_submodel in multialgorithm_simulation.dynamic_model.dynamic_submodels.values():
-            rates = dynamic_submodel.calc_reaction_rates()
+
+        dynamic_submodel_2 = multialgorithm_simulation.dynamic_model.dynamic_submodels['submodel_2']
+        rates = dynamic_submodel_2.calc_reaction_rates()
+        for index, rxn in enumerate(dynamic_submodel_2.reactions):
+            if rxn.id in expected_rates:
+                self.assertAlmostEqual(rates[index], expected_rates[rxn.id])
+
+        def get_rxn_idx(rxn_id, dynamic_submodel):
             for index, rxn in enumerate(dynamic_submodel.reactions):
-                if rxn.id in expected_rates:
-                    self.assertAlmostEqual(list(rates)[index], expected_rates[rxn.id])
+                if rxn_id == rxn.id:
+                    return index
+
+        # test assignment of a rate of 0 to reactions that aren't enabled
+        # use reaction_5, whose rate law doesn't use all of its reactants, specifically species_3[c]
+        rates = dynamic_submodel_2.calc_reaction_rates()
+        idx_reaction_5 = get_rxn_idx('reaction_5', dynamic_submodel_2)
+        self.assertEqual(rates[idx_reaction_5], 0)
 
     expected_enabled = {
         'submodel_2': set([
