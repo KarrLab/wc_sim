@@ -129,15 +129,18 @@ class TestInitialDynamicComponentsComprehensively(unittest.TestCase):
             expected_value = float(self.model.get_species(id=id)[0].comments)
             numpy.testing.assert_approx_equal(dynamic_species.eval(0), expected_value)
 
-    # TODO: FIX FOR DE-SIM CHANGES: make a few dynamic models to test all branches of get_stop_condition()
-    # a dynamic model with no stop conditions
-    # a dynamic model with stop conditions that all evaluate false
-    # a dynamic model with at least one stop conditions that evaluates true
     def test_get_stop_condition(self):
         all_stop_conditions = self.dynamic_model.get_stop_condition()
         self.assertTrue(callable(all_stop_conditions))
         self.assertTrue(all_stop_conditions(0))
 
+        # teat a dynamic model with no stop conditions
+        self.dynamic_model.dynamic_stop_conditions = {}
+        self.assertEqual(self.dynamic_model.get_stop_condition(), None)
+
+        # TODO: make a few dynamic models to test all branches of get_stop_condition()
+        # a dynamic model with stop conditions that all evaluate false
+        # a dynamic model with at least one stop conditions that evaluates true
 
 def make_objects(test_case):
     model = Model()
@@ -944,6 +947,13 @@ class TestDynamicModel(unittest.TestCase):
             else:
                 actual_value = aggregate_state['compartments'][eiv_record.component][eiv_record.attribute]
                 numpy.testing.assert_approx_equal(actual_value, expected_value)
+
+    def test_cache_settings(self):
+        _, dynamic_model = self.make_dynamic_model(self.MODEL_FILENAME)
+        dynamic_model._stop_caching()
+        self.assertEqual(dynamic_model.cache_manager.caching(), False)
+        dynamic_model._start_caching()
+        self.assertEqual(dynamic_model.cache_manager.caching(), True)
 
 
 class TestCacheManager(unittest.TestCase):

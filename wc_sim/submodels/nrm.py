@@ -84,15 +84,19 @@ class NrmSubmodel(DynamicSubmodel):
 
         In a multi-algorithmic simulation, two types of dependencies arise when NRM considers which
         rate laws to update after a reaction executes:
+
         1) Dependencies between NRM reactions and rate laws for NRM reactions. Rate laws that depend
-        on species whose populations are updated by a reaction, either directly or indirectly through
-        expressions that use the species, must be evaluated after the reaction executes.
-        2) Rate laws that depend on, again either directly or indirectly, species whose populations can
-        be updated by reactions or continuous changes in other submodels, must always be evaluated after any
-        NRM reaction executes.
+        on species whose populations are updated by a reaction, either directly or indirectly
+        through expressions that use the species, must be evaluated after the reaction executes.
+
+        2) Rate laws that depend on, again either directly or indirectly, species whose populations
+        can be updated by reactions or continuous changes in other submodels, must always be
+        evaluated after any NRM reaction executes.
+
         This method combines both types of dependencies into a single map from executed reaction to
         dependent rate laws.
-        It is executed only once, at initialization, so its complexity is fine.
+        It is executed only once at initialization, so its cost is amortized over
+        an entire simulation.
 
         Returns:
             :obj:`list` of :obj:`tuple`: entry i provides the indices of reactions whose
@@ -100,11 +104,13 @@ class NrmSubmodel(DynamicSubmodel):
         """
 
         # Rate laws and reactions used by this NRM model
+        # Create local sets to enhance performance
         ids_of_rate_laws_used_by_self = {rxn.rate_laws[0].id for rxn in self.reactions}
         ids_of_rxns_used_by_self = {rxn.id for rxn in self.reactions}
         rxns_used_by_self = set(self.reactions)
 
-        # Rate laws that depend on species that can be updated by reactions or continuous changes in other submodels
+        # Identify rate laws in this submodel that depend on
+        # species that can be updated by reactions or continuous changes in other submodels
         ids_of_rls_depend_on_other_submodels = set()
         for rxn, dependent_exprs in self.dynamic_model.rxn_expression_dependencies.items():
             if rxn not in rxns_used_by_self:
