@@ -66,7 +66,8 @@ class DynamicComponent(object):
         """
         Args:
             dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
-            local_species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
+            local_species_population (:obj:`LocalSpeciesPopulation`): the simulation's species
+                population store
             wc_lang_model (:obj:`obj_tables.Model`): a corresponding `wc_lang` `Model`, from which this
                 `DynamicComponent` is derived
         """
@@ -86,8 +87,8 @@ class DynamicComponent(object):
         string name.
 
         Args:
-            model_type (:obj:`Object`): a `wc_lang` Model type represented by a subclass of `obj_tables.Model`,
-                an instance of `obj_tables.Model`, or a string name for a `obj_tables.Model`
+            model_type (:obj:`Object`): a `wc_lang` Model type represented by a subclass of
+                `obj_tables.Model`, an instance of `obj_tables.Model`, or a string name for a `obj_tables.Model`
 
         Returns:
             :obj:`type`: the dynamic component
@@ -98,29 +99,30 @@ class DynamicComponent(object):
         if isinstance(model_type, type) and issubclass(model_type, obj_tables.Model):
             if model_type in WC_LANG_MODEL_TO_DYNAMIC_MODEL:
                 return WC_LANG_MODEL_TO_DYNAMIC_MODEL[model_type]
-            raise MultialgorithmError("model class of type '{}' not found".format(model_type.__name__))
+            raise MultialgorithmError(f"model class of type '{model_type.__name__}' not found")
 
         if isinstance(model_type, obj_tables.Model):
             if model_type.__class__ in WC_LANG_MODEL_TO_DYNAMIC_MODEL:
                 return WC_LANG_MODEL_TO_DYNAMIC_MODEL[model_type.__class__]
-            raise MultialgorithmError("model of type '{}' not found".format(model_type.__class__.__name__))
+            raise MultialgorithmError(f"model of type '{model_type.__class__.__name__}' not found")
 
         if isinstance(model_type, str):
             model_type_type = getattr(wc_lang, model_type, None)
             if model_type_type is not None:
                 if model_type_type in WC_LANG_MODEL_TO_DYNAMIC_MODEL:
                     return WC_LANG_MODEL_TO_DYNAMIC_MODEL[model_type_type]
-                raise MultialgorithmError("model of type '{}' not found".format(model_type_type.__name__))
-            raise MultialgorithmError("model type '{}' not defined".format(model_type))
+                raise MultialgorithmError(f"model of type '{model_type_type.__name__}' not found")
+            raise MultialgorithmError(f"model type '{model_type}' not defined")
 
-        raise MultialgorithmError("model type '{}' has wrong type".format(model_type))
+        raise MultialgorithmError(f"model type '{model_type}' has wrong type")
 
     @staticmethod
     def get_dynamic_component(model_type, id):
         """ Get a simulation's dynamic component
 
         Args:
-            model_type (:obj:`type`): the subclass of `DynamicComponent` (or `obj_tables.Model`) being retrieved
+            model_type (:obj:`type`): the subclass of `DynamicComponent` (or `obj_tables.Model`)
+                being retrieved
             id (:obj:`str`): the dynamic component's id
 
         Returns:
@@ -132,12 +134,11 @@ class DynamicComponent(object):
         if not inspect.isclass(model_type) or not issubclass(model_type, DynamicComponent):
             model_type = DynamicComponent.get_dynamic_model_type(model_type)
         if model_type not in DynamicComponent.dynamic_components_objs:
-            raise MultialgorithmError("model type '{}' not in DynamicComponent.dynamic_components_objs".format(
-                model_type.__name__))
+            raise MultialgorithmError(f"model type '{model_type.__name__}' not in "
+                                      f"DynamicComponent.dynamic_components_objs")
         if id not in DynamicComponent.dynamic_components_objs[model_type]:
-            raise MultialgorithmError(
-                "model type '{}' with id='{}' not in DynamicComponent.dynamic_components_objs".format(
-                    model_type.__name__, id))
+            raise MultialgorithmError(f"model type '{model_type.__name__}' with id='{id}' not in "
+                                      f"DynamicComponent.dynamic_components_objs")
         return DynamicComponent.dynamic_components_objs[model_type][id]
 
     def __str__(self):
@@ -147,8 +148,8 @@ class DynamicComponent(object):
             :obj:`str`: a readable representation of this `DynamicComponent`
         """
         rv = ['DynamicComponent:']
-        rv.append("type: {}".format(self.__class__.__name__))
-        rv.append("id: {}".format(self.id))
+        rv.append(f"type: {self.__class__.__name__}")
+        rv.append(f"id: {self.id}")
         return '\n'.join(rv)
 
 
@@ -157,8 +158,10 @@ class DynamicExpression(DynamicComponent):
 
     Attributes:
         expression (:obj:`str`): the expression defined in the `wc_lang` Model
-        wc_sim_tokens (:obj:`list` of :obj:`WcSimToken`): a tokenized, compressed representation of `expression`
-        expr_substrings (:obj:`list` of :obj:`str`): strings which are joined to form the string which is 'eval'ed
+        wc_sim_tokens (:obj:`list` of :obj:`WcSimToken`): a tokenized, compressed representation of
+            `expression`
+        expr_substrings (:obj:`list` of :obj:`str`): strings which are joined to form the string
+            which is 'eval'ed
         local_ns (:obj:`dict`): pre-computed local namespace of functions used in `expression`
     """
 
@@ -171,7 +174,8 @@ class DynamicExpression(DynamicComponent):
         """
         Args:
             dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
-            local_species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
+            local_species_population (:obj:`LocalSpeciesPopulation`): the simulation's species
+                population store
             wc_lang_model (:obj:`obj_tables.Model`): the corresponding `wc_lang` `Model`
             wc_lang_expression (:obj:`ParsedExpression`): an analyzed and validated expression
 
@@ -184,8 +188,8 @@ class DynamicExpression(DynamicComponent):
 
         # wc_lang_expression must have been successfully `tokenize`d.
         if not wc_lang_expression._obj_tables_tokens:
-            raise MultialgorithmError("_obj_tables_tokens cannot be empty - ensure that '{}' is valid".format(
-                wc_lang_model))
+            raise MultialgorithmError(f"_obj_tables_tokens cannot be empty - ensure that "
+                                      f"'{wc_lang_model}' is valid")
         # optimization: self.wc_lang_expression will be deleted by prepare()
         self.wc_lang_expression = wc_lang_expression
         self.expression = wc_lang_expression.expression
@@ -227,7 +231,7 @@ class DynamicExpression(DynamicComponent):
                                                      obj_tables_token.token_string,
                                                      dynamic_expression))
             else:   # pragma: no cover
-                assert False, "unknown code {} in {}".format(obj_tables_token.code, obj_tables_token)
+                assert False, f"unknown code {obj_tables_token.code} in {obj_tables_token}"
             # advance to the next token
             i += 1
         if next_static_tokens != '':
@@ -251,8 +255,8 @@ class DynamicExpression(DynamicComponent):
             elif hasattr(globals()['math'], func_name):
                 self.local_ns[func_name] = getattr(globals()['math'], func_name)
             else:   # pragma no cover, because only known functions are allowed in model expressions
-                raise MultialgorithmError("loading expression '{}' cannot find function '{}'".format(
-                    self.expression, func_name))
+                raise MultialgorithmError(f"loading expression '{self.expression}' "
+                                          f"cannot find function '{func_name}'")
 
     def eval(self, time):
         """ Evaluate this mathematical expression
@@ -271,7 +275,7 @@ class DynamicExpression(DynamicComponent):
         Raises:
             :obj:`MultialgorithmError`: if Python `eval` raises an exception
         """
-        assert hasattr(self, 'wc_sim_tokens'), "'{}' must use prepare() before eval()".format(self.id)
+        assert hasattr(self, 'wc_sim_tokens'), f"'{self.id}' must use prepare() before eval()"
 
         # if caching is enabled & the expression's value is cached, return it
         if self.dynamic_model.cache_manager.caching():
@@ -289,8 +293,8 @@ class DynamicExpression(DynamicComponent):
             self.dynamic_model.cache_manager.set(self, value)
             return value
         except BaseException as e:
-            raise MultialgorithmError("eval of '{}' raises {}: {}'".format(
-                self.expression, type(e).__name__, str(e)))
+            raise MultialgorithmError(f"eval of '{self.expression}' "
+                                      f"raises {type(e).__name__}: {str(e)}'")
 
     def __str__(self):
         """ Provide a readable representation of this `DynamicExpression`
@@ -299,9 +303,9 @@ class DynamicExpression(DynamicComponent):
             :obj:`str`: a readable representation of this `DynamicExpression`
         """
         rv = ['DynamicExpression:']
-        rv.append("type: {}".format(self.__class__.__name__))
-        rv.append("id: {}".format(self.id))
-        rv.append("expression: {}".format(self.expression))
+        rv.append(f"type: {self.__class__.__name__}")
+        rv.append(f"id: {self.id}")
+        rv.append(f"expression: {self.expression}")
         return '\n'.join(rv)
 
 
@@ -353,7 +357,8 @@ class DynamicParameter(DynamicComponent):
         """
         Args:
             dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
-            local_species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
+            local_species_population (:obj:`LocalSpeciesPopulation`): the simulation's species
+                population store
             wc_lang_model (:obj:`obj_tables.Model`): the corresponding :obj:`wc_lang.Parameter`
             value (:obj:`float`): the parameter's value
         """
@@ -381,7 +386,8 @@ class DynamicSpecies(DynamicComponent):
         """
         Args:
             dynamic_model (:obj:`DynamicModel`): the simulation's dynamic model
-            local_species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
+            local_species_population (:obj:`LocalSpeciesPopulation`): the simulation's species
+                population store
             wc_lang_model (:obj:`obj_tables.Model`): the corresponding :obj:`wc_lang.Species`
         """
         super().__init__(dynamic_model, local_species_population, wc_lang_model)
@@ -414,10 +420,12 @@ class DynamicCompartment(DynamicComponent):
         init_volume (:obj:`float`): initial volume, sampled from the distribution specified in the
             `wc_lang` model
         init_accounted_mass (:obj:`float`): the initial mass accounted for by the initial species
-        init_mass (:obj:`float`): initial mass, including the mass not accounted for by explicit species
+        init_mass (:obj:`float`): initial mass, including the mass not accounted for by
+            explicit species
         init_density (:obj:`float`): the initial density of this :obj:`DynamicCompartment`, as
             specified by the model; this is the *constant* density of the compartment
-        init_accounted_density (:obj:`float`): the initial density accounted for by the initial species
+        init_accounted_density (:obj:`float`): the initial density accounted for by the
+            initial species
         accounted_fraction (:obj:`float`): the fraction of the initial mass or density accounted
             for by initial species; assumed to be constant throughout a dynamical model
         species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
@@ -448,7 +456,8 @@ class DynamicCompartment(DynamicComponent):
 
         # obtain initial compartment volume by sampling its specified distribution
         if wc_lang_compartment.init_volume and \
-            are_terms_equivalent(wc_lang_compartment.init_volume.distribution, onto['WC:normal_distribution']):
+            are_terms_equivalent(wc_lang_compartment.init_volume.distribution,
+                                 onto['WC:normal_distribution']):
             mean = wc_lang_compartment.init_volume.mean
             std = wc_lang_compartment.init_volume.std
             if numpy.isnan(std):
@@ -460,20 +469,20 @@ class DynamicCompartment(DynamicComponent):
             raise MultialgorithmError('Initial volume must be normally distributed')
 
         if math.isnan(self.init_volume):    # pragma no cover: cannot be True
-            raise MultialgorithmError("DynamicCompartment {}: init_volume is NaN, but must be a positive "
-                                      "number.".format(self.id))
+            raise MultialgorithmError(f"DynamicCompartment {self.id}: init_volume is NaN, but must "
+                                      f"be a positive number.")
         if self.init_volume <= 0:
-            raise MultialgorithmError("DynamicCompartment {}: init_volume ({}) must be a positive "
-                                      "number.".format(self.id, self.init_volume))
+            raise MultialgorithmError(f"DynamicCompartment {self.id}: init_volume "
+                                      f"({self.init_volume}) must be a positive number.")
 
         if not self._is_abstract():
             init_density = wc_lang_compartment.init_density.value
             if math.isnan(init_density):
-                raise MultialgorithmError(f"DynamicCompartment {self.id}: init_density is NaN, but must "
-                                          f"be a positive number.")
+                raise MultialgorithmError(f"DynamicCompartment {self.id}: init_density is NaN, "
+                                          f"but must be a positive number.")
             if init_density <= 0:
-                raise MultialgorithmError(f"DynamicCompartment {self.id}: init_density ({init_density}) "
-                                          f"must be a positive number.")
+                raise MultialgorithmError(f"DynamicCompartment {self.id}: init_density "
+                                          f"({init_density}) must be a positive number.")
             self.init_density = init_density
 
     def initialize_mass_and_density(self, species_population):
@@ -482,7 +491,8 @@ class DynamicCompartment(DynamicComponent):
         Also initialize the fraction of density accounted for by species, `self.accounted_fraction`.
 
         Args:
-            species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
+            species_population (:obj:`LocalSpeciesPopulation`): the simulation's
+                species population store
 
         Raises:
             :obj:`MultialgorithmError`: if `accounted_fraction == 0` or
@@ -505,24 +515,28 @@ class DynamicCompartment(DynamicComponent):
             # usually epsilon < accounted_fraction <= 1, where epsilon depends on how thoroughly
             # processes in the compartment are characterized
             if 0 == self.accounted_fraction:
-                raise MultialgorithmError("DynamicCompartment '{}': initial accounted ratio is 0".format(
-                                          self.id))
+                raise MultialgorithmError(f"DynamicCompartment '{self.id}': "
+                                          f"initial accounted ratio is 0")
             elif 1.0 < self.accounted_fraction <= MAX_ALLOWED_INIT_ACCOUNTED_FRACTION:
-                warnings.warn("DynamicCompartment '{}': initial accounted ratio ({:.3E}) greater than 1.0".format(
-                    self.id, self.accounted_fraction), MultialgorithmWarning)
+                warnings.warn(f"DynamicCompartment '{self.id}': "
+                              f"initial accounted ratio ({self.accounted_fraction:.3E}) "
+                              f"greater than 1.0", MultialgorithmWarning)
             if MAX_ALLOWED_INIT_ACCOUNTED_FRACTION < self.accounted_fraction:
-                raise MultialgorithmError("DynamicCompartment {}: initial accounted ratio ({:.3E}) greater "
-                                          "than MAX_ALLOWED_INIT_ACCOUNTED_FRACTION ({}).".format(self.id,
-                                          self.accounted_fraction, MAX_ALLOWED_INIT_ACCOUNTED_FRACTION))
+                raise MultialgorithmError(f"DynamicCompartment {self.id}: "
+                                          f"initial accounted ratio ({self.accounted_fraction:.3E}) "
+                                          f"greater than MAX_ALLOWED_INIT_ACCOUNTED_FRACTION "
+                                          f"({MAX_ALLOWED_INIT_ACCOUNTED_FRACTION}).")
 
     def _is_abstract(self):
         """ Indicate whether this is an abstract compartment
 
-        An abstract compartment has a `physical_type` of `abstract_compartment` as defined in the WC ontology.
-        Its contents do not represent physical matter, so no relationship exists among its mass, volume and
+        An abstract compartment has a `physical_type` of `abstract_compartment` as defined in the WC
+        ontology.
+        Its contents do not represent physical matter, so no relationship exists among its mass,
+        volume and
         density. Its volume is constant and its density is ignored and need not be defined. Abstract
-        compartments are useful for modeling dynamics that are not based on physical chemistry, and for
-        testing models and software.
+        compartments are useful for modeling dynamics that are not based on physical chemistry, and
+        for testing models and software.
         These :obj:`DynamicCompartment` attributes are not initialized in abstract compartments:
         `init_density`, `init_accounted_density` and `accounted_fraction`.
 
@@ -644,38 +658,38 @@ class DynamicCompartment(DynamicComponent):
         return hasattr(self, 'init_accounted_mass')
 
     def __str__(self):
-        """ Provide a string representation of this :obj:`DynamicCompartment` at the current simulation time
+        """ Provide a string representation of this :obj:`DynamicCompartment`
 
         Returns:
-            :obj:`str`: a string representation of this compartment
+            :obj:`str`: a string representation of this compartment at the current simulation time
         """
         values = []
         values.append("ID: " + self.id)
         if self._initialized():
-            values.append("Initialization state: '{}' has been initialized.".format(self.id))
+            values.append(f"Initialization state: '{self.id}' has been initialized.")
         else:
-            values.append("Initialization state: '{}' has not been initialized.".format(self.id))
+            values.append(f"Initialization state: '{self.id}' has not been initialized.")
 
         # todo: be careful with units; if initial values are specified in other units, are they converted?
-        values.append("Initial volume (l): {:.3E}".format(self.init_volume))
-        values.append("Physical type: {}".format(self.physical_type.name))
-        values.append("Biological type: {}".format(self.biological_type.name))
+        values.append(f"Initial volume (l): {self.init_volume:.3E}")
+        values.append(f"Physical type: {self.physical_type.name}")
+        values.append(f"Biological type: {self.biological_type.name}")
         if not self._is_abstract():
-            values.append("Specified density (g l^-1): {}".format(self.init_density))
+            values.append(f"Specified density (g l^-1): {self.init_density}")
         if self._initialized():
-            values.append("Initial mass in species (g): {:.3E}".format(self.init_accounted_mass))
-            values.append("Initial total mass (g): {:.3E}".format(self.init_mass))
+            values.append(f"Initial mass in species (g): {self.init_accounted_mass:.3E}")
+            values.append(f"Initial total mass (g): {self.init_mass:.3E}")
             if not self._is_abstract():
                 values.append(f"Fraction of mass accounted for by species (dimensionless): "
                               f"{self.accounted_fraction:.3E}")
 
-            values.append("Current mass in species (g): {:.3E}".format(self.accounted_mass()))
-            values.append("Current total mass (g): {:.3E}".format(self.mass()))
-            values.append("Fold change total mass: {:.3E}".format(self.fold_change_total_mass()))
+            values.append(f"Current mass in species (g): {self.accounted_mass():.3E}")
+            values.append(f"Current total mass (g): {self.mass():.3E}")
+            values.append(f"Fold change total mass: {self.fold_change_total_mass():.3E}")
 
-            values.append("Current volume in species (l): {:.3E}".format(self.accounted_volume()))
-            values.append("Current total volume (l): {:.3E}".format(self.volume()))
-            values.append("Fold change total volume: {:.3E}".format(self.fold_change_total_volume()))
+            values.append(f"Current volume in species (l): {self.accounted_volume():.3E}")
+            values.append(f"Current total volume (l): {self.volume():.3E}")
+            values.append(f"Fold change total volume: {self.fold_change_total_volume():.3E}")
 
         return "DynamicCompartment:\n{}".format('\n'.join(values))
 
@@ -693,31 +707,33 @@ class DynamicModel(object):
         dynamic_compartments (:obj:`dict`): map from compartment ID to :obj:`DynamicCompartment`\ ;
             the simulation's :obj:`DynamicCompartment`\ s, one for each compartment in `model`
         cellular_dyn_compartments (:obj:`list`): list of the cellular compartments
-        species_population (:obj:`LocalSpeciesPopulation`): populations of all the species in the model
+        species_population (:obj:`LocalSpeciesPopulation`): populations of all the species in
+            the model
         dynamic_submodels (:obj:`dict` of `DynamicSubmodel`): the simulation's dynamic submodels,
             indexed by their ids
         dynamic_species (:obj:`dict` of `DynamicSpecies`): the simulation's dynamic species,
             indexed by their ids
         dynamic_parameters (:obj:`dict` of `DynamicParameter`): the simulation's parameters,
             indexed by their ids
-        dynamic_observables (:obj:`dict` of `DynamicObservable`): the simulation's dynamic observables,
-            indexed by their ids
+        dynamic_observables (:obj:`dict` of `DynamicObservable`): the simulation's dynamic
+            observables, indexed by their ids
         dynamic_functions (:obj:`dict` of `DynamicFunction`): the simulation's dynamic functions,
             indexed by their ids
-        dynamic_stop_conditions (:obj:`dict` of `DynamicStopCondition`): the simulation's stop conditions,
-            indexed by their ids
+        dynamic_stop_conditions (:obj:`dict` of `DynamicStopCondition`): the simulation's stop
+            conditions, indexed by their ids
         dynamic_rate_laws (:obj:`dict` of `DynamicRateLaw`): the simulation's rate laws,
             indexed by their ids
-        dynamic_dfba_objectives (:obj:`dict` of `DynamicDfbaObjective`): the simulation's dFBA Objective,
-            indexed by their ids
+        dynamic_dfba_objectives (:obj:`dict` of `DynamicDfbaObjective`): the simulation's dFBA
+            Objective, indexed by their ids
         cache_manager (:obj:`CacheManager`): a cache for potentially expensive expression evaluations
             that get repeated
-        rxn_expression_dependencies (:obj:`dict`): map from reactions to lists of expressions whose values
-            depend on species with non-zero stoichiometry in the reaction
-        continuous_rxn_dependencies (:obj:`dict`): map from ids of continuous submodels to sets identifying
-            expressions whose values depend on species with non-zero stoichiometry in reaction(s)
-            modeled by the submodel
-        all_continuous_rxn_dependencies (:obj:`tuple`): all expressions in `continuous_rxn_dependencies`
+        rxn_expression_dependencies (:obj:`dict`): map from reactions to lists of expressions
+            whose values depend on species with non-zero stoichiometry in the reaction
+        continuous_rxn_dependencies (:obj:`dict`): map from ids of continuous submodels to sets
+            identifying expressions whose values depend on species with non-zero stoichiometry in
+            reaction(s) modeled by the submodel
+        all_continuous_rxn_dependencies (:obj:`tuple`): all expressions in
+            `continuous_rxn_dependencies`
     """
     AGGREGATE_VALUES = ['mass', 'volume', 'accounted mass', 'accounted volume']
     def __init__(self, model, species_population, dynamic_compartments):
@@ -725,7 +741,8 @@ class DynamicModel(object):
 
         Args:
             model (:obj:`Model`): the description of the whole-cell model in `wc_lang`
-            species_population (:obj:`LocalSpeciesPopulation`): the simulation's species population store
+            species_population (:obj:`LocalSpeciesPopulation`): the simulation's
+                species population store
             dynamic_compartments (:obj:`dict`): the simulation's :obj:`DynamicCompartment`\ s, one
                 for each compartment in `model`
 
@@ -813,7 +830,8 @@ class DynamicModel(object):
         Returns:
             :obj:`float`: the cell's current mass (g)
         """
-        return sum([dynamic_compartment.mass() for dynamic_compartment in self.cellular_dyn_compartments])
+        return sum([dynamic_compartment.mass()
+                    for dynamic_compartment in self.cellular_dyn_compartments])
 
     def cell_volume(self):
         """ Provide the cell's current volume
@@ -823,7 +841,8 @@ class DynamicModel(object):
         Returns:
             :obj:`float`: the cell's current volume (l)
         """
-        return sum([dynamic_compartment.volume() for dynamic_compartment in self.cellular_dyn_compartments])
+        return sum([dynamic_compartment.volume()
+                    for dynamic_compartment in self.cellular_dyn_compartments])
 
     def cell_growth(self):
         """ Report the cell's growth in cell/s, relative to the cell's initial volume
@@ -831,7 +850,7 @@ class DynamicModel(object):
         Returns:
             :obj:`float`: growth in cell/s, relative to the cell's initial volume
         """
-        # TODO(Arthur): implement growth
+        # TODO(Arthur): implement growth measurement
         pass
 
     def cell_accounted_mass(self):
@@ -894,8 +913,8 @@ class DynamicModel(object):
         if observables_to_eval is None:
             observables_to_eval = list(self.dynamic_observables.keys())
         evaluated_observables = {}
-        for dyn_observable_id in observables_to_eval:
-            evaluated_observables[dyn_observable_id] = self.dynamic_observables[dyn_observable_id].eval(time)
+        for dyn_obsable_id in observables_to_eval:
+            evaluated_observables[dyn_obsable_id] = self.dynamic_observables[dyn_obsable_id].eval(time)
         return evaluated_observables
 
     def eval_dynamic_functions(self, time, functions_to_eval=None):
@@ -928,8 +947,8 @@ class DynamicModel(object):
     def get_stop_condition(self):
         """ Provide a simulation's stop condition
 
-        A simulation's stop condition is constructed as a logical 'or' of all :obj:`StopConditions` in
-        a model.
+        A simulation's stop condition is constructed as a logical 'or' of all :obj:`StopConditions`
+        in a model.
 
         Returns:
             :obj:`function`: a function which computes the logical 'or' of all :obj:`StopConditions`,
@@ -967,8 +986,20 @@ class DynamicModel(object):
     def obtain_dependencies(self, model):
         """ Obtain the dependencies of expressions on reactions in a WC Lang model
 
-        When chaching is active, these dependencies identify which cached expressions to invalidate.
-        They're also used by the Next Reaction Method to determine which rate laws must be executed.
+        An expression depends on a reaction if the expression uses any species whose population
+        changes when the reaction executes, or the expression uses an expression that depends on
+        the reaction.
+
+        When caching is active, these dependencies identify which cached expressions to invalidate.
+        They're also used by the Next Reaction Method to determine which rate laws must be evaluated
+        after a reaction executes.
+
+        `obtain_dependencies` is memory and compute intensive because it builds and walks an in-memory
+        DAG that represents the dependency relationships among the WC-Lang models used by a whole-cell
+        model.
+        If a simulation fails with the error "killed" and no other information, then it is probably
+        running on a system or in a container which does not have sufficient memory to complete
+        this function. Try running on a system with more memory or simulating a smaller model.
 
         Args:
             model (:obj:`Model`): the description of the whole-cell model in `wc_lang`
@@ -1011,7 +1042,8 @@ class DynamicModel(object):
                                           map_model_to_dynamic_model(dependent_model_entity))
 
         # 2) a compartment in an expression is a special case that computes the compartment's mass
-        # add dependencies between each compartment used in an expression and all the species in the compartment
+        # add dependencies between each compartment used in an expression and all the species
+        # in the compartment
         dynamic_compartments_in_use = set()
         for node in dependency_graph.nodes():
             if isinstance(node, DynamicCompartment):
@@ -1022,8 +1054,8 @@ class DynamicModel(object):
                     dependency_graph.add_edge(map_model_to_dynamic_model(species),
                                               map_model_to_dynamic_model(compartment))
 
-        # 3) add edges of species altered by reactions to determine dependencies of expressions on reactions
-        # to reduce memory use, process one reaction at a time
+        # 3) add edges of species altered by reactions to determine dependencies of expressions on
+        # reactions to reduce memory use, process one reaction at a time
         reaction_dependencies = {}
         dfs_preorder_nodes = networkx.algorithms.traversal.depth_first_search.dfs_preorder_nodes
         for dynamic_submodel in self.dynamic_submodels.values():
@@ -1059,7 +1091,7 @@ class DynamicModel(object):
         return reaction_dependencies
 
     def continuous_reaction_dependencies(self):
-        """ Identify the expressions that depend on species used by the reactions of all continuous submodels
+        """ Get the expressions that depend on species used by reactions modeled by continuous submodels
 
         Caching uses these dependencies to determine the expressions that should be invalidated when
         species populations change or time advances.
@@ -1131,9 +1163,10 @@ class DynamicModel(object):
         self.flush_compartment_masses()
 
     def continuous_submodel_flush_after_populations_change(self, dynamic_submodel_id):
-        """ If caching is enabled, invalidate cache entries that depend on reactions modeled by a continuous submodel
+        """ Invalidate cache entries that depend on reactions modeled by a continuous submodel
 
-        Runs when a continuous submodel advances time or changes species populations
+        Only used when caching is enabled.
+        Runs when a continuous submodel advances time or changes species populations.
 
         Args:
             dynamic_submodel_id (:obj:`str`): the id of the continuous submodel that's running
@@ -1178,23 +1211,29 @@ class CacheManager(object):
     All caching is controlled by the multialgorithm configuration file.
     The `expression_caching` attribute determines whether caching is active.
     The `cache_invalidation` attribute selects the cache invalidation approach.
-    The `event_based` invalidation approach invalidates (flushes) the entire cache at the start of each simulation
-    event which changes species populations, that is, that executes a reaction. Thus, all expressions used during
-    the event must be recalculated. This approach will boost performance if many expressions are used repeatedly during
-    a single event, as occurs when many rate laws that share functions are evaluated.
-    The `reaction_dependency_based` invalidation approach invalidates (flushes) individual cache entries that
-    depend on the execution of a particular reaction.
-    The dependencies of `DynamicExpression`\ s on species populations and the reactions that alter the populations
-    are computed at initialization.
-    Under the  `reaction_dependency_based` approach,
-    when a reaction executes all cached values of the `DynamicExpression`\ s that depend on the reaction
-    are invalidated.
-    This approach will be superior if a typical reaction execution changes populations of species that are
-    used, directly or indirectly, by only a small fraction of the cached values of the `DynamicExpression`\ s.
 
-    In addition, since the populations of species modeled by continuous integration algorithms, such as ODEs and dFBA,
-    vary continuously, `DynamicExpression`\ s that depend on them must always be invalidated whenever simulation
-    time advances.
+    The `event_based` invalidation approach invalidates (flushes) the entire cache at the start of
+    each simulation event which changes species populations, that is, that executes a reaction. Thus,
+    all expressions used during the event must be recalculated. This approach will boost performance
+    if many expressions are used repeatedly during
+    a single event, as occurs when many rate laws that share functions are evaluated.
+
+    The `reaction_dependency_based` invalidation approach invalidates (flushes) individual cache
+    entries that depend on the execution of a particular reaction.
+    The dependencies of `DynamicExpression`\ s on species populations and the reactions that alter
+    the populations are computed at initialization.
+
+    Under the `reaction_dependency_based` approach,
+    when a reaction executes all cached values of the `DynamicExpression`\ s that depend on
+    the reaction are invalidated.
+    This approach will be superior if a typical reaction execution changes populations of species
+    that are used, directly or indirectly, by only a small fraction of the cached values of
+    the `DynamicExpression`\ s.
+
+    In addition, since the populations of species modeled by continuous integration algorithms,
+    such as ODEs and dFBA,
+    vary continuously, `DynamicExpression`\ s that depend on them must always be invalidated
+    whenever simulation time advances.
 
     Attributes:
         caching_active (:obj:`bool`): whether caching is active
@@ -1211,7 +1250,8 @@ class CacheManager(object):
                 either reaction_dependency_based or event_based
 
         Raises:
-            :obj:`MultialgorithmError`: if `cache_invalidation` is not `reaction_dependency_based` or `event_based`
+            :obj:`MultialgorithmError`: if `cache_invalidation` is not `reaction_dependency_based`
+            or `event_based`
         """
         config_multialgorithm = wc_sim.config.core.get_config()['wc_sim']['multialgorithm']
         self.caching_active = caching_active
@@ -1263,7 +1303,8 @@ class CacheManager(object):
                 return self._cache[expression]
             else:
                 self._cache_stats[cls_name][CachingEvents.MISS] += 1
-                raise MultialgorithmError(f'dynamic expression ({cls_name}.{expression.id}) not in cache')
+                raise MultialgorithmError(f"dynamic expression ({cls_name}.{expression.id}) "
+                                          f"not in cache")
 
     def set(self, expression, value):
         """ If caching is enabled, set a value for `expression` in the cache
@@ -1303,7 +1344,7 @@ class CacheManager(object):
         Args:
             expressions (:obj:`set` of :obj:`obj`): iterator over dynamic expression instances
         """
-        if self.caching_active:     # coverage's claim that 'self.caching_active' is never False is wrong
+        if self.caching_active: # coverage's claim that 'self.caching_active' is never False is wrong
             if self.cache_invalidation == InvalidationApproaches.REACTION_DEPENDENCY_BASED:
                 expressions = tuple() if expressions is None else expressions
                 self.flush(expressions)
@@ -1348,7 +1389,8 @@ class CacheManager(object):
                 stats[c_e.HIT_RATIO] = float('nan')
 
             try:
-                stats[c_e.FLUSH_HIT_RATIO] = stats[c_e.FLUSH_HIT] / (stats[c_e.FLUSH_HIT] + stats[c_e.FLUSH_MISS])
+                stats[c_e.FLUSH_HIT_RATIO] = \
+                    stats[c_e.FLUSH_HIT] / (stats[c_e.FLUSH_HIT] + stats[c_e.FLUSH_MISS])
             except ZeroDivisionError:
                 stats[c_e.FLUSH_HIT_RATIO] = float('nan')
 
