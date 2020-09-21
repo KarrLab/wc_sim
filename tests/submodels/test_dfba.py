@@ -34,29 +34,42 @@ class TestDfbaSubmodel(unittest.TestCase):
         model = self.model = wc_lang.Model()
 
         # Create compartment
-        init_volume = wc_lang.core.InitVolume(distribution=wc_ontology['WC:normal_distribution'],
-                    mean=1e-12, std=0)
-        c = model.compartments.create(id='c', init_volume=init_volume)
+        init_volume_c = wc_lang.core.InitVolume(distribution=wc_ontology['WC:normal_distribution'],
+                    mean=5e-13, std=0)
+        c = model.compartments.create(id='c', init_volume=init_volume_c)
         c.init_density = model.parameters.create(id='density_c', value=1.,
                 units=unit_registry.parse_units('g l^-1'))
-        volume = model.functions.create(id='volume_c', units=unit_registry.parse_units('l'))
-        volume.expression, error = wc_lang.FunctionExpression.deserialize(f'{c.id} / {c.init_density.id}', {
+        volume_c = model.functions.create(id='volume_c', units=unit_registry.parse_units('l'))
+        volume_c.expression, error = wc_lang.FunctionExpression.deserialize(f'{c.id} / {c.init_density.id}', {
                 wc_lang.Compartment: {c.id: c},
                 wc_lang.Parameter: {c.init_density.id: c.init_density},
                 })
         assert error is None, str(error)
 
-        self.cell_volume = init_volume.mean
+        init_volume_n = wc_lang.core.InitVolume(distribution=wc_ontology['WC:normal_distribution'],
+                    mean=5e-13, std=0)
+        n = model.compartments.create(id='n', init_volume=init_volume_n)
+        n.init_density = model.parameters.create(id='density_n', value=1.,
+                units=unit_registry.parse_units('g l^-1'))
+        volume_n = model.functions.create(id='volume_n', units=unit_registry.parse_units('l'))
+        volume_n.expression, error = wc_lang.FunctionExpression.deserialize(f'{n.id} / {n.init_density.id}', {
+                wc_lang.Compartment: {n.id: n},
+                wc_lang.Parameter: {n.init_density.id: n.init_density},
+                })
+        assert error is None, str(error)
+
+        self.cell_volume = init_volume_c.mean + init_volume_n.mean
 
         # Create metabolites
         for m in [1,2,3]:
             metabolite_st = model.species_types.create(id='m{}'.format(m), type=wc_ontology['WC:metabolite'],
-            	structure=wc_lang.ChemicalStructure(molecular_weight=1.))
-            metabolite_species = model.species.create(species_type=metabolite_st, compartment=c)
-            metabolite_species.id = metabolite_species.gen_id()
-            conc_model = model.distribution_init_concentrations.create(species=metabolite_species, mean=10., std=0.,
-            	units=unit_registry.parse_units('molecule'))
-            conc_model.id = conc_model.gen_id()
+                structure=wc_lang.ChemicalStructure(molecular_weight=1.))
+            for comp in [c, n]:                
+                metabolite_species = model.species.create(species_type=metabolite_st, compartment=comp)
+                metabolite_species.id = metabolite_species.gen_id()
+                conc_model = model.distribution_init_concentrations.create(species=metabolite_species, mean=10., std=0.,
+                	units=unit_registry.parse_units('molecule'))
+                conc_model.id = conc_model.gen_id()
 
         # Create enzymes
         for i, conc in {'enzyme1': 1, 'enzyme2': 1, 'enzyme3': 1}.items():
@@ -179,8 +192,8 @@ class TestDfbaSubmodel(unittest.TestCase):
         self.dfba_submodel_options = {
             'dfba_bound_scale_factor': 1e2,
             'dfba_coef_scale_factor': 10,
-            'solver': 1,
-            'presolve': 1,
+            'solver': 'cplex',
+            'presolve': 'on',
             'optimization_type': 'maximize',
             'flux_bounds_volumetric_compartment_id': 'wc',
             'solver_options': {
@@ -230,15 +243,29 @@ class TestDfbaSubmodel(unittest.TestCase):
                                      "DfbaSubmodel metabolism: time_step must be a number but is"):
             self.make_dfba_submodel(self.model, dfba_time_step=None)
         
+        bad_dfba_bound_scale_factor = copy.deepcopy(self.dfba_submodel_options)
+        bad_dfba_bound_scale_factor['dfba_bound_scale_factor'] = -2.
+        with self.assertRaisesRegexp(MultialgorithmError,
+                                     "DfbaSubmodel metabolism: dfba_bound_scale_factor must"
+                                        f" be larger than zero but is -2."):
+            self.make_dfba_submodel(self.model, submodel_options=bad_dfba_bound_scale_factor)
+
+        bad_dfba_coef_scale_factor = copy.deepcopy(self.dfba_submodel_options)
+        bad_dfba_coef_scale_factor['dfba_coef_scale_factor'] = -2.
+        with self.assertRaisesRegexp(MultialgorithmError,
+                                     "DfbaSubmodel metabolism: dfba_coef_scale_factor must"
+                                        f" be larger than zero but is -2."):
+            self.make_dfba_submodel(self.model, submodel_options=bad_dfba_coef_scale_factor)     
+
         bad_solver = copy.deepcopy(self.dfba_submodel_options)
-        bad_solver['solver'] = 20
+        bad_solver['solver'] = 'cp'
         with self.assertRaisesRegexp(MultialgorithmError,
                                      "DfbaSubmodel metabolism: {} is not a valid Solver".format(
                                      	bad_solver['solver'])):
             self.make_dfba_submodel(self.model, submodel_options=bad_solver)
 
         bad_presolve = copy.deepcopy(self.dfba_submodel_options)
-        bad_presolve['presolve'] = 20
+        bad_presolve['presolve'] = 'of'
         with self.assertRaisesRegexp(MultialgorithmError,
                                      "DfbaSubmodel metabolism: {} is not a valid Presolve option".format(
                                      	bad_presolve['presolve'])):
@@ -255,7 +282,7 @@ class TestDfbaSubmodel(unittest.TestCase):
         bad_optimization_type['optimization_type'] = 'bad'
         with self.assertRaisesRegexp(MultialgorithmError,
                                      "DfbaSubmodel metabolism: the optimization_type in"
-                                        f" options can only take 'maximize' or 'minimize' as value but is 'bad'"):
+                                        f" options can only take 'maximize', 'max', 'minimize' or 'min' as value but is 'bad'"):
             self.make_dfba_submodel(self.model, submodel_options=bad_optimization_type)
 
         bad_flux_comp_id = copy.deepcopy(self.dfba_submodel_options)
@@ -373,15 +400,39 @@ class TestDfbaSubmodel(unittest.TestCase):
             for ind,val in enumerate(v):
                 self.assertAlmostEqual(val, expected_results[k][ind], delta=1e-09)
 
+        # Test changing flux_bounds_volumetric_compartment_id
+        new_options = copy.deepcopy(self.dfba_submodel_options)
+        new_options['flux_bounds_volumetric_compartment_id'] = 'c'
+        new_submodel = self.make_dfba_submodel(self.model, submodel_options=new_options)
+        expected_results['ex_m1'] = (100.*5e-13*scale_factor, 120.*5e-13*scale_factor)
+        expected_results['ex_m2'] = (100.*5e-13*scale_factor, 120.*5e-13*scale_factor)
+        new_submodel.determine_bounds()
+        for k,v in new_submodel._reaction_bounds.items():
+            for ind,val in enumerate(v):
+                self.assertAlmostEqual(val, expected_results[k][ind], delta=1e-09)
+
+        del self.model.reactions.get_one(id='r1').rate_laws[0]        
+        del self.model.reactions.get_one(id='r2').rate_laws[1]
+        self.model.reactions.get_one(id='ex_m1').flux_bounds = None
+        self.model.reactions.get_one(id='ex_m1').reversible = True
+        self.model.reactions.get_one(id='ex_m2').flux_bounds = None
         self.model.reactions.get_one(id='ex_m3').flux_bounds.max = numpy.nan
         self.model.reactions.get_one(id='ex_m3').flux_bounds.min = numpy.nan
         dfba_submodel_2 = self.make_dfba_submodel(self.model,
         	submodel_options=self.dfba_submodel_options)
         dfba_submodel_2.determine_bounds()
-        expected_results['ex_m3'] = (None, None)
+        expected_results_2 = {
+            'ex_m1': (None, None),
+            'ex_m2': (0., None),
+            'ex_m3': (None, None),
+            'r1': (-1.*1*scale_factor, None),
+            'r2': (None, 1.*1*scale_factor + 2.*1*scale_factor),
+            'r3': (0., 5.*1*scale_factor),
+            'r4': (0., 6.*1*scale_factor),
+        }
         for k,v in dfba_submodel_2._reaction_bounds.items():
             for ind,val in enumerate(v):
-                self.assertAlmostEqual(val, expected_results[k][ind], delta=1e-09)
+                self.assertAlmostEqual(val, expected_results_2[k][ind], delta=1e-09)
 
     def test_update_bounds(self):
         new_bounds = {
@@ -468,7 +519,7 @@ class TestDfbaSubmodel(unittest.TestCase):
         self.assertEqual(len(dfba_submodel_2.dynamic_model.cache_manager._cache), 0)
 
         # Test using a different solver
-        self.dfba_submodel_options['solver'] = 3
+        self.dfba_submodel_options['solver'] = 'glpk'
         del self.dfba_submodel_options['solver_options']
         dfba_submodel_2 = self.make_dfba_submodel(self.model,
             submodel_options=self.dfba_submodel_options)
