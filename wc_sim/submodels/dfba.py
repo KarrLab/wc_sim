@@ -38,6 +38,8 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         FLUX_BOUNDS_VOLUMETRIC_COMPARTMENT_ID (:obj:`str`): id of the compartment where the
             measured flux bounds are normalized to, the default is the whole-cell
         reaction_fluxes (:obj:`dict`): reaction fluxes data structure, which is pre-allocated
+        dfba_objective (:obj:`ParsedExpression`): an analyzed and validated expression of dFBA objective
+        exchange_rxns (:obj:`list` of :obj:`wc_lang.Reactions`): list of exchange/demand reactions
         dfba_solver_options (:obj:`dict`): options for solving DFBA submodel
         _conv_model (:obj:`conv_opt.Model`): linear programming model in conv_opt format
         _conv_variables (:obj:`dict`): a dictionary mapping reaction IDs to the associated
@@ -113,6 +115,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             raise MultialgorithmError(f"DfbaSubmodel {self.id}: cannot find dynamic_dfba_objective "
                                       f"{dfba_objective_id}") # pragma: no cover
         self.dfba_objective = dynamic_model.dynamic_dfba_objectives[dfba_objective_id].wc_lang_expression
+        self.exchange_rxns = [i for i in self.reactions if len(i.participants)==1]
 
         self.dfba_solver_options = {
             'dfba_bound_scale_factor': self.DFBA_BOUND_SCALE_FACTOR,
@@ -340,7 +343,6 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         """ Compute the rate of change of the populations of species used by this DFBA
         """
         # Calculate the adjustment for each species as sum over reactions of reaction flux * stoichiometry
-        end_time = self.time + self.time_step
         self.current_species_populations()
         for idx, species_id in enumerate(self.species_ids):
             population_change_rate = 0
