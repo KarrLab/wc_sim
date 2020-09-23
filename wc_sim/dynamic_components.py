@@ -1055,7 +1055,8 @@ class DynamicModel(object):
                                               map_model_to_dynamic_model(compartment))
 
         # 3) add edges of species altered by reactions to determine dependencies of expressions on
-        # reactions to reduce memory use, process one reaction at a time
+        # reactions
+        # to reduce memory use, process one reaction at a time
         reaction_dependencies = {}
         dfs_preorder_nodes = networkx.algorithms.traversal.depth_first_search.dfs_preorder_nodes
         for dynamic_submodel in self.dynamic_submodels.values():
@@ -1076,7 +1077,7 @@ class DynamicModel(object):
                     if not isinstance(node, (wc_lang.Reaction, DynamicCompartment, DynamicSpecies)):
                         reaction_dependencies[reaction].add(node)
 
-                # convert the dependency sets into lists, which are more than 3x smaller
+                # convert the dependency sets into lists, which are more than 3x smaller than sets
                 reaction_dependencies[reaction] = list(reaction_dependencies[reaction])
                 dependency_graph.remove_node(reaction)
 
@@ -1171,6 +1172,11 @@ class DynamicModel(object):
         Args:
             dynamic_submodel_id (:obj:`str`): the id of the continuous submodel that's running
         """
+        '''
+        print('continuous_submodel_flush_after_populations_change')
+        print('dynamic_submodel_id', dynamic_submodel_id)
+        print('self.continuous_rxn_dependencies[dynamic_submodel_id]', self.continuous_rxn_dependencies[dynamic_submodel_id])
+        '''
         self.cache_manager.invalidate(expressions=self.continuous_rxn_dependencies[dynamic_submodel_id])
         self.flush_compartment_masses()
 

@@ -288,7 +288,8 @@ def define_trajectory_classes(model):
 def verify_independently_solved_model(test_case, model_filename, results_dir):
 
     # read model while ignoring missing models, with std dev = 0
-    for integration_framework in ['deterministic_simulation_algorithm', 'ordinary_differential_equations']:
+    for integration_framework in ['deterministic_simulation_algorithm',
+                                  'ordinary_differential_equations']:
         # empty results_dir
         for file in os.listdir(results_dir):
             file_path = os.path.join(results_dir, file)

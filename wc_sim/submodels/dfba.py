@@ -39,7 +39,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             measured flux bounds are normalized to, the default is the whole-cell
         reaction_fluxes (:obj:`dict`): reaction fluxes data structure, which is pre-allocated
         dfba_objective (:obj:`ParsedExpression`): an analyzed and validated expression of dFBA objective
-        exchange_rxns (:obj:`list` of :obj:`wc_lang.Reactions`): list of exchange/demand reactions
+        exchange_rxns (:obj:`set` of :obj:`wc_lang.Reactions`): set of exchange/demand reactions
         dfba_solver_options (:obj:`dict`): options for solving DFBA submodel
         _conv_model (:obj:`conv_opt.Model`): linear programming model in conv_opt format
         _conv_variables (:obj:`dict`): a dictionary mapping reaction IDs to the associated
@@ -98,13 +98,13 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             options (:obj:`dict`, optional): dFBA submodel options
 
         Raises:
-            :obj:`MultiAlgorithmError`: if the dynamic_dfba_objective cannot be found,
+            :obj:`MultiAlgorithmError`: if the `dynamic_dfba_objective` cannot be found,
                 if the provided 'dfba_bound_scale_factor' in options has a negative value,
                 if the provided 'dfba_coef_scale_factor' in options has a negative value,
                 if the provided 'solver' in options is not a valid value,
                 if the provided 'presolve' in options is not a valid value,
-                if 'solver' value provided in the 'solver_options' in options is not the same
-                as the name of the selected `conv_opt.Solver`, or the provide
+                if the 'solver' value provided in the 'solver_options' in options is not the same
+                as the name of the selected `conv_opt.Solver`, or if the provided
                 'flux_bounds_volumetric_compartment_id' is not a valid compartment ID in the model
         """
         super().__init__(id, dynamic_model, reactions, species, dynamic_compartments,
@@ -115,7 +115,9 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             raise MultialgorithmError(f"DfbaSubmodel {self.id}: cannot find dynamic_dfba_objective "
                                       f"{dfba_objective_id}") # pragma: no cover
         self.dfba_objective = dynamic_model.dynamic_dfba_objectives[dfba_objective_id].wc_lang_expression
-        self.exchange_rxns = [i for i in self.reactions if len(i.participants)==1]
+        # APG: is this foolproof? could a modeler have a pair of reactions of the form A -> (/), (/) -> A
+        # or would a model containing those reactions be rejected?
+        self.exchange_rxns = set([rxn for rxn in self.reactions if len(rxn.participants) == 1])
 
         self.dfba_solver_options = {
             'dfba_bound_scale_factor': self.DFBA_BOUND_SCALE_FACTOR,
@@ -209,7 +211,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                         self._dfba_obj_species.append(part)
                         self._conv_metabolite_matrices[part.species.id].append(
                             conv_opt.LinearTerm(self._conv_variables[rxn.id],
-                                part.value*coef_scale_factor))
+                                part.value * coef_scale_factor))
 
         for met_id, expression in self._conv_metabolite_matrices.items():
             self._conv_model.constraints.append(conv_opt.Constraint(expression, name=met_id,
@@ -222,7 +224,8 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                 self._conv_model.objective_terms.append(conv_opt.LinearTerm(
                     self._conv_variables[rxn.id], lin_coef))
 
-        self._conv_model.objective_direction = conv_opt.ObjectiveDirection[self.dfba_solver_options['optimization_type']]
+        self._conv_model.objective_direction = \
+            conv_opt.ObjectiveDirection[self.dfba_solver_options['optimization_type']]
         
         # Set options for conv_opt solver
         options = conv_opt.SolveOptions(
@@ -243,6 +246,8 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         # Determine all the reaction bounds
         bound_scale_factor = self.dfba_solver_options['dfba_bound_scale_factor']
         flux_comp_id = self.dfba_solver_options['flux_bounds_volumetric_compartment_id']
+        # TODO: AVOID NEG. POPS.
+        # APG: the use of 'flux_comp_volume' means that cached volumes must be invalidated before running dFBA
         if flux_comp_id == self.FLUX_BOUNDS_VOLUMETRIC_COMPARTMENT_ID:
             flux_comp_volume = self.dynamic_model.cell_volume()
         else:
@@ -254,19 +259,17 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             if reaction.rate_laws:
                 for_ratelaw = reaction.rate_laws.get_one(direction=wc_lang.RateLawDirection.forward)
                 if for_ratelaw:
-                    max_constr = for_ratelaw.expression._parsed_expression.eval({
-                                    wc_lang.Species: {i.id: i.distribution_init_concentration.mean \
-                                        for i in for_ratelaw.expression.species}
-                                        }) * bound_scale_factor
+                    # APG: we need to use the DynamicModel evaluator for the rate law; it needs to use the current
+                    # species population, not the initial conc., and be able to use other WC Lang expressions
+                    rate = self.dynamic_model.dynamic_rate_laws[for_ratelaw.id].eval(self.time)
+                    max_constr = bound_scale_factor * rate
                 else:
                     max_constr = None
 
                 rev_ratelaw = reaction.rate_laws.get_one(direction=wc_lang.RateLawDirection.backward)
                 if rev_ratelaw:
-                    min_constr = -rev_ratelaw.expression._parsed_expression.eval({
-                                    wc_lang.Species: {i.id: i.distribution_init_concentration.mean \
-                                        for i in rev_ratelaw.expression.species}
-                                        }) * bound_scale_factor
+                    rate = self.dynamic_model.dynamic_rate_laws[rev_ratelaw.id].eval(self.time)
+                    min_constr = -bound_scale_factor * rate
                 elif reaction.reversible:
                     min_constr = None
                 else:
@@ -276,29 +279,18 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             elif reaction.flux_bounds:
                 rxn_bounds = reaction.flux_bounds
                 if rxn_bounds.min:
+                    # todo: APG: one-line if statements are nicely compact, but coverage testing
+                    # cannot check both branches
                     min_constr = None if math.isnan(rxn_bounds.min) else \
-                        rxn_bounds.min*flux_comp_volume*scipy.constants.Avogadro*bound_scale_factor
+                        rxn_bounds.min * flux_comp_volume * scipy.constants.Avogadro * bound_scale_factor
                 else:
                     min_constr = rxn_bounds.min
                 if rxn_bounds.max:
+                    # todo: APG: see above RE one-line if statements
                     max_constr = None if math.isnan(rxn_bounds.max) else \
-                        rxn_bounds.max*flux_comp_volume*scipy.constants.Avogadro*bound_scale_factor
+                        rxn_bounds.max * flux_comp_volume * scipy.constants.Avogadro * bound_scale_factor
                 else:
                     max_constr = rxn_bounds.max
-                # TODO: AVOID NEG. POPS.
-                # TODO: further bound exchange and growth reactions:
-                # bound exchange/demand/sink reactions so they do not cause negative species populations
-                # if reaction r transports species x[c] out of c (& no other reaction transports x[c] into c)
-                # then bound the maximum flux of r, flux(r) (1/s) <= -p(x, t) * s(r, x) / dt
-                # (I don't understand flux bounds units of unit_registry.parse_units('M s^-1') elsewhere)
-                # where t = self.time, p(x, t) = population of x at time t,
-                # dt = self.time_step and s(r, x) = stoichiometry of x in r
-                # let flux_r = flux(r)
-                # then
-                # if max_constr is None:
-                #     max_constr = flux_r
-                # else:
-                #     max_constr = min(max_constr, flux_r)
 
             # Set other reactions to be unbounded
             else:
@@ -307,6 +299,29 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                     min_constr = None
                 else:
                     min_constr = 0.
+
+            # bound exchange reactions so they do not cause negative species populations in the
+            # next time step
+            # if exchange reaction r transports species x[c] out of c
+            # then bound the maximum flux of r, flux(r) (1/s) <= p(x, t) / (-s(r, x) * dt)
+            # where t = self.time, p(x, t) = population of x at time t,
+            # dt = self.time_step, and s(r, x) = stoichiometry of x in r
+            if reaction in self.exchange_rxns:
+                max_flux_rxn = float('inf')
+                for participant in reaction.participants:
+                    # 'participant.coefficient < 0' determines whether the participant is a reactant
+                    if participant.coefficient < 0:
+                        species_id = participant.species.gen_id()
+                        species_pop = self.local_species_population.read_one(self.time, species_id)
+                        max_flux_species = species_pop / (-participant.coefficient * self.time_step)
+                        max_flux_rxn = min(max_flux_rxn, max_flux_species)
+
+                if max_flux_rxn != float('inf'):
+                    max_flux_rxn = bound_scale_factor * max_flux_rxn
+                    if max_constr is None:
+                        max_constr = max_flux_rxn
+                    else:
+                        max_constr = min(max_constr, max_flux_rxn)
 
             self._reaction_bounds[reaction.id] = (min_constr, max_constr)
 
@@ -371,7 +386,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         self.local_species_population.adjust_continuously(self.time, self.id, self.adjustments,
                                                           time_step=self.time_step)
 
-        # flush expressions that depend on species and reactions modeled by this FBA submodel from cache
+        # flush expressions that depend on species and reactions modeled by this dFBA submodel from cache
         self.dynamic_model.continuous_submodel_flush_after_populations_change(self.id)
 
     ### handle DES events ###
