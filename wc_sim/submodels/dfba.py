@@ -350,8 +350,11 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             population_change_rate[exchange_rxn.participants[0].species.id] += \
                 self.reaction_fluxes[exchange_rxn.id] * -exchange_rxn.participants[0].coefficient
         
-        for species_id, adjustment in population_change_rate.items():
-            self.adjustments[species_id] = adjustment
+        for idx, species_id in enumerate(self.species_ids):
+            if species_id in population_change_rate:
+                self.adjustments[species_id] = population_change_rate[species_id]
+            else:
+                self.adjustments[species_id] = 0.
 
     def run_fba_solver(self):
         """ Run the FBA solver for one time step
