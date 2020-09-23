@@ -197,6 +197,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                     conv_opt.LinearTerm(self._conv_variables[rxn.id], part.coefficient))
 
         self._dfba_obj_rxn_ids = []
+        self._dfba_obj_species = []
         for rxn_cls in self.dfba_objective.related_objects.values():
             for rxn_id, rxn in rxn_cls.items():
                 if rxn_id not in self._conv_variables:
@@ -205,6 +206,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                         name=rxn.id, type=conv_opt.VariableType.continuous, lower_bound=0)
                     self._conv_model.variables.append(self._conv_variables[rxn.id])
                     for part in rxn.dfba_obj_species:
+                        self._dfba_obj_species.append(part)
                         self._conv_metabolite_matrices[part.species.id].append(
                             conv_opt.LinearTerm(self._conv_variables[rxn.id],
                                 part.value*coef_scale_factor))
@@ -319,14 +321,22 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
     def compute_population_change_rates(self):
         """ Compute the rate of change of the populations of species used by this DFBA
         """
+        coef_scale_factor = self.dfba_solver_options['dfba_coef_scale_factor']
         # Calculate the adjustment for each species as sum over reactions of reaction flux * stoichiometry
         self.current_species_populations()
-        for idx, species_id in enumerate(self.species_ids):
-            population_change_rate = 0
-            for rxn_term in self._conv_metabolite_matrices[species_id]:
-                if rxn_term.variable.name not in self._dfba_obj_rxn_ids:
-                    population_change_rate += self.reaction_fluxes[rxn_term.variable.name] * rxn_term.coefficient
-            self.adjustments[species_id] = population_change_rate
+        population_change_rate = {i:0 for i in [j.species.id for j in self._dfba_obj_species] + 
+            [k.participants[0].species.id for k in self.exchange_rxns]}
+        ## Compute for objective species
+        for obj_species in self._dfba_obj_species:
+            population_change_rate[obj_species.species.id] += \
+                self.reaction_fluxes[obj_species.dfba_obj_reaction.id] * -obj_species.value
+        ## Compute for exchange species
+        for exchange_rxn in self.exchange_rxns:
+            population_change_rate[exchange_rxn.participants[0].species.id] += \
+                self.reaction_fluxes[exchange_rxn.id] * -exchange_rxn.participants[0].coefficient
+        
+        for species_id, adjustment in population_change_rate.items():
+            self.adjustments[species_id] = adjustment
 
     def run_fba_solver(self):
         """ Run the FBA solver for one time step
@@ -350,6 +360,9 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         for rxn_variable in self._conv_model.variables:
             if rxn_variable.name not in self._dfba_obj_rxn_ids:
                 self.reaction_fluxes[rxn_variable.name] = rxn_variable.primal / bound_scale_factor
+            else:    
+                self.reaction_fluxes[rxn_variable.name] = rxn_variable.primal / bound_scale_factor \
+                    * coef_scale_factor
 
         # Compute the population change rates
         self.compute_population_change_rates()
