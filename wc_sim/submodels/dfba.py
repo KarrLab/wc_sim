@@ -39,7 +39,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             measured flux bounds are normalized to, the default is the whole-cell
         reaction_fluxes (:obj:`dict`): reaction fluxes data structure, which is pre-allocated
         dfba_objective (:obj:`ParsedExpression`): an analyzed and validated expression of dFBA objective
-        exchange_rxns (:obj:`list` of :obj:`wc_lang.Reactions`): list of exchange/demand reactions
+        exchange_rxns (:obj:`set` of :obj:`wc_lang.Reactions`): set of exchange/demand reactions
         dfba_solver_options (:obj:`dict`): options for solving DFBA submodel
         _conv_model (:obj:`conv_opt.Model`): linear programming model in conv_opt format
         _conv_variables (:obj:`dict`): a dictionary mapping reaction IDs to the associated
@@ -115,7 +115,9 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             raise MultialgorithmError(f"DfbaSubmodel {self.id}: cannot find dynamic_dfba_objective "
                                       f"{dfba_objective_id}") # pragma: no cover
         self.dfba_objective = dynamic_model.dynamic_dfba_objectives[dfba_objective_id].wc_lang_expression
-        self.exchange_rxns = [i for i in self.reactions if len(i.participants)==1]
+        # APG: is this foolproof? could a modeler have a pair of reactions of the form A -> (/), (/) -> A
+        # or would a model containing those reactions be rejected?
+        self.exchange_rxns = set([rxn for rxn in self.reactions if len(rxn.participants) == 1])
 
         self.dfba_solver_options = {
             'dfba_bound_scale_factor': self.DFBA_BOUND_SCALE_FACTOR,
@@ -252,25 +254,19 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         for reaction in self.reactions:
 
             # Set the bounds of reactions with measured kinetic constants
-            print('\nreaction.id', reaction.id)
-            print('reaction.rate_laws', reaction.rate_laws)
-            print('reaction.flux_bounds', reaction.flux_bounds)
             if reaction.rate_laws:
                 for_ratelaw = reaction.rate_laws.get_one(direction=wc_lang.RateLawDirection.forward)
                 if for_ratelaw:
                     # APG: we need to use the DynamicModel evaluator for the rate law; it needs to use the current
                     # species population, not the initial conc., and be able to use other WC Lang expressions
                     rate = self.dynamic_model.dynamic_rate_laws[for_ratelaw.id].eval(self.time)
-                    print('for_ratelaw bound_scale_factor * rate', bound_scale_factor * rate)
                     max_constr = bound_scale_factor * rate
-                    print('max_constr', max_constr)
                 else:
                     max_constr = None
 
                 rev_ratelaw = reaction.rate_laws.get_one(direction=wc_lang.RateLawDirection.backward)
                 if rev_ratelaw:
                     rate = self.dynamic_model.dynamic_rate_laws[rev_ratelaw.id].eval(self.time)
-                    print('rev_ratelaw bound_scale_factor * rate', bound_scale_factor * rate)
                     min_constr = -bound_scale_factor * rate
                 elif reaction.reversible:
                     min_constr = None
@@ -281,14 +277,14 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             elif reaction.flux_bounds:
                 rxn_bounds = reaction.flux_bounds
                 if rxn_bounds.min:
-                    # APG: one-line if statements are nicely compact, but coverage testing
+                    # todo: APG: one-line if statements are nicely compact, but coverage testing
                     # cannot check both branches
                     min_constr = None if math.isnan(rxn_bounds.min) else \
                         rxn_bounds.min * flux_comp_volume * scipy.constants.Avogadro * bound_scale_factor
                 else:
                     min_constr = rxn_bounds.min
                 if rxn_bounds.max:
-                    # APG: see above RE one-line if statements
+                    # todo: APG: see above RE one-line if statements
                     max_constr = None if math.isnan(rxn_bounds.max) else \
                         rxn_bounds.max * flux_comp_volume * scipy.constants.Avogadro * bound_scale_factor
                 else:
@@ -302,32 +298,28 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                 else:
                     min_constr = 0.
 
-            # TODO: AVOID NEG. POPS.
-            # TODO: further bound exchange and growth reactions:
-            # bound exchange/demand/sink reactions so they do not cause negative species populations
-            # if reaction r transports species x[c] out of c (& no other reaction transports x[c] into c)
-            # then bound the maximum flux of r, flux(r) (1/s) <= -p(x, t) / (s(r, x) * dt)
-            # (I don't understand flux bounds units of unit_registry.parse_units('M s^-1') elsewhere)
-            # where t = self.time; p(x, t) = population of x at time t;
-            # dt = self.time_step and s(r, x) = stoichiometry of x in r
-            # let flux_r = flux(r)
-            # max_flux_r = / self.time_step
-            if max_constr is None:
-                max_flux_r = float('inf')
+            # bound exchange reactions so they do not cause negative species populations in the
+            # next time step
+            # if exchange reaction r transports species x[c] out of c
+            # then bound the maximum flux of r, flux(r) (1/s) <= p(x, t) / (-s(r, x) * dt)
+            # where t = self.time, p(x, t) = population of x at time t,
+            # dt = self.time_step, and s(r, x) = stoichiometry of x in r
+            if reaction in self.exchange_rxns:
+                max_flux_rxn = float('inf')
                 for participant in reaction.participants:
                     # 'participant.coefficient < 0' determines whether the participant is a reactant
                     if participant.coefficient < 0:
                         species_id = participant.species.gen_id()
-                        count = self.local_species_population.read_one(self.time, species_id)
-                        max_flux_r = min(max_flux_r, -count / (participant.coefficient * self.time_step))
-                        # print(f"species {species_id} in reaction {reaction.id} "
-                        #      f"count {count}, new max_flux_r {max_flux_r}")
+                        species_pop = self.local_species_population.read_one(self.time, species_id)
+                        max_flux_species = species_pop / (-participant.coefficient * self.time_step)
+                        max_flux_rxn = min(max_flux_rxn, max_flux_species)
 
-            # then
-            # if max_constr is None and max_flux_r is not float('inf'):
-            #     max_constr = flux_r
-            # else:
-            #     max_constr = min(max_constr, max_flux_r)
+                if max_flux_rxn != float('inf'):
+                    max_flux_rxn = bound_scale_factor * max_flux_rxn
+                    if max_constr is None:
+                        max_constr = max_flux_rxn
+                    else:
+                        max_constr = min(max_constr, max_flux_rxn)
 
             self._reaction_bounds[reaction.id] = (min_constr, max_constr)
 

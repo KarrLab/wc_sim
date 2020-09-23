@@ -387,6 +387,11 @@ class TestDfbaSubmodel(unittest.TestCase):
         	{'biomass_reaction': 1, 'r2': 2})
         self.assertEqual(dfba_submodel_2._conv_model.objective_direction, conv_opt.ObjectiveDirection.minimize)
 
+    def bounds_test(test_case, dfba_submodel, expected_results):
+        for rxn_id, bounds in dfba_submodel._reaction_bounds.items():
+            for ind, bound in enumerate(bounds):
+                test_case.assertAlmostEqual(bound, expected_results[rxn_id][ind], delta=1e-09)
+
     def test_determine_bounds(self):
         scale_factor = self.dfba_submodel_options['dfba_bound_scale_factor']
 
@@ -401,9 +406,7 @@ class TestDfbaSubmodel(unittest.TestCase):
             'r3': (0., 5. * 1 * scale_factor),
             'r4': (0., 6. * 1 * scale_factor),
         }
-        for k,v in self.dfba_submodel_1._reaction_bounds.items():
-            for ind,val in enumerate(v):
-                self.assertAlmostEqual(val, expected_results[k][ind], delta=1e-09)
+        self.bounds_test(self.dfba_submodel_1, expected_results)
 
         # Test changing flux_bounds_volumetric_compartment_id
         new_options = copy.deepcopy(self.dfba_submodel_options)
@@ -412,9 +415,7 @@ class TestDfbaSubmodel(unittest.TestCase):
         expected_results['ex_m1'] = (100. * 5e-13 * scale_factor, 120. * 5e-13 * scale_factor)
         expected_results['ex_m2'] = (100. * 5e-13 * scale_factor, 120. * 5e-13 * scale_factor)
         new_submodel.determine_bounds()
-        for k,v in new_submodel._reaction_bounds.items():
-            for ind,val in enumerate(v):
-                self.assertAlmostEqual(val, expected_results[k][ind], delta=1e-09)
+        self.bounds_test(new_submodel, expected_results)
 
         del self.model.reactions.get_one(id='r1').rate_laws[0]        
         del self.model.reactions.get_one(id='r2').rate_laws[1]
@@ -424,7 +425,7 @@ class TestDfbaSubmodel(unittest.TestCase):
         self.model.reactions.get_one(id='ex_m3').flux_bounds.max = numpy.nan
         self.model.reactions.get_one(id='ex_m3').flux_bounds.min = numpy.nan
         dfba_submodel_2 = self.make_dfba_submodel(self.model,
-        	submodel_options=self.dfba_submodel_options)
+                                                  submodel_options=self.dfba_submodel_options)
         dfba_submodel_2.determine_bounds()
         expected_results_2 = {
             'ex_m1': (None, None),
@@ -435,9 +436,32 @@ class TestDfbaSubmodel(unittest.TestCase):
             'r3': (0., 5. * 1 * scale_factor),
             'r4': (0., 6. * 1 * scale_factor),
         }
-        for k,v in dfba_submodel_2._reaction_bounds.items():
-            for ind,val in enumerate(v):
-                self.assertAlmostEqual(val, expected_results_2[k][ind], delta=1e-09)
+        self.bounds_test(dfba_submodel_2, expected_results_2)
+
+        ### test bound exchange/demand/sink reactions so they do not cause negative species populations
+        # test exchange rxn with reactant and no max bound
+        ex4 = self.submodel.reactions.create(id='ex_m4', reversible=False, model=self.model)
+        ex4.flux_bounds = wc_lang.FluxBounds(min=0., max=None)
+        m2 = self.model.species.get_one(id='m2[c]')
+        ex4.participants.append(m2.species_coefficients.get_or_create(coefficient=-2))
+
+        # test exchange rxn with reactant and large max bound
+        ex5 = self.submodel.reactions.create(id='ex_m5', reversible=False, model=self.model)
+        ex5.flux_bounds = wc_lang.FluxBounds(min=0., max=float('inf'))
+        m3 = self.model.species.get_one(id='m3[c]')
+        ex5.participants.append(m3.species_coefficients.get_or_create(coefficient=-1))
+
+        dfba_submodel_3 = self.make_dfba_submodel(self.model,
+                                                  submodel_options=self.dfba_submodel_options)
+
+        for rxn_id, species_id, coefficient in zip(('ex_m4', 'ex_m5'),
+                                                   ('m2[c]', 'm3[c]'),
+                                                   (-2, -1)):
+            species_pop = dfba_submodel_3.local_species_population.read_one(0, species_id)
+            expected_max_constr = -scale_factor * species_pop / (coefficient * dfba_submodel_3.time_step)
+            expected_results_2[rxn_id] = (0, expected_max_constr)
+        dfba_submodel_3.determine_bounds()
+        self.bounds_test(dfba_submodel_3, expected_results_2)
 
     def test_update_bounds(self):
         new_bounds = {
