@@ -1375,6 +1375,34 @@ class CacheManager(object):
         """
         self.caching_active = caching_active
 
+    def __contains__(self, expression):
+        """ Indicate whether the cache contains an expression
+
+        Args:
+            expression (:obj:`object`): a dynamic expression
+
+        Returns:
+            :obj:`bool`: return :obj:`True` if caching is enabled and `expression` is in the cache,
+                :obj:`False` otherwise
+        """
+        return self.caching_active and expression in self._cache
+
+    def size(self):
+        """ Get the cache's size
+
+        Returns:
+            :obj:`int`: the number of entries in the cache
+        """
+        return len(self._cache)
+
+    def empty(self):
+        """ Determine whether the cache is empty
+
+        Returns:
+            :obj:`bool`: return :obj:`True` if the cache is empty, :obj:`False` otherwise
+        """
+        return self.size() == 0
+
     def _stop_caching(self):
         """ Disable caching; used for testing """
         self.set_caching(False)

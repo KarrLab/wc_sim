@@ -757,10 +757,11 @@ class TestDynamicModel(unittest.TestCase):
 
             reaction = model.get_reactions(id='reaction_1')[0]
             dynamic_model.flush_after_reaction(reaction)
-            self.assertEqual(len(dynamic_model.cache_manager._cache), 0)
+            self.assertTrue(dynamic_model.cache_manager.empty())
+            self.assertTrue(dynamic_model.cache_manager.empty())
 
             dynamic_model.continuous_submodel_flush_after_populations_change(ode_submodel_id)
-            self.assertEqual(len(dynamic_model.cache_manager._cache), 0)
+            self.assertTrue(dynamic_model.cache_manager.empty())
 
 
         ### test EVENT_BASED invalidation ###
@@ -777,12 +778,12 @@ class TestDynamicModel(unittest.TestCase):
             # when using EVENT_BASED invalidation, flush_after_reaction empties cache
             reaction = model.get_reactions(id='reaction_1')[0]
             dynamic_model.flush_after_reaction(reaction)
-            self.assertEqual(len(dynamic_model.cache_manager._cache), 0)
+            self.assertTrue(dynamic_model.cache_manager.empty())
 
             # when using EVENT_BASED invalidation, continuous_submodel_flush_after_populations_change empties cache
             eval_rate_laws_in_submodel(dynamic_model, ode_submodel_id)
             dynamic_model.continuous_submodel_flush_after_populations_change(ode_submodel_id)
-            self.assertEqual(len(dynamic_model.cache_manager._cache), 0)
+            self.assertTrue(dynamic_model.cache_manager.empty())
 
 
         ### test REACTION_DEPENDENCY_BASED invalidation ###
@@ -822,22 +823,22 @@ class TestDynamicModel(unittest.TestCase):
 
         rxn_id = 'reaction_1'
         self.assertLess(0, len([expr for expr in get_expected_rxn_dependencies([rxn_id])\
-                                if expr in dynamic_model.cache_manager._cache]))
+                                if expr in dynamic_model.cache_manager]))
         reaction = model.get_reactions(id=rxn_id)[0]
         dynamic_model.flush_after_reaction(reaction)
         for expression in get_expected_rxn_dependencies([rxn_id]):
-            self.assertNotIn(expression, dynamic_model.cache_manager._cache)
+            self.assertNotIn(expression, dynamic_model.cache_manager)
 
-        # when using REACTION_DEPENDENCY_BASED invalidation, continuous_submodel_flush_after_populations_change flushes
-        # expressions that depend on the continuous submodel calling it
+        # when using REACTION_DEPENDENCY_BASED invalidation, continuous_submodel_flush_after_populations_change
+        # flushes expressions that depend on the continuous submodel calling it
         eval_rate_laws_in_submodel(dynamic_model, ode_submodel_id)
         reaction_ids = ['reaction_3', 'reaction_8']
         self.assertLess(0, len([expr for expr in get_expected_rxn_dependencies(reaction_ids)\
-                                if expr in dynamic_model.cache_manager._cache]))
+                                if expr in dynamic_model.cache_manager]))
         expected_rxn_dependencies = get_expected_rxn_dependencies(reaction_ids)
         dynamic_model.continuous_submodel_flush_after_populations_change(ode_submodel_id)
         for expression in expected_rxn_dependencies:
-            self.assertNotIn(expression, dynamic_model.cache_manager._cache)
+            self.assertNotIn(expression, dynamic_model.cache_manager)
 
     def do_test_expression_dependency_dynamics(self, model_file, framework, max_time,
                                                alternative_caching_settings, seed=17):
@@ -846,7 +847,8 @@ class TestDynamicModel(unittest.TestCase):
 
         # must suspend rounding by DynamicSpeciesState.get_population() because DynamicSpeciesStates
         # and submodels share a RandomState, so if rounding is used it changes stochastic algorithms
-        # todo: remove this suspention of rounding when submodels and the Local Species Populattion use different RandomStates
+        # todo: remove this suspention of rounding when submodels and the Local Species Populattion
+        # use different RandomStates
         with EnvironUtils.temp_config_env([(['wc_sim', 'multialgorithm', 'default_rounding'], 'False')]):
             model = Reader().run(model_file)[Model][0]
             # change DSA submodel to another framework
@@ -980,9 +982,19 @@ class TestCacheManager(unittest.TestCase):
         self.assertEqual(cache_manager.caching(), False)
         self.assertEqual(cache_manager.get(self.dyn_stop_cond), None)
         self.assertEqual(cache_manager.set(self.dyn_stop_cond, 0), None)
+        self.assertNotIn(self.dyn_stop_cond, cache_manager)
         self.assertEqual(cache_manager.flush([]), None)
         self.assertEqual(cache_manager.clear_cache(), None)
         self.assertEqual(cache_manager.invalidate(), None)
+
+        ### test utilities
+        cache_manager = CacheManager(caching_active=True)
+        self.assertEqual(cache_manager.size(), 0)
+        self.assertTrue(cache_manager.empty())
+        cache_manager.set(self.dyn_stop_cond, 0)
+        self.assertIn(self.dyn_stop_cond, cache_manager)
+        self.assertEqual(cache_manager.size(), 1)
+        self.assertFalse(cache_manager.empty())
 
         def test_get_set(test_case, cache_manager):
             # test 'set' and 'get', which don't depend on the invalidation approach
@@ -1021,7 +1033,7 @@ class TestCacheManager(unittest.TestCase):
         expressions = test_get_set(self, cache_manager)
         # flush should empty the cache
         cache_manager.flush(expressions)
-        self.assertEqual(len(cache_manager._cache), 0)
+        self.assertTrue(cache_manager.empty())
 
         # flush should do nothing with keys not in the cache
         cache_manager = CacheManager(caching_active=True, cache_invalidation='event_based')
@@ -1033,7 +1045,7 @@ class TestCacheManager(unittest.TestCase):
 
         # clear_cache should empty the cache
         cache_manager.clear_cache()
-        self.assertEqual(len(cache_manager._cache), 0)
+        self.assertTrue(cache_manager.empty())
         test_cache_settings(self, cache_manager)
 
         ### test event_based caching
@@ -1041,7 +1053,7 @@ class TestCacheManager(unittest.TestCase):
         test_get_set(self, cache_manager)
         # invalidate should empty the cache
         cache_manager.invalidate()
-        self.assertEqual(len(cache_manager._cache), 0)
+        self.assertTrue(cache_manager.empty())
 
         # test reaction_dependency_based caching
         cache_manager = CacheManager(caching_active=True, cache_invalidation='reaction_dependency_based')
@@ -1055,7 +1067,7 @@ class TestCacheManager(unittest.TestCase):
 
         # with keys in the cache, invalidate should empty it
         cache_manager.invalidate(expressions)
-        self.assertEqual(len(cache_manager._cache), 0)
+        self.assertTrue(cache_manager.empty())
 
         # test caching configured from config file
         cache_manager = CacheManager()

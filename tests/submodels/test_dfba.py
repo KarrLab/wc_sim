@@ -550,7 +550,7 @@ class TestDfbaSubmodel(unittest.TestCase):
 
         # TODO: AVOID NEG. POPS.: fix caching
         # Test flush expression
-        # self.assertEqual(len(dfba_submodel_2.dynamic_model.cache_manager._cache), 0)
+        # self.assertTrue(dfba_submodel_2.dynamic_model.cache_manager.empty())
 
         # Test using a different solver
         self.dfba_submodel_options['solver'] = 'glpk'
