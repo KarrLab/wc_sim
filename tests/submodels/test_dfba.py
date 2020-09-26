@@ -548,7 +548,8 @@ class TestDfbaSubmodel(unittest.TestCase):
         population = dfba_submodel_2.local_species_population.read(1., set(species))
         self.assertEqual(population, expected_population)
 
-        # TODO: AVOID NEG. POPS.: fix caching
+        # TODO: OPTIMIZE DFBA CACHING: test that expressions that depend on exchange and biomass reactions
+        # have been flushed, and that expressions which don't depend on them have not been flushed
         # Test flush expression
         # self.assertTrue(dfba_submodel_2.dynamic_model.cache_manager.empty())
 

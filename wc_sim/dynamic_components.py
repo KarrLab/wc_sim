@@ -729,11 +729,11 @@ class DynamicModel(object):
             that get repeated
         rxn_expression_dependencies (:obj:`dict`): map from reactions to lists of expressions
             whose values depend on species with non-zero stoichiometry in the reaction
+        # TODO: OPTIMIZE DFBA CACHING: describe dFBA caching optimization
         continuous_rxn_dependencies (:obj:`dict`): map from ids of continuous submodels to sets
             identifying expressions whose values depend on species with non-zero stoichiometry in
             reaction(s) modeled by the submodel
-        all_continuous_rxn_dependencies (:obj:`tuple`): all expressions in
-            `continuous_rxn_dependencies`
+        all_continuous_rxn_dependencies (:obj:`tuple`): all expressions in `continuous_rxn_dependencies`
     """
     AGGREGATE_VALUES = ['mass', 'volume', 'accounted mass', 'accounted volume']
     def __init__(self, model, species_population, dynamic_compartments):
@@ -1111,6 +1111,7 @@ class DynamicModel(object):
         continuous_rxn_dependencies = {}
         for submodel_id, sm_reactions in rxns_modeled_by_continuous_submodels.items():
             continuous_rxn_dependencies[submodel_id] = set()
+            # TODO: OPTIMIZE DFBA CACHING: only include exchange and objective (biomass) reactions in dFBA submodels
             for reaction, dependencies in self.rxn_expression_dependencies.items():
                 if reaction in sm_reactions:
                     continuous_rxn_dependencies[submodel_id].update(dependencies)

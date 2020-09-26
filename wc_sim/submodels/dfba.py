@@ -199,6 +199,11 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                     conv_opt.LinearTerm(self._conv_variables[rxn.id], part.coefficient))
 
         self._dfba_obj_rxn_ids = []
+        # APG: this doesn't look right; related_objects is documented as:
+        #   (:obj:`dict`): models that are referenced in :obj:`expression`; maps model type to
+        #   dict that maps model id to model instance
+        # and a bunch of obj_tables code is consistent with that
+        # which means that "self.dfba_objective.related_objects.values()" should iterate over rxn ids
         for rxn_cls in self.dfba_objective.related_objects.values():
             for rxn_id, rxn in rxn_cls.items():
                 if rxn_id not in self._conv_variables:
@@ -259,6 +264,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                 if for_ratelaw:
                     # APG: we need to use the DynamicModel evaluator for the rate law; it needs to use the current
                     # species population, not the initial conc., and be able to use other WC Lang expressions
+                    # APG: if reversible rxns are split, could call self.calc_reaction_rate(reaction)
                     rate = self.dynamic_model.dynamic_rate_laws[for_ratelaw.id].eval(self.time)
                     max_constr = bound_scale_factor * rate
                 else:
