@@ -417,8 +417,6 @@ class RunResults(object):
     def dataframes_are_close(df1, df2, rtol=None, atol=None):
      """ Indicate whether two Pandas DataFrames that contain floats are almost equal
 
-     Return :obj:`True` if rows and columns are identical and values are all close.
-
      Args:
          df1 (:obj:`pandas.DataFrame`): one DataFrame
          df2 (:obj:`pandas.DataFrame`): another DataFrame
@@ -428,7 +426,8 @@ class RunResults(object):
             which compares DataFrame values
 
      Returns:
-         :obj:`bool`: :obj:`True` if the DataFrames are semantically equal
+         :obj:`bool`: :obj:`True` if the :obj:`DataFrame`\ s are semantically equal, i.e.,
+            if rows and columns are identical and values are all close
 
     Raises:
         :obj:`ValueError`: if either argument is not a :obj:`pandas.DataFrame`
