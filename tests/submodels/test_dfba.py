@@ -67,7 +67,7 @@ class TestDfbaSubmodel(unittest.TestCase):
             for comp in [c, n]:                
                 metabolite_species = model.species.create(species_type=metabolite_st, compartment=comp)
                 metabolite_species.id = metabolite_species.gen_id()
-                conc_model = model.distribution_init_concentrations.create(species=metabolite_species, mean=10., std=0.,
+                conc_model = model.distribution_init_concentrations.create(species=metabolite_species, mean=100., std=0.,
                 	units=unit_registry.parse_units('molecule'))
                 conc_model.id = conc_model.gen_id()
 
@@ -497,14 +497,15 @@ class TestDfbaSubmodel(unittest.TestCase):
                 'r2': 0.5,
                 'r3': 5.6,
                 'r4': 2.5,
+                'biomass_reaction': 6.8,
             }
             self.dfba_submodel_1.reaction_fluxes = new_fluxes
             self.dfba_submodel_1.compute_population_change_rates()
 
             expected_rates = {
-                'm1[c]': 1 * 13.2 -1 * -1.3 -1 * 0.5 -2 * 5.6,
-                'm2[c]': 1 * 30. -1 * -1.3 +1 * 0.5 -2 * 2.5,
-                'm3[c]': 1 * 0. +1 * -1.3 +1 * 5.6 +1 * 2.5,
+                'm1[c]': -1 * 13.2,
+                'm2[c]': -1 * 30.,
+                'm3[c]': -1 * 0. +1 * 6.8,
             }
             self.assertEqual(self.dfba_submodel_1.adjustments, expected_rates)
 
@@ -535,16 +536,20 @@ class TestDfbaSubmodel(unittest.TestCase):
         dfba_submodel_2.time_step = 1.
         dfba_submodel_2.run_fba_solver()
 
-        expected_adjustments = {'m1[c]': 0.,
-                                'm2[c]': 0.,
-                                'm3[c]': 120. * self.cell_volume * dfba_submodel_2.time_step * 1e11}
+        expected_adjustments = {
+            'm1[c]': -120. * self.cell_volume * dfba_submodel_2.time_step * 1e11, 
+            'm2[c]': -120. * self.cell_volume*dfba_submodel_2.time_step * 1e11, 
+            'm3[c]': 120. * self.cell_volume*dfba_submodel_2.time_step * 1e11
+            }
         self.assertEqual(dfba_submodel_2._optimal_obj_func_value, 120. * self.cell_volume * 1e11)
-        self.assertEqual(dfba_submodel_2.adjustments, expected_adjustments)
+        for k,v in expected_adjustments.items():
+            self.assertAlmostEqual(dfba_submodel_2.adjustments[k], v, delta=1e-09)
         
         species = ['m1[c]', 'm2[c]', 'm3[c]']
-        expected_population = dict(zip(species,
-                                       [10, 10, 10 + 120 * self.cell_volume *
-                                        dfba_submodel_2.time_step * 1e11]))
+        expected_population = dict(zip(species, [
+            100 - 120. * self.cell_volume * dfba_submodel_2.time_step * 1e11, 
+            100 - 120. * self.cell_volume * dfba_submodel_2.time_step * 1e11, 
+            100 + 120 * self.cell_volume * dfba_submodel_2.time_step * 1e11]))
         population = dfba_submodel_2.local_species_population.read(1., set(species))
         self.assertEqual(population, expected_population)
 
@@ -561,16 +566,20 @@ class TestDfbaSubmodel(unittest.TestCase):
         dfba_submodel_2.time_step = 1.
         dfba_submodel_2.run_fba_solver()
 
-        expected_adjustments = {'m1[c]': 0.,
-                                'm2[c]': 0.,
-                                'm3[c]': 120. * self.cell_volume * dfba_submodel_2.time_step * 1e11}
+        expected_adjustments = {
+            'm1[c]': -120. * self.cell_volume * dfba_submodel_2.time_step * 1e11, 
+            'm2[c]': -120. * self.cell_volume * dfba_submodel_2.time_step * 1e11, 
+            'm3[c]': 120. * self.cell_volume * dfba_submodel_2.time_step * 1e11
+            }
         self.assertEqual(dfba_submodel_2._optimal_obj_func_value, 120. * self.cell_volume * 1e11)
-        self.assertEqual(dfba_submodel_2.adjustments, expected_adjustments)
+        for k,v in expected_adjustments.items():
+            self.assertAlmostEqual(dfba_submodel_2.adjustments[k], v, delta=1e-09)
 
         species = ['m1[c]', 'm2[c]', 'm3[c]']
-        expected_population = dict(zip(species,
-                                       [10, 10, 10 + 120 * self.cell_volume *
-                                        dfba_submodel_2.time_step * 1e11]))
+        expected_population = dict(zip(species, [
+            100 - 120. * self.cell_volume * dfba_submodel_2.time_step * 1e11, 
+            100 - 120. * self.cell_volume * dfba_submodel_2.time_step * 1e11, 
+            100 + 120 * self.cell_volume * dfba_submodel_2.time_step * 1e11]))
         population = dfba_submodel_2.local_species_population.read(1., set(species))
         self.assertEqual(population, expected_population)
 
