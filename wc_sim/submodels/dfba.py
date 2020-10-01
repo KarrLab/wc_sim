@@ -251,13 +251,16 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
 
     @staticmethod
     def _get_species_and_stoichiometry(reaction):
-        """ Get a dFBA objective reaction's species and their net stoichiometries
+        """ Get a reaction's species and their net stoichiometries
+
+        Handles both :obj:`wc_lang.Reaction` and :obj:`wc_lang.DfbaObjReaction` reactions.
 
         Args:
             reaction (:obj:`wc_lang.Reaction` or :obj:`wc_lang.DfbaObjReaction`): a reaction
 
         Returns:
-            :obj:`dict`: map from species to net stoichiometry for each species in `reaction`
+            :obj:`dict`: map from species to net stoichiometry for each species in `reaction`,
+            with entries which have net stoichiometry of 0. removed
         """
         # get net coefficients, since a species can participate in both sides of a reaction
         species_net_coefficients = collections.defaultdict(float)
@@ -269,6 +272,9 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             for part in reaction.dfba_obj_species:
                 species_net_coefficients[part.species] += part.value
 
+        species_to_rm = [s for s in species_net_coefficients if species_net_coefficients[s] == 0.]
+        for species in species_to_rm:
+            del species_net_coefficients[species]
         return species_net_coefficients
 
     NEG_POP_CONSTRAINT_PREFIX = 'neg_pop_constraint-'
@@ -281,7 +287,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             :obj:`dict`: a map from constraint id to constraints stored in `self._conv_model.constraints`
         """
         # TODO: AVOID NEG. POPS.
-        # APG: perhaps also check that biomass reactions and exchange reactions are not reversible
+        # TODO: either check that all reactions are irreversible or handle reversible reactions
 
         # map from species to reactions that use the species
         reactions_using_species = collections.defaultdict(set)
@@ -301,32 +307,33 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         multi_reaction_constraints = {}
         for species, rxns in reactions_using_species.items():
             if 1 < len(rxns):
-                # create expression for the species' net consumption rate, in mol / sec
+                # create an expression for the species' net consumption rate, in molecules / sec
                 # net consumption = sum(-coef(species) * flux) for rxns that use species as a reactant -
                 #                   sum(coef(species) * flux) for rxns that use species as a product
                 # which can be simplified as -sum(coef * flux) for all rxns that use species
                 constr_expr = []
-                # TODO: if any reactions are reversible, raise exception or handle both directions
                 for rxn in rxns:
                     for rxn_species, net_coef in self._get_species_and_stoichiometry(rxn).items():
                         if rxn_species == species:
-                            net_coef = -net_coef
-                            scaled_coefficient = net_coef
+                            net_consumption_coef = -net_coef
+                            scaled_net_consumption_coef = net_consumption_coef
                             if rxn not in self.exchange_rxns:
-                                scaled_coefficient = coef_scale_factor * net_coef
+                                scaled_net_consumption_coef = coef_scale_factor * net_consumption_coef
                             constr_expr.append(conv_opt.LinearTerm(self._conv_variables[rxn.id],
-                                                                   scaled_coefficient))
+                                                                   scaled_net_consumption_coef))
 
-                constraint_id = self.NEG_POP_CONSTRAINT_PREFIX + species.id
-                # TODO: optimization: don't create Constraint if all coefficients are positive
-                # as the species cannot be consumed
-                # upper_bound will be set by apply_neg_population_constraints() before solving FBA
-                constraint = conv_opt.Constraint(constr_expr,
-                                                 name=constraint_id,
-                                                 lower_bound=0.0,
-                                                 upper_bound=None)
-                self._conv_model.constraints.append(constraint)
-                multi_reaction_constraints[constraint_id] = constraint
+                # optimization: only create a Constraint when the species can be consumed,
+                # which occurs when at least one of its net consumption coefficients is positive
+                species_can_be_consumed = any([0 < linear_term.coefficient for linear_term in constr_expr])
+                if species_can_be_consumed:
+                    # upper_bound will be set by apply_neg_population_constraints() before solving FBA
+                    constraint_id = self.NEG_POP_CONSTRAINT_PREFIX + species.id
+                    constraint = conv_opt.Constraint(constr_expr,
+                                                     name=constraint_id,
+                                                     lower_bound=0.0,
+                                                     upper_bound=None)
+                    self._conv_model.constraints.append(constraint)
+                    multi_reaction_constraints[constraint_id] = constraint
         return multi_reaction_constraints
 
     def set_up_optimizations(self):
