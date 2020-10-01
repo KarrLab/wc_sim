@@ -237,15 +237,22 @@ class TestDfbaSubmodel(unittest.TestCase):
         # print(f'writing {lang_filename}')
         # Writer().run(lang_filename, model, protected=False)
 
-    def make_dfba_submodel(self, model, dfba_time_step=1.0, submodel_name='metabolism',
-                           submodel_options=None, add_dfba_obj=False):
-        """ Make a MultialgorithmSimulation from a wc lang model
+    def make_dfba_submodel(self, model, dfba_time_step=1.0, submodel_id='metabolism',
+                           submodel_options=None, dfba_obj_with_regular_rxn=False):
+        """ Make a MultialgorithmSimulation from a wc lang model, and return its dFBA submodel
+
+        Args:
+            model (:obj:`wc_lang.Model`): the model
+            dfba_time_step (:obj:`float`, optional): the dFBA submodel's timestep
+            submodel_id (:obj:`wc_lang.Model`, optional): the dFBA submodel's id
+            submodel_options (:obj:`type`, optional): the dynamic dFBA submodel's options
+            dfba_obj_with_regular_rxn (:obj:`bool`, optional): whether to give the submodel
+                a dfba_obj that has a regular reaction
 
         Returns:
             :obj:`DfbaSubmodel`: a dynamic dFBA submodel
         """
-        # assume a single submodel
-        if add_dfba_obj:
+        if dfba_obj_with_regular_rxn:
             obj_expression = f"biomass_reaction + 2 * r2"
             dfba_obj_expression, error = wc_lang.DfbaObjectiveExpression.deserialize(
                 obj_expression, {
@@ -263,12 +270,14 @@ class TestDfbaSubmodel(unittest.TestCase):
 
         de_simulation_config = SimulationConfig(max_time=10)
         wc_sim_config = WCSimulationConfig(de_simulation_config, dfba_time_step=dfba_time_step)
-        multialgorithm_simulation = MultialgorithmSimulation(model, wc_sim_config,
-        	options={'DfbaSubmodel': dict(options=submodel_options)})
+        multialgorithm_simulation = MultialgorithmSimulation(model,
+                                                             wc_sim_config,
+                                                             options={'DfbaSubmodel':
+                                                                      dict(options=submodel_options)})
         simulator, dynamic_model = multialgorithm_simulation.build_simulation()
         simulator.initialize()
 
-        return dynamic_model.dynamic_submodels[submodel_name]
+        return dynamic_model.dynamic_submodels[submodel_id]
 
     ### test low level methods ###
     def test_dfba_submodel_init(self):
@@ -389,7 +398,7 @@ class TestDfbaSubmodel(unittest.TestCase):
         # network reactions and is minimized
         dfba_submodel_2 = self.make_dfba_submodel(self.model,
                                                   submodel_options=self.dfba_submodel_options,
-                                                  add_dfba_obj=True)
+                                                  dfba_obj_with_regular_rxn=True)
 
         self.assertEqual(len(dfba_submodel_2._conv_variables), len(self.submodel.reactions) + 1)
         self.assertEqual('biomass_reaction' in dfba_submodel_2._conv_variables, True)
@@ -429,9 +438,10 @@ class TestDfbaSubmodel(unittest.TestCase):
         def get_species(id):
             return self.model.species.get_one(id=id)
 
+        # test with a dFBA obj that contains a regular reaction
         dfba_submodel_2 = self.make_dfba_submodel(self.model,
                                                   submodel_options=self.dfba_submodel_options,
-                                                  add_dfba_obj=True)
+                                                  dfba_obj_with_regular_rxn=True)
         expected = dict(r2={get_species('m1[c]'): -1.,
                             get_species('m2[c]'): 1.},
                         biomass_reaction={get_species('m3[c]'): -1.})
@@ -445,7 +455,7 @@ class TestDfbaSubmodel(unittest.TestCase):
         r2.participants.append(get_species(id='m1[c]').species_coefficients.get_or_create(coefficient=1))
         dfba_submodel_2 = self.make_dfba_submodel(self.model,
                                                   submodel_options=self.dfba_submodel_options,
-                                                  add_dfba_obj=True)
+                                                  dfba_obj_with_regular_rxn=True)
         expected = dict(r2={get_species('m2[c]'): 1.},
                         biomass_reaction={get_species('m3[c]'): -1.})
         for rxn_class in dfba_submodel_2.dfba_objective.related_objects:
@@ -454,32 +464,51 @@ class TestDfbaSubmodel(unittest.TestCase):
                                  expected[rxn_id])
 
     def test_initialize_neg_population_constraints(self):
-        dfba_submodel_2 = self.make_dfba_submodel(self.model,
-                                                  submodel_options=self.dfba_submodel_options,
-                                                  add_dfba_obj=True)
-        dfba_submodel_2.dfba_solver_options['dfba_coef_scale_factor'] = 1
-        constraints = dfba_submodel_2.initialize_neg_population_constraints()
         def get_const_name(species_id):
             return DfbaSubmodel.NEG_POP_CONSTRAINT_PREFIX + species_id
+
+        def check_neg_population_constraints(test_case, constraints, expected_constrs):
+            test_case.assertEqual(len(constraints), len(expected_constrs))
+            for id, constraint in constraints.items():
+                set_of_terms = set()
+                for linear_term in constraint.terms:
+                    set_of_terms.add((linear_term.variable.name, linear_term.coefficient))
+                test_case.assertEqual(set_of_terms, expected_constrs[id])
+
+        # test with species that don't need constraints; dfba_obj only contains 'biomass_reaction'
+        dfba_submodel_2 = self.make_dfba_submodel(self.model,
+                                                  submodel_options=self.dfba_submodel_options,
+                                                  dfba_obj_with_regular_rxn=False)
+        # test with dfba_coef_scale_factor == 1
+        dfba_submodel_2.dfba_solver_options['dfba_coef_scale_factor'] = 1
+        constraints = dfba_submodel_2.initialize_neg_population_constraints()
         # for each species, set of expected (rxn, coef) pairs contributing to species' consumption
+        expected_constrs = {get_const_name('m3[c]'): {('ex_m3', -1.0), ('biomass_reaction', 1.0)}}
+        check_neg_population_constraints(self, constraints, expected_constrs)
+
+        # test with a dFBA obj that contains a regular reaction
+        dfba_submodel_2 = self.make_dfba_submodel(self.model,
+                                                  submodel_options=self.dfba_submodel_options,
+                                                  dfba_obj_with_regular_rxn=True)
+        dfba_submodel_2.dfba_solver_options['dfba_coef_scale_factor'] = 1
+        # no constraint on 'm1[c]' is made because 'm1[c]' isn't being consumed
+        constraints = dfba_submodel_2.initialize_neg_population_constraints()
         expected_constrs = {get_const_name('m1[c]'): {('ex_m1', -1.0), ('r2', 1.0)},
                             get_const_name('m3[c]'): {('ex_m3', -1.0), ('biomass_reaction', 1.0)}}
+        check_neg_population_constraints(self, constraints, expected_constrs)
 
-        self.assertEqual(len(constraints), len(expected_constrs))
-        for id, constraint in constraints.items():
-            set_of_terms = set()
-            for linear_term in constraint.terms:
-                set_of_terms.add((linear_term.variable.name, linear_term.coefficient))
-            self.assertEqual(set_of_terms, expected_constrs[id])
-
-        # TODO: test with dfba_coef_scale_factor != 1
-        # TODO: test with species that don't need constraints
+        # test with dfba_coef_scale_factor != 1
+        dfba_submodel_2.dfba_solver_options['dfba_coef_scale_factor'] = 10
+        constraints = dfba_submodel_2.initialize_neg_population_constraints()
+        expected_constrs = {get_const_name('m1[c]'): {('ex_m1', -1.0), ('r2', 10.0)},
+                            get_const_name('m3[c]'): {('ex_m3', -1.0), ('biomass_reaction', 10.0)}}
+        check_neg_population_constraints(self, constraints, expected_constrs)
 
     def test_apply_neg_population_constraints(self):
         scale_factor = self.dfba_submodel_options['dfba_bound_scale_factor']
         dfba_submodel_2 = self.make_dfba_submodel(self.model,
                                                   submodel_options=self.dfba_submodel_options,
-                                                  add_dfba_obj=True)
+                                                  dfba_obj_with_regular_rxn=True)
         constraints = dfba_submodel_2.initialize_neg_population_constraints()
         dfba_submodel_2.apply_neg_population_constraints()
 
