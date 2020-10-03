@@ -287,6 +287,15 @@ class TestDfbaSubmodel(unittest.TestCase):
         # test options
         self.assertEqual(self.dfba_submodel_1.dfba_solver_options, self.dfba_submodel_options)
 
+        # cover other branches in DfbaSubmodel.__init__()
+        value = 3
+        dfba_submodel = self.make_dfba_submodel(self.model,
+                                                submodel_options=dict(dfba_bound_scale_factor=value))
+        self.assertEqual(dfba_submodel.dfba_solver_options['dfba_bound_scale_factor'], value)
+        dfba_submodel = self.make_dfba_submodel(self.model,
+                                                submodel_options=dict(dfba_coef_scale_factor=value))
+        self.assertEqual(dfba_submodel.dfba_solver_options['dfba_coef_scale_factor'], value)
+
         # test exceptions
         bad_dfba_time_step = -2
         with self.assertRaisesRegexp(MultialgorithmError,
@@ -314,8 +323,8 @@ class TestDfbaSubmodel(unittest.TestCase):
         bad_solver = copy.deepcopy(self.dfba_submodel_options)
         bad_solver['solver'] = 'cp'
         with self.assertRaisesRegexp(MultialgorithmError,
-                                     "DfbaSubmodel metabolism: {} is not a valid Solver".format(
-                                     	bad_solver['solver'])):
+                                     f"DfbaSubmodel metabolism: {bad_solver['solver']} "
+                                     f"is not a valid Solver"):
             self.make_dfba_submodel(self.model, submodel_options=bad_solver)
 
         bad_presolve = copy.deepcopy(self.dfba_submodel_options)
@@ -665,7 +674,7 @@ class TestDfbaSubmodel(unittest.TestCase):
                 self.model.distribution_init_concentrations.get_one(
                     species=self.model.species.get_one(id=species_id)).mean)
 
-    @unittest.skip("TODO: fix")
+    # @unittest.skip("TODO: fix")
     def test_run_fba_solver(self):
         self.model.reactions.get_one(id='ex_m1').flux_bounds.max *= 1e11
         self.model.reactions.get_one(id='ex_m2').flux_bounds.max *= 1e11

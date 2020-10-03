@@ -269,7 +269,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             for part in reaction.participants:
                 species_net_coefficients[part.species] += part.coefficient
 
-        elif isinstance(reaction, wc_lang.DfbaObjReaction):
+        elif isinstance(reaction, wc_lang.DfbaObjReaction): # ignore coverage report of lack of false branch
             for part in reaction.dfba_obj_species:
                 species_net_coefficients[part.species] += part.value
 
