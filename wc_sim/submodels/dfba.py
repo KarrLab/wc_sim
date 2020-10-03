@@ -30,9 +30,10 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             coefficients in the objective reactions, the default value is 1.
         SOLVER (:obj:`str`): name of the selected solver in conv_opt, the default
             value is 'cplex'
-        PRESOLVE (:obj:`str`): presolve mode in conv_opt ('auto', 'on', 'off'), the default
+        PRESOLVE (:obj:`str`): presolve mode in `conv_opt` ('auto', 'on', 'off'), the default
             value is 'on'
         SOLVER_OPTIONS (:obj:`dict`): parameters for the solver
+        dfba_solver_options (:obj:`dict`): options for solving DFBA submodel
         OPTIMIZATION_TYPE (:obj:`str`): direction of optimization ('maximize', 'max',
             'minimize', 'min'), the default value is 'maximize'
         FLUX_BOUNDS_VOLUMETRIC_COMPARTMENT_ID (:obj:`str`): id of the compartment where the
@@ -44,8 +45,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         _multi_reaction_constraints (:obj:`dict`): constraints to avoid negative populations
         _constrained_exchange_rxns (:obj:`set`): exchange reactions constrained by
             `_multi_reaction_constraints`
-        dfba_solver_options (:obj:`dict`): options for solving DFBA submodel
-        _conv_model (:obj:`conv_opt.Model`): linear programming model in conv_opt format
+        _conv_model (:obj:`conv_opt.Model`): linear programming model in `conv_opt` format
         _conv_variables (:obj:`dict`): a dictionary mapping reaction IDs to the associated
             `conv_opt.Variable` objects
         _conv_metabolite_matrices (:obj:`dict`): a dictionary mapping metabolite species IDs to lists
@@ -104,11 +104,11 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
 
         Raises:
             :obj:`MultiAlgorithmError`: if the `dynamic_dfba_objective` cannot be found,
-                if the provided 'dfba_bound_scale_factor' in options has a negative value,
-                if the provided 'dfba_coef_scale_factor' in options has a negative value,
-                if the provided 'solver' in options is not a valid value,
-                if the provided 'presolve' in options is not a valid value,
-                if the 'solver' value provided in the 'solver_options' in options is not the same
+                or if the provided 'dfba_bound_scale_factor' in options has a negative value,
+                or if the provided 'dfba_coef_scale_factor' in options has a negative value,
+                or if the provided 'solver' in options is not a valid value,
+                or if the provided 'presolve' in options is not a valid value,
+                or if the 'solver' value provided in the 'solver_options' in options is not the same
                 as the name of the selected `conv_opt.Solver`, or if the provided
                 'flux_bounds_volumetric_compartment_id' is not a valid compartment ID in the model
         """
@@ -197,7 +197,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         self._conv_metabolite_matrices = collections.defaultdict(list)
         for rxn in self.reactions:
             # APG: subtle problem here: since a DfbaObjReaction and a Reaction
-            # could have the same id they could collide _conv_variables. Two possible solutions:
+            # could have the same id they could collide in _conv_variables. Two possible solutions:
             # 1) prohibit models that have the same rxn id used more than once, or
             # 2) generate ids that include the reaction type
             # E.g.:
@@ -269,7 +269,8 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             for part in reaction.participants:
                 species_net_coefficients[part.species] += part.coefficient
 
-        elif isinstance(reaction, wc_lang.DfbaObjReaction): # ignore coverage report of lack of false branch
+        # ignore coverage report of lack of false branch in this elif
+        elif isinstance(reaction, wc_lang.DfbaObjReaction):
             for part in reaction.dfba_obj_species:
                 species_net_coefficients[part.species] += part.value
 
@@ -278,7 +279,30 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             del species_net_coefficients[species]
         return species_net_coefficients
 
-    NEG_POP_CONSTRAINT_PREFIX = 'neg_pop_constraint-'
+    NEG_POP_CONSTRAINT_PREFIX = 'neg_pop_constraint '
+    def gen_neg_species_pop_constraint_id(self, species_id):
+        """ Generate a negative species population constraint id
+
+        Args:
+            species_id (:obj:`str`): id of species being constrained
+
+        Returns:
+            :obj:`str`: a negative species population constraint id
+        """
+        return self.NEG_POP_CONSTRAINT_PREFIX + species_id
+
+    def parse_neg_species_pop_constraint_id(self, neg_species_pop_constraint_id):
+        """ Parse a negative species population constraint id
+
+        Args:
+            neg_species_pop_constraint_id (:obj:`str`): a negative species population constraint id
+
+        Returns:
+            :obj:`tuple`: a pair: (the negative species population constraint id prefix,
+            id of species being constrained)
+        """
+        return neg_species_pop_constraint_id.split(' ')
+
     def initialize_neg_species_pop_constraints(self):
         """ Make constraints that span multiple reactions
 
@@ -336,7 +360,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                 species_can_be_consumed = any([0 < linear_term.coefficient for linear_term in constr_expr])
                 if species_can_be_consumed:
                     # upper_bound will be set by bound_neg_species_pop_constraints() before solving FBA
-                    constraint_id = self.NEG_POP_CONSTRAINT_PREFIX + species.id
+                    constraint_id = self.gen_neg_species_pop_constraint_id(species.id)
                     constraint = conv_opt.Constraint(constr_expr,
                                                      name=constraint_id,
                                                      lower_bound=0.0,
@@ -471,12 +495,13 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
 
         Call this before each run of the FBA solver.
         """
-
         # set bounds in multi-reaction constraints
         for constraint_id, constraint in self._multi_reaction_constraints.items():
-            _, species_id = constraint_id.split('-')
+            _, species_id = self.parse_neg_species_pop_constraint_id(constraint_id)
             species_pop = self.local_species_population.read_one(self.time, species_id)
             max_consumption_of_species = species_pop / self.time_step
+            print('species_id, species_pop, max_consumption_of_species',
+                  species_id, species_pop, max_consumption_of_species)
             constraint.upper_bound = max_consumption_of_species
 
     def update_bounds(self):
