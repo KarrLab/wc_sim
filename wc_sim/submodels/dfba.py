@@ -279,8 +279,39 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             del species_net_coefficients[species]
         return species_net_coefficients
 
-    NEG_POP_CONSTRAINT_PREFIX = 'neg_pop_constraint '
-    def gen_neg_species_pop_constraint_id(self, species_id):
+    NEG_POP_CONSTRAINT_PREFIX = 'neg_pop_constraint'
+    NEG_POP_CONSTRAINT_SEP = '__'
+    LB = '__LB__'
+    RB = '__RB__'
+
+    # TODO: in species_id_without_brkts raise error if species_id doesn't have brackets or has codes
+    @staticmethod
+    def species_id_without_brkts(species_id):
+        """ Replace brackets in a species id with codes
+
+        Args:
+            species_id (:obj:`str`): WC Lang species id
+
+        Returns:
+            :obj:`str`: species id with brackets replaced by codes
+        """
+        return species_id.replace('[', DfbaSubmodel.LB).replace(']', DfbaSubmodel.RB)
+
+    # TODO: in species_id_without_brkts raise error if species_id doesn't have codes or has brackets
+    @staticmethod
+    def species_id_with_brkts(species_id):
+        """ Replace codes in a species id with brackets
+
+        Args:
+            species_id (:obj:`str`): WC Lang species id with brackets replaced by codes
+
+        Returns:
+            :obj:`str`: standard WC Lang species id
+        """
+        return species_id.replace(DfbaSubmodel.LB, '[').replace(DfbaSubmodel.RB, ']')
+
+    @staticmethod
+    def gen_neg_species_pop_constraint_id(species_id):
         """ Generate a negative species population constraint id
 
         Args:
@@ -289,19 +320,21 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         Returns:
             :obj:`str`: a negative species population constraint id
         """
-        return self.NEG_POP_CONSTRAINT_PREFIX + species_id
+        return DfbaSubmodel.NEG_POP_CONSTRAINT_PREFIX + DfbaSubmodel.NEG_POP_CONSTRAINT_SEP + \
+            DfbaSubmodel.species_id_without_brkts(species_id)
 
-    def parse_neg_species_pop_constraint_id(self, neg_species_pop_constraint_id):
+    @staticmethod
+    def parse_neg_species_pop_constraint_id(neg_species_pop_constraint_id):
         """ Parse a negative species population constraint id
 
         Args:
             neg_species_pop_constraint_id (:obj:`str`): a negative species population constraint id
 
         Returns:
-            :obj:`tuple`: a pair: (the negative species population constraint id prefix,
-            id of species being constrained)
+            :obj:`str`: id of species being constrained
         """
-        return neg_species_pop_constraint_id.split(' ')
+        loc = len(DfbaSubmodel.NEG_POP_CONSTRAINT_PREFIX) + len(DfbaSubmodel.NEG_POP_CONSTRAINT_SEP)
+        return DfbaSubmodel.species_id_with_brkts(neg_species_pop_constraint_id[loc:])
 
     def initialize_neg_species_pop_constraints(self):
         """ Make constraints that span multiple reactions
@@ -360,12 +393,11 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                 species_can_be_consumed = any([0 < linear_term.coefficient for linear_term in constr_expr])
                 if species_can_be_consumed:
                     # upper_bound will be set by bound_neg_species_pop_constraints() before solving FBA
-                    constraint_id = self.gen_neg_species_pop_constraint_id(species.id)
+                    constraint_id = DfbaSubmodel.gen_neg_species_pop_constraint_id(species.id)
                     constraint = conv_opt.Constraint(constr_expr,
                                                      name=constraint_id,
                                                      lower_bound=0.0,
                                                      upper_bound=None)
-                    self._conv_model.constraints.append(constraint)
                     multi_reaction_constraints[constraint_id] = constraint
 
                     # record the constrained exchange reactions
@@ -497,12 +529,15 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         """
         # set bounds in multi-reaction constraints
         for constraint_id, constraint in self._multi_reaction_constraints.items():
-            _, species_id = self.parse_neg_species_pop_constraint_id(constraint_id)
+            species_id = DfbaSubmodel.parse_neg_species_pop_constraint_id(constraint_id)
             species_pop = self.local_species_population.read_one(self.time, species_id)
             max_consumption_of_species = species_pop / self.time_step
             print('species_id, species_pop, max_consumption_of_species',
                   species_id, species_pop, max_consumption_of_species)
             constraint.upper_bound = max_consumption_of_species
+            print(f"appending '{constraint_id}", constraint)
+            # todo: get the multi-reaction constraints to actually work
+            # self._conv_model.constraints.append(constraint)
 
     def update_bounds(self):
         """ Update the minimum and maximum bounds of `conv_opt.Variable` based on
