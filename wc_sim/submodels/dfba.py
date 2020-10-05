@@ -250,6 +250,14 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
 
         self._multi_reaction_constraints = self.initialize_neg_species_pop_constraints()
 
+    def get_conv_model(self):
+        """ Get the `conv_opt` model
+
+        Returns:
+            :obj:`conv_opt.Model`: the linear programming model in `conv_opt` format
+        """
+        return self._conv_model
+
     @staticmethod
     def _get_species_and_stoichiometry(reaction):
         """ Get a reaction's species and their net stoichiometries
@@ -279,7 +287,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             del species_net_coefficients[species]
         return species_net_coefficients
 
-    NEG_POP_CONSTRAINT_PREFIX = 'neg_pop_constraint'
+    NEG_POP_CONSTRAINT_PREFIX = 'neg_pop_constr'
     NEG_POP_CONSTRAINT_SEP = '__'
     LB = '__LB__'
     RB = '__RB__'
@@ -297,7 +305,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         """
         return species_id.replace('[', DfbaSubmodel.LB).replace(']', DfbaSubmodel.RB)
 
-    # TODO: in species_id_without_brkts raise error if species_id doesn't have codes or has brackets
+    # TODO: in species_id_with_brkts raise error if species_id doesn't have codes or has brackets
     @staticmethod
     def species_id_with_brkts(species_id):
         """ Replace codes in a species id with brackets
@@ -320,8 +328,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         Returns:
             :obj:`str`: a negative species population constraint id
         """
-        return DfbaSubmodel.NEG_POP_CONSTRAINT_PREFIX + DfbaSubmodel.NEG_POP_CONSTRAINT_SEP + \
-            DfbaSubmodel.species_id_without_brkts(species_id)
+        return DfbaSubmodel.NEG_POP_CONSTRAINT_PREFIX + DfbaSubmodel.NEG_POP_CONSTRAINT_SEP + species_id
 
     @staticmethod
     def parse_neg_species_pop_constraint_id(neg_species_pop_constraint_id):
@@ -398,6 +405,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                                                      name=constraint_id,
                                                      lower_bound=0.0,
                                                      upper_bound=None)
+                    self._conv_model.constraints.append(constraint)
                     multi_reaction_constraints[constraint_id] = constraint
 
                     # record the constrained exchange reactions
@@ -523,7 +531,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         """ Update bounds in the negative species population constraints that span multiple reactions
 
         Update the bounds in each of the constraints in `self._multi_reaction_constraints` that
-        prevent some species from having a negative species population in the next time step
+        prevent some species from having a negative species population in the next time step.
 
         Call this before each run of the FBA solver.
         """
@@ -531,13 +539,8 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         for constraint_id, constraint in self._multi_reaction_constraints.items():
             species_id = DfbaSubmodel.parse_neg_species_pop_constraint_id(constraint_id)
             species_pop = self.local_species_population.read_one(self.time, species_id)
-            max_consumption_of_species = species_pop / self.time_step
-            print('species_id, species_pop, max_consumption_of_species',
-                  species_id, species_pop, max_consumption_of_species)
-            constraint.upper_bound = max_consumption_of_species
-            print(f"appending '{constraint_id}", constraint)
-            # todo: get the multi-reaction constraints to actually work
-            # self._conv_model.constraints.append(constraint)
+            max_allowed_consumption_of_species = species_pop / self.time_step
+            constraint.upper_bound = max_allowed_consumption_of_species
 
     def update_bounds(self):
         """ Update the minimum and maximum bounds of `conv_opt.Variable` based on
@@ -550,6 +553,9 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
 
     def compute_population_change_rates(self):
         """ Compute the rate of change of the populations of species used by this DFBA
+
+        Because FBA obtains a steady-state solution for reaction fluxes, only objective species and
+        species that particpate in exchange reactions can experience non-zero rates of change.
         """
         coef_scale_factor = self.dfba_solver_options['dfba_coef_scale_factor']
         # Calculate the adjustment for each species as sum over reactions of reaction flux * stoichiometry
