@@ -8,6 +8,7 @@
 
 import conv_opt
 import copy
+import enum
 import math
 import numpy
 import os
@@ -678,6 +679,7 @@ class TestDfbaSubmodel(unittest.TestCase):
             :obj:`str`: a readable representation of `conf_opt_model`
         """
         conf_opt_model_rows = []
+        conf_opt_model_rows.append('--- conf_opt model ---')
         conf_opt_model_rows.append(f"name: '{conf_opt_model.name}'")
 
 
@@ -699,8 +701,11 @@ class TestDfbaSubmodel(unittest.TestCase):
             def obj_as_row(self, obj):
                 row = ''
                 for attr, width in zip(self.attrs, self.col_widths):
-                    value = str(getattr(obj, attr))
-                    row += f'{value:<{width}}'
+                    value = getattr(obj, attr)
+                    str_value = str(value)
+                    if isinstance(value, enum.Enum):
+                        str_value = value.name
+                    row += f'{str_value:<{width}}'
                 return row
 
         # variables: skip 'primal', 'reduced_cost', which aren't used
@@ -708,7 +713,7 @@ class TestDfbaSubmodel(unittest.TestCase):
         conf_opt_model_rows.append('--- variables ---')
         headers_1 = ('name', 'type', 'lower', 'upper')
         headers_2 = ('', '', 'bound', 'bound',)
-        variable_to_row = ObjToRow((18, 25, 8, 8,),
+        variable_to_row = ObjToRow((18, 18, 8, 8,),
                                     [headers_1, headers_2],
                                     ('name', 'type', 'lower_bound', 'upper_bound'))
         conf_opt_model_rows.extend(variable_to_row.header_rows())
@@ -735,15 +740,16 @@ class TestDfbaSubmodel(unittest.TestCase):
                 conf_opt_model_rows.append(row)
             conf_opt_model_rows.append('')
 
-        print('--- conf_opt model ---')
-        for r in conf_opt_model_rows:
-            print(r)
+        conf_opt_model_rows.append(f'objective direction: {conf_opt_model.objective_direction.name}')
+
+        conf_opt_model_rows.append('')
+        conf_opt_model_rows.append('--- objective terms ---')
+        for objective_term in conf_opt_model.objective_terms:
+            row = f'{objective_term.coefficient:<8}'
+            row += variable_to_row.obj_as_row(objective_term.variable)
+            conf_opt_model_rows.append(row)
+
         return '\n'.join(conf_opt_model_rows)
-        '''
-        TODO: output these too
-        conf_opt_model.objective_direction
-        conf_opt_model.objective_terms
-        '''
 
     def test_compute_population_change_rates_control_caching(self):
         ### test all 3 caching combinations ###
@@ -770,7 +776,7 @@ class TestDfbaSubmodel(unittest.TestCase):
         dfba_submodel_2 = self.make_dfba_submodel(self.model,
                                                   submodel_options=self.dfba_submodel_options)
         dfba_submodel_2.time_step = 1.
-        self.show_conf_opt_model(dfba_submodel_2.get_conv_model())
+        print(self.show_conf_opt_model(dfba_submodel_2.get_conv_model()))
 
         dfba_submodel_2.run_fba_solver()
 
