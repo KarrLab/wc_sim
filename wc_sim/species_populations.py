@@ -529,7 +529,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             which the species was accessed.
         _history (:obj:`dict`) nested dict; an optional history of the species' state. The population
             history is recorded at each continuous adjustment.
-        random_state (:obj:`np.random.RandomState`): a PRNG used by all `Species`
+        random_state (:obj:`wc_utils.rand.RandomState`): a PRNG used by all `Species`
         fast_debug_file_logger (:obj:`FastLogger`): a fast logger for debugging messages
         temporary_mode (:obj:`bool`): if True, this `LocalSpeciesPopulation` is being accessed through a
             `TempPopulationsLSP`
@@ -553,7 +553,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             cont_submodel_ids (:obj:`dict`, optional): map: :obj:`str` species_id -> :obj:`list` of :obj:`str`, for each
                 species, the ids of continuous submodels that model the species
             initial_time (:obj:`float`, optional): the initialization time; defaults to 0
-            random_state (:obj:`np.random.RandomState`, optional): a PRNG used by all `DynamicSpeciesState`
+            random_state (:obj:`wc_utils.rand.RandomState`, optional): a PRNG used by all `DynamicSpeciesState`
             retain_history (:obj:`bool`, optional): whether to retain species population history
             _concentrations_api (:obj:`bool`, optional): if set, use concentrations; species amounts
                 passed into and returned by methods must be concentrations (molar == mol/L); defaults to `False`
@@ -1398,28 +1398,30 @@ class DynamicSpeciesState(object):
     multi-algorithmic model. We call it a dynamic species.
     The accesses to a dynamic species can be categorized into 'write' and 'read' types.
     Write accesses, called *adjustment*\ s, change a dynamic species' state.
-    The read accesses, `continuous_change()` and `get_population()`, retrieve information from a dynamic species' state
-    but do not change the state.
-    In order to satisfy temporal causality
-    a sequence of accesses of a `DynamicSpeciesState` instance must satisfy the following synchronization constraints:
+    The read accesses, `continuous_change()` and `get_population()`, retrieve information from a
+    dynamic species' state but do not change the state.
+    In order to satisfy temporal causality a sequence of accesses of a `DynamicSpeciesState` instance
+    must satisfy the following synchronization constraints:
 
     * Write accesses must occur in non-decreasing time order
-    * Every read access must occur at a time greater than or equal to the largest time of all preceeding write accesses
-    * Every write access must occur at a time greater than or equal to the largest time of all preceeding read accesses
+    * Every read access must occur at a time greater than or equal to the largest time of all
+        preceeding write accesses
+    * Every write access must occur at a time greater than or equal to the largest time of all
+        preceeding read accesses
 
     The `_validate_adjustment_time()` and `_validate_read_time()` methods enforce these constraints.
 
     Note that these rules allow multiple simultaneous accesses, with causal relationships that depend on
     the execution order that occur at a particular time.
-    For example, at time *t* a reaction modeled by a discrete SSA submodel might update a species population, and
-    then use the updated population to compute a reaction's rate law.
+    For example, at time *t* a reaction modeled by a discrete SSA submodel might update a species
+    population, and then use the updated population to compute a reaction's rate law.
 
     Consider a multi-algorithmic model that contains both submodels that execute discrete-time algorithms,
     like the stochastic simulation algorithm (SSA), and submodels that execute continuous-time integration
-    algorithms, like ODEs and FBA.
+    algorithms, like ODE and dFBA.
     Discrete-time algorithms change system state at discrete time instants. Continuous-time
-    algorithms approximate species populations as continuous variables, and obtain for the predicted rate-of-change of
-    these variables at time instants determined by the algorithm. We assume this behavior.
+    algorithms approximate species populations as continuous variables, and obtain the predicted
+    rate-of-change of a species at time instants determined by the algorithm. We assume this behavior.
 
     A dynamic species' state in a multi-algorithmic model may be modeled by multiple submodels that model
     reactions in which the species participates. These can be multiple discrete-time submodels and
@@ -1468,7 +1470,7 @@ class DynamicSpeciesState(object):
             reporting, logging, debugging, etc.
         compartment_id (:obj:`str`): the species' compartment's id; optimization to avoid parsing species id
             at run-time
-        random_state (:obj:`np.random.RandomState`): a shared PRNG, used to round populations to integers
+        random_state (:obj:`wc_utils.rand.RandomState`): a shared PRNG, used to round populations to integers
         last_population (:obj:`float`): species population at the most recent adjustment
         population_slopes (:obj:`dict`): if continuous submodel(s) are modeling the species, a map from
             continuous submodel id to the rate of change of the population provided by the most recent
@@ -1500,7 +1502,7 @@ class DynamicSpeciesState(object):
         Args:
             species_name (:obj:`str`): the species' name; not logically needed, but helpful for error
                 reporting, logging, debugging, etc.
-            random_state (:obj:`np.random.RandomState`): a shared PRNG
+            random_state (:obj:`wc_utils.rand.RandomState`): a shared PRNG
             initial_population (:obj:`int`): non-negative number; initial population of the species
             cont_submodel_ids (:obj:`list` of :obj:`str`, optional): ids of continuous submodels
                 that model this species
