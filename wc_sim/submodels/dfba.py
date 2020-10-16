@@ -644,15 +644,37 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
 
         return conv_opt_model
 
-    def unscale_conv_opt_solution(self):
+    def unscale_conv_opt_solution(self, bound_scale_factor=None, coef_scale_factor=None):
         """ Remove scaling factors from a `conv_opt` model solution
 
         Args:
-            conv_opt_model (:obj:`conv_opt.Model`): a convex optimization model
-
-        Returns:
-            :obj:`conv_opt.Model`: linear programming solution
+            bound_scale_factor (:obj:`float`, optional): factor used to scale reaction and
+                constraint bounds; if not supplied, is taken from `self.dfba_solver_options`
+            coef_scale_factor (:obj:`float`, optional): factor used to scale the stoichiometric
+                coefficients of objective function reaction terms; if not supplied,
+                is taken from `self.dfba_solver_options`
         """
+        if bound_scale_factor is None:
+            bound_scale_factor = self.dfba_solver_options['dfba_bound_scale_factor']
+        if coef_scale_factor is None:
+            coef_scale_factor = self.dfba_solver_options['dfba_coef_scale_factor']
+
+        self._optimal_obj_func_value *= (coef_scale_factor / bound_scale_factor)
+        for rxn_variable in self._conv_model.variables:
+            if rxn_variable.name not in self._dfba_obj_rxn_ids:
+                self.reaction_fluxes[rxn_variable.name] /= bound_scale_factor
+            else:
+                self.reaction_fluxes[rxn_variable.name] *= (coef_scale_factor / bound_scale_factor)
+
+    def assign_fba_solution(self, conv_opt_solution):
+        """ Assign FBA solution to local variables
+
+        Args:
+            conv_opt_solution (:obj:`conv_opt.Result`): an FBA solution
+        """
+        self._optimal_obj_func_value = conv_opt_solution.value
+        for rxn_variable in self._conv_model.variables:
+            self.reaction_fluxes[rxn_variable.name] = rxn_variable.primal
 
     @staticmethod
     def show_conv_opt_model(conv_opt_model):

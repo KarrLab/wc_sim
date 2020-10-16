@@ -702,55 +702,72 @@ class TestDfbaSubmodel(unittest.TestCase):
     def test_scale_conv_opt_model(self):
         dfba_submodel_1 = self.dfba_submodel_1
         dfba_submodel_1.determine_bounds()
+
         # rxn and constraint bounds have not been set in the conv opt model
-        scaled_conv_opt_model = dfba_submodel_1.scale_conv_opt_model(dfba_submodel_1.get_conv_model())
-        old_conv_model = dfba_submodel_1.get_conv_model()
-        # TODO: simplify when __eq__ operators for conv_opt.Variable, conv_opt.Constraint, exist
-        # check variables
-        for old_var, new_var in zip(old_conv_model.variables, scaled_conv_opt_model.variables):
+        scaled_co_model = dfba_submodel_1.scale_conv_opt_model(dfba_submodel_1.get_conv_model())
+        old_co_model = dfba_submodel_1.get_conv_model()
+        # check that they have not changed
+        for old_var, new_var in zip(old_co_model.variables, scaled_co_model.variables):
             self.assertEqual(old_var.lower_bound, new_var.lower_bound)
             self.assertEqual(old_var.upper_bound, new_var.upper_bound)
-
-        # check constraints
-        for old_const, new_const in zip(old_conv_model.constraints, scaled_conv_opt_model.constraints):
+        for old_const, new_const in zip(old_co_model.constraints, scaled_co_model.constraints):
             self.assertEqual(old_const.lower_bound, new_const.lower_bound)
             self.assertEqual(old_const.upper_bound, new_const.upper_bound)
 
         dfba_submodel_1.update_bounds()
-        scaled_conv_opt_model = dfba_submodel_1.scale_conv_opt_model(dfba_submodel_1.get_conv_model())
+        scaled_co_model = dfba_submodel_1.scale_conv_opt_model(dfba_submodel_1.get_conv_model())
         # a new conv opt model has been made
-        self.assertNotEqual(id(scaled_conv_opt_model), id(dfba_submodel_1.get_conv_model()))
+        self.assertNotEqual(id(scaled_co_model), id(dfba_submodel_1.get_conv_model()))
 
+        ## invert scale factors and test round-trip ##
         # supply scaling factors
         bound_scale_factor = dfba_submodel_1.dfba_solver_options['dfba_bound_scale_factor']
         coef_scale_factor = dfba_submodel_1.dfba_solver_options['dfba_coef_scale_factor']
-        scaled_conv_opt_model_2 = dfba_submodel_1.scale_conv_opt_model(dfba_submodel_1.get_conv_model(),
-                                                                       bound_scale_factor=bound_scale_factor,
-                                                                       coef_scale_factor=coef_scale_factor)
-
-        ## invert scale factors and test round-trip ##
-        dfba_submodel_1.dfba_solver_options['dfba_bound_scale_factor'] = 1.0/bound_scale_factor
-        dfba_submodel_1.dfba_solver_options['dfba_coef_scale_factor'] = 1.0/coef_scale_factor
-        unscaled_conv_opt_model = dfba_submodel_1.scale_conv_opt_model(scaled_conv_opt_model)
-        old_conv_model = dfba_submodel_1.get_conv_model()
+        unscaled_co_model = dfba_submodel_1.scale_conv_opt_model(scaled_co_model,
+                                                                 bound_scale_factor=1.0/bound_scale_factor,
+                                                                 coef_scale_factor=1.0/coef_scale_factor)
+        old_co_model = dfba_submodel_1.get_conv_model()
         # check variables
-        for old_var, new_var in zip(old_conv_model.variables, unscaled_conv_opt_model.variables):
+        for old_var, new_var in zip(old_co_model.variables, unscaled_co_model.variables):
             self.assertAlmostEqual(old_var.lower_bound, new_var.lower_bound)
             self.assertAlmostEqual(old_var.upper_bound, new_var.upper_bound)
-
         # check constraints
-        for old_const, new_const in zip(old_conv_model.constraints, unscaled_conv_opt_model.constraints):
+        for old_const, new_const in zip(old_co_model.constraints, unscaled_co_model.constraints):
             self.assertAlmostEqual(old_const.lower_bound, new_const.lower_bound)
             self.assertAlmostEqual(old_const.upper_bound, new_const.upper_bound)
-
         # check coefficient terms in conv_opt model objective
-        for old_term, new_term in zip(old_conv_model.objective_terms, unscaled_conv_opt_model.objective_terms):
+        for old_term, new_term in zip(old_co_model.objective_terms, unscaled_co_model.objective_terms):
             self.assertAlmostEqual(old_term.coefficient, new_term.coefficient)
 
         # alter the conv opt model in place
-        modified_conv_opt_model = dfba_submodel_1.scale_conv_opt_model(dfba_submodel_1.get_conv_model(),
-                                                                       copy_model=False)
-        self.assertEqual(id(modified_conv_opt_model), id(dfba_submodel_1.get_conv_model()))
+        modified_co_model = dfba_submodel_1.scale_conv_opt_model(dfba_submodel_1.get_conv_model(),
+                                                                 copy_model=False)
+        self.assertEqual(id(modified_co_model), id(dfba_submodel_1.get_conv_model()))
+
+    def test_unscale_conv_opt_solution(self):
+        dfba_submodel_1 = self.dfba_submodel_1
+        dfba_submodel_1.determine_bounds()
+        dfba_submodel_1.update_bounds()
+
+        ## invert scale factors and test round-trip ##
+        conv_opt_solution = dfba_submodel_1.get_conv_model().solve()
+        dfba_submodel_1.assign_fba_solution(conv_opt_solution)
+        original_dfba_submodel_1__optimal_obj_func_value = dfba_submodel_1._optimal_obj_func_value
+        original_dfba_submodel_1__reaction_fluxes = copy.deepcopy(dfba_submodel_1.reaction_fluxes)
+
+        dfba_submodel_1.unscale_conv_opt_solution()
+        bound_scale_factor = dfba_submodel_1.dfba_solver_options['dfba_bound_scale_factor']
+        coef_scale_factor = dfba_submodel_1.dfba_solver_options['dfba_coef_scale_factor']
+        # reverse the removal of scaling factors
+        dfba_submodel_1.unscale_conv_opt_solution(bound_scale_factor=1.0/bound_scale_factor,
+                                                  coef_scale_factor=1.0/coef_scale_factor)
+        # check _optimal_obj_func_value
+        self.assertAlmostEqual(original_dfba_submodel_1__optimal_obj_func_value,
+                               dfba_submodel_1._optimal_obj_func_value)
+        # check reaction_fluxes
+        for rxn_variable in dfba_submodel_1.get_conv_model().variables:
+            self.assertAlmostEqual(original_dfba_submodel_1__reaction_fluxes[rxn_variable.name],
+                                   dfba_submodel_1.reaction_fluxes[rxn_variable.name])
 
     def test_run_fba_solver(self):
 
