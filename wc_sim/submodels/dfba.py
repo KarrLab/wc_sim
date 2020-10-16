@@ -644,8 +644,8 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
 
         return conv_opt_model
 
-    def rescale_conv_opt_solution(self):
-        """ Rescale a solution to a `conv_opt` model
+    def unscale_conv_opt_solution(self):
+        """ Remove scaling factors from a `conv_opt` model solution
 
         Args:
             conv_opt_model (:obj:`conv_opt.Model`): a convex optimization model

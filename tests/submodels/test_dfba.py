@@ -702,6 +702,20 @@ class TestDfbaSubmodel(unittest.TestCase):
     def test_scale_conv_opt_model(self):
         dfba_submodel_1 = self.dfba_submodel_1
         dfba_submodel_1.determine_bounds()
+        # rxn and constraint bounds have not been set in the conv opt model
+        scaled_conv_opt_model = dfba_submodel_1.scale_conv_opt_model(dfba_submodel_1.get_conv_model())
+        old_conv_model = dfba_submodel_1.get_conv_model()
+        # TODO: simplify when __eq__ operators for conv_opt.Variable, conv_opt.Constraint, exist
+        # check variables
+        for old_var, new_var in zip(old_conv_model.variables, scaled_conv_opt_model.variables):
+            self.assertEqual(old_var.lower_bound, new_var.lower_bound)
+            self.assertEqual(old_var.upper_bound, new_var.upper_bound)
+
+        # check constraints
+        for old_const, new_const in zip(old_conv_model.constraints, scaled_conv_opt_model.constraints):
+            self.assertEqual(old_const.lower_bound, new_const.lower_bound)
+            self.assertEqual(old_const.upper_bound, new_const.upper_bound)
+
         dfba_submodel_1.update_bounds()
         scaled_conv_opt_model = dfba_submodel_1.scale_conv_opt_model(dfba_submodel_1.get_conv_model())
         # a new conv opt model has been made
@@ -719,7 +733,6 @@ class TestDfbaSubmodel(unittest.TestCase):
         dfba_submodel_1.dfba_solver_options['dfba_coef_scale_factor'] = 1.0/coef_scale_factor
         unscaled_conv_opt_model = dfba_submodel_1.scale_conv_opt_model(scaled_conv_opt_model)
         old_conv_model = dfba_submodel_1.get_conv_model()
-
         # check variables
         for old_var, new_var in zip(old_conv_model.variables, unscaled_conv_opt_model.variables):
             self.assertAlmostEqual(old_var.lower_bound, new_var.lower_bound)
