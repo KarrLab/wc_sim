@@ -9,6 +9,7 @@
 
 import collections
 import conv_opt
+import copy
 import math
 import scipy.constants
 import wc_lang
@@ -27,18 +28,16 @@ from wc_sim.submodels.dynamic_submodel import ContinuousTimeSubmodel
 class DfbaSubmodel(ContinuousTimeSubmodel):
     """ Use dynamic Flux Balance Analysis to predict the dynamics of chemical species in a container
 
-    APG: is this right?
-    Scaling factors are used to increase the size of bounds and reaction participant
-    coefficients to increase the precision of FBA solutions. They are elements of `dfba_solver_options`.
-    Each reaction (optimization variable) and constraint bound in whole-cell model units
-    is multiplied by the `dfba_bound_scale_factor` option before optimization is performed.
-    In addition, each constraint term coefficient is multiplied by the `dfba_coef_scale_factor`
-    option before optimization.
-    Symmetrically, solution results are divided by these scaling factors to return them to
+    Scaling factors can be used to scale the size of bounds and objective function term
+    coefficients to address numerical problems with the linear programming solver.
+    They are elements of `dfba_solver_options`.
+    The `dfba_bound_scale_factor` option is used to scale each reaction (optimization variable) and
+    constraint bound before the LP problem is optimized.
+    The `dfba_coef_scale_factor` is used to scale the stoichiometric coefficients
+    of objective function reaction terms.
+    Scaling is done by the `scale_conv_opt_model` method.
+    Symmetrically, solution results are transformed by these scaling factors to return them to
     the scale of the whole-cell model.
-    APG: I think that DfbaSubmodel and TestDfbaSubmodel would be easier to write and read
-    if these scaling transformations were performed en-masse immediately before and after
-    solving a model. Then the rest of the code would not need to worry about them.
 
     Attributes:
         DFBA_BOUND_SCALE_FACTOR (:obj:`float`): scaling factor for the reaction bounds;
@@ -364,7 +363,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             :obj:`str`: id of species being constrained
         """
         loc = len(DfbaSubmodel.NEG_POP_CONSTRAINT_PREFIX) + len(DfbaSubmodel.NEG_POP_CONSTRAINT_SEP)
-        return DfbaSubmodel.species_id_with_brkts(neg_species_pop_constraint_id[loc:])
+        return neg_species_pop_constraint_id[loc:]
 
     def initialize_neg_species_pop_constraints(self):
         """ Make constraints that span multiple reactions
@@ -598,20 +597,77 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         for idx, species_id in enumerate(self.species_ids):
             self.adjustments[species_id] = population_change_rate[species_id]
 
+    def scale_conv_opt_model(self, conv_opt_model, copy_model=True,
+                             bound_scale_factor=None, coef_scale_factor=None):
+        """ Apply scaling factors to a `conv_opt` model
+
+        See the description of scaling factors in the documentation for :obj:`DfbaSubmodel`.
+
+        Args:
+            conv_opt_model (:obj:`conv_opt.Model`): a convex optimization model
+            copy_model (:obj:`boolean`, optional): whether to copy the convex optimization model
+                before scaling it; defaults to :obj:`True`
+            bound_scale_factor (:obj:`float`, optional): factor used to scale reaction and
+                constraint bounds; if not supplied, is taken from `self.dfba_solver_options`
+            coef_scale_factor (:obj:`float`, optional): factor used to scale the stoichiometric
+                coefficients of objective function reaction terms; if not supplied,
+                is taken from `self.dfba_solver_options`
+
+        Returns:
+            :obj:`conv_opt.Model`: the scaled convex optimization model
+        """
+        if copy_model:
+            conv_opt_model = copy.deepcopy(conv_opt_model)
+
+        if bound_scale_factor is None:
+            bound_scale_factor = self.dfba_solver_options['dfba_bound_scale_factor']
+        if coef_scale_factor is None:
+            coef_scale_factor = self.dfba_solver_options['dfba_coef_scale_factor']
+
+        # scale bounds in conv_opt model variables
+        for variable in conv_opt_model.variables:
+            if isinstance(variable.lower_bound, (int, float)):
+                variable.lower_bound *= bound_scale_factor
+            if isinstance(variable.upper_bound, (int, float)):
+                variable.upper_bound *= bound_scale_factor
+
+        # scale bounds in conv_opt model constraints
+        for constraint in conv_opt_model.constraints:
+            if isinstance(constraint.lower_bound, (int, float)):
+                constraint.lower_bound *= bound_scale_factor
+            if isinstance(constraint.upper_bound, (int, float)):
+                constraint.upper_bound *= bound_scale_factor
+
+        # scale coefficient terms in conv_opt model objective
+        for objective_term in conv_opt_model.objective_terms:
+            objective_term.coefficient *= coef_scale_factor
+
+        return conv_opt_model
+
+    def rescale_conv_opt_solution(self):
+        """ Rescale a solution to a `conv_opt` model
+
+        Args:
+            conv_opt_model (:obj:`conv_opt.Model`): a convex optimization model
+
+        Returns:
+            :obj:`conv_opt.Model`: linear programming solution
+        """
+
     @staticmethod
-    def show_conf_opt_model(conf_opt_model):
+    def show_conv_opt_model(conv_opt_model):
         """ Convert a `conv_opt` into a readable representation
 
         Args:
-            conf_opt_model (:obj:`conv_opt.Model`): a convex optimization model
+            conv_opt_model (:obj:`conv_opt.Model`): a convex optimization model
 
         Returns:
-            :obj:`str`: a readable representation of `conf_opt_model`
+            :obj:`str`: a readable representation of `conv_opt_model`
         """
         import enum
         conv_opt_model_rows = ['']
         conv_opt_model_rows.append('--- conf_opt model ---')
-        conv_opt_model_rows.append(f"name: '{conf_opt_model.name}'")
+        conv_opt_model_rows.append(f"name: '{conv_opt_model.name}'")
 
 
         class ObjToRow(object):
@@ -652,7 +708,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                                     [headers_1, headers_2],
                                     ('name', 'type', 'lower_bound', 'upper_bound'))
         conv_opt_model_rows.extend(variable_to_row.header_rows())
-        for variable in conf_opt_model.variables:
+        for variable in conv_opt_model.variables:
             conv_opt_model_rows.append(variable_to_row.obj_as_row(variable))
 
         # constraints: skip 'dual' which isn't used
@@ -670,7 +726,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         conv_opt_model_rows.append('')
         conv_opt_model_rows.append('--- constraints ---')
         conv_opt_model_rows.extend(constraint_to_row.header_rows())
-        for constraint in conf_opt_model.constraints:
+        for constraint in conv_opt_model.constraints:
             conv_opt_model_rows.append(constraint_to_row.obj_as_row(constraint))
             conv_opt_model_rows.append('--- terms ---')
             for linear_term in constraint.terms:
@@ -679,11 +735,11 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                 conv_opt_model_rows.append(row)
             conv_opt_model_rows.append('')
 
-        conv_opt_model_rows.append(f'objective direction: {conf_opt_model.objective_direction.name}')
+        conv_opt_model_rows.append(f'objective direction: {conv_opt_model.objective_direction.name}')
 
         conv_opt_model_rows.append('')
         conv_opt_model_rows.append('--- objective terms ---')
-        for objective_term in conf_opt_model.objective_terms:
+        for objective_term in conv_opt_model.objective_terms:
             row = f'{objective_term.coefficient:<8}'
             row += variable_term_to_row.obj_as_row(objective_term.variable)
             conv_opt_model_rows.append(row)
@@ -702,7 +758,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         self.update_bounds()
         print('bound_scale_factor', bound_scale_factor)
         print('coef_scale_factor', coef_scale_factor)
-        print(self.show_conf_opt_model(self.get_conv_model()))
+        print(self.show_conv_opt_model(self.get_conv_model()))
 
         end_time = self.time + self.time_step
         result = self._conv_model.solve()

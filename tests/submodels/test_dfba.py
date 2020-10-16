@@ -221,7 +221,8 @@ class TestDfbaSubmodel(unittest.TestCase):
             submodel_options=self.dfba_submodel_options)
 
         scale_factor = self.dfba_submodel_options['dfba_bound_scale_factor']
-        self.expected_rxn_fluxes = {
+        self.expected_rxn_flux_bounds = {
+            # map: rxn id: (lower bound, upper bound)
             'ex_m1': (100. * self.cell_volume * scale_factor, 120. * self.cell_volume * scale_factor),
             'ex_m2': (100. * self.cell_volume * scale_factor, 120. * self.cell_volume * scale_factor),
             'ex_m3': (0., 0.),
@@ -561,16 +562,16 @@ class TestDfbaSubmodel(unittest.TestCase):
         scale_factor = self.dfba_submodel_options['dfba_bound_scale_factor']
 
         self.dfba_submodel_1.determine_bounds()
-        self.bounds_test(self.dfba_submodel_1, self.expected_rxn_fluxes)
+        self.bounds_test(self.dfba_submodel_1, self.expected_rxn_flux_bounds)
 
         # Test changing flux_bounds_volumetric_compartment_id
         new_options = copy.deepcopy(self.dfba_submodel_options)
         new_options['flux_bounds_volumetric_compartment_id'] = 'c'
         new_submodel = self.make_dfba_submodel(self.model, submodel_options=new_options)
-        self.expected_rxn_fluxes['ex_m1'] = (100. * 5e-13 * scale_factor, 120. * 5e-13 * scale_factor)
-        self.expected_rxn_fluxes['ex_m2'] = (100. * 5e-13 * scale_factor, 120. * 5e-13 * scale_factor)
+        self.expected_rxn_flux_bounds['ex_m1'] = (100. * 5e-13 * scale_factor, 120. * 5e-13 * scale_factor)
+        self.expected_rxn_flux_bounds['ex_m2'] = (100. * 5e-13 * scale_factor, 120. * 5e-13 * scale_factor)
         new_submodel.determine_bounds()
-        self.bounds_test(new_submodel, self.expected_rxn_fluxes)
+        self.bounds_test(new_submodel, self.expected_rxn_flux_bounds)
 
         del self.model.reactions.get_one(id='r1').rate_laws[0]
         del self.model.reactions.get_one(id='r2').rate_laws[1]
@@ -621,17 +622,17 @@ class TestDfbaSubmodel(unittest.TestCase):
         ex5.flux_bounds = wc_lang.FluxBounds(min=0., max=None)
         m3 = self.model.species.get_one(id='m3[c]')
         ex5.participants.append(m3.species_coefficients.get_or_create(coefficient=-1))
-        self.expected_rxn_fluxes['ex_m5'] = (0, None)
+        self.expected_rxn_flux_bounds['ex_m5'] = (0, None)
 
         dfba_submodel_3 = self.make_dfba_submodel(self.model,
                                                   submodel_options=self.dfba_submodel_options)
         rxn_id, species_id, coefficient = ('ex_m4', 'm_new[c]', -2)
         species_pop = dfba_submodel_3.local_species_population.read_one(0, species_id)
         expected_max_constr = -scale_factor * species_pop / (coefficient * dfba_submodel_3.time_step)
-        self.expected_rxn_fluxes[rxn_id] = (0, expected_max_constr)
+        self.expected_rxn_flux_bounds[rxn_id] = (0, expected_max_constr)
 
         dfba_submodel_3.determine_bounds()
-        self.bounds_test(dfba_submodel_3, self.expected_rxn_fluxes)
+        self.bounds_test(dfba_submodel_3, self.expected_rxn_flux_bounds)
 
     def test_update_bounds(self):
         new_bounds = {
@@ -698,8 +699,47 @@ class TestDfbaSubmodel(unittest.TestCase):
                 self.model.distribution_init_concentrations.get_one(
                     species=self.model.species.get_one(id=species_id)).mean)
 
-    def test_run_fba_solver(self):
+    def test_scale_conv_opt_model(self):
+        dfba_submodel_1 = self.dfba_submodel_1
+        dfba_submodel_1.determine_bounds()
+        dfba_submodel_1.update_bounds()
+        scaled_conv_opt_model = dfba_submodel_1.scale_conv_opt_model(dfba_submodel_1.get_conv_model())
+        # a new conv opt model has been made
+        self.assertNotEqual(id(scaled_conv_opt_model), id(dfba_submodel_1.get_conv_model()))
 
+        # supply scaling factors
+        bound_scale_factor = dfba_submodel_1.dfba_solver_options['dfba_bound_scale_factor']
+        coef_scale_factor = dfba_submodel_1.dfba_solver_options['dfba_coef_scale_factor']
+        scaled_conv_opt_model_2 = dfba_submodel_1.scale_conv_opt_model(dfba_submodel_1.get_conv_model(),
+                                                                       bound_scale_factor=bound_scale_factor,
+                                                                       coef_scale_factor=coef_scale_factor)
+
+        ## invert scale factors and test round-trip ##
+        dfba_submodel_1.dfba_solver_options['dfba_bound_scale_factor'] = 1.0/bound_scale_factor
+        dfba_submodel_1.dfba_solver_options['dfba_coef_scale_factor'] = 1.0/coef_scale_factor
+        unscaled_conv_opt_model = dfba_submodel_1.scale_conv_opt_model(scaled_conv_opt_model)
+        old_conv_model = dfba_submodel_1.get_conv_model()
+
+        # check variables
+        for old_var, new_var in zip(old_conv_model.variables, unscaled_conv_opt_model.variables):
+            self.assertAlmostEqual(old_var.lower_bound, new_var.lower_bound)
+            self.assertAlmostEqual(old_var.upper_bound, new_var.upper_bound)
+
+        # check constraints
+        for old_const, new_const in zip(old_conv_model.constraints, unscaled_conv_opt_model.constraints):
+            self.assertAlmostEqual(old_const.lower_bound, new_const.lower_bound)
+            self.assertAlmostEqual(old_const.upper_bound, new_const.upper_bound)
+
+        # check coefficient terms in conv_opt model objective
+        for old_term, new_term in zip(old_conv_model.objective_terms, unscaled_conv_opt_model.objective_terms):
+            self.assertAlmostEqual(old_term.coefficient, new_term.coefficient)
+
+        # alter the conv opt model in place
+        modified_conv_opt_model = dfba_submodel_1.scale_conv_opt_model(dfba_submodel_1.get_conv_model(),
+                                                                       copy_model=False)
+        self.assertEqual(id(modified_conv_opt_model), id(dfba_submodel_1.get_conv_model()))
+
+    def test_run_fba_solver(self):
 
         n = 1
         print(f'model #{n} in test_run_fba_solver')
