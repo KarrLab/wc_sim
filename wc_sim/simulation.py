@@ -164,6 +164,9 @@ class Simulation(object):
         wc_simulation_metadata = WCSimulationMetadata(self.wc_sim_config)
         if self.model_path is not None:
             wc_simulation_metadata.set_wc_model_repo(self.model_path)
+        # add WC sim metadata to the output
+        if self.de_sim_config.output_dir is not None:
+            WCSimulationMetadata.write_dataclass(wc_simulation_metadata, self.de_sim_config.output_dir)
 
         if seed is not None:
             RandomStateManager.initialize(seed=seed)
@@ -181,12 +184,6 @@ class Simulation(object):
             # provide DE config and author metadata to DE sim
             simulate_rv = self.simulator.simulate(sim_config=self.de_sim_config,
                                                           author_metadata=self.author_metadata)
-
-            # add WC sim metadata to the output after the simulation, which requires an empty output dir
-            # TODO: have simulator.simulate() allow certain files in self.de_sim_config.output_dir,
-            # and move this code above
-            if self.de_sim_config.output_dir is not None:
-                WCSimulationMetadata.write_dataclass(wc_simulation_metadata, self.de_sim_config.output_dir)
 
         except SimulatorError as e:     # pragma: no cover
             raise MultialgorithmError(f'Simulation terminated with simulator error:\n{e}')
