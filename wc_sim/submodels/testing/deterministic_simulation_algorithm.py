@@ -20,7 +20,7 @@ class ExecuteDsaReaction(EventMessage):
         reaction_index (:obj:`int`): index of the selected reaction in
             `DsaSubmodel.reactions`.
     """
-    msg_field_names = ['reaction_index']
+    reaction_index: int
 
 
 class DsaSubmodel(DynamicSubmodel):

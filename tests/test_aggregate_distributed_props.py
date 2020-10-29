@@ -102,8 +102,9 @@ class PropertyProvider(SimulationObject):
 
 
 class GoGetProperty(EventMessage):
-    'Self-clocking message for test property requestor'
-    msg_field_names = ['property_name', 'time']
+    "Self-clocking message for test property requestor"
+    property_name: str
+    time: float
 
 
 class PropertyRequestor(SimulationObject):
