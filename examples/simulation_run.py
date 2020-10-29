@@ -17,7 +17,7 @@ from wc_sim.run_results import RunResults
 # setup inputs
 # use a toy model
 model_filename = os.path.join(os.path.dirname(__file__), '../tests/fixtures',
-                                   '2_species_1_reaction.xlsx')
+                              '2_species_1_reaction.xlsx')
 results_dir = tempfile.mkdtemp()
 
 # create and run simulation
