@@ -938,6 +938,10 @@ class RunVerificationSuite(unittest.TestCase):
             '01622',
             '01630',
         ]
+        self.dfba_test_cases = [
+            '01186',
+            '01187',
+        ]
         self.multialgorithmic_test_cases = [
             '00001',
             '00007',
