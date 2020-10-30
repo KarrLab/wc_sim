@@ -1,0 +1,179 @@
+Solutions to test dFBA models, by hand
+Hand-solve FBA examples - the tests in TestDfbaSubmodel::test_run_fba_solver
+
+I: No scaling (scaling factors equal 1) and no negative species population checks
+
+Species in the stoichiometric matrix:
+    m1[c]: ex_m1 - r1 - r2 – 2*r3 = 0                           (1)
+    m2[c]: ex_m2 - r1 + r2 – 2*r4 = 0                           (2)
+    m3[c]: ex_m3 + r1 + r3 + r4 - biomass_reaction = 0          (3)
+
+Reaction bound constraints (calculated from rate laws) (1/sec):
+    1e-10 <= ex_m1 <= 12
+    1e-10 <= ex_m2 <= 12
+    0 <= ex_m3 <= 0
+    -1 <= r1 <= 1
+    -2 <= r2 <= 3
+    0 <= r3 <= 5
+    0 <= r4 <= 6
+    0 <= biomass_reaction
+
+Objective: maximize biomass_reaction:
+    biomass_reaction is maximized when the sum of the remaining terms in (3)
+        ex_m3 + r1 + r3 + r4                                    (4)
+    are maximized.
+
+Solution:
+        ex_m3 = 0
+    Try to maximize (4) by setting the remainder of its components to their upper bounds
+        r1 = 1
+        r3 = 5
+        r4 = 6
+    Then from (1) and (2) we get
+        ex_m1 - 1 - r2 – 10 = 0                                 (5)
+        ex_m2 - 1 + r2 – 12 = 0                                 (6)
+    or
+        ex_m1 - r2 = 11
+        ex_m2 + r2 = 13
+    which, adding these reactions, implies
+        ex_m1 + ex_m2 = 24
+    so ex_m1 and ex_m2 must each equal their upper bound.
+    Now determine the biomass_reaction flux. from (3), we get
+        0 + 1 + 5 + 6 - biomass_reaction = 0
+    or
+        biomass_reaction = 12
+    which is the value of objective function returned by the solver
+
+    The full reaction flux solution vector is
+        ex_m1 = 12
+        ex_m2 = 12
+        ex_m3 = 0                                               (7)
+        r1 = 1
+        r2 = 1
+        r3 = 5
+        r4 = 6
+        biomass_reaction = 12
+
+    Species population change rates:
+        Only exchange and objective reactions contribute to population changes
+            These rxns and their fluxes are:
+                ex_m1: ==> m1[c]; 12
+                ex_m2: ==> m2[c]; 12
+                ex_m3: ==> m3[c]; 0
+                biomass_reaction: m3[c] ==> ; 12
+            Population change rate = species coefficient * flux
+                adjustment(m1[c]) = 1 * ex_m1 = 12
+                adjustment(m2[c]) = 1 * ex_m2 = 12 
+                adjustment(m3[c]) = 1 * ex_m3 + -1 * biomass_reaction = -12
+
+II: Add negative species population constraints to I
+
+    Same model as in I, but constrain add species populations from going negative.
+    Add constraint "neg_pop_constr__m3[c]"
+        0 <= -ex_m3 + biomass_reaction <= 100                   (8)
+    Given (7), simplify "neg_pop_constr__m3[c]" to
+        0 <= biomass_reaction <= 100
+    Since this does not constrain the solution for I, the solution and species population change rates remain unchanged.
+
+III: Add scaling of bounds to II
+
+    Scale bounds by 10. The constraint problem doesn't change until it is scaled.
+    Then it is scaled, the model is solved and un-scaling should return all results to the values in II.
+
+IV: Alter II so that a negative species population constraints change the solution
+
+    Same model as in II, with a time-step of 10. Since the population of m3[c] is 100,
+    Equation (8) becomes
+        0 <= -ex_m3 + biomass_reaction <= upper_bound           (9)
+    where
+        upper_bound = 100 / time-step
+
+    Try maximizing (4) with r3, r4, biomass_reaction and ex_m3 set to their upper bounds
+        r3 = 5
+        r4 = 6
+        biomass_reaction = 10
+        ex_m3 = 0
+
+    Equations (1) to (3) become
+        ex_m1 - r1 - r2 – 10 = 0
+        ex_m2 - r1 + r2 – 12 = 0
+        r1 + 11 - 10 = 0
+    This gives
+        r1 = -1
+        ex_m1 + 1 - r2 – 10 = 0
+        ex_m2 + 1 + r2 – 12 = 0
+    Simplifying the last two equations, we get
+        ex_m1 - r2 = 9
+        ex_m2 + r2 = 11
+    Multiply the last equation by 2 and add
+        ex_m1 + 2*ex_m2 + r2 = 31
+    This is a line in 3D. All points on this line subject to the reaction bound
+    constraints are optimal solutions.
+
+    One example occurs with ex_m2 at its upper bound
+        ex_m2 = 12
+    Then we have
+        ex_m1 = 8
+        r2 = -1
+    The full solution
+        ex_m1 = 8
+        ex_m2 = 12
+        ex_m3 = 0
+        r1 = -1
+        r2 = -1
+        r3 = 5
+        r4 = 6
+        biomass_reaction = 10
+    This is the solution cplex finds.
+
+    Species population change rates:
+            These rxns and their fluxes are:
+                ex_m1: ==> m1[c]; 8
+                ex_m2: ==> m2[c]; 12
+                ex_m3: ==> m3[c]; 0
+                biomass_reaction: m3[c] ==> ; 10
+            Population change rate = species coefficient * flux
+                adjustment(m1[c]) = 1 * ex_m1 = 8
+                adjustment(m2[c]) = 1 * ex_m2 = 12 
+                adjustment(m3[c]) = 1 * ex_m3 + -1 * biomass_reaction = -10
+
+# This does not work yet:
+--: Add scaling of coefficients of objective function reaction terms to II
+
+    Scale the scale the stoichiometric coefficients of objective function reaction terms by 10. The constraint problem doesn't change until it is scaled.
+    Then it is scaled, the model is solved and un-scaling should return all results to the values in II.
+
+        0 <= ex_m3 <= 0
+        ex_m3 = 0
+    Thus "neg_pop_constr__m3[c]" implies
+        0 <= 10.0 * biomass_reaction <= 1.00e+02, or
+        0 <= biomass_reaction <= 1.00e+03
+
+
+
+modify this model
+    add constraint "neg_pop_constr__m3[c]"
+        0 <= -ex_m3 + 10.0 * biomass_reaction <= 1.00e+02
+    since ex_m3 is constrained
+        0 <= ex_m3 <= 0
+        ex_m3 = 0
+    thus "neg_pop_constr__m3[c]" implies
+        0 <= 10.0 * biomass_reaction <= 1.00e+02, or
+        0 <= biomass_reaction <= 1.00e+03
+
+modify this model
+    add two exchange reactions
+        r5: s ->
+        r6: -> s
+    this creates an equality constraint
+        s: r5 + r6 = 0
+    and inequality constraints
+        0 <= r5 <= r5_ub
+        0 <= r6 <= r6_ub
+    redefine biomass to
+    modify the objective to
+        biomass_reaction + r5
+    this creates a degenerate solution which has
+        r5 = r6 = 0
+    with the remaining variables as above
+
