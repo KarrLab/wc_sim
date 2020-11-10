@@ -12,7 +12,7 @@ import builtins
 import math
 import sys
 
-from de_sim.simulation_object import Event, SimulationObject
+from de_sim.simulation_object import SimulationObject
 from wc_sim.debug_logs import logs as debug_logs
 from wc_sim import message_types
 from wc_sim.config import core as config_core_multialgorithm
@@ -76,7 +76,7 @@ class AggregateDistributedProps(SimulationObject):   # pragma: no cover
         '''Obtain an event's property_name
 
         Args:
-            event (:obj:`Event`): an event message about a `DistributedProperty`
+            event (:obj:`~de_sim.event.Event`): an event message about a `DistributedProperty`
         '''
         property_name = event.message.property_name
         # if the property value isn't available, return an error
@@ -110,7 +110,7 @@ class AggregateDistributedProps(SimulationObject):   # pragma: no cover
         '''Process an event message `AggregateProperty`
 
         Args:
-            event (:obj:`Event`): an event message about a `DistributedProperty`
+            event (:obj:`~de_sim.event.Event`): an event message about a `DistributedProperty`
         '''
         property_name = self.get_property(event)
         self.process_aggregate_property_event(property_name)
@@ -119,7 +119,7 @@ class AggregateDistributedProps(SimulationObject):   # pragma: no cover
         '''Provide an aggregate property value to a requestor
 
         Args:
-            event (:obj:`Event`): an event message about a `DistributedProperty`
+            event (:obj:`~de_sim.event.Event`): an event message about a `DistributedProperty`
 
         Raises:
             :obj:`ValueError`: if the `DistributedProperty` is not available at the requested time
@@ -142,7 +142,7 @@ class AggregateDistributedProps(SimulationObject):   # pragma: no cover
         '''Record a property value from a contributor
 
         Args:
-            event (:obj:`Event`): an event message about a `DistributedProperty`
+            event (:obj:`~de_sim.event.Event`): an event message about a `DistributedProperty`
         '''
         property_name = self.get_property(event)
         self.properties[property_name].record_value(
