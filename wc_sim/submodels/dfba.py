@@ -27,8 +27,8 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
     Attributes:
         DFBA_BOUND_SCALE_FACTOR (:obj:`float`): scaling factor for the bounds on reactions and
             constraints; the default value is 1.
-        DFBA_COEF_SCALE_FACTOR (:obj:`float`): scaling factor for the stoichiometric
-            coefficients in the objective reactions; the default value is 1.
+        DFBA_COEF_SCALE_FACTOR (:obj:`float`): scaling factor for the coefficients in dFBA objectives;
+            the default value is 1.
         SOLVER (:obj:`str`): name of the selected solver in conv_opt, the default value is 'cplex'
         PRESOLVE (:obj:`str`): presolve mode in `conv_opt` ('auto', 'on', 'off'), the default
             value is 'on'
@@ -54,7 +54,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             reaction IDs to their associated `conv_opt.Variable` objects
         _conv_metabolite_matrices (:obj:`dict` of :obj:`str`: :obj:`list`): a dictionary mapping metabolite
             species IDs to lists of :obj:`conv_opt.LinearTerm` objects; each :obj:`conv_opt.LinearTerm`
-            associates a a reaction that the species participates in with the species' stoichiometry
+            associates a reaction that the species participates in with the species' stoichiometry
             in the reaction
         _dfba_obj_rxn_ids (:obj:`list` of :obj:`str`): a list of IDs of dFBA objective reactions
         _dfba_obj_species (:obj:`list` of :obj:`wc_lang.DfbaObjSpecies:`): all species in
@@ -599,8 +599,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         They are elements of `dfba_solver_options`.
         The `dfba_bound_scale_factor` option is used to scale each reaction (optimization variable) and
         constraint bound before the LP problem is optimized.
-        The `dfba_coef_scale_factor` is used to scale the stoichiometric coefficients
-        of objective function reaction terms.
+        The `dfba_coef_scale_factor` scales the coefficients in dFBA objectives.
         Scaling is done by the this method.
         Symmetrically, the solution results are returned to the scale of the whole-cell model by
         inverting the consequences of these scaling factors.
@@ -612,9 +611,8 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                 before scaling it; defaults to :obj:`True`
             dfba_bound_scale_factor (:obj:`float`, optional): factor used to scale reaction and
                 constraint bounds; if not supplied, is taken from `self.dfba_solver_options`
-            dfba_coef_scale_factor (:obj:`float`, optional): factor used to scale the stoichiometric
-                coefficients of objective function reaction terms; if not supplied,
-                is taken from `self.dfba_solver_options`
+            dfba_coef_scale_factor (:obj:`float`, optional): factor used to scale the coefficients
+                in dFBA objectives; if not supplied, is taken from `self.dfba_solver_options`
 
         Returns:
             :obj:`conv_opt.Model`: the scaled convex optimization model
@@ -653,9 +651,8 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         Args:
             dfba_bound_scale_factor (:obj:`float`, optional): factor used to scale reaction and
                 constraint bounds; if not supplied, is taken from `self.dfba_solver_options`
-            dfba_coef_scale_factor (:obj:`float`, optional): factor used to scale the stoichiometric
-                coefficients of objective function reaction terms; if not supplied,
-                is taken from `self.dfba_solver_options`
+            dfba_coef_scale_factor (:obj:`float`, optional): factor used to scale the coefficients
+                in dFBA objectives; if not supplied, is taken from `self.dfba_solver_options`
         """
         if dfba_bound_scale_factor is None:
             dfba_bound_scale_factor = self.dfba_solver_options['dfba_bound_scale_factor']
