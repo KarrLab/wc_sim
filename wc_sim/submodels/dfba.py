@@ -26,7 +26,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
 
     Attributes:
         DFBA_BOUND_SCALE_FACTOR (:obj:`float`): scaling factor for the bounds on reactions and
-            constraints; the default value is 1.
+            constraints that avoid negative species populations; the default value is 1.
         DFBA_COEF_SCALE_FACTOR (:obj:`float`): scaling factor for the coefficients in dFBA objectives;
             the default value is 1.
         SOLVER (:obj:`str`): name of the selected solver in conv_opt, the default value is 'cplex'
@@ -46,7 +46,8 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         dfba_obj_expr (:obj:`ParsedExpression`): an analyzed and validated dFBA objective expression
         exchange_rxns (:obj:`set` of :obj:`wc_lang.Reactions`): set of exchange/demand reactions
         _multi_reaction_constraints (:obj:`dict` of :obj:`str`: :obj:`conv_opt.Constraint`): a map from
-            constraint id to constraints stored in `self._conv_model.constraints`
+            constraint id to constraints that avoid negative species populations
+            in `self._conv_model.constraints`
         _constrained_exchange_rxns (:obj:`set` of :obj:`wc_lang.Reactions`): exchange reactions
             constrained by `_multi_reaction_constraints`
         _conv_model (:obj:`conv_opt.Model`): linear programming model in `conv_opt` format
@@ -597,8 +598,8 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         Scaling factors can be used to scale the size of bounds and objective function term
         coefficients to address numerical problems with the linear programming solver.
         They are elements of `dfba_solver_options`.
-        The `dfba_bound_scale_factor` option is used to scale each reaction (optimization variable) and
-        constraint bound before the LP problem is optimized.
+        The `dfba_bound_scale_factor` option scales the bounds on reactions and constraints
+        that avoid negative species populations.
         The `dfba_coef_scale_factor` scales the coefficients in dFBA objectives.
         Scaling is done by the this method.
         Symmetrically, the solution results are returned to the scale of the whole-cell model by
@@ -609,8 +610,9 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             conv_opt_model (:obj:`conv_opt.Model`): a convex optimization model
             copy_model (:obj:`boolean`, optional): whether to copy the convex optimization model
                 before scaling it; defaults to :obj:`True`
-            dfba_bound_scale_factor (:obj:`float`, optional): factor used to scale reaction and
-                constraint bounds; if not supplied, is taken from `self.dfba_solver_options`
+            dfba_bound_scale_factor (:obj:`float`, optional): factor used to scale the bounds on
+                reactions and constraints that avoid negative species populations; if not supplied,
+                is taken from `self.dfba_solver_options`
             dfba_coef_scale_factor (:obj:`float`, optional): factor used to scale the coefficients
                 in dFBA objectives; if not supplied, is taken from `self.dfba_solver_options`
 
@@ -625,14 +627,15 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         if dfba_coef_scale_factor is None:
             dfba_coef_scale_factor = self.dfba_solver_options['dfba_coef_scale_factor']
 
-        # scale bounds in conv_opt model variables
+        # scale bounds
+        # skip non-numeric bounds, such as None
         for variable in conv_opt_model.variables:
             if isinstance(variable.lower_bound, (int, float)):
                 variable.lower_bound *= dfba_bound_scale_factor
             if isinstance(variable.upper_bound, (int, float)):
                 variable.upper_bound *= dfba_bound_scale_factor
 
-        # scale bounds in conv_opt model constraints
+        # scale bounds in constraints; bound values 0 are unchanged
         for constraint in conv_opt_model.constraints:
             if isinstance(constraint.lower_bound, (int, float)):
                 constraint.lower_bound *= dfba_bound_scale_factor
