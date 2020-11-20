@@ -6,7 +6,6 @@
 :License: MIT
 """
 
-import conv_opt
 import copy
 import math
 import numpy
@@ -14,7 +13,6 @@ import os
 import re
 import scipy.constants
 import unittest
-import wc_lang
 
 from de_sim.simulation_config import SimulationConfig
 from wc_lang.io import Reader
@@ -26,6 +24,8 @@ from wc_sim.sim_config import WCSimulationConfig
 from wc_sim.submodels.dfba import DfbaSubmodel
 from wc_utils.util.environ import EnvironUtils, ConfigEnvDict
 from wc_utils.util.units import unit_registry
+import conv_opt
+import wc_lang
 
 
 class TestDfbaSubmodel(unittest.TestCase):
