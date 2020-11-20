@@ -409,8 +409,12 @@ class TestDfbaSubmodel(unittest.TestCase):
         self.bounds_test(new_submodel, self.expected_rxn_flux_bounds)
 
         # remove r1's forward rate law
+        r1_forward_rl = self.model.reactions.get_one(id='r1').rate_laws[1]
+        self.assertEqual(r1_forward_rl.direction, wc_lang.RateLawDirection.forward)
         del self.model.reactions.get_one(id='r1').rate_laws[1]
         # remove r2's backward rate law
+        r2_backward_rl = self.model.reactions.get_one(id='r2').rate_laws[0]
+        self.assertEqual(r2_backward_rl.direction, wc_lang.RateLawDirection.backward)
         del self.model.reactions.get_one(id='r2').rate_laws[0]
         self.model.reactions.get_one(id='ex_m1').flux_bounds = None
         self.model.reactions.get_one(id='ex_m1').reversible = True
