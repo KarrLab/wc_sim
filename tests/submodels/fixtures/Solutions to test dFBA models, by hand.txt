@@ -3,12 +3,14 @@ Hand-solve FBA examples - the tests in TestDfbaSubmodel::test_run_fba_solver
 
 I: No scaling (scaling factors equal 1) and no negative species population checks
 
-Species in the stoichiometric matrix:
+The stoichiometric matrix, written with each species in the left column, followed by a linear
+sum of the fluxes of all reactions in which the species participates, which must equal 0, because
+all species are assumed to be in steady state.
     m1[c]: ex_m1 - r1 - r2 – 2*r3 = 0                           (1)
     m2[c]: ex_m2 - r1 + r2 – 2*r4 = 0                           (2)
     m3[c]: ex_m3 + r1 + r3 + r4 - biomass_reaction = 0          (3)
 
-Reaction bound constraints (calculated from rate laws) (1/sec):
+Reaction bound constraints (calculated from initial bounds and rate laws) (1/sec):
     1e-10 <= ex_m1 <= 12
     1e-10 <= ex_m2 <= 12
     0 <= ex_m3 <= 0
@@ -24,6 +26,7 @@ Objective: maximize biomass_reaction:
     are maximized.
 
 Solution:
+    By the constraints,
         ex_m3 = 0
     Try to maximize (4) by setting the remainder of its components to their upper bounds
         r1 = 1
@@ -44,7 +47,7 @@ Solution:
         biomass_reaction = 12
     which is the value of objective function returned by the solver
 
-    The full reaction flux solution vector is
+    Thus, the solution that optimizes the biomass_reaction consists of these reaction fluxes:
         ex_m1 = 12
         ex_m2 = 12
         ex_m3 = 0                                               (7)
