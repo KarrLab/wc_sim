@@ -7,6 +7,7 @@
 """
 
 import copy
+import itertools
 import math
 import numpy
 import os
@@ -30,9 +31,12 @@ import wc_lang
 
 class TestDfbaSubmodel(unittest.TestCase):
 
-    def setUp(self):
+    def get_model(self):
         test_model = os.path.join(os.path.dirname(__file__), 'fixtures', 'dfba_test_model.xlsx')
-        self.model = model = Reader().run(test_model, validate=False)[wc_lang.Model][0]
+        return Reader().run(test_model, validate=False)[wc_lang.Model][0]
+
+    def setUp(self):
+        self.model = model = self.get_model()
         self.cell_volume = model.compartments.get_one(id='c').init_volume.mean + \
                            model.compartments.get_one(id='n').init_volume.mean
         self.submodel = model.submodels.get_one(id='metabolism')
@@ -59,7 +63,7 @@ class TestDfbaSubmodel(unittest.TestCase):
         }
 
         self.dfba_submodel_1 = self.make_dfba_submodel(self.model,
-            submodel_options=self.dfba_submodel_options)
+                                                       submodel_options=self.dfba_submodel_options)
 
         self.expected_rxn_flux_bounds = {
             # map: rxn id: (lower bound, upper bound)
@@ -74,7 +78,7 @@ class TestDfbaSubmodel(unittest.TestCase):
         }
 
     def make_dfba_submodel(self, model, dfba_time_step=1.0, submodel_id='metabolism',
-                           submodel_options=None, dfba_obj_with_regular_rxn=False):
+                           submodel_options=None, dfba_obj_with_regular_rxn=False, obj_expression_spec=None):
         """ Make a MultialgorithmSimulation from a wc lang model, and return its dFBA submodel
 
         Args:
@@ -84,25 +88,29 @@ class TestDfbaSubmodel(unittest.TestCase):
             submodel_options (:obj:`type`, optional): the dynamic dFBA submodel's options
             dfba_obj_with_regular_rxn (:obj:`bool`, optional): whether to give the submodel
                 a dfba_obj that has a regular reaction
+            obj_expression_spec (:obj:`tuple`, optional): custome objective expression; structure:
+                ((tuple of DfbaObjReactions), (tuple of Reaction), )
 
         Returns:
             :obj:`DfbaSubmodel`: a dynamic dFBA submodel
         """
-        if dfba_obj_with_regular_rxn:
-            obj_expression = f"biomass_reaction + 2 * r2"
-            dfba_obj_expression, error = wc_lang.DfbaObjectiveExpression.deserialize(
-                obj_expression, {
-                    wc_lang.DfbaObjReaction: {
-                        'biomass_reaction': model.dfba_obj_reactions.get_one(id='biomass_reaction')
-                        },
-                    wc_lang.Reaction:{
-                        'r2': model.reactions.get_one(id='r2')},
-                    })
-            assert error is None, str(error)
-            self.submodel.dfba_obj.expression = dfba_obj_expression
-            self.dfba_submodel_options['optimization_type'] = 'minimize'
+        # build a dfba objective expression
+        if dfba_obj_with_regular_rxn or obj_expression_spec:
+            if obj_expression_spec is None:
+                obj_expression_spec = (('biomass_reaction', ), ('r2', ))
+            dfba_obj_reactions, reactions = obj_expression_spec
+            obj_expression = ' + '.join(itertools.chain(dfba_obj_reactions, reactions))
+            dfba_obj_reactions_dict = {}
+            for dfba_obj_rxn_id in dfba_obj_reactions:
+                dfba_obj_reactions_dict[dfba_obj_rxn_id] = model.dfba_obj_reactions.get_one(id=dfba_obj_rxn_id)
+            reactions_dict = {rxn_id: model.reactions.get_one(id=rxn_id) for rxn_id in reactions}
 
-        self.dfba_time_step = dfba_time_step
+            dfba_obj_expression, error = wc_lang.DfbaObjectiveExpression.deserialize(
+                obj_expression, {wc_lang.DfbaObjReaction: dfba_obj_reactions_dict,
+                                 wc_lang.Reaction: reactions_dict})
+            assert error is None, str(error)
+            submodel = model.submodels.get_one(id='metabolism')
+            submodel.dfba_obj.expression = dfba_obj_expression
 
         de_simulation_config = SimulationConfig(max_time=10)
         wc_sim_config = WCSimulationConfig(de_simulation_config, dfba_time_step=dfba_time_step)
@@ -117,7 +125,6 @@ class TestDfbaSubmodel(unittest.TestCase):
 
     ### test low level methods ###
     def test_dfba_submodel_init(self):
-        self.assertEqual(self.dfba_submodel_1.time_step, self.dfba_time_step)
         # test options
         self.assertEqual(self.dfba_submodel_1.dfba_solver_options, self.dfba_submodel_options)
 
@@ -192,11 +199,25 @@ class TestDfbaSubmodel(unittest.TestCase):
                                         f" is not the ID of a compartment in the model"):
             self.make_dfba_submodel(self.model, submodel_options=bad_flux_comp_id)
 
+        # test exchange_rxns
+        dfba_submodel = self.make_dfba_submodel(self.model)
+        self.assertEqual(dfba_submodel.exchange_rxns, set([self.model.reactions.get_one(id=rxn_id)
+                                                           for rxn_id in ('ex_m1', 'ex_m2', 'ex_m3')]))
         for id in ('ex_m2', 'ex_m3'):
             self.model.reactions.get_one(id=id).participants[0].coefficient = 2
         with self.assertRaisesRegexp(MultialgorithmError,
             re.escape("exchange reaction(s) don't have the form 's ->'")):
             self.make_dfba_submodel(self.model)
+
+        # test dfba_obj_expr
+        model = self.get_model()
+        dfba_submodel = self.make_dfba_submodel(model)
+        self.assertEqual(dfba_submodel.dfba_obj_expr.expression, 'biomass_reaction')
+
+        # make dfba_obj.expression that contains an exchange reaction
+        with self.assertRaisesRegexp(MultialgorithmError,
+            f"the dfba objective 'dfba-obj-{dfba_submodel.id}' uses exchange reactions:"):
+            self.make_dfba_submodel(model, obj_expression_spec=(('biomass_reaction', ), ('ex_m1', )))
 
     def test_set_up_optimizations(self):
         dfba_submodel = self.dfba_submodel_1
@@ -246,6 +267,7 @@ class TestDfbaSubmodel(unittest.TestCase):
 
         # Test model where the objective function is made of dfba objective reactions and
         # network reactions and is minimized
+        self.dfba_submodel_options['optimization_type'] = 'minimize'
         dfba_submodel_2 = self.make_dfba_submodel(self.model,
                                                   submodel_options=self.dfba_submodel_options,
                                                   dfba_obj_with_regular_rxn=True)
@@ -277,7 +299,7 @@ class TestDfbaSubmodel(unittest.TestCase):
         self.assertEqual(dfba_submodel_2._dfba_obj_rxn_ids, ['biomass_reaction'])
         self.assertEqual({objective_term.variable.name: objective_term.coefficient
                           for objective_term in dfba_submodel_2.get_conv_model().objective_terms},
-            {'biomass_reaction': 1, 'r2': 2})
+                         {'biomass_reaction': 1, 'r2': 1})
         self.assertEqual(dfba_submodel_2.get_conv_model().objective_direction,
                          conv_opt.ObjectiveDirection.minimize)
 
@@ -723,7 +745,7 @@ class TestDfbaSubmodel(unittest.TestCase):
         self.dfba_submodel_options['solver'] = 'glpk'
         del self.dfba_submodel_options['solver_options']
         dfba_submodel_2 = self.make_dfba_submodel(self.model,
-            submodel_options=self.dfba_submodel_options)
+                                                  submodel_options=self.dfba_submodel_options)
         dfba_submodel_2.time_step = 1.
         dfba_submodel_2.run_fba_solver()
 

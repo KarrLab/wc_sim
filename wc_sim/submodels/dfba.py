@@ -113,36 +113,18 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
 
         Raises:
             :obj:`MultiAlgorithmError`: if the `dynamic_dfba_objective` cannot be found,
+                or if the exchange reactions are not all of the form “s ->”,
                 or if the provided 'dfba_bound_scale_factor' in options does not have a positive value,
                 or if the provided 'dfba_coef_scale_factor' in options does not have a positive value,
                 or if the provided 'solver' in options is not a valid value,
                 or if the provided 'presolve' in options is not a valid value,
                 or if the 'solver' value provided in the 'solver_options' in options is not the same
-                as the name of the selected `conv_opt.Solver`, or if the provided
-                'flux_bounds_volumetric_compartment_id' is not a valid compartment ID in the model
+                as the name of the selected `conv_opt.Solver`,
+                or if the provided 'flux_bounds_volumetric_compartment_id' is not a valid
+                compartment ID in the model
         """
         super().__init__(id, dynamic_model, reactions, species, dynamic_compartments,
                          local_species_population, dfba_time_step, options)
-
-        dfba_objective_id = 'dfba-obj-{}'.format(id)
-        if dfba_objective_id not in dynamic_model.dynamic_dfba_objectives: # pragma: no cover
-            raise MultialgorithmError(f"DfbaSubmodel {self.id}: cannot find dynamic_dfba_objective "
-                                      f"{dfba_objective_id}")
-        self.dfba_obj_expr = dynamic_model.dynamic_dfba_objectives[dfba_objective_id].wc_lang_expression
-
-        # determine set of exchange reactions, which must have the form “s ->”
-        errors = []
-        self.exchange_rxns = set()
-        for rxn in self.reactions:
-            if len(rxn.participants) == 1:
-                part = rxn.participants[0]
-                if part.coefficient < 0:
-                    self.exchange_rxns.add(rxn)
-                else:
-                    errors.append(f'{rxn.id}')
-        if errors:
-            rxns = ', '.join(errors)
-            raise MultialgorithmError(f"exchange reaction(s) don't have the form 's ->': {rxns}")
 
         self.dfba_solver_options = {
             'dfba_bound_scale_factor': self.DFBA_BOUND_SCALE_FACTOR,
@@ -199,6 +181,38 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                 self.dfba_solver_options['flux_bounds_volumetric_compartment_id'] = comp_id
             if 'negative_pop_constraints' in options:
                 self.dfba_solver_options['negative_pop_constraints'] = options['negative_pop_constraints']
+
+        # determine set of exchange reactions, which must have the form “s ->”
+        errors = []
+        self.exchange_rxns = set()
+        for rxn in self.reactions:
+            if len(rxn.participants) == 1:
+                part = rxn.participants[0]
+                if part.coefficient < 0:
+                    self.exchange_rxns.add(rxn)
+                else:
+                    errors.append(rxn.id)
+        if errors:
+            rxns = ', '.join(errors)
+            raise MultialgorithmError(f"exchange reaction(s) don't have the form 's ->': {rxns}")
+
+        # get the dfba objective's expression
+        dfba_objective_id = f'dfba-obj-{id}'
+        if dfba_objective_id not in dynamic_model.dynamic_dfba_objectives: # pragma: no cover
+            raise MultialgorithmError(f"DfbaSubmodel {self.id}: cannot find dynamic_dfba_objective "
+                                      f"{dfba_objective_id}")
+        self.dfba_obj_expr = dynamic_model.dynamic_dfba_objectives[dfba_objective_id].wc_lang_expression
+
+        # ensure that the dfba objective doesn't contain exchange rxns
+        errors = []
+        for rxn_id_2_rxn_map in self.dfba_obj_expr.related_objects.values():
+            for rxn in rxn_id_2_rxn_map.values():
+                if rxn in self.exchange_rxns:
+                    errors.append(rxn.id)
+        if errors:
+            rxns = ', '.join(errors)
+            raise MultialgorithmError(f"the dfba objective '{dfba_objective_id}' "
+                                      f"uses exchange reactions: {rxns}")
 
         # log initialization data
         self.log_with_time("init: id: {}".format(id))
