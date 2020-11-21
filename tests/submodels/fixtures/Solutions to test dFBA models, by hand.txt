@@ -6,13 +6,13 @@ I: No scaling (scaling factors equal 1) and no negative species population check
 The stoichiometric matrix, written with each species in the left column, followed by a linear
 sum of the fluxes of all reactions in which the species participates, which must equal 0, because
 all species are assumed to be in steady state.
-    m1[c]: ex_m1 - r1 - r2 – 2*r3 = 0                           (1)
-    m2[c]: ex_m2 - r1 + r2 – 2*r4 = 0                           (2)
-    m3[c]: ex_m3 + r1 + r3 + r4 - biomass_reaction = 0          (3)
+    m1[c]: -ex_m1 - r1 - r2 – 2*r3 = 0                           (1)
+    m2[c]: -ex_m2 - r1 + r2 – 2*r4 = 0                           (2)
+    m3[c]: -ex_m3 + r1 + r3 + r4 - biomass_reaction = 0          (3)
 
 Reaction bound constraints (calculated from initial bounds and rate laws) (1/sec):
-    1e-10 <= ex_m1 <= 12
-    1e-10 <= ex_m2 <= 12
+    -12 <= ex_m1 <= -1e-10
+    -12 <= ex_m2 <= -1e-10
     0 <= ex_m3 <= 0
     -1 <= r1 <= 1
     -2 <= r2 <= 3
@@ -22,7 +22,7 @@ Reaction bound constraints (calculated from initial bounds and rate laws) (1/sec
 
 Objective: maximize biomass_reaction:
     biomass_reaction is maximized when the sum of the remaining terms in (3)
-        ex_m3 + r1 + r3 + r4                                    (4)
+        -ex_m3 + r1 + r3 + r4                                    (4)
     are maximized.
 
 Solution:
@@ -33,14 +33,14 @@ Solution:
         r3 = 5
         r4 = 6
     Then from (1) and (2) we get
-        ex_m1 - 1 - r2 – 10 = 0                                 (5)
-        ex_m2 - 1 + r2 – 12 = 0                                 (6)
+        -ex_m1 - 1 - r2 – 10 = 0                                 (5)
+        -ex_m2 - 1 + r2 – 12 = 0                                 (6)
     or
-        ex_m1 - r2 = 11
-        ex_m2 + r2 = 13
+        ex_m1 + r2 = -11
+        ex_m2 - r2 = -13
     which, adding these reactions, implies
-        ex_m1 + ex_m2 = 24
-    so ex_m1 and ex_m2 must each equal their upper bound.
+        ex_m1 + ex_m2 = -24
+    so ex_m1 and ex_m2 must both equal their lower bound.
     Now determine the biomass_reaction flux. from (3), we get
         0 + 1 + 5 + 6 - biomass_reaction = 0
     or
@@ -48,8 +48,8 @@ Solution:
     which is the value of objective function returned by the solver
 
     Thus, the solution that optimizes the biomass_reaction consists of these reaction fluxes:
-        ex_m1 = 12
-        ex_m2 = 12
+        ex_m1 = -12
+        ex_m2 = -12
         ex_m3 = 0                                               (7)
         r1 = 1
         r2 = 1
@@ -60,20 +60,20 @@ Solution:
     Species population change rates:
         Only exchange and objective reactions contribute to population changes
             These rxns and their fluxes are:
-                ex_m1: ==> m1[c]; 12
-                ex_m2: ==> m2[c]; 12
-                ex_m3: ==> m3[c]; 0
+                ex_m1: m1[c] ==> ; -12
+                ex_m2: m2[c] ==> ; -12
+                ex_m3: m3[c] ==> ; 0
                 biomass_reaction: m3[c] ==> ; 12
             Population change rate = species coefficient * flux
-                adjustment(m1[c]) = 1 * ex_m1 = 12
-                adjustment(m2[c]) = 1 * ex_m2 = 12 
-                adjustment(m3[c]) = 1 * ex_m3 + -1 * biomass_reaction = -12
+                adjustment(m1[c]) = -1 * ex_m1 = 12
+                adjustment(m2[c]) = -1 * ex_m2 = 12
+                adjustment(m3[c]) = -1 * ex_m3 + -1 * biomass_reaction = -12
 
 II: Add negative species population constraints to I
 
-    Same model as in I, but constrain add species populations from going negative.
+    Same model as in I, but add constraint to prevent species populations from going negative.
     Add constraint "neg_pop_constr__m3[c]"
-        0 <= -ex_m3 + biomass_reaction <= 100                   (8)
+        0 <= ex_m3 + biomass_reaction <= 100                   (8)
     Given (7), simplify "neg_pop_constr__m3[c]" to
         0 <= biomass_reaction <= 100
     Since this does not constrain the solution for I, the solution and species population change rates remain unchanged.
@@ -87,40 +87,38 @@ IV: Alter II so that a negative species population constraints change the soluti
 
     Same model as in II, with a time-step of 10. Since the population of m3[c] is 100,
     Equation (8) becomes
-        0 <= -ex_m3 + biomass_reaction <= upper_bound           (9)
+        0 <= ex_m3 + biomass_reaction <= upper_bound           (9)
     where
         upper_bound = 100 / time-step
 
-    Try maximizing (4) with r3, r4, biomass_reaction and ex_m3 set to their upper bounds
+    Try maximizing (4) with r3, r4, biomass_reaction and ex_m3 set to their upper and lower bounds, respectively.
         r3 = 5
         r4 = 6
         biomass_reaction = 10
         ex_m3 = 0
 
     Equations (1) to (3) become
-        ex_m1 - r1 - r2 – 10 = 0
-        ex_m2 - r1 + r2 – 12 = 0
+        -ex_m1 - r1 - r2 – 10 = 0
+        -ex_m2 - r1 + r2 – 12 = 0
         r1 + 11 - 10 = 0
     This gives
         r1 = -1
-        ex_m1 + 1 - r2 – 10 = 0
-        ex_m2 + 1 + r2 – 12 = 0
-    Simplifying the last two equations, we get
-        ex_m1 - r2 = 9
-        ex_m2 + r2 = 11
+    Simplifying the exchange reaction equations, we get
+        -ex_m1 - r2 = 9
+        -ex_m2 + r2 = 11
     Multiply the last equation by 2 and add
-        ex_m1 + 2*ex_m2 + r2 = 31
+        -ex_m1 - 2*ex_m2 + r2 = 31
     This is a line in 3D. All points on this line subject to the reaction bound
     constraints are optimal solutions.
 
-    One example occurs with ex_m2 at its upper bound
-        ex_m2 = 12
+    One example occurs with ex_m2 at its lower bound
+        ex_m2 = -12
     Then we have
-        ex_m1 = 8
         r2 = -1
+        ex_m1 = -8
     The full solution
-        ex_m1 = 8
-        ex_m2 = 12
+        ex_m1 = -8
+        ex_m2 = -12
         ex_m3 = 0
         r1 = -1
         r2 = -1
@@ -131,14 +129,15 @@ IV: Alter II so that a negative species population constraints change the soluti
 
     Species population change rates:
             These rxns and their fluxes are:
-                ex_m1: ==> m1[c]; 8
-                ex_m2: ==> m2[c]; 12
-                ex_m3: ==> m3[c]; 0
+                ex_m1: m1[c] ==> ; -8
+                ex_m2: m2[c] ==> ; -12
+                ex_m3: m3[c] ==> ; 0
                 biomass_reaction: m3[c] ==> ; 10
             Population change rate = species coefficient * flux
-                adjustment(m1[c]) = 1 * ex_m1 = 8
-                adjustment(m2[c]) = 1 * ex_m2 = 12 
-                adjustment(m3[c]) = 1 * ex_m3 + -1 * biomass_reaction = -10
+                adjustment(m1[c]) = -1 * ex_m1 = 8
+                adjustment(m2[c]) = -1 * ex_m2 = 12
+                adjustment(m3[c]) = -1 * ex_m3 + -1 * biomass_reaction = -10
+            Consumption of m3[c] equals the -10/sec, the maximum rate permitted by constraint (9), as expected.
 
 # This does not work yet:
 --: Add scaling of coefficients of objective function reaction terms to II

@@ -44,11 +44,11 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         reaction_fluxes (:obj:`dict` of :obj:`str`: :obj:`float`): reaction fluxes data structure,
             which is pre-allocated
         dfba_obj_expr (:obj:`ParsedExpression`): an analyzed and validated dFBA objective expression
-        exchange_rxns (:obj:`set` of :obj:`wc_lang.Reactions`): set of exchange/demand reactions
+        exchange_rxns (:obj:`set` of :obj:`wc_lang.Reactions`): set of exchange and demand reactions
         _multi_reaction_constraints (:obj:`dict` of :obj:`str`: :obj:`conv_opt.Constraint`): a map from
             constraint id to constraints that avoid negative species populations
             in `self._conv_model.constraints`
-        _constrained_exchange_rxns (:obj:`set` of :obj:`wc_lang.Reactions`): exchange reactions
+        _constrained_exchange_rxns (:obj:`set` of :obj:`wc_lang.Reactions`): exchange and demand reactions
             constrained by `_multi_reaction_constraints`
         _conv_model (:obj:`conv_opt.Model`): linear programming model in `conv_opt` format
         _conv_variables (:obj:`dict` of :obj:`str`: :obj:`conv_opt.Variable`): a dictionary mapping
@@ -129,11 +129,20 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             raise MultialgorithmError(f"DfbaSubmodel {self.id}: cannot find dynamic_dfba_objective "
                                       f"{dfba_objective_id}")
         self.dfba_obj_expr = dynamic_model.dynamic_dfba_objectives[dfba_objective_id].wc_lang_expression
-        # APG: is this foolproof? could a modeler have a pair of reactions of the form A -> (/), (/) -> A
-        # or would a model containing those reactions be rejected?
-        # also, are we certain that the dfba objective doesn't contain any exchange rxns? if it does, then this is wrong:
-        # if isinstance(rxn, wc_lang.DfbaObjReaction) in initialize_neg_species_pop_constraints is wrong
-        self.exchange_rxns = set([rxn for rxn in self.reactions if len(rxn.participants) == 1])
+
+        # determine set of exchange reactions, which must have the form “s ->”
+        errors = []
+        self.exchange_rxns = set()
+        for rxn in self.reactions:
+            if len(rxn.participants) == 1:
+                part = rxn.participants[0]
+                if part.coefficient < 0:
+                    self.exchange_rxns.add(rxn)
+                else:
+                    errors.append(f'{rxn.id}')
+        if errors:
+            rxns = ', '.join(errors)
+            raise MultialgorithmError(f"exchange reaction(s) don't have the form 's ->': {rxns}")
 
         self.dfba_solver_options = {
             'dfba_bound_scale_factor': self.DFBA_BOUND_SCALE_FACTOR,
@@ -209,7 +218,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         self._conv_variables = {}
         self._conv_metabolite_matrices = collections.defaultdict(list)
         for rxn in self.reactions:
-            # APG: subtle problem here: since a DfbaObjReaction and a Reaction
+            # TODO (APG): subtle problem here: since a DfbaObjReaction and a Reaction
             # could have the same id they could collide in _conv_variables. Two possible solutions:
             # 1) prohibit models that have the same rxn id used more than once, or
             # 2) generate ids that include the reaction type
@@ -354,8 +363,8 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         """ Make constraints that span multiple reactions
 
         A separate constraint is made for each species that participates in more than
-        one exchange and/or objective reaction. These constraints prevent the species from
-        having a negative species population in the next time step.
+        one exchange and/or dfba objective reactions. These constraints prevent the species population
+        from declining so quickly that it becomes negative in the next time step.
         Also initializes `self._constrained_exchange_rxns`.
         Call this when a dFBA submodel is initialized.
 
@@ -450,9 +459,9 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
 
         1. Bounds provided by the model and written to `self._reaction_bounds`
 
-        2. The bounds in exchange reactions that do not participate in a constraint
-        created by `initialize_neg_species_pop_constraints()` are further bounded so they do not cause
-        negative species populations in the next time step.
+        2. The bounds in exchange and demand reactions that do not participate in a negative
+        species population constraint are further bounded so they do not let a reaction's
+        species population decline so quickly that it becomes negative in the next time step.
         """
         # Determine all the reaction bounds
         flux_comp_id = self.dfba_solver_options['flux_bounds_volumetric_compartment_id']
@@ -469,7 +478,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             if reaction.rate_laws:
                 for_ratelaw = reaction.rate_laws.get_one(direction=wc_lang.RateLawDirection.forward)
                 if for_ratelaw:
-                    # APG: if reversible rxns are split, could call self.calc_reaction_rate(reaction)
+                    # TODO (APG): if reversible rxns are split, could call self.calc_reaction_rate(reaction)
                     rate = self.dynamic_model.dynamic_rate_laws[for_ratelaw.id].eval(self.time)
                     max_constr = rate
                 else:
@@ -484,7 +493,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                 else:
                     min_constr = 0.
 
-            # Set the bounds of exchange/demand/sink reactions
+            # Set the bounds of exchange and demand reactions
             elif reaction.flux_bounds:
 
                 rxn_bounds = reaction.flux_bounds
