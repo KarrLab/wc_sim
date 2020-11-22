@@ -648,8 +648,6 @@ class TestDfbaSubmodel(unittest.TestCase):
 
     def check_expected_solution(test_case, dfba_submodel, obj_func_value, expected_adjustments):
         test_case.assertEqual(dfba_submodel._optimal_obj_func_value, obj_func_value)
-        # TODO (Arthur): check expected_adjustment after reviewing code
-        return
         for species_id, expected_adjustment in expected_adjustments.items():
             test_case.assertAlmostEqual(dfba_submodel.adjustments[species_id], expected_adjustment,
                                    delta=1e-09)
@@ -658,8 +656,10 @@ class TestDfbaSubmodel(unittest.TestCase):
         # Algebraic solutions to these tests are documented in the
         # file "tests/submodels/fixtures/Solutions to test dFBA models, by hand.txt"
         test_name = 'I: No scaling (scaling factors equal 1) and no negative species population checks'
+        # TODO: later: report strange behavior, presumably caused by obj_table's shared related attributes
+        # since ex_m1 flux_bounds.min == ex_m2 flux_bounds.min, multiplying one of them by 1E11 increases both of them by 1E11
         self.model.reactions.get_one(id='ex_m1').flux_bounds.min *= 1e11
-        self.model.reactions.get_one(id='ex_m2').flux_bounds.min *= 1e11
+        # self.model.reactions.get_one(id='ex_m2').flux_bounds.min *= 1e11
         self.dfba_submodel_options['dfba_bound_scale_factor'] = 1.
         self.dfba_submodel_options['dfba_coef_scale_factor'] = 1.
         self.dfba_submodel_options['negative_pop_constraints'] = False
@@ -670,10 +670,9 @@ class TestDfbaSubmodel(unittest.TestCase):
         dfba_submodel_2.run_fba_solver()
 
         self.assertEqual(dfba_submodel_2._optimal_obj_func_value, 12)
-        expected_adjustments = {
-            'm1[c]': 12,
-            'm2[c]': 12,
-            'm3[c]': -12}
+        expected_adjustments = {'m1[c]': -12,
+                                'm2[c]': -12,
+                                'm3[c]': 12}
         self.check_expected_solution(dfba_submodel_2, 12, expected_adjustments)
 
         test_name = 'II: Add negative species population constraints to I'
@@ -701,9 +700,9 @@ class TestDfbaSubmodel(unittest.TestCase):
         dfba_submodel_2.time_step = 10
         dfba_submodel_2.run_fba_solver()
         expected_adjustments = {
-            'm1[c]': 8,
-            'm2[c]': 12,
-            'm3[c]': -10}
+            'm1[c]': -8,
+            'm2[c]': -12,
+            'm3[c]': 10}
         self.check_expected_solution(dfba_submodel_2, 10, expected_adjustments)
 
         # Test raise DynamicMultialgorithmError

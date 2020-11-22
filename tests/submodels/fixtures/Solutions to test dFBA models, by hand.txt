@@ -84,7 +84,8 @@ II: Add negative species population constraints to I
 III: Add scaling of bounds to II
 
     Scale bounds by 10. The constraint problem doesn't change until it is scaled.
-    Then it is scaled, the model is solved and un-scaling should return all results to the values in II.
+    Then it is scaled, the model is solved and the solution is unscale.
+    This should produce the same solution as in II.
 
 IV: Alter II so that a negative species population constraints change the solution
 
@@ -137,9 +138,10 @@ IV: Alter II so that a negative species population constraints change the soluti
                 ex_m3: m3[c] ==> ; 0
                 biomass_reaction: m3[c] ==> ; 10
             Population change rate = species coefficient * flux
-                adjustment(m1[c]) = -1 * ex_m1 = 8
-                adjustment(m2[c]) = -1 * ex_m2 = 12
-                adjustment(m3[c]) = -1 * ex_m3 + -1 * biomass_reaction = -10
+                adjustment(m1[c]) = -(-1 * ex_m1) = -8
+                adjustment(m2[c]) = -(-1 * ex_m2) = -12
+                adjustment(m3[c]) = -(-1 * ex_m3 + -1 * biomass_reaction) = 10
+
             Consumption of m3[c] equals the -10/sec, the maximum rate permitted by constraint (9), as expected.
 
 # This does not work yet:

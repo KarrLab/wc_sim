@@ -826,8 +826,6 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         Raises:
             :obj:`DynamicMultiAlgorithmError`: if no optimal solution is found
         """
-        print('_conv_variables')
-        print(set(list(self._conv_variables)))
         self.determine_bounds()
         self.update_bounds()
         # print('\n--- wc lang conv opt model ---')
