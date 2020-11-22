@@ -228,8 +228,16 @@ class TestDfbaSubmodel(unittest.TestCase):
             {'ex_m1': None, 'ex_m2': None, 'ex_m3': None, 'r1': None, 'r2': None, 'r3': None, 'r4': None})
 
     def test_set_up_dfba_submodel(self):
-        self.dfba_submodel_1.set_up_dfba_submodel()
+        # test exception when the ids in DfbaObjReactions and Reactions intersect
+        model = self.get_model()
+        # add 'biomass_reaction' to Reactions to create intersection
+        dfba_submodel = model.submodels.get_one(id='metabolism')
+        ex1 = dfba_submodel.reactions.create(id='biomass_reaction', reversible=False, model=model)
+        with self.assertRaisesRegexp(MultialgorithmError,
+            "in model .* the ids in DfbaObjReactions and Reactions intersect:"):
+            self.make_dfba_submodel(model)
 
+        self.dfba_submodel_1.set_up_dfba_submodel()
         self.assertEqual(len(self.dfba_submodel_1._conv_variables), len(self.submodel.reactions) + 1)
         self.assertEqual('biomass_reaction' in self.dfba_submodel_1._conv_variables, True)
         for k,v in self.dfba_submodel_1._conv_variables.items():

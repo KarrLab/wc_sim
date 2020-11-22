@@ -223,24 +223,32 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         self.set_up_optimizations()
 
     def set_up_dfba_submodel(self):
-        """ Set up a dFBA submodel, by converting to a linear programming matrix """
+        """ Set up a dFBA submodel, by converting to a linear programming matrix
+
+        Raises:
+            :obj:`MultiAlgorithmError`: if the ids in DfbaObjReactions and Reactions intersect
+        """
         self.set_up_continuous_time_submodel()
 
         ### dFBA specific code ###
+
+        # raise an error if the ids in DfbaObjReactions and Reactions intersect
+        reaction_ids = set([rxn.id for rxn in self.reactions])
+        dfba_obj_reaction_ids = set()
+        for rxn_cls in self.dfba_obj_expr.related_objects:
+            for rxn in self.dfba_obj_expr.related_objects[rxn_cls].values():
+                if isinstance(rxn, wc_lang.DfbaObjReaction):
+                    dfba_obj_reaction_ids.add(rxn.id)
+        if reaction_ids & dfba_obj_reaction_ids:
+            raise MultialgorithmError(f"in model {self.dynamic_model.id} the ids in DfbaObjReactions "
+                                      f"and Reactions intersect: {reaction_ids & dfba_obj_reaction_ids}")
+        # TODO later: support colliding ids by creating unique ids prefixed by class
+
         # Formulate the optimization problem using the conv_opt package
         self._conv_model = conv_opt.Model(name='model')
         self._conv_variables = {}
         self._conv_metabolite_matrices = collections.defaultdict(list)
         for rxn in self.reactions:
-            # TODO (APG): subtle problem here: since a DfbaObjReaction and a Reaction
-            # could have the same id they could collide in _conv_variables. Two possible solutions:
-            # 1) prohibit models that have the same rxn id used more than once, or
-            # 2) generate ids that include the reaction type
-            # E.g.:
-            # make unique identifiers by prefixing ids with the class names
-            # def gen_uniq_rxn_id(rxn):
-            #    return f"{type(rxn).__name__}:{rxn.id}"
-            # I prefer #2
             self._conv_variables[rxn.id] = conv_opt.Variable(
                 name=rxn.id, type=conv_opt.VariableType.continuous)
             self._conv_model.variables.append(self._conv_variables[rxn.id])
@@ -804,17 +812,15 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         Raises:
             :obj:`DynamicMultiAlgorithmError`: if no optimal solution is found
         """
+        print('_conv_variables')
+        print(set(list(self._conv_variables)))
         self.determine_bounds()
         self.update_bounds()
-        print('\n--- wc lang conv opt model ---')
-        print(self.show_conv_opt_model(self.get_conv_model()))
+        # print('\n--- wc lang conv opt model ---')
+        # print(self.show_conv_opt_model(self.get_conv_model()))
 
         # scale just before solving
         scaled_conv_opt_model = self.scale_conv_opt_model(self.get_conv_model())
-        '''
-        print('\n--- scaled conv opt model before solve() ---')
-        print(self.show_conv_opt_model(scaled_conv_opt_model))
-        '''
         result = scaled_conv_opt_model.solve()
         end_time = self.time + self.time_step
         if result.status_code != conv_opt.StatusCode(0):
