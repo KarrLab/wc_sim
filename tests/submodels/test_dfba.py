@@ -377,7 +377,7 @@ class TestDfbaSubmodel(unittest.TestCase):
         check_neg_species_pop_constraints(self, constraints, expected_constrs)
         self.assertEqual(get_rxn_set(['ex_m3']), dfba_submodel_2._constrained_exchange_rxns)
 
-        # TODO: test with a dFBA obj that contains multiple species
+        # TODO (APG): test with a dFBA obj that contains multiple species
         dfba_submodel_2 = self.make_dfba_submodel(self.model,
                                                   submodel_options=self.dfba_submodel_options,
                                                   dfba_obj_with_regular_rxn=True)
@@ -388,7 +388,7 @@ class TestDfbaSubmodel(unittest.TestCase):
         self.assertEqual(get_rxn_set(['ex_m3']), dfba_submodel_2._constrained_exchange_rxns)
 
         """
-        # TODO: FIX OR DROP
+        # TODO (APG): fix or drop
         # test with dfba_coef_scale_factor != 1
         dfba_submodel_2.dfba_solver_options['dfba_coef_scale_factor'] = 10
         constraints = dfba_submodel_2.initialize_neg_species_pop_constraints()
@@ -398,7 +398,7 @@ class TestDfbaSubmodel(unittest.TestCase):
 
         # test with a species that is not consumed in any reaction that might be used in a constraint
         ex_m3 = self.model.reactions.get_one(id='ex_m3')
-        # TODO: APG: fix
+        # TODO (APG): fix
         for part in ex_m3.participants:
             print('part.coefficient', part.coefficient)
             # part.coefficient = 0
@@ -444,7 +444,7 @@ class TestDfbaSubmodel(unittest.TestCase):
         new_submodel.determine_bounds()
         self.bounds_test(new_submodel, self.expected_rxn_flux_bounds)
 
-        # TODO: APG: fix: figure out what this is testing and fix it
+        # TODO (APG): fix: figure out what this is testing and fix it
         return
         # remove r1's forward rate law
         r1 = self.model.reactions.get_one(id='r1')
@@ -656,7 +656,7 @@ class TestDfbaSubmodel(unittest.TestCase):
         # Algebraic solutions to these tests are documented in the
         # file "tests/submodels/fixtures/Solutions to test dFBA models, by hand.txt"
         test_name = 'I: No scaling (scaling factors equal 1) and no negative species population checks'
-        # TODO: later: report strange behavior, presumably caused by obj_table's shared related attributes
+        # TODO (APG): later: report strange behavior, presumably caused by obj_table's shared related attributes
         # since ex_m1 flux_bounds.min == ex_m2 flux_bounds.min, multiplying one of them by 1E11 increases both of them by 1E11
         self.model.reactions.get_one(id='ex_m1').flux_bounds.min *= 1e11
         # self.model.reactions.get_one(id='ex_m2').flux_bounds.min *= 1e11
@@ -741,10 +741,10 @@ class TestDfbaSubmodel(unittest.TestCase):
         self.assertEqual(population, expected_population)
         '''
 
-        # TODO: OPTIMIZE DFBA CACHING: test that expressions that depend on exchange and biomass reactions
+        # TODO (APG): OPTIMIZE DFBA CACHING: test that expressions that depend on exchange and biomass reactions
         # have been flushed, and that expressions which don't depend on them have not been flushed
         # Test flush expression
-        # TODO: fix
+        # TODO (APG): fix
         # self.assertTrue(dfba_submodel_2.dynamic_model.cache_manager.empty())
 
         # Test using a different solver

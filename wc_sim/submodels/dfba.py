@@ -242,7 +242,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         if reaction_ids & dfba_obj_reaction_ids:
             raise MultialgorithmError(f"in model {self.dynamic_model.id} the ids in DfbaObjReactions "
                                       f"and Reactions intersect: {reaction_ids & dfba_obj_reaction_ids}")
-        # TODO later: support colliding ids by creating unique ids prefixed by class
+        # TODO (APG): later: support colliding ids by creating unique ids prefixed by class
 
         # Formulate the optimization problem using the conv_opt package
         self._conv_model = conv_opt.Model(name='model')
@@ -330,7 +330,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
     LB = '__LB__'
     RB = '__RB__'
 
-    # TODO: in species_id_without_brkts raise error if species_id doesn't have brackets or has codes
+    # TODO (APG): later: in species_id_without_brkts raise error if species_id doesn't have brackets or has codes
     @staticmethod
     def species_id_without_brkts(species_id):
         """ Replace brackets in a species id with codes
@@ -343,7 +343,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         """
         return species_id.replace('[', DfbaSubmodel.LB).replace(']', DfbaSubmodel.RB)
 
-    # TODO: in species_id_with_brkts raise error if species_id doesn't have codes or has brackets
+    # TODO (APG): later: in species_id_with_brkts raise error if species_id doesn't have codes or has brackets
     @staticmethod
     def species_id_with_brkts(species_id):
         """ Replace codes in a species id with brackets
@@ -394,8 +394,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             :obj:`dict` of :obj:`str`: :obj:`conv_opt.Constraint`: a map from constraint id to
             constraints stored in `self._conv_model.constraints`
         """
-        # TODO: AVOID NEG. POPS.
-        # either check that all reactions are irreversible or handle reversible reactions
+        # TODO (APG): AVOID NEG. POPS.: either check that all reactions are irreversible or handle reversible reactions
 
         self._constrained_exchange_rxns = set()
         if not self.dfba_solver_options['negative_pop_constraints']:
@@ -463,7 +462,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         # pre-allocate dict of reaction fluxes
         self.reaction_fluxes = {rxn.id: None for rxn in self.reactions}
 
-        # TODO: later: ensure that ids of Species and dFBA objective species cannot collide
+        # TODO (APG): later: ensure that ids of Species and dFBA objective species cannot collide
         # initialize adjustments, the dict that will hold the species population change rates
         self.adjustments = {}
         for obj_species in self._dfba_obj_species:
@@ -488,8 +487,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         """
         # Determine all the reaction bounds
         flux_comp_id = self.dfba_solver_options['flux_bounds_volumetric_compartment_id']
-        # TODO APG: the use of 'flux_comp_volume' means that cached volumes must be invalidated
-        # before running dFBA
+        # TODO (APG): since 'flux_comp_volume' is used, cached volumes must be invalidated before running dFBA
         if flux_comp_id == self.FLUX_BOUNDS_VOLUMETRIC_COMPARTMENT_ID:
             flux_comp_volume = self.dynamic_model.cell_volume()
         else:
@@ -501,7 +499,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             if reaction.rate_laws:
                 for_ratelaw = reaction.rate_laws.get_one(direction=wc_lang.RateLawDirection.forward)
                 if for_ratelaw:
-                    # TODO (APG): if reversible rxns are split, could call self.calc_reaction_rate(reaction)
+                    # TODO (APG): if reversible rxns are split, call self.calc_reaction_rate(reaction)
                     rate = self.dynamic_model.dynamic_rate_laws[for_ratelaw.id].eval(self.time)
                     max_constr = rate
                 else:
