@@ -214,7 +214,7 @@ class TestDfbaSubmodel(unittest.TestCase):
         dfba_submodel = self.make_dfba_submodel(model)
         self.assertEqual(dfba_submodel.dfba_obj_expr.expression, 'biomass_reaction')
 
-        # make dfba_obj.expression that contains an exchange reaction
+        # test exception in dfba_obj.expression that contains an exchange reaction
         with self.assertRaisesRegexp(MultialgorithmError,
             f"the dfba objective 'dfba-obj-{dfba_submodel.id}' uses exchange reactions:"):
             self.make_dfba_submodel(model, obj_expression_spec=(('biomass_reaction', ), ('ex_m1', )))

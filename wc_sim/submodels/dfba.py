@@ -605,14 +605,14 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
 
         Because FBA obtains a steady-state solution for reaction fluxes, only species that
         participate in unbalanced reactions at the edge of the network (exchange reactions and
-        dFBA objective reactions) can experience non-zero rates of change.
+        dFBA objective reactions) can have non-zero rates of change.
 
         Updates the existing dict `self.adjustments`.
         """
-        # Calculate the adjustment for each species as sum over reactions of reaction flux * stoichiometry
-        self.current_species_populations()
+        # Calculate the adjustment for each species in a pseudo-reaction
+        # as the sum over reactions of reaction flux * stoichiometry
 
-        # Compute for objective species
+        # Compute for dFBA objective species
         for obj_species in self._dfba_obj_species:
             self.adjustments[obj_species.species.id] += \
                 self.reaction_fluxes[obj_species.dfba_obj_reaction.id] * obj_species.value
