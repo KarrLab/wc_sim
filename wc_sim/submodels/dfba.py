@@ -10,6 +10,7 @@
 import collections
 import conv_opt
 import copy
+import enum
 import math
 import scipy.constants
 import wc_lang
@@ -323,6 +324,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         species_to_rm = [s for s in species_net_coefficients if species_net_coefficients[s] == 0.]
         for species in species_to_rm:
             del species_net_coefficients[species]
+
         return species_net_coefficients
 
     NEG_POP_CONSTRAINT_PREFIX = 'neg_pop_constr'
@@ -382,13 +384,15 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         return neg_species_pop_constraint_id[loc:]
 
     def initialize_neg_species_pop_constraints(self):
-        """ Make constraints that span multiple reactions
+        """ Make constraints that prevent species populations from going negative and span multiple reactions
 
         A separate constraint is made for each species that participates in more than
         one exchange and/or dfba objective reactions. These constraints prevent the species population
         from declining so quickly that it becomes negative in the next time step.
         Also initializes `self._constrained_exchange_rxns`.
         Call this when a dFBA submodel is initialized.
+
+        Do nothing if negative species population constraints are not being used.
 
         Returns:
             :obj:`dict` of :obj:`str`: :obj:`conv_opt.Constraint`: a map from constraint id to
@@ -400,17 +404,15 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         if not self.dfba_solver_options['negative_pop_constraints']:
             return {}
 
-        # map from species to reactions that use the species
+        # make map from species to pseudo-reactions that use the species
         reactions_using_species = collections.defaultdict(set)
-
-        # add species in objective reactions
+        # add species from dFBA objective reactions
         for rxn_cls in self.dfba_obj_expr.related_objects:
             for rxn in self.dfba_obj_expr.related_objects[rxn_cls].values():
                 # ignore wc_lang.Reactions, which cannot have a net species flux
                 if isinstance(rxn, wc_lang.DfbaObjReaction):
                     for species in self._get_species_and_stoichiometry(rxn):
                         reactions_using_species[species].add(rxn)
-
         # add species in exchange reactions
         for rxn in self.exchange_rxns:
             for species in self._get_species_and_stoichiometry(rxn):
@@ -716,98 +718,6 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         for rxn_variable in conv_opt_model.variables:
             self.reaction_fluxes[rxn_variable.name] = rxn_variable.primal
 
-    @staticmethod
-    def show_conv_opt_model(conv_opt_model):
-        """ Convert a `conv_opt` into a readable representation
-
-        Args:
-            conv_opt_model (:obj:`conv_opt.Model`): a convex optimization model
-
-        Returns:
-            :obj:`str`: a readable representation of `conv_opt_model`
-        """
-        import enum
-        conv_opt_model_rows = ['']
-        conv_opt_model_rows.append('--- conf_opt model ---')
-        conv_opt_model_rows.append(f"name: '{conv_opt_model.name}'")
-
-
-        class ObjToRow(object):
-            def __init__(self, col_widths, headers, attrs):
-                self.col_widths = col_widths
-                self.headers = headers
-                self.attrs = attrs
-
-            def header_rows(self):
-                rv = []
-                for header_row in self.headers:
-                    row = ''
-                    for col_header, width in zip(header_row, self.col_widths):
-                        row += f'{col_header:<{width}}'
-                    rv.append(row)
-                return rv
-
-            def obj_as_row(self, obj):
-                row = ''
-                for attr, width in zip(self.attrs, self.col_widths):
-                    value = getattr(obj, attr)
-                    str_value = f'{str(value):<{width-1}} '
-                    if isinstance(value, enum.Enum):
-                        str_value = f'{value.name:<{width-1}}'
-                    elif isinstance(value, float):
-                        str_value = f'{value:>{width-1}.4g} '
-                    elif isinstance(value, int):
-                        str_value = f'{value:>{width-1}d} '
-                    row += str_value
-                return row
-
-        # variables: skip 'primal', 'reduced_cost', which aren't used
-        conv_opt_model_rows.append('')
-        conv_opt_model_rows.append('--- variables ---')
-        headers_1 = ('name', 'type', 'lower', 'upper')
-        headers_2 = ('', '', 'bound', 'bound',)
-        variable_to_row = ObjToRow((18, 18, 14, 14,),
-                                    [headers_1, headers_2],
-                                    ('name', 'type', 'lower_bound', 'upper_bound'))
-        conv_opt_model_rows.extend(variable_to_row.header_rows())
-        for variable in conv_opt_model.variables:
-            conv_opt_model_rows.append(variable_to_row.obj_as_row(variable))
-
-        # constraints: skip 'dual' which isn't used
-        headers_1 = ('name', 'lower', 'upper')
-        headers_2 = ('', 'bound', 'bound',)
-        constraint_to_row = ObjToRow((22, 10, 10,),
-                                     [headers_1, headers_2],
-                                     ('name', 'lower_bound', 'upper_bound'))
-
-        # I presume that the lower and upper bounds in constraint terms are ignored
-        variable_term_to_row = ObjToRow((18, 18),
-                                    None,
-                                    ('name', 'type'))
-        # linear terms include Variable as a field, so just print the coefficient directly
-        conv_opt_model_rows.append('')
-        conv_opt_model_rows.append('--- constraints ---')
-        conv_opt_model_rows.extend(constraint_to_row.header_rows())
-        for constraint in conv_opt_model.constraints:
-            conv_opt_model_rows.append(constraint_to_row.obj_as_row(constraint))
-            conv_opt_model_rows.append('--- terms ---')
-            for linear_term in constraint.terms:
-                row = f'{linear_term.coefficient:<8}'
-                row += variable_term_to_row.obj_as_row(linear_term.variable)
-                conv_opt_model_rows.append(row)
-            conv_opt_model_rows.append('')
-
-        conv_opt_model_rows.append(f'objective direction: {conv_opt_model.objective_direction.name}')
-
-        conv_opt_model_rows.append('')
-        conv_opt_model_rows.append('--- objective terms ---')
-        for objective_term in conv_opt_model.objective_terms:
-            row = f'{objective_term.coefficient:<8}'
-            row += variable_term_to_row.obj_as_row(objective_term.variable)
-            conv_opt_model_rows.append(row)
-
-        return '\n'.join(conv_opt_model_rows)
-
     def run_fba_solver(self):
         """ Run the FBA solver for one time step
 
@@ -816,8 +726,8 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         """
         self.determine_bounds()
         self.update_bounds()
-        # print('\n--- wc lang conv opt model ---')
-        # print(self.show_conv_opt_model(self.get_conv_model()))
+        print('\n--- wc lang conv opt model ---')
+        print(ShowConvOptElements.show_conv_opt_model(self.get_conv_model()))
 
         # scale just before solving
         scaled_conv_opt_model = self.scale_conv_opt_model(self.get_conv_model())
@@ -857,3 +767,117 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         """
         self.run_fba_solver()
         self.schedule_next_periodic_analysis()
+
+
+class ObjToRow(object):
+    # TODO (APG): later: cleanup; unittests; docstrings; etc.
+
+    def __init__(self, col_widths, headers, attrs):
+        self.col_widths = col_widths
+        self.headers = headers
+        self.attrs = attrs
+
+    def header_rows(self):
+        rv = []
+        for header_row in self.headers:
+            row = ''
+            for col_header, width in zip(header_row, self.col_widths):
+                row += f'{col_header:<{width}}'
+            rv.append(row)
+        return rv
+
+    def obj_as_row(self, obj):
+        row = ''
+        for attr, width in zip(self.attrs, self.col_widths):
+            value = getattr(obj, attr)
+            str_value = f'{str(value):<{width-1}} '
+            if isinstance(value, enum.Enum):
+                str_value = f'{value.name:<{width-1}}'
+            elif isinstance(value, float):
+                str_value = f'{value:>{width-1}.4g} '
+            elif isinstance(value, int):
+                str_value = f'{value:>{width-1}d} '
+            row += str_value
+        return row
+
+
+class ShowConvOptElements(object):
+    # TODO (APG): later: cleanup; unittests; docstrings; etc.
+
+    @staticmethod
+    def show_conv_opt_variable(header=False, variable=None):
+        headers_1 = ('name', 'type', 'lower', 'upper')
+        headers_2 = ('', '', 'bound', 'bound',)
+        variable_to_row = ObjToRow((18, 18, 14, 14,),
+                                   [headers_1, headers_2],
+                                   ('name', 'type', 'lower_bound', 'upper_bound'))
+        if header:
+            return variable_to_row.header_rows()
+        return variable_to_row.obj_as_row(variable)
+
+    @staticmethod
+    def show_conv_opt_constraint(header=False, constraint=None):
+        # constraints: skip 'dual' which isn't used
+        headers_1 = ('name', 'lower', 'upper')
+        headers_2 = ('', 'bound', 'bound',)
+        constraint_to_row = ObjToRow((22, 10, 10,),
+                                     [headers_1, headers_2],
+                                     ('name', 'lower_bound', 'upper_bound'))
+        if header:
+            return constraint_to_row.header_rows()
+        return constraint_to_row.obj_as_row(constraint)
+
+    @staticmethod
+    def show_conv_opt_variable_term(header=False, variable_term=None):
+        # I presume that the lower and upper bounds in constraint terms are ignored
+        variable_term_to_row = ObjToRow((18, 18),
+                                        None,
+                                        ('name', 'type'))
+        if header:
+            return variable_term_to_row.header_rows()
+        return variable_term_to_row.obj_as_row(variable_term)
+
+    @classmethod
+    def show_conv_opt_model(cls, conv_opt_model):
+        """ Convert a `conv_opt` into a readable representation
+
+        Args:
+            conv_opt_model (:obj:`conv_opt.Model`): a convex optimization model
+
+        Returns:
+            :obj:`str`: a readable representation of `conv_opt_model`
+        """
+        conv_opt_model_rows = ['']
+        conv_opt_model_rows.append('--- conf_opt model ---')
+        conv_opt_model_rows.append(f"name: '{conv_opt_model.name}'")
+
+        # variables: skip 'primal', 'reduced_cost', which aren't used
+        conv_opt_model_rows.append('')
+        conv_opt_model_rows.append('--- variables ---')
+        conv_opt_model_rows.extend(cls.show_conv_opt_variable(header=True))
+        for variable in conv_opt_model.variables:
+            conv_opt_model_rows.append(cls.show_conv_opt_variable(variable=variable))
+
+        # linear terms include Variable as a field, so just print the coefficient directly
+        conv_opt_model_rows.append('')
+        conv_opt_model_rows.append('--- constraints ---')
+        conv_opt_model_rows.extend(cls.show_conv_opt_constraint(header=True))
+        for constraint in conv_opt_model.constraints:
+            conv_opt_model_rows.append(cls.show_conv_opt_constraint(constraint=constraint))
+            conv_opt_model_rows.append('--- terms ---')
+            for linear_term in constraint.terms:
+                row = f'{linear_term.coefficient:<8}'
+                row += cls.show_conv_opt_variable_term(variable_term=linear_term.variable)
+                conv_opt_model_rows.append(row)
+            conv_opt_model_rows.append('')
+
+        conv_opt_model_rows.append(f'objective direction: {conv_opt_model.objective_direction.name}')
+
+        conv_opt_model_rows.append('')
+        conv_opt_model_rows.append('--- objective terms ---')
+        for objective_term in conv_opt_model.objective_terms:
+            row = f'{objective_term.coefficient:<8}'
+            row += cls.show_conv_opt_variable_term(variable_term=objective_term.variable)
+            conv_opt_model_rows.append(row)
+
+        return '\n'.join(conv_opt_model_rows)
