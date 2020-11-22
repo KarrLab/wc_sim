@@ -205,13 +205,8 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
 
         # ensure that the dfba objective doesn't contain exchange rxns
         errors = []
-        '''
-        todo: replace next two lines with these, which are more comprehensible
         for rxn_cls in self.dfba_obj_expr.related_objects:
             for rxn in self.dfba_obj_expr.related_objects[rxn_cls].values():
-        '''
-        for rxn_id_2_rxn_map in self.dfba_obj_expr.related_objects.values():
-            for rxn in rxn_id_2_rxn_map.values():
                 if rxn in self.exchange_rxns:
                     errors.append(rxn.id)
         if errors:
@@ -263,13 +258,8 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
 
         self._dfba_obj_rxn_ids = []
         self._dfba_obj_species = []
-        '''
-        todo: replace next two lines with these, which are more comprehensible
         for rxn_cls in self.dfba_obj_expr.related_objects:
             for rxn_id, rxn in self.dfba_obj_expr.related_objects[rxn_cls].items():
-        '''
-        for rxn_id_2_rxn_map in self.dfba_obj_expr.related_objects.values():
-            for rxn_id, rxn in rxn_id_2_rxn_map.items():
                 if rxn_id not in self._conv_variables:
                     self._dfba_obj_rxn_ids.append(rxn_id)
                     self._conv_variables[rxn.id] = conv_opt.Variable(
