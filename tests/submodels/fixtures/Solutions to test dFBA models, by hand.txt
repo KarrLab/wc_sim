@@ -2,6 +2,7 @@ Solutions to test dFBA models, by hand
 Hand-solve FBA examples - the tests in TestDfbaSubmodel::test_run_fba_solver
 
 I: No scaling (scaling factors equal 1) and no negative species population checks
+This is based on the model in tests/submodels/fixtures/dfba_test_model.xlsx.
 
 The stoichiometric matrix, written with each species in the left column, followed by a linear
 sum of the fluxes of all reactions in which the species participates, which must equal 0, because
@@ -10,7 +11,9 @@ all species are assumed to be in steady state.
     m2[c]: -ex_m2 - r1 + r2 – 2*r4 = 0                           (2)
     m3[c]: -ex_m3 + r1 + r3 + r4 - biomass_reaction = 0          (3)
 
-Reaction bound constraints (calculated from initial bounds and rate laws) (1/sec):
+Reaction bound constraints (calculated from initial bounds and rate laws) (1/sec).
+(The minimum bounds for ex_m1 and ex_m2 have been scaled by 1e11.)
+
     -12 <= ex_m1 <= -1e-10
     -12 <= ex_m2 <= -1e-10
     0 <= ex_m3 <= 0
@@ -64,10 +67,10 @@ Solution:
                 ex_m2: m2[c] ==> ; -12
                 ex_m3: m3[c] ==> ; 0
                 biomass_reaction: m3[c] ==> ; 12
-            Population change rate = species coefficient * flux
-                adjustment(m1[c]) = -1 * ex_m1 = 12
-                adjustment(m2[c]) = -1 * ex_m2 = 12
-                adjustment(m3[c]) = -1 * ex_m3 + -1 * biomass_reaction = -12
+            Population change rate = -sum(species coefficient * flux) over pseudo-reactions
+                adjustment(m1[c]) = -(-1 * ex_m1) = -12
+                adjustment(m2[c]) = -(-1 * ex_m2) = -12
+                adjustment(m3[c]) = -(-1 * ex_m3 + -1 * biomass_reaction) = 12
 
 II: Add negative species population constraints to I
 

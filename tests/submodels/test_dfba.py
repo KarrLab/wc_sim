@@ -529,7 +529,7 @@ class TestDfbaSubmodel(unittest.TestCase):
             self.assertEqual(variable.upper_bound, new_bounds[var_id][1])
 
     def do_test_compute_population_change_rates_control_caching(self, caching_settings):
-        ### test with caching specified by caching_settings ###
+        # test with caching specified by caching_settings
         config_env_dict = ConfigEnvDict()
         for caching_attr, caching_setting in caching_settings:
             config_var_path = ['wc_sim', 'multialgorithm']
@@ -537,28 +537,27 @@ class TestDfbaSubmodel(unittest.TestCase):
             config_env_dict.add_config_value(config_var_path, caching_setting)
         with EnvironUtils.make_temp_environ(**config_env_dict.get_env_dict()):
 
-            new_fluxes = {
-                'ex_m1': 13.2,
-                'ex_m2': 30.,
-                'ex_m3': 0.,
-                'r1': -1.3,
-                'r2': 0.5,
-                'r3': 5.6,
-                'r4': 2.5,
-                'biomass_reaction': 6.8,
-            }
-            self.dfba_submodel_1.reaction_fluxes = new_fluxes
+            # use fluxes and expected population change rates from
+            # test I: 'No scaling (scaling factors equal 1) and no negative species population checks'
+            fluxes = dict(ex_m1=-12,
+                          ex_m2=-12,
+                          ex_m3=0,
+                          r1=1,
+                          r2=1,
+                          r3=5,
+                          r4=6,
+                          biomass_reaction=12)
+            self.dfba_submodel_1.reaction_fluxes = fluxes
             self.dfba_submodel_1.compute_population_change_rates()
-
-            expected_rates = {
-                'm1[c]': 1 * 13.2,
-                'm2[c]': 1 * 30.,
-                'm3[c]': 1 * 0. + -1 * 6.8,
-            }
+            expected_rates = {'m1[c]': -12,
+                              'm2[c]': -12,
+                              'm3[c]': 12}
+            self.assertEqual(self.dfba_submodel_1.adjustments, expected_rates)
+            # test repeated calculations
+            self.dfba_submodel_1.compute_population_change_rates()
             self.assertEqual(self.dfba_submodel_1.adjustments, expected_rates)
 
-    @unittest.skip('TODO: fix')
-    def test_compute_population_change_rates_control_caching(self):
+    def test_compute_population_change_rates(self):
         ### test all 3 caching combinations ###
         # NO CACHING
         # EVENT_BASED invalidation

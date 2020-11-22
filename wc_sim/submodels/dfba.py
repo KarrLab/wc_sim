@@ -205,6 +205,11 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
 
         # ensure that the dfba objective doesn't contain exchange rxns
         errors = []
+        '''
+        todo: replace next two lines with these, which are more comprehensible
+        for rxn_cls in self.dfba_obj_expr.related_objects:
+            for rxn in self.dfba_obj_expr.related_objects[rxn_cls].values():
+        '''
         for rxn_id_2_rxn_map in self.dfba_obj_expr.related_objects.values():
             for rxn in rxn_id_2_rxn_map.values():
                 if rxn in self.exchange_rxns:
@@ -258,6 +263,11 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
 
         self._dfba_obj_rxn_ids = []
         self._dfba_obj_species = []
+        '''
+        todo: replace next two lines with these, which are more comprehensible
+        for rxn_cls in self.dfba_obj_expr.related_objects:
+            for rxn_id, rxn in self.dfba_obj_expr.related_objects[rxn_cls].items():
+        '''
         for rxn_id_2_rxn_map in self.dfba_obj_expr.related_objects.values():
             for rxn_id, rxn in rxn_id_2_rxn_map.items():
                 if rxn_id not in self._conv_variables:
@@ -463,6 +473,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         # pre-allocate dict of reaction fluxes
         self.reaction_fluxes = {rxn.id: None for rxn in self.reactions}
 
+        # TODO: later: ensure that ids of Species and dFBA objective species cannot collide
         # initialize adjustments, the dict that will hold the species population change rates
         self.adjustments = {}
         for obj_species in self._dfba_obj_species:
@@ -604,23 +615,26 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         """ Compute the rate of change of the populations of species used by this dFBA
 
         Because FBA obtains a steady-state solution for reaction fluxes, only species that
-        participate in unbalanced reactions at the edge of the network (exchange reactions and
-        dFBA objective reactions) can have non-zero rates of change.
+        participate in the exchange reactions or dFBA objective pseudo-reactions
+        at the edge of the FBA network can have non-zero rates of change.
 
         Updates the existing dict `self.adjustments`.
         """
         # Calculate the adjustment for each species in a pseudo-reaction
-        # as the sum over reactions of reaction flux * stoichiometry
+        # as the sum over reactions of stoichiometry * reaction flux
 
-        # Compute for dFBA objective species
-        for obj_species in self._dfba_obj_species:
-            self.adjustments[obj_species.species.id] += \
-                self.reaction_fluxes[obj_species.dfba_obj_reaction.id] * obj_species.value
+        for species_id in self.adjustments:
+            self.adjustments[species_id] = 0
 
         # Compute for exchange species
         for exchange_rxn in self.exchange_rxns:
-            self.adjustments[exchange_rxn.participants[0].species.id] += \
-                self.reaction_fluxes[exchange_rxn.id] * exchange_rxn.participants[0].coefficient
+            self.adjustments[exchange_rxn.participants[0].species.id] -= \
+                exchange_rxn.participants[0].coefficient * self.reaction_fluxes[exchange_rxn.id]
+
+        # Compute for dFBA objective species
+        for obj_species in self._dfba_obj_species:
+            self.adjustments[obj_species.species.id] -= \
+                obj_species.value * self.reaction_fluxes[obj_species.dfba_obj_reaction.id]
 
     def scale_conv_opt_model(self, conv_opt_model, copy_model=True,
                              dfba_bound_scale_factor=None, dfba_coef_scale_factor=None):
