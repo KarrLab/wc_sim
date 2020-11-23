@@ -333,7 +333,6 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
     LB = '__LB__'
     RB = '__RB__'
 
-    # TODO (APG): later: in species_id_without_brkts raise error if species_id doesn't have brackets or has codes
     @staticmethod
     def species_id_without_brkts(species_id):
         """ Replace brackets in a species id with codes
@@ -343,10 +342,19 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
 
         Returns:
             :obj:`str`: species id with brackets replaced by codes
+
+        Raises:
+            :obj:`MultiAlgorithmError`: if `species_id` isn't a properly formatted :obj:`wc_lang.Species` id,
+                or has bracket codes
         """
+        try:
+            wc_lang.Species.parse_id(species_id)
+        except ValueError as e:
+            raise MultialgorithmError(e)
+        if DfbaSubmodel.LB in species_id or DfbaSubmodel.RB in species_id:
+            raise MultialgorithmError(f"species_id '{species_id}' already has bracket code(s)")
         return species_id.replace('[', DfbaSubmodel.LB).replace(']', DfbaSubmodel.RB)
 
-    # TODO (APG): later: in species_id_with_brkts raise error if species_id doesn't have codes or has brackets
     @staticmethod
     def species_id_with_brkts(species_id):
         """ Replace codes in a species id with brackets
@@ -356,7 +364,14 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
 
         Returns:
             :obj:`str`: standard WC Lang species id
+
+        Raises:
+            :obj:`MultiAlgorithmError`: if `species_id` doesn't have bracket codes or has brackets
         """
+        if (DfbaSubmodel.LB not in species_id or DfbaSubmodel.RB not in species_id or
+            '[' in species_id or ']' in species_id):
+            raise MultialgorithmError(f"invalid species_id with bracket codes '{species_id}' it should be "
+                                      f"species_type_id{DfbaSubmodel.LB}compartment_id{DfbaSubmodel.RB}")
         return species_id.replace(DfbaSubmodel.LB, '[').replace(DfbaSubmodel.RB, ']')
 
     @staticmethod

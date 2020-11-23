@@ -346,6 +346,24 @@ class TestDfbaSubmodel(unittest.TestCase):
         round_trip_id = DfbaSubmodel.species_id_with_brkts(DfbaSubmodel.species_id_without_brkts(species_id))
         self.assertEqual(species_id, round_trip_id)
 
+        # test species_id_without_brkts exceptions
+        invalid_species_id = 'x[c'
+        with self.assertRaisesRegexp(MultialgorithmError, 'invalid species_id'):
+            DfbaSubmodel.species_id_without_brkts(invalid_species_id)
+        invalid_species_id = f'x{DfbaSubmodel.LB}[c]'
+        with self.assertRaisesRegexp(MultialgorithmError, "species_id .* already has bracket code"):
+            DfbaSubmodel.species_id_without_brkts(invalid_species_id)
+
+        # test species_id_with_brkts exceptions
+        invalid_species_id = 'x[c]'
+        with self.assertRaisesRegexp(MultialgorithmError,
+                                     "invalid species_id with bracket codes .* it should be"):
+            DfbaSubmodel.species_id_with_brkts(invalid_species_id)
+        invalid_species_id = 'xyz'
+        with self.assertRaisesRegexp(MultialgorithmError,
+                                     "invalid species_id with bracket codes .* it should be"):
+            DfbaSubmodel.species_id_with_brkts(invalid_species_id)
+
     def test_initialize_neg_species_pop_constraints(self):
         def get_const_name(species_id):
             """ Get the name of the negative species constraint for species `species_id` """
