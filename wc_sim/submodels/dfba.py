@@ -13,6 +13,7 @@ import copy
 import enum
 import math
 import scipy.constants
+import warnings
 import wc_lang
 
 from wc_sim import message_types
@@ -195,7 +196,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                     errors.append(rxn.id)
         if errors:
             rxns = ', '.join(errors)
-            raise MultialgorithmError(f"exchange reaction(s) don't have the form 's ->': {rxns}")
+            warnings.warn(f"exchange reaction(s) don't have the form 's ->': {rxns}")
 
         # get the dfba objective's expression
         dfba_objective_id = f'dfba-obj-{id}'
@@ -720,8 +721,8 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         """
         self.determine_bounds()
         self.update_bounds()
-        # print('\n--- wc lang conv opt model ---')
-        # print(ShowConvOptElements.show_conv_opt_model(self.get_conv_model()))
+        print('\n--- wc lang conv opt model ---')
+        print(ShowConvOptElements.show_conv_opt_model(self.get_conv_model()))
 
         # scale just before solving
         scaled_conv_opt_model = self.scale_conv_opt_model(self.get_conv_model())

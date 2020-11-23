@@ -370,7 +370,7 @@ class TestDfbaSubmodel(unittest.TestCase):
         dfba_submodel_2 = self.make_dfba_submodel(self.model,
                                                   submodel_options=self.dfba_submodel_options)
         constraints = dfba_submodel_2.initialize_neg_species_pop_constraints()
-
+        print(ShowConvOptElements.show_conv_opt_constraints(constraints))
         # for each species, set of expected (rxn, coef) pairs contributing to species' consumption
         expected_constrs = {get_const_name('m3[c]'): {('ex_m3', 1.0), ('biomass_reaction', 1.0)}}
         check_neg_species_pop_constraints(self, constraints, expected_constrs)
@@ -382,6 +382,7 @@ class TestDfbaSubmodel(unittest.TestCase):
                                                   submodel_options=self.dfba_submodel_options,
                                                   obj_expression_spec=(tuple(), ('r2',)))
         constraints = dfba_submodel_2.initialize_neg_species_pop_constraints()
+        print(ShowConvOptElements.show_conv_opt_constraints(constraints))
         check_neg_species_pop_constraints(self, constraints, {})
 
     def test_bound_neg_species_pop_constraints(self):
