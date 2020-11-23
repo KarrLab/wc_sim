@@ -561,37 +561,38 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
 
             self._reaction_bounds[reaction.id] = (min_constr, max_constr)
 
-        # bound exchange reactions so they do not cause negative species populations in the
-        # next time step
-        # if exchange reaction r transports species x[c] out of c
-        # then bound the maximum flux of r, flux(r) (1/s) <= p(x, t) / (-s(r, x) * dt)
-        # where t = self.time, p(x, t) = population of x at time t,
-        # dt = self.time_step, and s(r, x) = stoichiometry of x in r
-        for reaction in self.exchange_rxns:
-            # to avoid over-constraining them, do not further bound exchange reactions that
-            # participate in constraints in `_multi_reaction_constraints`
-            if reaction in self._constrained_exchange_rxns:
-                continue
+        if self.dfba_solver_options['negative_pop_constraints']:
+            # bound each exchange reaction to prevent it from consuming its participant species
+            # so quickly that its population becomes negative in the next time step
+            # if exchange reaction r transports species x[c] out of c
+            # then bound the maximum flux of r, flux(r) (1/s) <= p(x, t) / (-s(r, x) * dt)
+            # where t = self.time, p(x, t) = population of x at time t,
+            # dt = self.time_step, and s(r, x) = stoichiometry of x in r
+            for reaction in self.exchange_rxns:
+                # to avoid over-constraining them, do not further bound exchange reactions that
+                # participate in constraints in `_multi_reaction_constraints`
+                if reaction in self._constrained_exchange_rxns:
+                    continue
 
-            max_flux_rxn = float('inf')
-            for participant in reaction.participants:
-                # 'participant.coefficient < 0' determines whether the participant is a reactant
-                if participant.coefficient < 0:
-                    species_id = participant.species.gen_id()
-                    species_pop = self.local_species_population.read_one(self.time, species_id)
-                    max_flux_species = species_pop / (-participant.coefficient * self.time_step)
-                    max_flux_rxn = min(max_flux_rxn, max_flux_species)
+                max_flux_rxn = float('inf')
+                for participant in reaction.participants:
+                    # 'participant.coefficient < 0' determines whether the participant is a reactant
+                    if participant.coefficient < 0:
+                        species_id = participant.species.gen_id()
+                        species_pop = self.local_species_population.read_one(self.time, species_id)
+                        max_flux_species = species_pop / (-participant.coefficient * self.time_step)
+                        max_flux_rxn = min(max_flux_rxn, max_flux_species)
 
-            if max_flux_rxn != float('inf'):
-                max_flux_rxn = max_flux_rxn
+                if max_flux_rxn != float('inf'):
+                    max_flux_rxn = max_flux_rxn
 
-                min_constr, max_constr = self._reaction_bounds[reaction.id]
-                if max_constr is None:
-                    max_constr = max_flux_rxn
-                else:
-                    max_constr = min(max_constr, max_flux_rxn)
+                    min_constr, max_constr = self._reaction_bounds[reaction.id]
+                    if max_constr is None:
+                        max_constr = max_flux_rxn
+                    else:
+                        max_constr = min(max_constr, max_flux_rxn)
 
-                self._reaction_bounds[reaction.id] = (min_constr, max_constr)
+                    self._reaction_bounds[reaction.id] = (min_constr, max_constr)
 
     def bound_neg_species_pop_constraints(self):
         """ Update bounds in the negative species population constraints that span multiple reactions

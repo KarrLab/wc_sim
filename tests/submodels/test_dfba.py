@@ -274,7 +274,7 @@ class TestDfbaSubmodel(unittest.TestCase):
         self.assertEqual(self.dfba_submodel_1.get_conv_model().objective_direction,
                          conv_opt.ObjectiveDirection.maximize)
 
-        # Test model where the objective function is made of dfba objective reactions and
+        # test model where the objective function is made of dfba objective reactions and
         # network reactions and is minimized
         self.dfba_submodel_options['optimization_type'] = 'minimize'
         dfba_submodel_2 = self.make_dfba_submodel(self.model,
@@ -422,14 +422,17 @@ class TestDfbaSubmodel(unittest.TestCase):
         """ Test whether the reaction bounds specified by `expected_bounds` are set in `dfba_submodel`
         """
         for rxn_id, bounds in dfba_submodel._reaction_bounds.items():
+            print('rxn_id',rxn_id)
             for ind, bound in enumerate(bounds):
+                print('bound, expected', bound, expected_bounds[rxn_id][ind], 'bound == expected_bounds[rxn_id][ind]',
+                      bound == expected_bounds[rxn_id][ind])
                 test_case.assertAlmostEqual(bound, expected_bounds[rxn_id][ind], delta=1e-09)
 
     def test_determine_bounds(self):
         self.dfba_submodel_1.determine_bounds()
         self.bounds_test(self.dfba_submodel_1, self.expected_rxn_flux_bounds)
 
-        # Test changing flux_bounds_volumetric_compartment_id
+        # test changing flux_bounds_volumetric_compartment_id
         new_options = copy.deepcopy(self.dfba_submodel_options)
         new_options['flux_bounds_volumetric_compartment_id'] = 'c'
         new_submodel = self.make_dfba_submodel(self.model, submodel_options=new_options)
@@ -438,33 +441,41 @@ class TestDfbaSubmodel(unittest.TestCase):
         new_submodel.determine_bounds()
         self.bounds_test(new_submodel, self.expected_rxn_flux_bounds)
 
-        # TODO (APG): fix: figure out what this is testing and fix it
-        return
-        # remove r1's forward rate law
-        r1 = self.model.reactions.get_one(id='r1')
+        # test additional branches in determine_bounds WITHOUT negative species populations bounds
+        model = self.get_model()
+        # reaction missing a forward rate law
+        r1 = model.reactions.get_one(id='r1')
         self.assertEqual(r1.rate_laws[1].direction, wc_lang.RateLawDirection.forward)
         del r1.rate_laws[1]
-        # remove r2's backward rate law
-        r2 = self.model.reactions.get_one(id='r2')
+        # reaction missing a backward (reverse) rate law
+        r2 = model.reactions.get_one(id='r2')
         self.assertEqual(r2.rate_laws[0].direction, wc_lang.RateLawDirection.backward)
         del r2.rate_laws[0]
-        self.model.reactions.get_one(id='ex_m1').flux_bounds = None
-        self.model.reactions.get_one(id='ex_m2').flux_bounds = None
-        self.model.reactions.get_one(id='ex_m3').flux_bounds.min = numpy.nan
-        self.model.reactions.get_one(id='ex_m3').flux_bounds.max = numpy.nan
-        dfba_submodel_2 = self.make_dfba_submodel(self.model,
+        # no bounds in an irreversible rxn
+        model.reactions.get_one(id='ex_m1').flux_bounds = None
+        # no bounds in a reversible rxn
+        model.reactions.get_one(id='ex_m2').reversible = True
+        model.reactions.get_one(id='ex_m2').flux_bounds = None
+        # bounds of NaN
+        model.reactions.get_one(id='ex_m3').flux_bounds.min = numpy.nan
+        model.reactions.get_one(id='ex_m3').flux_bounds.max = numpy.nan
+        self.dfba_submodel_options['negative_pop_constraints'] = False
+        dfba_submodel_2 = self.make_dfba_submodel(model,
                                                   submodel_options=self.dfba_submodel_options)
         dfba_submodel_2.determine_bounds()
         expected_results_2 = {
-            'ex_m1': (None, None),
-            'ex_m2': (None, 0.),
-            'ex_m3': (None, None),
-            'r1': (-1. * 1, None),
-            'r2': (None, 1. * 1 + 2. * 1),
+            'ex_m1': (0, None),             # no flux bounds irreversible rxn => (lower, upper) == (0, None)
+            'ex_m2': (None, None),          # no flux bounds reversible rxn => (lower, upper) == (None, None)
+            'ex_m3': (None, None),          # bounds of NaN => (lower, upper) == (None, None)
+            'r1': (-1. * 1, None),          # missing forward rate law => upper == None
+            'r2': (None, 1. * 1 + 2. * 1),  # missing backward rate law => lower == None
             'r3': (0., 5. * 1),
             'r4': (0., 6. * 1),
         }
         self.bounds_test(dfba_submodel_2, expected_results_2)
+
+        # test additional branches in determine_bounds WITH negative species populations bounds
+        print('\n# test additional branches in determine_bounds():')
 
     def test_determine_exchange_bounds(self):
         # test bounds on exchange reactions that avoid negative species populations
@@ -719,7 +730,7 @@ class TestDfbaSubmodel(unittest.TestCase):
         self.dfba_submodel_options['dfba_bound_scale_factor'] = 1.
         self.dfba_submodel_options['dfba_coef_scale_factor'] = 1.
 
-        # Test raise DynamicMultialgorithmError
+        # test raise DynamicMultialgorithmError
         self.model.reactions.get_one(id='ex_m1').flux_bounds.min = 1000.
         self.model.reactions.get_one(id='ex_m1').flux_bounds.max = 1000.
         dfba_submodel_3 = self.make_dfba_submodel(self.model,
@@ -744,7 +755,7 @@ class TestDfbaSubmodel(unittest.TestCase):
 
         # TODO (APG): OPTIMIZE DFBA CACHING: test that expressions that depend on exchange and biomass reactions
         # have been flushed, and that expressions which don't depend on them have not been flushed
-        # Test flush expression
+        # test flush expression
         # TODO (APG): fix
         # self.assertTrue(dfba_submodel_2.dynamic_model.cache_manager.empty())
         return
