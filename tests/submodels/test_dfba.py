@@ -22,7 +22,7 @@ from wc_sim.message_types import RunFba
 from wc_sim.multialgorithm_errors import DynamicMultialgorithmError, MultialgorithmError
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.sim_config import WCSimulationConfig
-from wc_sim.submodels.dfba import DfbaSubmodel
+from wc_sim.submodels.dfba import DfbaSubmodel, ShowConvOptElements
 from wc_utils.util.environ import EnvironUtils, ConfigEnvDict
 from wc_utils.util.units import unit_registry
 import conv_opt
@@ -366,49 +366,25 @@ class TestDfbaSubmodel(unittest.TestCase):
                     set_of_terms.add((linear_term.variable.name, linear_term.coefficient))
                 test_case.assertEqual(set_of_terms, expected_constrs[id])
 
-        # test with species that don't need constraints; dfba_obj only contains 'biomass_reaction'
+        # generate constraint involving 2 pseudo-reactions that use m3[c], ex_m3 and biomass_reaction
         dfba_submodel_2 = self.make_dfba_submodel(self.model,
-                                                  submodel_options=self.dfba_submodel_options,
-                                                  dfba_obj_with_regular_rxn=False)
-        dfba_submodel_2.dfba_solver_options['dfba_coef_scale_factor'] = 1
+                                                  submodel_options=self.dfba_submodel_options)
         constraints = dfba_submodel_2.initialize_neg_species_pop_constraints()
+        print(ShowConvOptElements.show_conv_opt_constraints(constraints))
+
         # for each species, set of expected (rxn, coef) pairs contributing to species' consumption
         expected_constrs = {get_const_name('m3[c]'): {('ex_m3', 1.0), ('biomass_reaction', 1.0)}}
         check_neg_species_pop_constraints(self, constraints, expected_constrs)
         self.assertEqual(get_rxn_set(['ex_m3']), dfba_submodel_2._constrained_exchange_rxns)
+        # TODO (APG): later: test with dFBA objective that uses multiple dFBA objective reactions
 
-        # TODO (APG): test with a dFBA obj that contains multiple species
+        # avoid the need for any constraints by remove biomass_reaction from the dfba objective
         dfba_submodel_2 = self.make_dfba_submodel(self.model,
                                                   submodel_options=self.dfba_submodel_options,
-                                                  dfba_obj_with_regular_rxn=True)
-        dfba_submodel_2.dfba_solver_options['dfba_coef_scale_factor'] = 1
-        # no constraint on 'm2[c]' is made because 'm1[c]' isn't being consumed
+                                                  obj_expression_spec=(tuple(), ('r2',)))
         constraints = dfba_submodel_2.initialize_neg_species_pop_constraints()
-        check_neg_species_pop_constraints(self, constraints, expected_constrs)
-        self.assertEqual(get_rxn_set(['ex_m3']), dfba_submodel_2._constrained_exchange_rxns)
-
-        """
-        # TODO (APG): fix or drop
-        # test with dfba_coef_scale_factor != 1
-        dfba_submodel_2.dfba_solver_options['dfba_coef_scale_factor'] = 10
-        constraints = dfba_submodel_2.initialize_neg_species_pop_constraints()
-        expected_constrs = {get_const_name('m3[c]'): {('ex_m3', 1.0), ('biomass_reaction', 10.0)}}
-        check_neg_species_pop_constraints(self, constraints, expected_constrs)
-        self.assertEqual(get_rxn_set(['ex_m3']), dfba_submodel_2._constrained_exchange_rxns)
-
-        # test with a species that is not consumed in any reaction that might be used in a constraint
-        ex_m3 = self.model.reactions.get_one(id='ex_m3')
-        # TODO (APG): fix
-        for part in ex_m3.participants:
-            print('part.coefficient', part.coefficient)
-            # part.coefficient = 0
-        dfba_submodel_2 = self.make_dfba_submodel(self.model,
-                                                  submodel_options=self.dfba_submodel_options)
-        dfba_submodel_2.dfba_solver_options['dfba_coef_scale_factor'] = 1
-        constraints = dfba_submodel_2.initialize_neg_species_pop_constraints()
-        print('constraints', constraints)
-        # check_neg_species_pop_constraints(self, constraints, expected_constrs)
-        """
+        print(ShowConvOptElements.show_conv_opt_constraints(constraints))
+        check_neg_species_pop_constraints(self, constraints, {})
 
     def test_bound_neg_species_pop_constraints(self):
         dfba_submodel_2 = self.make_dfba_submodel(self.model,

@@ -838,6 +838,20 @@ class ShowConvOptElements(object):
         return variable_term_to_row.obj_as_row(variable_term)
 
     @classmethod
+    def show_conv_opt_constraints(cls, constraints):
+        rows = ['']
+        rows.extend(cls.show_conv_opt_constraint(header=True))
+        for id, constraint in constraints.items():
+            rows.append(cls.show_conv_opt_constraint(constraint=constraint))
+            rows.append('--- terms ---')
+            for linear_term in constraint.terms:
+                row = f'{linear_term.coefficient:<8}'
+                row += cls.show_conv_opt_variable_term(variable_term=linear_term.variable)
+                rows.append(row)
+            rows.append('')
+        return '\n'.join(rows)
+
+    @classmethod
     def show_conv_opt_model(cls, conv_opt_model):
         """ Convert a `conv_opt` into a readable representation
 
