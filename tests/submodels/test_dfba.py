@@ -14,6 +14,7 @@ import os
 import re
 import scipy.constants
 import unittest
+import warnings
 
 from de_sim.simulation_config import SimulationConfig
 from wc_lang.io import Reader
@@ -205,9 +206,9 @@ class TestDfbaSubmodel(unittest.TestCase):
                                                            for rxn_id in ('ex_m1', 'ex_m2', 'ex_m3')]))
         for id in ('ex_m2', 'ex_m3'):
             self.model.reactions.get_one(id=id).participants[0].coefficient = 2
-        with self.assertRaisesRegexp(MultialgorithmError,
-            re.escape("exchange reaction(s) don't have the form 's ->'")):
+        with warnings.catch_warnings(record=True) as w:
             self.make_dfba_submodel(self.model)
+            self.assertIn("exchange reaction(s) don't have the form 's ->'", str(w[-1].message))
 
         # test dfba_obj_expr
         model = self.get_model()
