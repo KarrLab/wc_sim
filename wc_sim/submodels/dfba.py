@@ -670,7 +670,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             if isinstance(variable.upper_bound, (int, float)):
                 variable.upper_bound *= dfba_bound_scale_factor
 
-        # scale bounds in constraints; bound values 0 are unchanged
+        # scale bounds in constraints; bound values of 0 are unchanged
         for constraint in conv_opt_model.constraints:
             if isinstance(constraint.lower_bound, (int, float)):
                 constraint.lower_bound *= dfba_bound_scale_factor
@@ -697,15 +697,9 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         if dfba_coef_scale_factor is None:
             dfba_coef_scale_factor = self.dfba_solver_options['dfba_coef_scale_factor']
 
-        print(f'dfba_bound_scale_factor: {dfba_bound_scale_factor}')
-        print(f'dfba_coef_scale_factor: {dfba_coef_scale_factor}')
-        print(f'self._optimal_obj_func_value: {self._optimal_obj_func_value}')
-        self._optimal_obj_func_value *= (dfba_coef_scale_factor / dfba_bound_scale_factor)
+        self._optimal_obj_func_value /= (dfba_coef_scale_factor * dfba_bound_scale_factor)
         for rxn_variable in self._conv_model.variables:
-            if rxn_variable.name not in self._dfba_obj_rxn_ids:
-                self.reaction_fluxes[rxn_variable.name] /= dfba_bound_scale_factor
-            else:
-                self.reaction_fluxes[rxn_variable.name] *= (dfba_coef_scale_factor / dfba_bound_scale_factor)
+            self.reaction_fluxes[rxn_variable.name] /= dfba_bound_scale_factor
 
     def save_fba_solution(self, conv_opt_model, conv_opt_solution):
         """ Assign a FBA solution to local variables
@@ -726,11 +720,14 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         """
         self.determine_bounds()
         self.update_bounds()
-        print('\n--- wc lang conv opt model ---')
-        print(ShowConvOptElements.show_conv_opt_model(self.get_conv_model()))
+        # print('\n--- wc lang conv opt model ---')
+        # print(ShowConvOptElements.show_conv_opt_model(self.get_conv_model()))
 
         # scale just before solving
         scaled_conv_opt_model = self.scale_conv_opt_model(self.get_conv_model())
+        # print('\n--- SCALED wc lang conv opt model ---')
+        # print(ShowConvOptElements.show_conv_opt_model(scaled_conv_opt_model))
+
         result = scaled_conv_opt_model.solve()
         end_time = self.time + self.time_step
         if result.status_code != conv_opt.StatusCode(0):

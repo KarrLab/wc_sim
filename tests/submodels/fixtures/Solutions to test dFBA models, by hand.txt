@@ -81,7 +81,7 @@ II: Add negative species population constraints to I
         0 <= biomass_reaction <= 100
     Since this does not constrain the solution for I, the solution and species population change rates remain unchanged.
 
-III: Add scaling of bounds to II
+III: Modify II by scaling bounds by 10
 
     Scale bounds by 10. The constraint problem doesn't change until it is scaled.
     Then it is scaled, the model is solved and the solution is unscale.
@@ -144,19 +144,24 @@ IV: Alter II so that a negative species population constraints change the soluti
 
             Consumption of m3[c] equals the -10/sec, the maximum rate permitted by constraint (9), as expected.
 
-# This does not work yet:
---: Add scaling of coefficients of objective function reaction terms to II
+V: Modify II by scaling the coefficients of objective function's terms by 10
 
-    Scale the scale the stoichiometric coefficients of objective function reaction terms by 10. The constraint problem doesn't change until it is scaled.
-    Then it is scaled, the model is solved and un-scaling should return all results to the values in II.
+    Scale the stoichiometric coefficients of the objective function's terms by 10.
+    The constraint problem doesn't change until it is scaled. Then it is scaled, the model is solved and the solution is unscale.
+    This should produce the same solution as in II.
+
+VI: Modify V by scaling bounds by 5
+
+    Scale the stoichiometric coefficients of the objective function's terms by 10 and scale the bounds by 5
+    This should produce the same solution as in II.
+
+
 
         0 <= ex_m3 <= 0
         ex_m3 = 0
     Thus "neg_pop_constr__m3[c]" implies
         0 <= 10.0 * biomass_reaction <= 1.00e+02, or
         0 <= biomass_reaction <= 1.00e+03
-
-
 
 modify this model
     add constraint "neg_pop_constr__m3[c]"

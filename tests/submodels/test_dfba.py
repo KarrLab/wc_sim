@@ -370,7 +370,6 @@ class TestDfbaSubmodel(unittest.TestCase):
         dfba_submodel_2 = self.make_dfba_submodel(self.model,
                                                   submodel_options=self.dfba_submodel_options)
         constraints = dfba_submodel_2.initialize_neg_species_pop_constraints()
-        print(ShowConvOptElements.show_conv_opt_constraints(constraints))
 
         # for each species, set of expected (rxn, coef) pairs contributing to species' consumption
         expected_constrs = {get_const_name('m3[c]'): {('ex_m3', 1.0), ('biomass_reaction', 1.0)}}
@@ -383,7 +382,6 @@ class TestDfbaSubmodel(unittest.TestCase):
                                                   submodel_options=self.dfba_submodel_options,
                                                   obj_expression_spec=(tuple(), ('r2',)))
         constraints = dfba_submodel_2.initialize_neg_species_pop_constraints()
-        print(ShowConvOptElements.show_conv_opt_constraints(constraints))
         check_neg_species_pop_constraints(self, constraints, {})
 
     def test_bound_neg_species_pop_constraints(self):
@@ -552,6 +550,7 @@ class TestDfbaSubmodel(unittest.TestCase):
                 self.model.distribution_init_concentrations.get_one(
                     species=self.model.species.get_one(id=species_id)).mean)
 
+    # TODO (APG): later: why didn't these 2 unit tests find problems with scaling/unscaling?
     def test_scale_conv_opt_model(self):
         dfba_submodel_1 = self.dfba_submodel_1
         dfba_submodel_1.determine_bounds()
@@ -646,10 +645,10 @@ class TestDfbaSubmodel(unittest.TestCase):
         dfba_submodel_2.run_fba_solver()
 
         self.assertEqual(dfba_submodel_2._optimal_obj_func_value, 12)
-        expected_adjustments = {'m1[c]': -12,
-                                'm2[c]': -12,
-                                'm3[c]': 12}
-        self.check_expected_solution(dfba_submodel_2, 12, expected_adjustments)
+        expected_adjustments_I = {'m1[c]': -12,
+                                  'm2[c]': -12,
+                                  'm3[c]': 12}
+        self.check_expected_solution(dfba_submodel_2, 12, expected_adjustments_I)
 
         test_name = 'II: Add negative species population constraints to I'
         self.dfba_submodel_options['negative_pop_constraints'] = True
@@ -657,29 +656,48 @@ class TestDfbaSubmodel(unittest.TestCase):
                                                   submodel_options=self.dfba_submodel_options)
         dfba_submodel_2.get_conv_model().name = test_name
         dfba_submodel_2.run_fba_solver()
-        self.check_expected_solution(dfba_submodel_2, 12, expected_adjustments)
+        self.check_expected_solution(dfba_submodel_2, 12, expected_adjustments_I)
 
-        test_name = 'III: Add scaling of bounds to II'
+        test_name = 'III: Modify II by scaling bounds by 10'
         self.dfba_submodel_options['dfba_bound_scale_factor'] = 10.
         dfba_submodel_2 = self.make_dfba_submodel(self.model,
                                                   submodel_options=self.dfba_submodel_options)
         dfba_submodel_2.get_conv_model().name = test_name
         dfba_submodel_2.run_fba_solver()
-        self.check_expected_solution(dfba_submodel_2, 12, expected_adjustments)
+        self.check_expected_solution(dfba_submodel_2, 12, expected_adjustments_I)
+        self.dfba_submodel_options['dfba_bound_scale_factor'] = 1.
 
         test_name = 'IV: Alter II so that a negative species population constraints change the solution'
-        self.dfba_submodel_options['dfba_bound_scale_factor'] = 1.
         dfba_submodel_2 = self.make_dfba_submodel(self.model,
                                                   submodel_options=self.dfba_submodel_options)
-        print(dfba_submodel_2.local_species_population)
         dfba_submodel_2.get_conv_model().name = test_name
         dfba_submodel_2.time_step = 10
         dfba_submodel_2.run_fba_solver()
-        expected_adjustments = {
-            'm1[c]': -8,
-            'm2[c]': -12,
-            'm3[c]': 10}
-        self.check_expected_solution(dfba_submodel_2, 10, expected_adjustments)
+        expected_adjustments_IV = {'m1[c]': -8,
+                                   'm2[c]': -12,
+                                   'm3[c]': 10}
+        self.check_expected_solution(dfba_submodel_2, 10, expected_adjustments_IV)
+        dfba_submodel_2.time_step = 1
+
+        test_name = "V: Modify II by scaling the coefficients of objective function's terms by 10"
+        self.dfba_submodel_options['dfba_coef_scale_factor'] = 10.
+        dfba_submodel_2 = self.make_dfba_submodel(self.model,
+                                                  submodel_options=self.dfba_submodel_options)
+        dfba_submodel_2.get_conv_model().name = test_name
+        dfba_submodel_2.run_fba_solver()
+        self.check_expected_solution(dfba_submodel_2, 12, expected_adjustments_I)
+        self.dfba_submodel_options['dfba_coef_scale_factor'] = 1.
+
+        test_name = 'VI: Modify V by scaling bounds by 5'
+        self.dfba_submodel_options['dfba_bound_scale_factor'] = 5.
+        self.dfba_submodel_options['dfba_coef_scale_factor'] = 10.
+        dfba_submodel_2 = self.make_dfba_submodel(self.model,
+                                                  submodel_options=self.dfba_submodel_options)
+        dfba_submodel_2.get_conv_model().name = test_name
+        dfba_submodel_2.run_fba_solver()
+        self.check_expected_solution(dfba_submodel_2, 12, expected_adjustments_I)
+        self.dfba_submodel_options['dfba_bound_scale_factor'] = 1.
+        self.dfba_submodel_options['dfba_coef_scale_factor'] = 1.
 
         # Test raise DynamicMultialgorithmError
         self.model.reactions.get_one(id='ex_m1').flux_bounds.min = 1000.
@@ -694,19 +712,6 @@ class TestDfbaSubmodel(unittest.TestCase):
                                     "'infeasible' for time step [0.1, 1.1]")):
             dfba_submodel_3.run_fba_solver()
 
-        return
-
-        '''
-        Fails because one cannot scale the stoichiometric coefficients of objective function reaction terms
-        test_name = 'V: Add scaling of bounds to II'
-        self.dfba_submodel_options['dfba_bound_scale_factor'] = 1.
-        self.dfba_submodel_options['dfba_coef_scale_factor'] = 10.
-        dfba_submodel_2 = self.make_dfba_submodel(self.model,
-                                                  submodel_options=self.dfba_submodel_options)
-        dfba_submodel_2.get_conv_model().name = test_name
-        dfba_submodel_2.run_fba_solver()
-        self.check_expected_solution(dfba_submodel_2, 12, expected_adjustments)
-        '''
         '''
         species = ['m1[c]', 'm2[c]', 'm3[c]']
         expected_population = dict(zip(species, [
@@ -722,8 +727,9 @@ class TestDfbaSubmodel(unittest.TestCase):
         # Test flush expression
         # TODO (APG): fix
         # self.assertTrue(dfba_submodel_2.dynamic_model.cache_manager.empty())
+        return
 
-        # Test using a different solver
+        # TODO (APG): later: test using a different solver
         self.dfba_submodel_options['solver'] = 'glpk'
         del self.dfba_submodel_options['solver_options']
         dfba_submodel_2 = self.make_dfba_submodel(self.model,
