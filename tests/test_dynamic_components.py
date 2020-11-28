@@ -64,7 +64,7 @@ class TestInitialDynamicComponentsComprehensively(unittest.TestCase):
         de_simulation_config = SimulationConfig(max_time=10)
         wc_sim_config = WCSimulationConfig(de_simulation_config)
         multialgorithm_simulation = MultialgorithmSimulation(self.model, wc_sim_config)
-        _, self.dynamic_model = multialgorithm_simulation.build_simulation()
+        _, self.dynamic_model = multialgorithm_simulation.build_simulation(prepare_model=False)
 
     def test(self):
         # test all DynamicComponents that implement eval()

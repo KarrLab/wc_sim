@@ -181,15 +181,19 @@ class MultialgorithmSimulation(object):
         if errors:
             raise MultialgorithmError(indent_forest(['The model is invalid:', [errors]]))
 
-    def build_simulation(self):
+    def build_simulation(self, prepare_model=True):
         """ Prepare a multialgorithm simulation
+
+        Args:
+            prepare_model (:obj:`boolean`, optional): if set, prepare the model; unset as needed testing
 
         Returns:
             :obj:`tuple` of (:obj:`Simulator`, :obj:`DynamicModel`): an initialized simulation and its
                 dynamic model
         """
         self.set_simultaneous_execution_priorities()
-        self.prepare()
+        if prepare_model:
+            self.prepare()
         self.initialize_components()
         self.initialize_infrastructure()
         return (self.simulation, self.dynamic_model)
