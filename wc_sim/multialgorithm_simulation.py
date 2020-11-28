@@ -10,9 +10,10 @@ import collections
 import numpy.random
 import warnings
 
-from de_sim.simulator import Simulator
 from de_sim.simulation_object import SimObjClassPriority
-from wc_lang import Model, Compartment, Species
+from de_sim.simulator import Simulator
+from wc_lang import Model, Compartment, Species, Validator
+from wc_lang.transform import PrepForWcSimTransform
 from wc_onto import onto
 from wc_sim.config import core as config_core_multialgorithm
 from wc_sim.dynamic_components import DynamicModel, DynamicCompartment
@@ -21,8 +22,8 @@ from wc_sim.multialgorithm_checkpointing import MultialgorithmicCheckpointingSim
 from wc_sim.multialgorithm_errors import MultialgorithmError, MultialgorithmWarning
 from wc_sim.sim_config import WCSimulationConfig
 from wc_sim.species_populations import LocalSpeciesPopulation
-from wc_sim.submodels.dynamic_submodel import DynamicSubmodel
 from wc_sim.submodels.dfba import DfbaSubmodel
+from wc_sim.submodels.dynamic_submodel import DynamicSubmodel
 from wc_sim.submodels.nrm import NrmSubmodel
 from wc_sim.submodels.odes import OdeSubmodel
 from wc_sim.submodels.ssa import SsaSubmodel
@@ -31,7 +32,7 @@ from wc_utils.util.list import det_dedupe
 from wc_utils.util.misc import obj_to_str
 from wc_utils.util.ontology import are_terms_equivalent
 from wc_utils.util.rand import RandomStateManager
-
+from wc_utils.util.string import indent_forest
 
 # TODO(Arthur): use lists instead of sets to ensure deterministic behavior
 # TODO(Arthur): add logging
@@ -166,14 +167,29 @@ class MultialgorithmSimulation(object):
         """
         return self._skipped_submodels
 
+    def prepare(self):
+        """ Prepare and validate the model
+
+        Raises:
+            :obj:`MultialgorithmError`: if the model is invalid
+        """
+        # execute PrepForWcSimTransform on the model only once
+        if not hasattr(self.model, '_transformed') or not self.model._transformed:
+            PrepForWcSimTransform().run(self.model)
+            self.model._transformed = True
+        errors = Validator().run(self.model)
+        if errors:
+            raise MultialgorithmError(indent_forest(['The model is invalid:', [errors]]))
+
     def build_simulation(self):
         """ Prepare a multialgorithm simulation
 
         Returns:
-            :obj:`tuple` of (`Simulator`, `DynamicModel`): an initialized simulation and its
+            :obj:`tuple` of (:obj:`Simulator`, :obj:`DynamicModel`): an initialized simulation and its
                 dynamic model
         """
         self.set_simultaneous_execution_priorities()
+        self.prepare()
         self.initialize_components()
         self.initialize_infrastructure()
         return (self.simulation, self.dynamic_model)

@@ -17,9 +17,9 @@ from de_sim.errors import SimulatorError
 from de_sim.simulation_config import SimulationConfig
 from de_sim.simulator import Simulator
 from de_sim.simulation_metadata import SimulationMetadata, AuthorMetadata
-from wc_lang import Model, Validator
+from wc_lang import Model
+
 from wc_lang.io import Reader
-from wc_lang.transform import PrepForWcSimTransform
 from wc_sim.metadata import WCSimulationMetadata
 from wc_sim.multialgorithm_errors import MultialgorithmError
 from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
@@ -27,7 +27,6 @@ from wc_sim.run_results import RunResults
 from wc_sim.sim_config import WCSimulationConfig
 from wc_utils.util.git import get_repo_metadata, RepoMetadataCollectionType
 from wc_utils.util.rand import RandomStateManager
-from wc_utils.util.string import indent_forest
 import wc_sim.config
 
 config_multialgorithm = wc_sim.config.core.get_config()['wc_sim']['multialgorithm']
@@ -83,15 +82,6 @@ class Simulation(object):
             raise MultialgorithmError("model must be a `wc_lang Model` or a pathname for a model, "
                                       "but its type is {}".format(type(model)))
 
-    def _prepare(self):
-        """ Prepare and validate the model, and create simulation metadata
-        """
-        # prepare & check the model
-        PrepForWcSimTransform().run(self.model)
-        errors = Validator().run(self.model)
-        if errors:
-            raise MultialgorithmError(indent_forest(['The model is invalid:', [errors]]))
-
     SimulationReturnValue = namedtuple('SimulationReturnValue', 'num_events results_dir profile_stats',
                                        defaults=(None, None))
     SimulationReturnValue.__doc__ += ': Value returned by a simulation run'
@@ -133,8 +123,6 @@ class Simulation(object):
         Raises:
             :obj:`MultialgorithmError`: if the simulation raises an exception
         """
-        self._prepare()
-
         # create simulation configurations
         # create and validate DE sim configuration
         self.de_sim_config = SimulationConfig(max_time, output_dir=results_dir, progress=progress_bar,

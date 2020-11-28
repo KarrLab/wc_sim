@@ -49,14 +49,6 @@ class TestSimulation(unittest.TestCase):
         for component in RunResults.COMPONENTS:
             self.assertTrue(isinstance(run_results.get(component), (pandas.DataFrame, pandas.Series)))
 
-    def test_prepare(self):
-        model = MakeModel.make_test_model('2 species, 1 reaction, with rates given by reactant population',
-                                          transform_prep_and_check=False)
-        model.id = 'illegal id'
-        simulation = Simulation(model)
-        with self.assertRaises(MultialgorithmError):
-            simulation._prepare()
-
     def test_simulation_model_in_file(self):
         self.run_simulation(Simulation(TOY_MODEL_FILENAME), max_time=5)
 

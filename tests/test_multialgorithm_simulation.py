@@ -21,7 +21,6 @@ import unittest
 from de_sim.simulation_config import SimulationConfig
 from wc_lang import Model
 from wc_lang.io import Reader
-from wc_lang.transform import PrepForWcSimTransform
 from wc_onto import onto
 from wc_sim.dynamic_components import DynamicModel
 from wc_sim.multialgorithm_checkpointing import (MultialgorithmicCheckpointingSimObj,
@@ -81,11 +80,10 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
     MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures', 'test_model.xlsx')
 
     def setUp(self):
-        # read and initialize a model
+        # initialize model
         self.model = Reader().run(self.MODEL_FILENAME, ignore_extra_models=True)[Model][0]
         for conc in self.model.distribution_init_concentrations:
             conc.std = 0.
-        PrepForWcSimTransform().run(self.model)
         de_simulation_config = SimulationConfig(max_time=10)
         self.wc_sim_config = WCSimulationConfig(de_simulation_config, dfba_time_step=1)
         self.multialgorithm_simulation = MultialgorithmSimulation(self.model, self.wc_sim_config)
@@ -207,6 +205,18 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
             self.assertLess(simulation_object_class.metadata.class_priority,
                             next_simulation_object_class.metadata.class_priority)
 
+    def test_prepare(self):
+        try:
+            self.multialgorithm_simulation.prepare()
+            self.assertTrue(set(['reaction_1', 'reaction_2_forward', 'reaction_2_backward']) <=
+                            set([rxn.id for rxn in self.model.reactions]))
+        except MultialgorithmError:
+            self.fail("multialgorithm_simulation.prepare() raised unexpected MultialgorithmError")
+
+        self.model.id = 'illegal id'
+        with self.assertRaisesRegex(MultialgorithmError, 'The model is invalid'):
+            self.multialgorithm_simulation.prepare()
+
     def test_initialize_components(self):
         self.multialgorithm_simulation.initialize_components()
         self.assertTrue(isinstance(self.multialgorithm_simulation.local_species_population,
@@ -230,11 +240,21 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
         self.assertTrue(isinstance(multialg_sim.checkpointing_sim_obj, MultialgorithmicCheckpointingSimObj))
         self.assertTrue(isinstance(multialg_sim.dynamic_model, DynamicModel))
 
+        submodel_1 = self.model.submodels.get(id='submodel_1')[0]
+        # WC:modeling_framework is not an instance of a modeling framework
+        submodel_1.framework = onto['WC:modeling_framework']
+        ma_sim = MultialgorithmSimulation(self.model, self.wc_sim_config)
+        ma_sim.initialize_components()
+        with self.assertRaisesRegex(MultialgorithmError, 'Unsupported lang_submodel framework'):
+            ma_sim.initialize_infrastructure()
+
     def test_build_simulation(self):
         de_simulation_config = SimulationConfig(max_time=10, output_dir=self.results_dir)
         wc_sim_config = WCSimulationConfig(de_simulation_config, dfba_time_step=1, checkpoint_period=10)
         multialgorithm_simulation = MultialgorithmSimulation(self.model, wc_sim_config)
         simulator, _ = multialgorithm_simulation.build_simulation()
+        self.assertTrue(set(['reaction_1', 'reaction_2_forward', 'reaction_2_backward']) <=
+                        set([rxn.id for rxn in self.model.reactions]))
         # 3 objects: 2 submodels, and the checkpointing obj:
         expected_sim_objs = set(['CHECKPOINTING_SIM_OBJ', 'submodel_1', 'submodel_2'])
         self.assertEqual(expected_sim_objs, set(list(simulator.simulation_objects)))
@@ -262,13 +282,6 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
         _, dynamic_model = ma_sim.build_simulation()
         expected_dynamic_submodels = set([sm.id for sm in self.model.get_submodels()]) - ma_sim.skipped_submodels()
         self.assertEqual(expected_dynamic_submodels, set(dynamic_model.dynamic_submodels))
-
-        submodel_1 = self.model.submodels.get(id='submodel_1')[0]
-        # WC:modeling_framework is not an instance of a modeling framework
-        submodel_1.framework = onto['WC:modeling_framework']
-        ma_sim = MultialgorithmSimulation(self.model, self.wc_sim_config)
-        with self.assertRaisesRegex(MultialgorithmError, 'Unsupported lang_submodel framework'):
-            ma_sim.build_simulation()
 
     def test_get_dynamic_compartments(self):
         expected_compartments = dict(
