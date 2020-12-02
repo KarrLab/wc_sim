@@ -155,7 +155,7 @@ VI: Modify V by scaling bounds by 5
     Scale the stoichiometric coefficients of the objective function's terms by 10 and scale the bounds by 5
     This should produce the same solution as in II.
 
-
+OTHER IDEAS:
 
         0 <= ex_m3 <= 0
         ex_m3 = 0

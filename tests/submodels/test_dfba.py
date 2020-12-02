@@ -14,7 +14,6 @@ import os
 import re
 import scipy.constants
 import unittest
-import warnings
 
 from de_sim.simulation_config import SimulationConfig
 from wc_lang.io import Reader
@@ -34,6 +33,7 @@ class TestDfbaSubmodel(unittest.TestCase):
 
     def get_model(self):
         test_model = os.path.join(os.path.dirname(__file__), 'fixtures', 'dfba_test_model.xlsx')
+        # TODO (APG): test with model that uses extracellular compartment w id == EXTRACELLULAR_COMPARTMENT_ID in config
         return Reader().run(test_model, validate=False)[wc_lang.Model][0]
 
     def setUp(self):
@@ -66,16 +66,22 @@ class TestDfbaSubmodel(unittest.TestCase):
         self.dfba_submodel_1 = self.make_dfba_submodel(self.model,
                                                        submodel_options=self.dfba_submodel_options)
 
+        # reactions in model were split into irreversible reactions
+        # by SplitReversibleReactionsTransform in PrepForWcSimTransform
+        #
+        # map: rxn id: (lower bound, upper bound)
         self.expected_rxn_flux_bounds = {
-            # map: rxn id: (lower bound, upper bound)
-            'ex_m1': (-120. * self.cell_volume, -100. * self.cell_volume),
-            'ex_m2': (-120. * self.cell_volume, -100. * self.cell_volume),
+            'ex_m1_backward': (0., -(-120. * self.cell_volume)),
+            'ex_m1_forward': (0., -100. * self.cell_volume),
+            'ex_m2_backward': (0., -(-120. * self.cell_volume)),
+            'ex_m2_forward': (0., -100. * self.cell_volume),
             'ex_m3': (0., 0.),
-            'r1': (-1. * 1, 1. * 1),
-            'r2': (-(1. * 1 + 1. * 1),
-                   1. * 1 + 2. * 1),
+            'r1_backward': (0., -(-1. * 1)),
+            'r1_forward': (0., 1. * 1),
+            'r2_backward': (0., (1. * 1 + 1. * 1)),
+            'r2_forward': (0., 1. * 1 + 2. * 1),
             'r3': (0., 5. * 1),
-            'r4': (0., 6. * 1),
+            'r4': (0., 6. * 1)
         }
 
     def make_dfba_submodel(self, model, dfba_time_step=1.0, submodel_id='metabolism',
@@ -89,8 +95,8 @@ class TestDfbaSubmodel(unittest.TestCase):
             submodel_options (:obj:`type`, optional): the dynamic dFBA submodel's options
             dfba_obj_with_regular_rxn (:obj:`bool`, optional): whether to give the submodel
                 a dfba_obj that has a regular reaction
-            obj_expression_spec (:obj:`tuple`, optional): custome objective expression; structure:
-                ((tuple of DfbaObjReactions), (tuple of Reaction), )
+            obj_expression_spec (:obj:`tuple`, optional): custom objective expression; structure:
+                ((tuple of DfbaObjReactions), (tuple of Reactions), )
 
         Returns:
             :obj:`DfbaSubmodel`: a dynamic dFBA submodel
@@ -98,7 +104,7 @@ class TestDfbaSubmodel(unittest.TestCase):
         # build a dfba objective expression
         if dfba_obj_with_regular_rxn or obj_expression_spec:
             if obj_expression_spec is None:
-                obj_expression_spec = (('biomass_reaction', ), ('r2', ))
+                obj_expression_spec = (('biomass_reaction', ), ('r2_forward', ))
             dfba_obj_reactions, reactions = obj_expression_spec
             obj_expression = ' + '.join(itertools.chain(dfba_obj_reactions, reactions))
             dfba_obj_reactions_dict = {}
@@ -124,10 +130,13 @@ class TestDfbaSubmodel(unittest.TestCase):
 
         return dynamic_model.dynamic_submodels[submodel_id]
 
-    ### test low level methods ###
     def test_dfba_submodel_init(self):
         # test options
         self.assertEqual(self.dfba_submodel_1.dfba_solver_options, self.dfba_submodel_options)
+
+        # test _dfba_obj_reactions
+        expected = {'biomass_reaction': self.model.dfba_obj_reactions.get_one(id='biomass_reaction')}
+        self.assertEqual(self.dfba_submodel_1._dfba_obj_reactions, expected)
 
         # cover other branches in DfbaSubmodel.__init__()
         value = 3
@@ -200,15 +209,22 @@ class TestDfbaSubmodel(unittest.TestCase):
                                         f" is not the ID of a compartment in the model"):
             self.make_dfba_submodel(self.model, submodel_options=bad_flux_comp_id)
 
+        # test ensure that all reactions are irreversible
+        model = self.get_model()
+        de_simulation_config = SimulationConfig(max_time=10)
+        wc_sim_config = WCSimulationConfig(de_simulation_config, dfba_time_step=1.)
+        multialgorithm_simulation = MultialgorithmSimulation(model,
+                                                             wc_sim_config,
+                                                             options=self.dfba_submodel_options)
+        with self.assertRaisesRegexp(MultialgorithmError, 'DfbaSubmodel .*: reactions are reversible'):
+            multialgorithm_simulation.build_simulation(prepare_model=False)
+
         # test exchange_rxns
         dfba_submodel = self.make_dfba_submodel(self.model)
-        self.assertEqual(dfba_submodel.exchange_rxns, set([self.model.reactions.get_one(id=rxn_id)
-                                                           for rxn_id in ('ex_m1', 'ex_m2', 'ex_m3')]))
-        for id in ('ex_m2', 'ex_m3'):
-            self.model.reactions.get_one(id=id).participants[0].coefficient = 2
-        with warnings.catch_warnings(record=True) as w:
-            self.make_dfba_submodel(self.model)
-            self.assertIn("exchange reaction(s) don't have the form 's ->'", str(w[-1].message))
+        expected_exchange_rxns = set([self.model.reactions.get_one(id=rxn_id)
+                                      for rxn_id in ('ex_m3', 'ex_m1_forward', 'ex_m1_backward',
+                                      'ex_m2_forward', 'ex_m2_backward')])
+        self.assertEqual(dfba_submodel.exchange_rxns, expected_exchange_rxns)
 
         # test dfba_obj_expr
         model = self.get_model()
@@ -218,15 +234,25 @@ class TestDfbaSubmodel(unittest.TestCase):
         # test exception in dfba_obj.expression that contains an exchange reaction
         with self.assertRaisesRegexp(MultialgorithmError,
             f"the dfba objective 'dfba-obj-{dfba_submodel.id}' uses exchange reactions:"):
-            self.make_dfba_submodel(model, obj_expression_spec=(('biomass_reaction', ), ('ex_m1', )))
+            self.make_dfba_submodel(model, obj_expression_spec=(('biomass_reaction', ), ('ex_m1_forward',
+                                                                                         'ex_m3')))
 
     def test_set_up_optimizations(self):
         dfba_submodel = self.dfba_submodel_1
         self.assertTrue(set(dfba_submodel.species_ids) == dfba_submodel.species_ids_set \
             == set(dfba_submodel.adjustments.keys()))
         self.assertEqual(dfba_submodel.populations.shape, ((len(dfba_submodel.species_ids), )))
-        self.assertEqual(dfba_submodel.reaction_fluxes,
-            {'ex_m1': None, 'ex_m2': None, 'ex_m3': None, 'r1': None, 'r2': None, 'r3': None, 'r4': None})
+        self.assertEqual(dfba_submodel.reaction_fluxes, {'ex_m1_backward': None,
+                                                         'ex_m1_forward': None,
+                                                         'ex_m2_backward': None,
+                                                         'ex_m2_forward': None,
+                                                         'ex_m3': None,
+                                                         'r1_backward': None,
+                                                         'r1_forward': None,
+                                                         'r2_backward': None,
+                                                         'r2_forward': None,
+                                                         'r3': None,
+                                                         'r4': None})
 
     def test_set_up_dfba_submodel(self):
         # test exception when the ids in DfbaObjReactions and Reactions intersect
@@ -244,15 +270,32 @@ class TestDfbaSubmodel(unittest.TestCase):
         for k,v in self.dfba_submodel_1._conv_variables.items():
             self.assertEqual(k, v.name)
 
-        expected_stoch_consts = {
-            'm1[c]': {'ex_m1': -1, 'r1': -1, 'r2': -1, 'r3': -2},
-            'm2[c]': {'ex_m2': -1, 'r1': -1, 'r2': 1, 'r4': -2},
-            'm3[c]': {'ex_m3': -1, 'r1': 1, 'r3': 1, 'r4': 1, 'biomass_reaction': -1},
-        }
+        # test the stoichiometric matrix
+        expected_stoch_coefficients = {
+            'm1[c]': {'ex_m1_backward': 1,
+                      'ex_m1_forward': -1,
+                      'r1_backward': 1,
+                      'r1_forward': -1,
+                      'r2_backward': 1,
+                      'r2_forward': -1,
+                      'r3': -2},
+            'm2[c]': {'ex_m2_backward': 1,
+                      'ex_m2_forward': -1,
+                      'r1_backward': 1,
+                      'r1_forward': -1,
+                      'r2_backward': -1,
+                      'r2_forward': 1,
+                      'r4': -2},
+            'm3[c]': {'biomass_reaction': -1,
+                      'ex_m3': -1,
+                      'r1_backward': -1,
+                      'r1_forward': 1,
+                      'r3': 1,
+                      'r4': 1}}
         test_results = {species_id: {lt.variable.name: lt.coefficient for lt in linear_terms}
                         for species_id, linear_terms
                             in self.dfba_submodel_1._conv_metabolite_matrices.items()}
-        self.assertEqual(test_results, expected_stoch_consts)
+        self.assertEqual(test_results, expected_stoch_coefficients)
 
         self.assertEqual(len(self.dfba_submodel_1.get_conv_model().variables),
             len(self.dfba_submodel_1._conv_variables.values()))
@@ -260,14 +303,13 @@ class TestDfbaSubmodel(unittest.TestCase):
             self.assertEqual(conv_opt_var in self.dfba_submodel_1.get_conv_model().variables, True)
 
         for constr in self.dfba_submodel_1.get_conv_model().constraints:
-            if constr.name in expected_stoch_consts:
+            if constr.name in expected_stoch_coefficients:
                 self.assertEqual({linear_term.variable.name:linear_term.coefficient
                                   for linear_term in constr.terms},
-                                 expected_stoch_consts[constr.name])
+                                 expected_stoch_coefficients[constr.name])
                 self.assertEqual(constr.upper_bound, 0.)
                 self.assertEqual(constr.lower_bound, 0.)
 
-        self.assertEqual(self.dfba_submodel_1._dfba_obj_rxn_ids, ['biomass_reaction'])
         self.assertEqual({i.variable.name:i.coefficient
                           for i in self.dfba_submodel_1.get_conv_model().objective_terms},
                          {'biomass_reaction': 1})
@@ -289,7 +331,7 @@ class TestDfbaSubmodel(unittest.TestCase):
         test_results = {species_id: {lt.variable.name: lt.coefficient for lt in linear_terms}
                         for species_id, linear_terms
                             in dfba_submodel_2._conv_metabolite_matrices.items()}
-        self.assertEqual(test_results, expected_stoch_consts)
+        self.assertEqual(test_results, expected_stoch_coefficients)
 
         self.assertEqual(len(dfba_submodel_2.get_conv_model().variables),
                          len(dfba_submodel_2._conv_variables.values()))
@@ -298,17 +340,16 @@ class TestDfbaSubmodel(unittest.TestCase):
             self.assertEqual(conv_opt_var in dfba_submodel_2.get_conv_model().variables, True)
 
         for constr in dfba_submodel_2.get_conv_model().constraints:
-            if constr.name in expected_stoch_consts:
+            if constr.name in expected_stoch_coefficients:
                 self.assertEqual({linear_term.variable.name:linear_term.coefficient
                                   for linear_term in constr.terms},
-                                 expected_stoch_consts[constr.name])
+                                 expected_stoch_coefficients[constr.name])
                 self.assertEqual(constr.upper_bound, 0.)
                 self.assertEqual(constr.lower_bound, 0.)
 
-        self.assertEqual(dfba_submodel_2._dfba_obj_rxn_ids, ['biomass_reaction'])
         self.assertEqual({objective_term.variable.name: objective_term.coefficient
                           for objective_term in dfba_submodel_2.get_conv_model().objective_terms},
-                         {'biomass_reaction': 1, 'r2': 1})
+                         {'biomass_reaction': 1, 'r2_forward': 1})
         self.assertEqual(dfba_submodel_2.get_conv_model().objective_direction,
                          conv_opt.ObjectiveDirection.minimize)
 
@@ -320,8 +361,8 @@ class TestDfbaSubmodel(unittest.TestCase):
         dfba_submodel_2 = self.make_dfba_submodel(self.model,
                                                   submodel_options=self.dfba_submodel_options,
                                                   dfba_obj_with_regular_rxn=True)
-        expected = dict(r2={get_species('m1[c]'): -1.,
-                            get_species('m2[c]'): 1.},
+        expected = dict(r2_forward={get_species('m1[c]'): -1.,
+                                    get_species('m2[c]'): 1.},
                         biomass_reaction={get_species('m3[c]'): -1.})
         for rxn_class in dfba_submodel_2.dfba_obj_expr.related_objects:
             for rxn_id, rxn in dfba_submodel_2.dfba_obj_expr.related_objects[rxn_class].items():
@@ -329,12 +370,12 @@ class TestDfbaSubmodel(unittest.TestCase):
                                  expected[rxn_id])
 
         # also test reactions with the same species on both sides
-        r2 = self.model.reactions.get_one(id='r2')
-        r2.participants.append(get_species(id='m1[c]').species_coefficients.get_or_create(coefficient=1))
+        r2_forward = self.model.reactions.get_one(id='r2_forward')
+        r2_forward.participants.append(get_species(id='m1[c]').species_coefficients.get_or_create(coefficient=1))
         dfba_submodel_2 = self.make_dfba_submodel(self.model,
                                                   submodel_options=self.dfba_submodel_options,
                                                   dfba_obj_with_regular_rxn=True)
-        expected = dict(r2={get_species('m2[c]'): 1.},
+        expected = dict(r2_forward={get_species('m2[c]'): 1.},
                         biomass_reaction={get_species('m3[c]'): -1.})
         for rxn_class in dfba_submodel_2.dfba_obj_expr.related_objects:
             for rxn_id, rxn in dfba_submodel_2.dfba_obj_expr.related_objects[rxn_class].items():
@@ -386,31 +427,35 @@ class TestDfbaSubmodel(unittest.TestCase):
                 test_case.assertEqual(set_of_terms, expected_constrs[id])
 
         # generate constraint involving 2 pseudo-reactions that use m3[c], ex_m3 and biomass_reaction
-        dfba_submodel_2 = self.make_dfba_submodel(self.model,
+        dfba_submodel_2 = self.make_dfba_submodel(self.get_model(),
                                                   submodel_options=self.dfba_submodel_options)
         constraints = dfba_submodel_2.initialize_neg_species_pop_constraints()
-        print(ShowConvOptElements.show_conv_opt_constraints(constraints))
-        # for each species, set of expected (rxn, coef) pairs contributing to species' consumption
-        expected_constrs = {get_const_name('m3[c]'): {('ex_m3', 1.0), ('biomass_reaction', 1.0)}}
-        check_neg_species_pop_constraints(self, constraints, expected_constrs)
-        self.assertEqual(get_rxn_set(['ex_m3']), dfba_submodel_2._constrained_exchange_rxns)
-        # TODO (APG): later: test with dFBA objective that uses multiple dFBA objective reactions
+        # for each species, set of expected (rxn, coef) pairs contributing to the species' consumption
+        raw_exp_constrs = dict(m1={('ex_m1_backward', -1), ('ex_m1_forward', 1)},
+                               m2={('ex_m2_backward', -1), ('ex_m2_forward', 1)},
+                               m3={('ex_m3', 1), ('biomass_reaction', 1)})
 
-        # avoid the need for any constraints by remove biomass_reaction from the dfba objective
-        dfba_submodel_2 = self.make_dfba_submodel(self.model,
-                                                  submodel_options=self.dfba_submodel_options,
-                                                  obj_expression_spec=(tuple(), ('r2',)))
+        expected_constrs = {get_const_name(f'{s_id}[c]'): constrs for s_id, constrs in raw_exp_constrs.items()}
+        check_neg_species_pop_constraints(self, constraints, expected_constrs)
+
+        # add another dfba obj. species to biomass_reaction to cover the remaining branches
+        model = self.get_model()
+        biomass_reaction = model.dfba_obj_reactions.get_one(id='biomass_reaction')
+        # m1[n] won't need a constraint because it is not consumed
+        dfba_obj_species = wc_lang.DfbaObjSpecies(value=2, species=model.species.get_one(id='m1[n]'))
+        biomass_reaction.dfba_obj_species.add(dfba_obj_species)
+        dfba_submodel_2 = self.make_dfba_submodel(model,
+                                                  submodel_options=self.dfba_submodel_options)
         constraints = dfba_submodel_2.initialize_neg_species_pop_constraints()
-        print(ShowConvOptElements.show_conv_opt_constraints(constraints))
-        check_neg_species_pop_constraints(self, constraints, {})
+        check_neg_species_pop_constraints(self, constraints, expected_constrs)
 
     def test_bound_neg_species_pop_constraints(self):
         dfba_submodel_2 = self.make_dfba_submodel(self.model,
                                                   submodel_options=self.dfba_submodel_options,
                                                   dfba_obj_with_regular_rxn=True)
         dfba_submodel_2.bound_neg_species_pop_constraints()
-        expected_constraint_bounds = {'neg_pop_constr__m1[c]': (0, 100),
-                                      'neg_pop_constr__m3[c]': (0, 100)}
+        expected_constraint_bounds = {'neg_pop_constr__m1[c]': (None, 100),
+                                      'neg_pop_constr__m3[c]': (None, 100)}
         conf_opt_model = dfba_submodel_2.get_conv_model()
         for constraint in conf_opt_model.constraints:
             if constraint.name in expected_constraint_bounds:
@@ -422,111 +467,40 @@ class TestDfbaSubmodel(unittest.TestCase):
         """ Test whether the reaction bounds specified by `expected_bounds` are set in `dfba_submodel`
         """
         for rxn_id, bounds in dfba_submodel._reaction_bounds.items():
-            print('rxn_id',rxn_id)
-            for ind, bound in enumerate(bounds):
-                print('bound, expected', bound, expected_bounds[rxn_id][ind], 'bound == expected_bounds[rxn_id][ind]',
-                      bound == expected_bounds[rxn_id][ind])
-                test_case.assertAlmostEqual(bound, expected_bounds[rxn_id][ind], delta=1e-09)
+            if rxn_id in expected_bounds:
+                for ind, bound in enumerate(bounds):
+                    test_case.assertAlmostEqual(bound, expected_bounds[rxn_id][ind], delta=1e-09)
 
     def test_determine_bounds(self):
         self.dfba_submodel_1.determine_bounds()
         self.bounds_test(self.dfba_submodel_1, self.expected_rxn_flux_bounds)
 
-        # test changing flux_bounds_volumetric_compartment_id
+        ### test changing flux_bounds_volumetric_compartment_id
         new_options = copy.deepcopy(self.dfba_submodel_options)
         new_options['flux_bounds_volumetric_compartment_id'] = 'c'
         new_submodel = self.make_dfba_submodel(self.model, submodel_options=new_options)
-        self.expected_rxn_flux_bounds['ex_m1'] = (-120. * 5e-13, -100. * 5e-13)
-        self.expected_rxn_flux_bounds['ex_m2'] = (-120. * 5e-13, -100. * 5e-13)
+        self.expected_rxn_flux_bounds['ex_m1_backward'] = (0., -(-120. * 5e-13))
+        self.expected_rxn_flux_bounds['ex_m1_forward'] = (0., -100. * 5e-13)
+        self.expected_rxn_flux_bounds['ex_m2_backward'] = (0., -(-120. * 5e-13))
+        self.expected_rxn_flux_bounds['ex_m2_forward'] = (0., -100. * 5e-13)
         new_submodel.determine_bounds()
         self.bounds_test(new_submodel, self.expected_rxn_flux_bounds)
-
-        # test additional branches in determine_bounds WITHOUT negative species populations bounds
-        model = self.get_model()
-        # reaction missing a forward rate law
-        r1 = model.reactions.get_one(id='r1')
-        self.assertEqual(r1.rate_laws[1].direction, wc_lang.RateLawDirection.forward)
-        del r1.rate_laws[1]
-        # reaction missing a backward (reverse) rate law
-        r2 = model.reactions.get_one(id='r2')
-        self.assertEqual(r2.rate_laws[0].direction, wc_lang.RateLawDirection.backward)
-        del r2.rate_laws[0]
-        # no bounds in an irreversible rxn
-        model.reactions.get_one(id='ex_m1').flux_bounds = None
-        # no bounds in a reversible rxn
-        model.reactions.get_one(id='ex_m2').reversible = True
-        model.reactions.get_one(id='ex_m2').flux_bounds = None
-        # bounds of NaN
-        model.reactions.get_one(id='ex_m3').flux_bounds.min = numpy.nan
-        model.reactions.get_one(id='ex_m3').flux_bounds.max = numpy.nan
-        self.dfba_submodel_options['negative_pop_constraints'] = False
-        dfba_submodel_2 = self.make_dfba_submodel(model,
-                                                  submodel_options=self.dfba_submodel_options)
-        dfba_submodel_2.determine_bounds()
-        expected_results_2 = {
-            'ex_m1': (0, None),             # no flux bounds irreversible rxn => (lower, upper) == (0, None)
-            'ex_m2': (None, None),          # no flux bounds reversible rxn => (lower, upper) == (None, None)
-            'ex_m3': (None, None),          # bounds of NaN => (lower, upper) == (None, None)
-            'r1': (-1. * 1, None),          # missing forward rate law => upper == None
-            'r2': (None, 1. * 1 + 2. * 1),  # missing backward rate law => lower == None
-            'r3': (0., 5. * 1),
-            'r4': (0., 6. * 1),
-        }
-        self.bounds_test(dfba_submodel_2, expected_results_2)
-
-        # test additional branches in determine_bounds WITH negative species populations bounds
-        print('\n# test additional branches in determine_bounds():')
-
-    def test_determine_exchange_bounds(self):
-        # test bounds on exchange reactions that avoid negative species populations
-
-        # test exchange rxn with reactant and no max bound
-        # add a metabolite
-        met_st_new = self.model.species_types.create(id='m_new',
-                                                     type=wc_ontology['WC:metabolite'],
-                                                     structure=wc_lang.ChemicalStructure(molecular_weight=1.))
-        comp_c = self.model.compartments.get_one(id='c')
-        met_species_new = self.model.species.create(species_type=met_st_new, compartment=comp_c)
-        met_species_new.id = met_species_new.gen_id()
-        conc_model = self.model.distribution_init_concentrations.create(species=met_species_new,
-                                                                        mean=100.,
-                                                                        std=0.,
-                                                                        units=unit_registry.parse_units('molecule'))
-        conc_model.id = conc_model.gen_id()
-
-        # add an exchange reaction that consumes new species
-        ex4 = self.submodel.reactions.create(id='ex_m4', reversible=False, model=self.model)
-        ex4.flux_bounds = wc_lang.FluxBounds(min=0., max=None)
-        ex4.participants.append(met_species_new.species_coefficients.get_or_create(coefficient=-2))
-
-        # test exchange rxn with reactant used by another reaction and large max bound
-        ex5 = self.submodel.reactions.create(id='ex_m5', reversible=False, model=self.model)
-        ex5.flux_bounds = wc_lang.FluxBounds(min=0., max=None)
-        m3 = self.model.species.get_one(id='m3[c]')
-        ex5.participants.append(m3.species_coefficients.get_or_create(coefficient=-1))
-        self.expected_rxn_flux_bounds['ex_m5'] = (0, None)
-
-        dfba_submodel_3 = self.make_dfba_submodel(self.model,
-                                                  submodel_options=self.dfba_submodel_options)
-        rxn_id, species_id, coefficient = ('ex_m4', 'm_new[c]', -2)
-        species_pop = dfba_submodel_3.local_species_population.read_one(0, species_id)
-        expected_max_constr = -species_pop / (coefficient * dfba_submodel_3.time_step)
-        self.expected_rxn_flux_bounds[rxn_id] = (0, expected_max_constr)
-
-        dfba_submodel_3.determine_bounds()
-        self.bounds_test(dfba_submodel_3, self.expected_rxn_flux_bounds)
+        # TODO (APG): to cover other branches in determine_bounds(), test without using PrepForWcSimTransform
 
     def test_update_bounds(self):
         new_bounds = {
-            'ex_m1': (12., 20.),
-            'ex_m2': (27.4, 33.8),
+            'ex_m1_backward': (0., 0.),
+            'ex_m1_forward': (12., 20.),
+            'ex_m2_backward': (0., 0.),
+            'ex_m2_forward': (27.4, 33.8),
             'ex_m3': (0., 0.),
-            'r1': (-2.5, 1.8),
-            'r2': (-3, None),
+            'r1_backward': (0., 2.5),
+            'r1_forward': (0., 1.8),
+            'r2_backward': (0., 3.),
+            'r2_forward': (0., None),
             'r3': (0., 30.),
             'r4': (None, None),
-            'biomass_reaction': (0., None),
-        }
+            'biomass_reaction': (0., None)}
         self.dfba_submodel_1._reaction_bounds = new_bounds
         self.dfba_submodel_1.update_bounds()
         for var_id, variable in self.dfba_submodel_1._conv_variables.items():
@@ -543,27 +517,32 @@ class TestDfbaSubmodel(unittest.TestCase):
         with EnvironUtils.make_temp_environ(**config_env_dict.get_env_dict()):
 
             # use fluxes and expected population change rates from
-            # test I: 'No scaling (scaling factors equal 1) and no negative species population checks'
-            fluxes = dict(ex_m1=-12,
-                          ex_m2=-12,
-                          ex_m3=0,
-                          r1=1,
-                          r2=1,
-                          r3=5,
-                          r4=6,
-                          biomass_reaction=12)
+            # test I in "Solutions to test dFBA models, by hand.txt"
+            fluxes = dict(ex_m1_backward=12.,
+                          ex_m1_forward=0.,
+                          ex_m2_backward=12.,
+                          ex_m2_forward=0.,
+                          ex_m3=0.,
+                          r1_backward=0.,
+                          r1_forward=1.,
+                          r2_backward=0.,
+                          r2_forward=1.,
+                          r3=5.,
+                          r4=6.,
+                          biomass_reaction=12.)
+
             self.dfba_submodel_1.reaction_fluxes = fluxes
             self.dfba_submodel_1.compute_population_change_rates()
-            expected_rates = {'m1[c]': -12,
-                              'm2[c]': -12,
-                              'm3[c]': 12}
+            expected_rates = {'m1[c]': -12.,
+                              'm2[c]': -12.,
+                              'm3[c]': 12.}
             self.assertEqual(self.dfba_submodel_1.adjustments, expected_rates)
             # test repeated calculations
             self.dfba_submodel_1.compute_population_change_rates()
             self.assertEqual(self.dfba_submodel_1.adjustments, expected_rates)
 
     def test_compute_population_change_rates(self):
-        ### test all 3 caching combinations ###
+        ### test all 3 caching combinations:
         # NO CACHING
         # EVENT_BASED invalidation
         # REACTION_DEPENDENCY_BASED invalidation
@@ -661,17 +640,23 @@ class TestDfbaSubmodel(unittest.TestCase):
     def test_run_fba_solver(self):
         # Algebraic solutions to these tests are documented in the
         # file "tests/submodels/fixtures/Solutions to test dFBA models, by hand.txt"
-        test_name = 'I: No scaling (scaling factors equal 1) and no negative species population checks'
-        # TODO (APG): later: report strange behavior, presumably caused by obj_table's shared related attributes
-        # since ex_m1 flux_bounds.min == ex_m2 flux_bounds.min, multiplying one of them by 1E11 increases both of them by 1E11
-        self.model.reactions.get_one(id='ex_m1').flux_bounds.min *= 1e11
-        # self.model.reactions.get_one(id='ex_m2').flux_bounds.min *= 1e11
+        # TODO (APG): update this file for split, irreversible reactions
+        TEST_NAME = 'I: No scaling (scaling factors equal 1) and no negative species population checks'
+        '''
+        print('flux_bounds before')
+        for r_id in ['ex_m1_backward', 'ex_m1_forward', 'ex_m2_backward', 'ex_m2_forward']:
+            r = self.model.reactions.get_one(id=r_id)
+            print(f"{r_id}: ({r.flux_bounds.min}, {r.flux_bounds.max})")
+        '''
+        self.model.reactions.get_one(id='ex_m1_backward').flux_bounds.max *= 1e11
+        self.model.reactions.get_one(id='ex_m2_backward').flux_bounds.max *= 1e11
+
         self.dfba_submodel_options['dfba_bound_scale_factor'] = 1.
         self.dfba_submodel_options['dfba_coef_scale_factor'] = 1.
         self.dfba_submodel_options['negative_pop_constraints'] = False
         dfba_submodel_2 = self.make_dfba_submodel(self.model,
                                                   submodel_options=self.dfba_submodel_options)
-        dfba_submodel_2.get_conv_model().name = test_name
+        dfba_submodel_2.get_conv_model().name = TEST_NAME
         dfba_submodel_2.time_step = 1.
         dfba_submodel_2.run_fba_solver()
 
@@ -681,27 +666,27 @@ class TestDfbaSubmodel(unittest.TestCase):
                                   'm3[c]': 12}
         self.check_expected_solution(dfba_submodel_2, 12, expected_adjustments_I)
 
-        test_name = 'II: Add negative species population constraints to I'
+        TEST_NAME = 'II: Add negative species population constraints to I'
         self.dfba_submodel_options['negative_pop_constraints'] = True
         dfba_submodel_2 = self.make_dfba_submodel(self.model,
                                                   submodel_options=self.dfba_submodel_options)
-        dfba_submodel_2.get_conv_model().name = test_name
+        dfba_submodel_2.get_conv_model().name = TEST_NAME
         dfba_submodel_2.run_fba_solver()
         self.check_expected_solution(dfba_submodel_2, 12, expected_adjustments_I)
 
-        test_name = 'III: Modify II by scaling bounds by 10'
+        TEST_NAME = 'III: Modify II by scaling bounds by 10'
         self.dfba_submodel_options['dfba_bound_scale_factor'] = 10.
         dfba_submodel_2 = self.make_dfba_submodel(self.model,
                                                   submodel_options=self.dfba_submodel_options)
-        dfba_submodel_2.get_conv_model().name = test_name
+        dfba_submodel_2.get_conv_model().name = TEST_NAME
         dfba_submodel_2.run_fba_solver()
         self.check_expected_solution(dfba_submodel_2, 12, expected_adjustments_I)
         self.dfba_submodel_options['dfba_bound_scale_factor'] = 1.
 
-        test_name = 'IV: Alter II so that a negative species population constraints change the solution'
+        TEST_NAME = 'IV: Alter II so that a negative species population constraints change the solution'
         dfba_submodel_2 = self.make_dfba_submodel(self.model,
                                                   submodel_options=self.dfba_submodel_options)
-        dfba_submodel_2.get_conv_model().name = test_name
+        dfba_submodel_2.get_conv_model().name = TEST_NAME
         dfba_submodel_2.time_step = 10
         dfba_submodel_2.run_fba_solver()
         expected_adjustments_IV = {'m1[c]': -8,
@@ -710,29 +695,29 @@ class TestDfbaSubmodel(unittest.TestCase):
         self.check_expected_solution(dfba_submodel_2, 10, expected_adjustments_IV)
         dfba_submodel_2.time_step = 1
 
-        test_name = "V: Modify II by scaling the coefficients of objective function's terms by 10"
+        TEST_NAME = "V: Modify II by scaling the coefficients of objective function's terms by 10"
         self.dfba_submodel_options['dfba_coef_scale_factor'] = 10.
         dfba_submodel_2 = self.make_dfba_submodel(self.model,
                                                   submodel_options=self.dfba_submodel_options)
-        dfba_submodel_2.get_conv_model().name = test_name
+        dfba_submodel_2.get_conv_model().name = TEST_NAME
         dfba_submodel_2.run_fba_solver()
         self.check_expected_solution(dfba_submodel_2, 12, expected_adjustments_I)
         self.dfba_submodel_options['dfba_coef_scale_factor'] = 1.
 
-        test_name = 'VI: Modify V by scaling bounds by 5'
+        TEST_NAME = 'VI: Modify V by scaling bounds by 5'
         self.dfba_submodel_options['dfba_bound_scale_factor'] = 5.
         self.dfba_submodel_options['dfba_coef_scale_factor'] = 10.
         dfba_submodel_2 = self.make_dfba_submodel(self.model,
                                                   submodel_options=self.dfba_submodel_options)
-        dfba_submodel_2.get_conv_model().name = test_name
+        dfba_submodel_2.get_conv_model().name = TEST_NAME
         dfba_submodel_2.run_fba_solver()
         self.check_expected_solution(dfba_submodel_2, 12, expected_adjustments_I)
         self.dfba_submodel_options['dfba_bound_scale_factor'] = 1.
         self.dfba_submodel_options['dfba_coef_scale_factor'] = 1.
 
         # test raise DynamicMultialgorithmError
-        self.model.reactions.get_one(id='ex_m1').flux_bounds.min = 1000.
-        self.model.reactions.get_one(id='ex_m1').flux_bounds.max = 1000.
+        self.model.reactions.get_one(id='ex_m1_forward').flux_bounds.min = 1000.
+        self.model.reactions.get_one(id='ex_m1_forward').flux_bounds.max = 1000.
         dfba_submodel_3 = self.make_dfba_submodel(self.model,
                                                   submodel_options=self.dfba_submodel_options)
         dfba_submodel_3.time = 0.1
@@ -743,24 +728,21 @@ class TestDfbaSubmodel(unittest.TestCase):
                                     "'infeasible' for time step [0.1, 1.1]")):
             dfba_submodel_3.run_fba_solver()
 
-        '''
         species = ['m1[c]', 'm2[c]', 'm3[c]']
         expected_population = dict(zip(species, [
-            100 - 120. * self.cell_volume * dfba_submodel_2.time_step * 1e11,
-            100 - 120. * self.cell_volume * dfba_submodel_2.time_step * 1e11,
-            100 + 120. * self.cell_volume * dfba_submodel_2.time_step * 1e11]))
+            100 - 120. * self.cell_volume * dfba_submodel_2.time_step * 1E11,
+            100 - 120. * self.cell_volume * dfba_submodel_2.time_step * 1E11,
+            100 + 120. * self.cell_volume * dfba_submodel_2.time_step * 1E11]))
         population = dfba_submodel_2.local_species_population.read(1., set(species))
         self.assertEqual(population, expected_population)
-        '''
 
         # TODO (APG): OPTIMIZE DFBA CACHING: test that expressions that depend on exchange and biomass reactions
         # have been flushed, and that expressions which don't depend on them have not been flushed
         # test flush expression
-        # TODO (APG): fix
         # self.assertTrue(dfba_submodel_2.dynamic_model.cache_manager.empty())
-        return
 
         # TODO (APG): later: test using a different solver
+        '''
         self.dfba_submodel_options['solver'] = 'glpk'
         del self.dfba_submodel_options['solver_options']
         dfba_submodel_2 = self.make_dfba_submodel(self.model,
@@ -780,6 +762,7 @@ class TestDfbaSubmodel(unittest.TestCase):
             100 + 120 * self.cell_volume * dfba_submodel_2.time_step * 1e11]))
         population = dfba_submodel_2.local_species_population.read(1., set(species))
         self.assertEqual(population, expected_population)
+        '''
 
     def test_schedule_next_fba_event(self):
         # check that the next event is a RunFba message at time expected_time

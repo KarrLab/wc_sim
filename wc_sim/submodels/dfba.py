@@ -11,9 +11,9 @@ import collections
 import conv_opt
 import copy
 import enum
+import itertools
 import math
 import scipy.constants
-import warnings
 import wc_lang
 
 from wc_sim import message_types
@@ -50,8 +50,6 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         _multi_reaction_constraints (:obj:`dict` of :obj:`str`: :obj:`conv_opt.Constraint`): a map from
             constraint id to constraints that avoid negative species populations
             in `self._conv_model.constraints`
-        _constrained_exchange_rxns (:obj:`set` of :obj:`wc_lang.Reactions`): exchange and demand reactions
-            constrained by `_multi_reaction_constraints`
         _conv_model (:obj:`conv_opt.Model`): linear programming model in `conv_opt` format
         _conv_variables (:obj:`dict` of :obj:`str`: :obj:`conv_opt.Variable`): a dictionary mapping
             reaction IDs to their associated `conv_opt.Variable` objects
@@ -59,11 +57,12 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             species IDs to lists of :obj:`conv_opt.LinearTerm` objects; each :obj:`conv_opt.LinearTerm`
             associates a reaction that the species participates in with the species' stoichiometry
             in the reaction
-        _dfba_obj_rxn_ids (:obj:`list` of :obj:`str`): a list of IDs of dFBA objective reactions
+        _dfba_obj_reactions (:obj:`dict` of :obj:`str`: :obj:`wc_lang.DfbaObjReaction`): all
+            :obj:`wc_lang.DfbaObjReaction`\ s used by the :obj:`self.dfba_obj_expr`
         _dfba_obj_species (:obj:`list` of :obj:`wc_lang.DfbaObjSpecies:`): all species in
-            :obj:`DfbaObjReaction`\ s used by `dfba_obj_expr`
+            :obj:`DfbaObjReaction`\ s used by `dfba_obj_expr`, keyed by their IDs
         _reaction_bounds (:obj:`dict` of :obj:`str`: :obj:`tuple`): a dictionary that maps reaction IDs
-            to tuples of scaled minimum and maximum bounds
+            to (minimum bound, maximum bound) tuples
         _optimal_obj_func_value (:obj:`float`): the value of objective function returned by the solver
     """
     # default options
@@ -115,7 +114,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
 
         Raises:
             :obj:`MultiAlgorithmError`: if the `dynamic_dfba_objective` cannot be found,
-                or if the exchange reactions are not all of the form “s ->”,
+                or if some reactions are reversible,
                 or if the provided 'dfba_bound_scale_factor' in options does not have a positive value,
                 or if the provided 'dfba_coef_scale_factor' in options does not have a positive value,
                 or if the provided 'solver' in options is not a valid value,
@@ -184,26 +183,35 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             if 'negative_pop_constraints' in options:
                 self.dfba_solver_options['negative_pop_constraints'] = options['negative_pop_constraints']
 
-        # determine set of exchange reactions, which must have the form “s ->”
+        # ensure that all reactions are irreversible
         errors = []
+        for rxn in self.reactions:
+            if rxn.reversible:
+                errors.append(rxn.id)
+        if errors:
+            rxn_ids = ', '.join(errors)
+            raise MultialgorithmError(f"DfbaSubmodel {self.id}: reactions are reversible: {rxn_ids}")
+
+        # determine set of exchange reactions, each of which has only one participant
+        # TODO (APG): should we use the exchange reaction pattern from the config instead?
         self.exchange_rxns = set()
         for rxn in self.reactions:
             if len(rxn.participants) == 1:
-                part = rxn.participants[0]
-                if part.coefficient < 0:
-                    self.exchange_rxns.add(rxn)
-                else:
-                    errors.append(rxn.id)
-        if errors:
-            rxns = ', '.join(errors)
-            warnings.warn(f"exchange reaction(s) don't have the form 's ->': {rxns}")
+                self.exchange_rxns.add(rxn)
 
         # get the dfba objective's expression
         dfba_objective_id = f'dfba-obj-{id}'
         if dfba_objective_id not in dynamic_model.dynamic_dfba_objectives: # pragma: no cover
-            raise MultialgorithmError(f"DfbaSubmodel {self.id}: cannot find dynamic_dfba_objective "
+            raise MultialgorithmError(f"DfbaSubmodel '{self.id}': cannot find dynamic_dfba_objective "
                                       f"{dfba_objective_id}")
         self.dfba_obj_expr = dynamic_model.dynamic_dfba_objectives[dfba_objective_id].wc_lang_expression
+
+        # collect all wc_lang.DfbaObjReactions used by dfba_obj_expr
+        self._dfba_obj_reactions = {}
+        for rxn_cls in self.dfba_obj_expr.related_objects:
+            if issubclass(rxn_cls, wc_lang.DfbaObjReaction):
+                for rxn in self.dfba_obj_expr.related_objects[rxn_cls].values():
+                    self._dfba_obj_reactions[rxn.id] = rxn
 
         # ensure that the dfba objective doesn't contain exchange rxns
         errors = []
@@ -228,7 +236,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         """ Set up a dFBA submodel, by converting to a linear programming matrix
 
         Raises:
-            :obj:`MultiAlgorithmError`: if the ids in DfbaObjReactions and Reactions intersect
+            :obj:`MultiAlgorithmError`: if the ids in :obj:`DfbaObjReaction`\ s and :obj:`Reactions`\ s intersect
         """
         self.set_up_continuous_time_submodel()
 
@@ -236,11 +244,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
 
         # raise an error if the ids in DfbaObjReactions and Reactions intersect
         reaction_ids = set([rxn.id for rxn in self.reactions])
-        dfba_obj_reaction_ids = set()
-        for rxn_cls in self.dfba_obj_expr.related_objects:
-            for rxn in self.dfba_obj_expr.related_objects[rxn_cls].values():
-                if isinstance(rxn, wc_lang.DfbaObjReaction):
-                    dfba_obj_reaction_ids.add(rxn.id)
+        dfba_obj_reaction_ids = set(self._dfba_obj_reactions)
         if reaction_ids & dfba_obj_reaction_ids:
             raise MultialgorithmError(f"in model {self.dynamic_model.id} the ids in DfbaObjReactions "
                                       f"and Reactions intersect: {reaction_ids & dfba_obj_reaction_ids}")
@@ -258,19 +262,15 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                 self._conv_metabolite_matrices[part.species.id].append(
                     conv_opt.LinearTerm(self._conv_variables[rxn.id], part.coefficient))
 
-        self._dfba_obj_rxn_ids = []
         self._dfba_obj_species = []
-        for rxn_cls in self.dfba_obj_expr.related_objects:
-            for rxn_id, rxn in self.dfba_obj_expr.related_objects[rxn_cls].items():
-                if rxn_id not in self._conv_variables:
-                    self._dfba_obj_rxn_ids.append(rxn_id)
-                    self._conv_variables[rxn.id] = conv_opt.Variable(
-                        name=rxn.id, type=conv_opt.VariableType.continuous, lower_bound=0)
-                    self._conv_model.variables.append(self._conv_variables[rxn.id])
-                    for part in rxn.dfba_obj_species:
-                        self._dfba_obj_species.append(part)
-                        self._conv_metabolite_matrices[part.species.id].append(
-                            conv_opt.LinearTerm(self._conv_variables[rxn.id], part.value))
+        for rxn in self._dfba_obj_reactions.values():
+            self._conv_variables[rxn.id] = conv_opt.Variable(
+                name=rxn.id, type=conv_opt.VariableType.continuous, lower_bound=0)
+            self._conv_model.variables.append(self._conv_variables[rxn.id])
+            for part in rxn.dfba_obj_species:
+                self._dfba_obj_species.append(part)
+                self._conv_metabolite_matrices[part.species.id].append(
+                    conv_opt.LinearTerm(self._conv_variables[rxn.id], part.value))
 
         # Set up the objective function
         dfba_obj_expr_objs = self.dfba_obj_expr.lin_coeffs
@@ -400,12 +400,10 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         return neg_species_pop_constraint_id[loc:]
 
     def initialize_neg_species_pop_constraints(self):
-        """ Make constraints that prevent species populations from going negative and span multiple reactions
+        """ Make constraints that prevent species populations from going negative
 
-        A separate constraint is made for each species that participates in more than
-        one exchange and/or dfba objective reactions. These constraints prevent the species population
+        A separate constraint is made for each species. These constraints prevent the species population
         from declining so quickly that it becomes negative in the next time step.
-        Also initializes `self._constrained_exchange_rxns`.
         Call this when a dFBA submodel is initialized.
 
         Do nothing if negative species population constraints are not being used.
@@ -414,62 +412,47 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             :obj:`dict` of :obj:`str`: :obj:`conv_opt.Constraint`: a map from constraint id to
             constraints stored in `self._conv_model.constraints`
         """
-        # TODO (APG): AVOID NEG. POPS.: either check that all reactions are irreversible or handle reversible reactions
 
-        self._constrained_exchange_rxns = set()
         if not self.dfba_solver_options['negative_pop_constraints']:
             return {}
 
         # make map from species to pseudo-reactions that use the species
         reactions_using_species = collections.defaultdict(set)
-        # add species from dFBA objective reactions
-        for rxn_cls in self.dfba_obj_expr.related_objects:
-            for rxn in self.dfba_obj_expr.related_objects[rxn_cls].values():
-                # ignore wc_lang.Reactions, which cannot have a net species flux
-                if isinstance(rxn, wc_lang.DfbaObjReaction):
-                    for species in self._get_species_and_stoichiometry(rxn):
-                        reactions_using_species[species].add(rxn)
-        # add species in exchange reactions
+        # add dFBA objective reactions and their species
+        for rxn in self._dfba_obj_reactions.values():
+            for species in self._get_species_and_stoichiometry(rxn):
+                reactions_using_species[species].add(rxn)
+        # add exchange reactions and their species
         for rxn in self.exchange_rxns:
             for species in self._get_species_and_stoichiometry(rxn):
                 reactions_using_species[species].add(rxn)
 
         multi_reaction_constraints = {}
+        # TODO (APG): consider expressing the constraint in terms of ds/dt, instead of -ds/dt (consumption)
         for species, rxns in reactions_using_species.items():
-            if 1 < len(rxns):
-                # create an expression for the species' net consumption rate, in molecules / sec
-                # net consumption = sum(-coef(species) * flux) for rxns that use species as a reactant -
-                #                   sum(coef(species) * flux) for rxns that use species as a product
-                # which can be simplified as -sum(coef * flux) for all rxns that use species
-                exchange_rxns_in_constr_expr = set()
-                constr_expr = []
-                for rxn in rxns:
-                    for rxn_species, net_coef in self._get_species_and_stoichiometry(rxn).items():
-                        if rxn_species == species:
-                            net_consumption_coef = -net_coef
-                            scaled_net_consumption_coef = net_consumption_coef
-                            if rxn not in self.exchange_rxns:
-                                scaled_net_consumption_coef = net_consumption_coef
-                            constr_expr.append(conv_opt.LinearTerm(self._conv_variables[rxn.id],
-                                                                   scaled_net_consumption_coef))
-                            if rxn in self.exchange_rxns:
-                                exchange_rxns_in_constr_expr.add(rxn)
+            # create an expression for the species' net consumption rate, in molecules / sec
+            # net consumption = sum(-coef(species) * flux) for rxns that use species as a reactant -
+            #                   sum(coef(species) * flux) for rxns that use species as a product
+            # which can be simplified as -sum(coef * flux) for all rxns that use species
+            constr_expr = []
+            for rxn in rxns:
+                for rxn_species, net_coef in self._get_species_and_stoichiometry(rxn).items():
+                    if rxn_species == species:
+                        scaled_net_consumption_coef = -net_coef
+                        constr_expr.append(conv_opt.LinearTerm(self._conv_variables[rxn.id],
+                                                               scaled_net_consumption_coef))
 
-                # optimization: only create a Constraint when the species can be consumed,
-                # which occurs when at least one of its net consumption coefficients is positive
-                species_can_be_consumed = any([0 < linear_term.coefficient for linear_term in constr_expr])
-                if species_can_be_consumed:
-                    # upper_bound will be set by bound_neg_species_pop_constraints() before solving FBA
-                    constraint_id = DfbaSubmodel.gen_neg_species_pop_constraint_id(species.id)
-                    constraint = conv_opt.Constraint(constr_expr,
-                                                     name=constraint_id,
-                                                     lower_bound=0.0,
-                                                     upper_bound=None)
-                    self._conv_model.constraints.append(constraint)
-                    multi_reaction_constraints[constraint_id] = constraint
-
-                    # record the constrained exchange reactions
-                    self._constrained_exchange_rxns |= exchange_rxns_in_constr_expr
+            # optimization: only create a Constraint when the species can be consumed,
+            # which can only occur when some of its net consumption coefficients are positive
+            if any([0 < linear_term.coefficient for linear_term in constr_expr]):
+                # upper_bound will be set by bound_neg_species_pop_constraints() before solving FBA
+                constraint_id = DfbaSubmodel.gen_neg_species_pop_constraint_id(species.id)
+                constraint = conv_opt.Constraint(constr_expr,
+                                                 name=constraint_id,
+                                                 lower_bound=None,
+                                                 upper_bound=None)
+                self._conv_model.constraints.append(constraint)
+                multi_reaction_constraints[constraint_id] = constraint
 
         return multi_reaction_constraints
 
@@ -480,7 +463,6 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         # pre-allocate dict of reaction fluxes
         self.reaction_fluxes = {rxn.id: None for rxn in self.reactions}
 
-        # TODO (APG): later: ensure that ids of Species and dFBA objective species cannot collide
         # initialize adjustments, the dict that will hold the species population change rates
         self.adjustments = {}
         for obj_species in self._dfba_obj_species:
@@ -493,112 +475,48 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                 upper_bound=0.0, lower_bound=0.0))
 
     def determine_bounds(self):
-        """ Determine the minimum and maximum bounds for each reaction
+        """ Determine the minimum and maximum flux bounds for each reaction
 
-        Two actions:
-
-        1. Bounds provided by the model and written to `self._reaction_bounds`
-
-        2. The bounds in exchange and demand reactions that do not participate in a negative
-        species population constraint are further bounded so they do not let a reaction's
-        species population decline so quickly that it becomes negative in the next time step.
+        Bounds provided by rate laws or flux bound constants in the model are written
+        to `self._reaction_bounds`.
         """
-        # Determine all the reaction bounds
         flux_comp_id = self.dfba_solver_options['flux_bounds_volumetric_compartment_id']
-        # TODO (APG): since 'flux_comp_volume' is used, cached volumes must be invalidated before running dFBA
+        # TODO (APG): since volumes are used, cached volumes must be invalidated before running dFBA
         if flux_comp_id == self.FLUX_BOUNDS_VOLUMETRIC_COMPARTMENT_ID:
             flux_comp_volume = self.dynamic_model.cell_volume()
         else:
             flux_comp_volume = self.dynamic_model.dynamic_compartments[flux_comp_id].volume()
+
         self._reaction_bounds = {}
         for reaction in self.reactions:
 
-            # Set the bounds of reactions with measured kinetic constants
+            # defaults
+            # the default minimum constraint of an irreversible reaction is 0
+            min_constr = 0.
+            # None indicates no maximum constraint
+            max_constr = None
+
+            # if a rate law is available, use it to compute a max bound
             if reaction.rate_laws:
-                for_ratelaw = reaction.rate_laws.get_one(direction=wc_lang.RateLawDirection.forward)
-                if for_ratelaw:
-                    # TODO (APG): if reversible rxns are split, call self.calc_reaction_rate(reaction)
-                    rate = self.dynamic_model.dynamic_rate_laws[for_ratelaw.id].eval(self.time)
-                    max_constr = rate
-                else:
-                    max_constr = None
+                max_constr = self.calc_reaction_rate(reaction)
 
-                rev_ratelaw = reaction.rate_laws.get_one(direction=wc_lang.RateLawDirection.backward)
-                if rev_ratelaw:
-                    rate = self.dynamic_model.dynamic_rate_laws[rev_ratelaw.id].eval(self.time)
-                    min_constr = -rate
-                elif reaction.reversible:
-                    min_constr = None
-                else:
-                    min_constr = 0.
-
-            # Set the bounds of exchange and demand reactions
+            # otherwise use the fixed bounds
             elif reaction.flux_bounds:
 
                 rxn_bounds = reaction.flux_bounds
-                if rxn_bounds.min:
-                    if math.isnan(rxn_bounds.min):
-                        min_constr = None
-                    else:
-                        min_constr = rxn_bounds.min * flux_comp_volume * scipy.constants.Avogadro
-                else:
-                    min_constr = rxn_bounds.min
-                if rxn_bounds.max:
-                    if math.isnan(rxn_bounds.max):
-                        max_constr = None
-                    else:
-                        max_constr = rxn_bounds.max * flux_comp_volume * scipy.constants.Avogadro
-                else:
-                    max_constr = rxn_bounds.max
+                if isinstance(rxn_bounds.min, (int, float)) and 0 <= rxn_bounds.min:
+                    min_constr = rxn_bounds.min * flux_comp_volume * scipy.constants.Avogadro
 
-            # Set other reactions to be unbounded
-            else:
-                max_constr = None
-                if reaction.reversible:
-                    min_constr = None
-                else:
-                    min_constr = 0.
+                if isinstance(rxn_bounds.max, (int, float)) and not math.isnan(rxn_bounds.max):
+                    max_constr = rxn_bounds.max * flux_comp_volume * scipy.constants.Avogadro
 
             self._reaction_bounds[reaction.id] = (min_constr, max_constr)
-
-        if self.dfba_solver_options['negative_pop_constraints']:
-            # bound each exchange reaction to prevent it from consuming its participant species
-            # so quickly that its population becomes negative in the next time step
-            # if exchange reaction r transports species x[c] out of c
-            # then bound the maximum flux of r, flux(r) (1/s) <= p(x, t) / (-s(r, x) * dt)
-            # where t = self.time, p(x, t) = population of x at time t,
-            # dt = self.time_step, and s(r, x) = stoichiometry of x in r
-            for reaction in self.exchange_rxns:
-                # to avoid over-constraining them, do not further bound exchange reactions that
-                # participate in constraints in `_multi_reaction_constraints`
-                if reaction in self._constrained_exchange_rxns:
-                    continue
-
-                max_flux_rxn = float('inf')
-                for participant in reaction.participants:
-                    # 'participant.coefficient < 0' determines whether the participant is a reactant
-                    if participant.coefficient < 0:
-                        species_id = participant.species.gen_id()
-                        species_pop = self.local_species_population.read_one(self.time, species_id)
-                        max_flux_species = species_pop / (-participant.coefficient * self.time_step)
-                        max_flux_rxn = min(max_flux_rxn, max_flux_species)
-
-                if max_flux_rxn != float('inf'):
-                    max_flux_rxn = max_flux_rxn
-
-                    min_constr, max_constr = self._reaction_bounds[reaction.id]
-                    if max_constr is None:
-                        max_constr = max_flux_rxn
-                    else:
-                        max_constr = min(max_constr, max_flux_rxn)
-
-                    self._reaction_bounds[reaction.id] = (min_constr, max_constr)
 
     def bound_neg_species_pop_constraints(self):
         """ Update bounds in the negative species population constraints that span multiple reactions
 
-        Update the bounds in each of the constraints in `self._multi_reaction_constraints` that
-        prevent some species from having a negative species population in the next time step.
+        Update the bounds in each constraint in `self._multi_reaction_constraints` that
+        prevents some species from having a negative species population in the next time step.
 
         Call this before each run of the FBA solver.
         """
@@ -689,6 +607,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
 
         # scale bounds in constraints; bound values of 0 are unchanged
         for constraint in conv_opt_model.constraints:
+            # this 'if' will always be true for properly formed constraints
             if isinstance(constraint.lower_bound, (int, float)):
                 constraint.lower_bound *= dfba_bound_scale_factor
             if isinstance(constraint.upper_bound, (int, float)):
@@ -784,7 +703,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
 
 
 class ObjToRow(object):
-    # TODO (APG): later: cleanup; unittests; docstrings; etc.
+    # TODO (APG): later: cleanup; unittests; docstrings; move to conv_opt, etc.
 
     def __init__(self, col_widths, headers, attrs):
         self.col_widths = col_widths
@@ -816,7 +735,7 @@ class ObjToRow(object):
 
 
 class ShowConvOptElements(object):
-    # TODO (APG): later: cleanup; unittests; docstrings; etc.
+    # TODO (APG): later: cleanup; unittests; docstrings; move to conv_opt, etc.
 
     @staticmethod
     def show_conv_opt_variable(header=False, variable=None):

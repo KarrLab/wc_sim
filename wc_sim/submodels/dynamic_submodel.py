@@ -111,7 +111,7 @@ class DynamicSubmodel(SimulationObject):
         return self.dynamic_model.get_num_submodels()
 
     def calc_reaction_rate(self, reaction):
-        """ Calculate a reaction's current rate
+        """ Calculate an irreversible reaction's current rate
 
         The rate is computed by eval'ing the reaction's rate law,
         with species populations obtained from the simulations's :obj:`LocalSpeciesPopulation`.
