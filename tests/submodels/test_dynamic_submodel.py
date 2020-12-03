@@ -16,9 +16,8 @@ import warnings
 from de_sim.simulation_config import SimulationConfig
 from de_sim.simulator import Simulator
 from obj_tables.utils import get_component_by_id
-from wc_lang import Model, Species, Validator
+from wc_lang import Model, Species
 from wc_lang.io import Reader
-from wc_lang.transform import PrepForWcSimTransform
 from wc_onto import onto
 from wc_sim.dynamic_components import DynamicModel, DynamicFunction
 from wc_sim.model_utilities import ModelUtilities
@@ -34,13 +33,6 @@ from wc_utils.util.environ import EnvironUtils
 from wc_utils.util.ontology import are_terms_equivalent
 from wc_utils.util.rand import RandomStateManager
 from wc_utils.util.string import indent_forest
-
-
-def prepare_model(model):
-    PrepForWcSimTransform().run(model)
-    errors = Validator().run(model)
-    if errors:
-        raise ValueError(indent_forest(['The model is invalid:', [errors]]))
 
 
 def build_sim_from_model(model, max_time=10, dfba_time_step=1, ode_time_step=1, options=None):
@@ -60,7 +52,6 @@ class TestDynamicSubmodelStatically(unittest.TestCase):
         self.MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures',
                                            'test_submodel_no_shared_species.xlsx')
         self.model = Reader().run(self.MODEL_FILENAME)[Model][0]
-        prepare_model(self.model)
 
         if std_init_concentrations is not None:
             for conc in self.model.distribution_init_concentrations:
@@ -204,7 +195,6 @@ class TestDsaSubmodel(unittest.TestCase):
                                            'test_submodel_no_shared_species.xlsx')
         self.model = Reader().run(self.MODEL_FILENAME, validate=True)[Model][0]
         self.transform_model_for_dsa_simulation(self.model)
-        prepare_model(self.model)
         self.multialgorithm_simulation, self.simulator, _ = build_sim_from_model(self.model)
         self.simulator.initialize()
         self.dsa_submodel_name = 'submodel_2'
