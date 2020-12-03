@@ -1,4 +1,4 @@
-""" Ensure that wc-lang-encoded models are validate so that these examples don't diverge from wc-lang.
+""" Ensure that wc-lang-encoded models validate so that these examples don't diverge from wc-lang.
 
 :Author: Jonathan Karr <karr@mssm.edu>
 :Author: Arthur Goldberg <Arthur.Goldberg@mssm.edu>
@@ -20,6 +20,8 @@ class ValidateWcLangFilesTestCase(unittest.TestCase):
         {'path': 'tests/fixtures/2_species_1_reaction_with_rates_given_by_reactant_population.xlsx'},
         {'path': 'tests/fixtures/2_species_a_pair_of_symmetrical_reactions_rates_given_by_reactant_population.xlsx'},
         {'path': 'tests/fixtures/MetabolismAndGeneExpression.xlsx'},
+        {'path': 'tests/submodels/fixtures/dfba_test_model.xlsx',
+         'validate': False},
         {'path': 'tests/fixtures/test_dependencies.xlsx'},
         {'path': 'tests/fixtures/test_dry_model_with_mass_computation.xlsx',
          'ignore_extra_models': True},
@@ -109,6 +111,7 @@ class ValidateWcLangFilesTestCase(unittest.TestCase):
          'validate': False},
     )
 
+    # TODO (APG): distinguish between models that validate, can be read but don't validate, and cannot be read
     def test(self):
         errs = []
         for file in self.FILES:
