@@ -430,6 +430,7 @@ class TestDfbaSubmodel(unittest.TestCase):
         dfba_submodel_2 = self.make_dfba_submodel(self.get_model(),
                                                   submodel_options=self.dfba_submodel_options)
         constraints = dfba_submodel_2.initialize_neg_species_pop_constraints()
+        print(ShowConvOptElements.show_conv_opt_constraints(constraints))
         # for each species, set of expected (rxn, coef) pairs contributing to the species' consumption
         raw_exp_constrs = dict(m1={('ex_m1_backward', 1), ('ex_m1_forward', -1)},
                                m2={('ex_m2_backward', 1), ('ex_m2_forward', -1)},
