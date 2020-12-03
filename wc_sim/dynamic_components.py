@@ -729,7 +729,7 @@ class DynamicModel(object):
             that get repeated
         rxn_expression_dependencies (:obj:`dict`): map from reactions to lists of expressions
             whose values depend on species with non-zero stoichiometry in the reaction
-        # TODO: OPTIMIZE DFBA CACHING: describe dFBA caching optimization
+        # TODO (APG): OPTIMIZE DFBA CACHING: describe dFBA caching optimization
         continuous_rxn_dependencies (:obj:`dict`): map from ids of continuous submodels to sets
             identifying expressions whose values depend on species with non-zero stoichiometry in
             reaction(s) modeled by the submodel
@@ -999,13 +999,14 @@ class DynamicModel(object):
         model.
         If a simulation fails with the error "killed" and no other information, then it is probably
         running on a system or in a container which does not have sufficient memory to complete
-        this function. Try running on a system with more memory or simulating a smaller model.
+        this function. Try running on a system with more memory, simulating a smaller model, or
+        disabling caching in `wc_sim.cfg`.
 
         Args:
             model (:obj:`Model`): the description of the whole-cell model in `wc_lang`
 
         Returns:
-            :obj:`dict` of :obj:`list`: the dependencies of expressions on reactions, as a map from
+            :obj:`dict` of :obj:`list`: the dependencies of expressions on reactions, which maps each
                 reaction to a list of expressions
         """
         used_model_types = set((wc_lang.Function,
@@ -1111,7 +1112,7 @@ class DynamicModel(object):
         continuous_rxn_dependencies = {}
         for submodel_id, sm_reactions in rxns_modeled_by_continuous_submodels.items():
             continuous_rxn_dependencies[submodel_id] = set()
-            # TODO: OPTIMIZE DFBA CACHING: only include exchange and objective (biomass) reactions in dFBA submodels
+            # TODO (APG): OPTIMIZE DFBA CACHING: only include exchange and objective (biomass) reactions in dFBA submodels
             for reaction, dependencies in self.rxn_expression_dependencies.items():
                 if reaction in sm_reactions:
                     continuous_rxn_dependencies[submodel_id].update(dependencies)
@@ -1173,11 +1174,6 @@ class DynamicModel(object):
         Args:
             dynamic_submodel_id (:obj:`str`): the id of the continuous submodel that's running
         """
-        '''
-        print('continuous_submodel_flush_after_populations_change')
-        print('dynamic_submodel_id', dynamic_submodel_id)
-        print('self.continuous_rxn_dependencies[dynamic_submodel_id]', self.continuous_rxn_dependencies[dynamic_submodel_id])
-        '''
         self.cache_manager.invalidate(expressions=self.continuous_rxn_dependencies[dynamic_submodel_id])
         self.flush_compartment_masses()
 

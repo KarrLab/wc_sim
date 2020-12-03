@@ -480,7 +480,6 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         to `self._reaction_bounds`.
         """
         flux_comp_id = self.dfba_solver_options['flux_bounds_volumetric_compartment_id']
-        # TODO (APG): since volumes are used, cached volumes must be invalidated before running dFBA
         if flux_comp_id == self.FLUX_BOUNDS_VOLUMETRIC_COMPARTMENT_ID:
             flux_comp_volume = self.dynamic_model.cell_volume()
         else:
@@ -688,6 +687,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                                                           time_step=self.time_step)
 
         # flush expressions that depend on species and reactions modeled by this dFBA submodel from cache
+        # TODO (APG): OPTIMIZE DFBA CACHING: minimize flushing by implementing OPTIMIZE DFBA CACHING todos elsewhere
         self.dynamic_model.continuous_submodel_flush_after_populations_change(self.id)
 
     ### handle DES events ###
