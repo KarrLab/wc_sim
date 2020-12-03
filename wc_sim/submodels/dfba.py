@@ -224,11 +224,12 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             raise MultialgorithmError(f"the dfba objective '{dfba_objective_id}' "
                                       f"uses exchange reactions: {rxns}")
 
+        # TODO (APG): warn if species in dFBA objective reactions aren't used by metabolic reactions
+
         # log initialization data
         self.log_with_time("init: id: {}".format(id))
         self.log_with_time("init: time_step: {}".format(str(dfba_time_step)))
 
-        ### dFBA specific code ###
         self.set_up_dfba_submodel()
         self.set_up_optimizations()
 

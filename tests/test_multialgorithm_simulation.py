@@ -149,6 +149,7 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
             self.assertTrue(0 < dynamic_compartment.init_density)
 
     def test_prepare_dynamic_compartments(self):
+        self.multialgorithm_simulation.prepare()
         self.multialgorithm_simulation.initialize_components()
         self.multialgorithm_simulation.initialize_infrastructure()
         for dynamic_compartment in self.multialgorithm_simulation.dynamic_model.dynamic_compartments.values():
@@ -223,6 +224,7 @@ class TestMultialgorithmSimulationStatically(unittest.TestCase):
                         LocalSpeciesPopulation))
 
     def test_initialize_infrastructure(self):
+        self.multialgorithm_simulation.prepare()
         self.multialgorithm_simulation.initialize_components()
         self.multialgorithm_simulation.initialize_infrastructure()
         self.assertTrue(isinstance(self.multialgorithm_simulation.dynamic_model, DynamicModel))
