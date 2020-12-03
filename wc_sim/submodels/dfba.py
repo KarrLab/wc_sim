@@ -429,24 +429,22 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                 reactions_using_species[species].add(rxn)
 
         multi_reaction_constraints = {}
-        # TODO (APG): consider expressing the constraint in terms of ds/dt, instead of -ds/dt (consumption)
         for species, rxns in reactions_using_species.items():
-            # create an expression for the species' net consumption rate, in molecules / sec
-            # net consumption = sum(-coef(species) * flux) for rxns that use species as a reactant -
-            #                   sum(coef(species) * flux) for rxns that use species as a product
-            # which can be simplified as -sum(coef * flux) for all rxns that use species
+            # create an expression for species' rate of change, in molecules / sec
+            # ds/dt for species s is sum(coef * flux) for all rxns that use s
+
             constr_expr = []
             for rxn in rxns:
                 for rxn_species, net_coef in self._get_species_and_stoichiometry(rxn).items():
                     if rxn_species == species:
-                        scaled_net_consumption_coef = -net_coef
-                        constr_expr.append(conv_opt.LinearTerm(self._conv_variables[rxn.id],
-                                                               scaled_net_consumption_coef))
+                        constr_expr.append(conv_opt.LinearTerm(self._conv_variables[rxn.id], net_coef))
 
             # optimization: only create a Constraint when the species can be consumed,
-            # which can only occur when some of its net consumption coefficients are positive
-            if any([0 < linear_term.coefficient for linear_term in constr_expr]):
-                # upper_bound will be set by bound_neg_species_pop_constraints() before solving FBA
+            # which can only occur when some of its net coefficients are negative
+            if any([linear_term.coefficient < 0 for linear_term in constr_expr]):
+                # before solving FBA bound_neg_species_pop_constraints()  will set lower_bound of constraint
+                # to the rate at which the amount of species goes to 0 in the next time step
+                # constraint keeps the amount of species >= 0 over the time step
                 constraint_id = DfbaSubmodel.gen_neg_species_pop_constraint_id(species.id)
                 constraint = conv_opt.Constraint(constr_expr,
                                                  name=constraint_id,
@@ -517,7 +515,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         """ Update bounds in the negative species population constraints that span multiple reactions
 
         Update the bounds in each constraint in `self._multi_reaction_constraints` that
-        prevents some species from having a negative species population in the next time step.
+        prevents a species from having a negative species population in the next time step.
 
         Call this before each run of the FBA solver.
         """
@@ -526,7 +524,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             species_id = DfbaSubmodel.parse_neg_species_pop_constraint_id(constraint_id)
             species_pop = self.local_species_population.read_one(self.time, species_id)
             max_allowed_consumption_of_species = species_pop / self.time_step
-            constraint.upper_bound = max_allowed_consumption_of_species
+            constraint.lower_bound = -max_allowed_consumption_of_species
 
     def update_bounds(self):
         """ Update the minimum and maximum bounds of `conv_opt.Variable` based on
