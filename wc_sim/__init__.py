@@ -3,7 +3,6 @@ from ._version import __version__
 
 # API
 from . import config
-
 from . import sim_config
 from . import aggregate_distributed_props
 from . import debug_logs
@@ -14,3 +13,7 @@ from . import model_utilities
 from . import multialgorithm_errors
 from . import multialgorithm_simulation
 from . import species_populations
+
+# todo: simplify code that uses these classes
+from .simulation import Simulation  # noqa: F401
+from .run_results import RunResults  # noqa: F401
