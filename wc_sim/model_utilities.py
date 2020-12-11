@@ -181,3 +181,31 @@ class ModelUtilities(object):
         if comp_start == -1 or comp_start == 0 or comp_start == len(species_id)-2 or species_id[-1] != ']':
             raise ValueError(f"Species id format should be 'species_type_id[compartment_id]' but is '{species_id}'")
         return species_id[0:comp_start], species_id[comp_start+1:-1]
+
+    @staticmethod
+    def non_neg_normal_sample(random_state, mean, std, max_iters=1000):
+        """ Obtain a non-negative sample from a normal distribution
+
+        The distribution returned is 0 for x < 0 and normal for 0 <= x
+
+        Args:
+            random_state (:obj:`numpy.random.RandomState`): a random state
+            mean (:obj:`float`): mean of the normal dist. to sample
+            std (:obj:`float`): std of the normal dist. to sample
+            max_iters (:obj:`int`, optional): maximum number of draws of the true normal distribution
+
+        Returns:
+            :obj:`float`: a normal sample that is not negative
+
+        Raises:
+            :obj:`ValueError`: if taking `max_iters` normal sample does not obtain one that is not negative
+        """
+        iter = 0
+        while True:
+            sample = random_state.normal(mean, std)
+            iter += 1
+            if 0 <= sample:
+                return sample
+            if max_iters <= iter:
+                raise ValueError(f"{iter} draws of a normal dist. with mean {mean:.2E} and std {std:.2E} "
+                                 f"fails to obtain a non-negative sample")

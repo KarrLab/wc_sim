@@ -161,3 +161,10 @@ class TestModelUtilities(unittest.TestCase):
             ModelUtilities.parse_species_id('species_type_id[]')
         with self.assertRaisesRegex(ValueError, 'Species id format should be'):
             ModelUtilities.parse_species_id('species_type_id[compartment_id]extra')
+
+    def test_non_neg_normal_sample(self):
+        rs = numpy.random.RandomState()
+        self.assertEqual(1., ModelUtilities.non_neg_normal_sample(rs, 1., 0.))
+        self.assertTrue(0 <= ModelUtilities.non_neg_normal_sample(rs, 10, 1))
+        with self.assertRaisesRegex(ValueError, 'fails to obtain a non-negative sample'):
+            ModelUtilities.non_neg_normal_sample(rs, -100, 1)
