@@ -24,6 +24,7 @@ from wc_onto import onto
 from wc_sim.dynamic_components import DynamicModel
 from wc_sim.run_results import RunResults
 from wc_sim.simulation import Simulation
+from wc_sim.testing.transformations import SetStdDevsToZero
 import obj_tables
 import obj_tables.io
 import wc_lang
@@ -34,28 +35,18 @@ def read_model_for_test(model_filename, set_std_devs_to_0=True, integration_fram
 
     Args:
         model_filename (:obj:`str`): `wc_lang` model file
-        set_std_devs_to_0 (:obj:`bool`, optional): if set, set all standard deviations in distributions
-            to 0
+        set_std_devs_to_0 (:obj:`bool`, optional): if set, set standard deviations of data in a whole-cell model
+            used by a simulation to 0
         integration_framework (:obj:`str`): if provided, set all submodels to this integration framework
 
     Returns:
         :obj:`Model`: a whole-cell model
     """
     # read model while ignoring missing models
-    all_models = Reader().run(model_filename, ignore_extra_models=True)
+    test_wc_model = Reader().run(model_filename, ignore_extra_models=True)[Model][0]
     if set_std_devs_to_0:
         # set all standard deviations to 0
-        models_with_std_devs = (wc_lang.InitVolume,
-                                wc_lang.Ph,
-                                wc_lang.DistributionInitConcentration,
-                                wc_lang.Parameter,
-                                wc_lang.Observation,
-                                wc_lang.Conclusion)
-        for model, instances in all_models.items():
-            if model in models_with_std_devs:
-                for instance in instances:
-                    instance.std = 0
-    test_wc_model = all_models[Model][0]
+        SetStdDevsToZero().run(test_wc_model)
     if integration_framework:
         for submodel in test_wc_model.submodels:
             submodel.framework = onto[integration_framework]
