@@ -807,6 +807,8 @@ class DynamicModel(object):
         # create dynamic dFBA Objectives
         self.dynamic_dfba_objectives = {}
         for dfba_objective in model.dfba_objs:
+            error = dfba_objective.expression.validate()
+            assert error is None, str(error)
             self.dynamic_dfba_objectives[dfba_objective.id] = \
                 DynamicDfbaObjective(self, self.species_population, dfba_objective,
                                      dfba_objective.expression._parsed_expression)
