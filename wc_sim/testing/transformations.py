@@ -24,10 +24,10 @@ class SetStdDevsToZero(wc_lang.transform.Transform):
         concentrations, and parameters
 
         Args:
-            wc_model (:obj:`wc_lang.Model`): whole-cell model definition
+            wc_model (:obj:`wc_lang.Model`): a whole-cell model
 
         Returns:
-            :obj:`Model`: same model definition, but with standard deviations of data used by a simulation to 0
+            :obj:`Model`: `wc_model`, with standard deviations of data used by a simulation set to 0
         """
         models_with_std_devs = (wc_lang.InitVolume,
                                 wc_lang.DistributionInitConcentration,
