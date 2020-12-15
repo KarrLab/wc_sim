@@ -145,9 +145,15 @@ class TestTestingUtils(unittest.TestCase):
 
     def test_create_run_directory(self):
         def run_dir_test(self, run_dir):
-            self.assertTrue(run_dir)
-            date_dir = os.path.abspath(os.path.join(run_dir, ".."))
-            shutil.rmtree(date_dir)
+            self.assertTrue(os.path.isdir(run_dir))
+            os.rmdir(run_dir)
+
+            # rm the date dir if it's empty
+            try:
+                date_dir = os.path.abspath(os.path.join(run_dir, ".."))
+                os.rmdir(date_dir)
+            except OSError:
+                pass
 
         run_dir_test(self, create_run_directory())
         run_dir_test(self, create_run_directory(base_dir='/tmp/runs', in_repo=False))
