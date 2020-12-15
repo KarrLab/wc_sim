@@ -17,7 +17,8 @@ from wc_sim.multialgorithm_simulation import MultialgorithmSimulation
 from wc_sim.sim_config import WCSimulationConfig
 from wc_sim.simulation import Simulation
 from wc_sim.testing.make_models import MakeModel
-from wc_sim.testing.utils import check_simul_results, plot_expected_vs_simulated, get_expected_dependencies
+from wc_sim.testing.utils import (check_simul_results, plot_expected_vs_simulated, get_expected_dependencies,
+                                  create_run_directory)
 
 
 class TestTestingUtils(unittest.TestCase):
@@ -141,3 +142,12 @@ class TestTestingUtils(unittest.TestCase):
         eds = get_expected_dependencies()
         self.assertEqual(eds['DynamicStopCondition']['reaction_9'], {'stop_condition_7'})
         self.assertEqual(eds['DynamicStopCondition']['reaction_10'], set())
+
+    def test_create_run_directory(self):
+        def run_dir_test(self, run_dir):
+            self.assertTrue(run_dir)
+            date_dir = os.path.abspath(os.path.join(run_dir, ".."))
+            shutil.rmtree(date_dir)
+
+        run_dir_test(self, create_run_directory())
+        run_dir_test(self, create_run_directory(base_dir='/tmp/runs', in_repo=False))

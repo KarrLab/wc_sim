@@ -11,6 +11,7 @@ from matplotlib import pyplot
 from matplotlib.backends.backend_pdf import PdfPages
 import ast
 import copy
+import datetime
 import math
 import numpy as np
 import os
@@ -518,3 +519,25 @@ def get_expected_dependencies():
             if dependent_ids == '':
                 expected_dependencies[expr_type][rxn_id] = set()
     return expected_dependencies
+
+
+def create_run_directory(base_dir='runs', in_repo=True):
+    """ Create a run directory in a date/time directory for a simulation
+
+    Args:
+        base_dir (:obj:`str`, optional): base directory of the run directory
+        in_repo (:obj:`boolean`, optional): whether the base directory is relative to the `wc_sim` repo
+
+    Returns:
+        :obj:`str`: a directory for a simulation run
+    """
+    root = '/'
+    if in_repo:
+        root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    base = os.path.join(root, base_dir)
+    now = datetime.datetime.now()
+    date_dir = now.date().isoformat()
+    time_dir = now.time().isoformat()
+    run_dir = os.path.join(base, date_dir, time_dir)
+    os.makedirs(run_dir)
+    return run_dir
