@@ -110,7 +110,7 @@ class DynamicSubmodel(SimulationObject):
         """
         return self.dynamic_model.get_num_submodels()
 
-    def calc_reaction_rate(self, reaction):
+    def calc_reaction_rate(self, reaction, use_enabled=True):
         """ Calculate an irreversible reaction's current rate
 
         The rate is computed by eval'ing the reaction's rate law,
@@ -118,10 +118,14 @@ class DynamicSubmodel(SimulationObject):
 
         Args:
             reaction (:obj:`Reaction`): the reaction to evaluate
+            use_enabled (:obj:`boolean`): if reaction is not enabled, return rate of 0.
 
         Returns:
             :obj:`float`: the reaction's rate
         """
+        if use_enabled and not self.enabled_reaction(reaction):
+            return 0.
+
         rate_law_id = reaction.rate_laws[0].id
         rate = self.dynamic_model.dynamic_rate_laws[rate_law_id].eval(self.time)
         self.fast_debug_file_logger.fast_log(f"DynamicSubmodel.calc_reaction_rate: "
@@ -141,7 +145,7 @@ class DynamicSubmodel(SimulationObject):
         """
         for idx_reaction, rxn in enumerate(self.reactions):
             if rxn.rate_laws:
-                self.rates[idx_reaction] = self.calc_reaction_rate(rxn)
+                self.rates[idx_reaction] = self.calc_reaction_rate(rxn, use_enabled=False)
 
         # To reduce the chance that a scheduled reaction cannot execute,
         # assign a rate of 0 to reactions that aren't enabled

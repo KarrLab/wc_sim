@@ -107,6 +107,10 @@ class TestDynamicSubmodelStatically(unittest.TestCase):
         idx_reaction_5 = get_rxn_idx('reaction_5', dynamic_submodel_2)
         self.assertEqual(rates[idx_reaction_5], 0)
 
+        reaction_5 = dynamic_submodel_2.reactions[idx_reaction_5]
+        self.assertEqual(0., dynamic_submodel_2.calc_reaction_rate(reaction_5))
+        self.assertTrue(0. < dynamic_submodel_2.calc_reaction_rate(reaction_5, use_enabled=False))
+
     expected_enabled = {
         'submodel_2': set([
             'reaction_2',
