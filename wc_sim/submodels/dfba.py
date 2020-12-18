@@ -266,7 +266,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         self._dfba_obj_species = []
         for rxn in self._dfba_obj_reactions.values():
             self._conv_variables[rxn.id] = conv_opt.Variable(
-                name=rxn.id, type=conv_opt.VariableType.continuous, lower_bound=0)
+                name=rxn.id, type=conv_opt.VariableType.continuous, lower_bound=0.)
             self._conv_model.variables.append(self._conv_variables[rxn.id])
             for part in rxn.dfba_obj_species:
                 self._dfba_obj_species.append(part)
@@ -274,11 +274,18 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                     conv_opt.LinearTerm(self._conv_variables[rxn.id], part.value))
 
         # Set up the objective function
+        errors = []
         dfba_obj_expr_objs = self.dfba_obj_expr.lin_coeffs
         for rxn_cls in dfba_obj_expr_objs.values():
             for rxn, lin_coef in rxn_cls.items():
+                if math.isnan(lin_coef):
+                    errors.append(rxn.id)
                 self._conv_model.objective_terms.append(conv_opt.LinearTerm(
                     self._conv_variables[rxn.id], lin_coef))
+        if errors:
+            rxn_ids = ', '.join(errors)
+            raise MultialgorithmError(f"objective function not linear: reaction(s) have NaN coefficient(s) "
+                                      f"in its expression: {rxn_ids}")
 
         self._conv_model.objective_direction = \
             conv_opt.ObjectiveDirection[self.dfba_solver_options['optimization_type']]
@@ -655,7 +662,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         self.determine_bounds()
         self.update_bounds()
         print('\n--- wc lang conv opt model ---')
-        print(ShowConvOptElements.show_conv_opt_model(self.get_conv_model()))
+        # print(ShowConvOptElements.show_conv_opt_model(self.get_conv_model()))
 
         # scale just before solving
         scaled_conv_opt_model = self.scale_conv_opt_model(self.get_conv_model())
@@ -673,11 +680,13 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         self.save_fba_solution(scaled_conv_opt_model, result)
         self.unscale_conv_opt_solution()
 
+        '''
         print()
         print('--- solution ---')
         print('reaction fluxes')
         for rxn_id, flux in self.reaction_fluxes.items():
             print(f"{rxn_id:<20} {flux:>10.2g}")
+        '''
 
         # Compute the population change rates
         self.compute_population_change_rates()
@@ -689,6 +698,8 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         # flush expressions that depend on species and reactions modeled by this dFBA submodel from cache
         # TODO (APG): OPTIMIZE DFBA CACHING: minimize flushing by implementing OPTIMIZE DFBA CACHING todos elsewhere
         self.dynamic_model.continuous_submodel_flush_after_populations_change(self.id)
+
+        # print(self.dynamic_model.species_population)
 
     ### handle DES events ###
     def handle_RunFba_msg(self, event):
@@ -703,6 +714,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
 
 class ObjToRow(object):
     # TODO (APG): later: cleanup; unittests; docstrings; move to conv_opt, etc.
+    # TODO (APG): later: report on values that are "not a double precision number (NaN)"
 
     def __init__(self, col_widths, headers, attrs):
         self.col_widths = col_widths
@@ -726,7 +738,7 @@ class ObjToRow(object):
             if isinstance(value, enum.Enum):
                 str_value = f'{value.name:<{width-1}}'
             elif isinstance(value, float):
-                str_value = f'{value:>{width-1}.4g} '
+                str_value = f'{value:>{width-1}.2E} '
             elif isinstance(value, int):
                 str_value = f'{value:>{width-1}d} '
             row += str_value
@@ -735,6 +747,7 @@ class ObjToRow(object):
 
 class ShowConvOptElements(object):
     # TODO (APG): later: cleanup; unittests; docstrings; move to conv_opt, etc.
+    # TODO (APG): later: report on values that are "not a double precision number (NaN)"
 
     @staticmethod
     def show_conv_opt_variable(header=False, variable=None):

@@ -85,7 +85,7 @@ class TestDfbaSubmodel(unittest.TestCase):
         }
 
     def make_dfba_submodel(self, model, dfba_time_step=1.0, submodel_id='metabolism',
-                           submodel_options=None, dfba_obj_with_regular_rxn=False, obj_expression_spec=None):
+                           submodel_options=None, dfba_obj_with_regular_rxn=False, obj_expression=None):
         """ Make a MultialgorithmSimulation from a wc lang model, and return its dFBA submodel
 
         Args:
@@ -93,25 +93,18 @@ class TestDfbaSubmodel(unittest.TestCase):
             dfba_time_step (:obj:`float`, optional): the dFBA submodel's timestep
             submodel_id (:obj:`wc_lang.Model`, optional): the dFBA submodel's id
             submodel_options (:obj:`type`, optional): the dynamic dFBA submodel's options
-            dfba_obj_with_regular_rxn (:obj:`bool`, optional): whether to give the submodel
-                a dfba_obj that has a regular reaction
-            obj_expression_spec (:obj:`tuple`, optional): custom objective expression; structure:
-                ((tuple of DfbaObjReactions), (tuple of Reactions), )
+            obj_expression (:obj:`str`, optional): a custom dfba objective expression
 
         Returns:
             :obj:`DfbaSubmodel`: a dynamic dFBA submodel
         """
-        # build a dfba objective expression
-        if dfba_obj_with_regular_rxn or obj_expression_spec:
-            if obj_expression_spec is None:
-                obj_expression_spec = (('biomass_reaction', ), ('r2_forward', ))
-            dfba_obj_reactions, reactions = obj_expression_spec
-            obj_expression = ' + '.join(itertools.chain(dfba_obj_reactions, reactions))
-            dfba_obj_reactions_dict = {}
-            for dfba_obj_rxn_id in dfba_obj_reactions:
-                dfba_obj_reactions_dict[dfba_obj_rxn_id] = model.dfba_obj_reactions.get_one(id=dfba_obj_rxn_id)
-            reactions_dict = {rxn_id: model.reactions.get_one(id=rxn_id) for rxn_id in reactions}
+        if dfba_obj_with_regular_rxn or obj_expression:
+            # build a dfba objective expression
+            if obj_expression is None:
+                obj_expression = 'biomass_reaction + r2_forward'
 
+            reactions_dict = {rxn.id: rxn for rxn in model.get_reactions()}
+            dfba_obj_reactions_dict = {dfba_obj_rxn.id: dfba_obj_rxn for dfba_obj_rxn in model.get_dfba_obj_reactions()}
             dfba_obj_expression, error = wc_lang.DfbaObjectiveExpression.deserialize(
                 obj_expression, {wc_lang.DfbaObjReaction: dfba_obj_reactions_dict,
                                  wc_lang.Reaction: reactions_dict})
@@ -234,8 +227,7 @@ class TestDfbaSubmodel(unittest.TestCase):
         # test exception in dfba_obj.expression that contains an exchange reaction
         with self.assertRaisesRegexp(MultialgorithmError,
             f"the dfba objective 'dfba-obj-{dfba_submodel.id}' uses exchange reactions:"):
-            self.make_dfba_submodel(model, obj_expression_spec=(('biomass_reaction', ), ('ex_m1_forward',
-                                                                                         'ex_m3')))
+            self.make_dfba_submodel(model, obj_expression='biomass_reaction + ex_m1_forward + ex_m3')
 
     def test_set_up_optimizations(self):
         dfba_submodel = self.dfba_submodel_1
@@ -352,6 +344,9 @@ class TestDfbaSubmodel(unittest.TestCase):
                          {'biomass_reaction': 1, 'r2_forward': 1})
         self.assertEqual(dfba_submodel_2.get_conv_model().objective_direction,
                          conv_opt.ObjectiveDirection.minimize)
+
+        with self.assertRaisesRegexp(MultialgorithmError, 'objective function not linear: reaction.* have NaN coeff'):
+            self.make_dfba_submodel(self.model, obj_expression='biomass_reaction * r2_forward')
 
     def test_get_species_and_stoichiometry(self):
         def get_species(id):

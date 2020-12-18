@@ -163,6 +163,8 @@ class Simulation(object):
         multialgorithm_simulation = MultialgorithmSimulation(self.model, self.wc_sim_config, options)
         self.simulator, self.dynamic_model = multialgorithm_simulation.build_simulation()
         self.simulator.initialize()
+        print('*** Model initialized ***')
+        print(self.dynamic_model.species_population)
 
         # set stop_condition after the dynamic model is created
         self.de_sim_config.stop_condition = self.dynamic_model.get_stop_condition()
@@ -176,6 +178,8 @@ class Simulation(object):
         except SimulatorError as e:     # pragma: no cover
             raise MultialgorithmError(f'Simulation terminated with simulator error:\n{e}')
         except BaseException as e:      # pragma: no cover
+            print('*** BaseException ***')
+            print(self.dynamic_model.species_population)
             raise MultialgorithmError(f'Simulation terminated with error:\n{e}')
 
         if verbose:
