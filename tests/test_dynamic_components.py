@@ -560,7 +560,7 @@ class TestInitializedDynamicCompartment(unittest.TestCase):
             self.assertIn("initial accounted ratio (", str(w[-1].message))
             self.assertIn(") greater than 1.0", str(w[-1].message))
 
-        dynamic_compartment = self.specify_init_accounted_fraction(2)
+        dynamic_compartment = self.specify_init_accounted_fraction(4)
         with self.assertRaises(MultialgorithmError):
             dynamic_compartment.initialize_mass_and_density(self.local_species_pop)
 

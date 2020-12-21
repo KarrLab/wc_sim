@@ -20,6 +20,7 @@ import warnings
 from obj_tables.math.expression import Expression, ObjTablesTokenCodes
 from wc_lang import Species, Compartment
 from wc_onto import onto
+from wc_sim.model_utilities import ModelUtilities
 from wc_sim.multialgorithm_errors import MultialgorithmError, MultialgorithmWarning
 from wc_sim.species_populations import LocalSpeciesPopulation
 from wc_utils.util.enumerate import CaseInsensitiveEnum
@@ -28,7 +29,6 @@ import obj_tables
 import wc_lang
 import wc_sim.config
 import wc_sim.submodels
-
 
 # mapping from wc_lang Models to DynamicComponents
 WC_LANG_MODEL_TO_DYNAMIC_MODEL = {}
@@ -464,7 +464,7 @@ class DynamicCompartment(DynamicComponent):
                 config_multialgorithm = wc_sim.config.core.get_config()['wc_sim']['multialgorithm']
                 MEAN_TO_STD_DEV_RATIO = config_multialgorithm['mean_to_std_dev_ratio']
                 std = mean / MEAN_TO_STD_DEV_RATIO
-            self.init_volume = max(0., random_state.normal(mean, std))
+            self.init_volume = ModelUtilities.non_neg_normal_sample(random_state, mean, std)
         else:
             raise MultialgorithmError('Initial volume must be normally distributed')
 

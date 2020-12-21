@@ -121,7 +121,7 @@ class ModelUtilities(object):
             std = dist_conc.std
             if numpy.isnan(std):
                 std = mean / MEAN_TO_STD_DEV_RATIO
-            conc = max(0., random_state.normal(mean, std))
+            conc = ModelUtilities.non_neg_normal_sample(random_state, mean, std)
 
             if not isinstance(dist_conc.units, unit_registry.Unit):
                 raise ValueError('Unsupported unit type "{}"'.format(type(dist_conc.units)))
@@ -183,7 +183,7 @@ class ModelUtilities(object):
         return species_id[0:comp_start], species_id[comp_start+1:-1]
 
     @staticmethod
-    def non_neg_normal_sample(random_state, mean, std, max_iters=1000):
+    def non_neg_normal_sample(random_state, mean, std, max_iters=100):
         """ Obtain a non-negative sample from a normal distribution
 
         The distribution returned is 0 for x < 0 and normal for 0 <= x
