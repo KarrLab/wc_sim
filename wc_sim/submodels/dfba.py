@@ -84,7 +84,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
     }
     OPTIMIZATION_TYPE = 'maximize'
     FLUX_BOUNDS_VOLUMETRIC_COMPARTMENT_ID = 'wc'
-    NEG_POP_CONSTRAINTS = False
+    NEG_POP_CONSTRAINTS = True
 
     # register the message types sent by DfbaSubmodel
     messages_sent = [message_types.RunFba]
@@ -661,7 +661,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         """
         self.determine_bounds()
         self.update_bounds()
-        print('\n--- wc lang conv opt model ---')
+        # print('\n--- wc lang conv opt model ---')
         # print(ShowConvOptElements.show_conv_opt_model(self.get_conv_model()))
 
         # scale just before solving
