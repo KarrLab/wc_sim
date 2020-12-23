@@ -48,6 +48,7 @@ class TestDfbaSubmodel(unittest.TestCase):
             'presolve': 'on',
             'optimization_type': 'maximize',
             'flux_bounds_volumetric_compartment_id': 'wc',
+            'verbosity': 'off',
             'solver_options': {
                 'cplex': {
                     'parameters': {
@@ -201,6 +202,11 @@ class TestDfbaSubmodel(unittest.TestCase):
                                         f" '{bad_flux_comp_id['flux_bounds_volumetric_compartment_id']}'"
                                         f" is not the ID of a compartment in the model"):
             self.make_dfba_submodel(self.model, submodel_options=bad_flux_comp_id)
+
+        bad_verbosity_option = copy.deepcopy(self.dfba_submodel_options)
+        bad_verbosity_option['verbosity'] = 'bad'
+        with self.assertRaisesRegexp(MultialgorithmError, 'the verbosity in options must be one of'):
+            self.make_dfba_submodel(self.model, submodel_options=bad_verbosity_option)
 
         # test ensure that all reactions are irreversible
         model = self.get_model()

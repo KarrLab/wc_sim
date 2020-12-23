@@ -40,6 +40,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             'minimize', 'min'); the default value is 'maximize'
         FLUX_BOUNDS_VOLUMETRIC_COMPARTMENT_ID (:obj:`str`): id of the compartment to which the
             measured flux bounds are normalized, the default is the whole-cell
+        VERBOSITY (:obj:`str`): output verbosity of the solver
         NEG_POP_CONSTRAINTS (:obj:`boolean`): whether the constraints that
             prevent negative species over the next time-step should be used; defaults to :obj:`True`
         dfba_solver_options (:obj:`dict` of :obj:`str`: :obj:`any`): options for solving dFBA submodel
@@ -83,6 +84,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         },
     }
     OPTIMIZATION_TYPE = 'maximize'
+    VERBOSITY = 'off'
     FLUX_BOUNDS_VOLUMETRIC_COMPARTMENT_ID = 'wc'
     NEG_POP_CONSTRAINTS = True
 
@@ -135,6 +137,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             'solver_options': self.SOLVER_OPTIONS,
             'optimization_type': self.OPTIMIZATION_TYPE,
             'flux_bounds_volumetric_compartment_id': self.FLUX_BOUNDS_VOLUMETRIC_COMPARTMENT_ID,
+            'verbosity': self.VERBOSITY,
             'negative_pop_constraints': self.NEG_POP_CONSTRAINTS
         }
         if options is not None:
@@ -180,6 +183,12 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                             f" flux_bounds_volumetric_compartment_id '{comp_id}' is not the ID"
                             f" of a compartment in the model")
                 self.dfba_solver_options['flux_bounds_volumetric_compartment_id'] = comp_id
+            if 'verbosity' in options:
+                if options['verbosity'] not in conv_opt.Verbosity.__members__:
+                    raise MultialgorithmError(f"DfbaSubmodel {self.id}: the verbosity in"
+                        f" options must be one of {set(conv_opt.Verbosity.__members__.keys())} but is"
+                        f" '{options['verbosity']}'")
+                self.dfba_solver_options['verbosity'] = options['verbosity']
             if 'negative_pop_constraints' in options:
                 self.dfba_solver_options['negative_pop_constraints'] = options['negative_pop_constraints']
 
@@ -289,12 +298,6 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
 
         self._conv_model.objective_direction = \
             conv_opt.ObjectiveDirection[self.dfba_solver_options['optimization_type']]
-
-        # Set options for conv_opt solver
-        options = conv_opt.SolveOptions(
-            solver=conv_opt.Solver[self.dfba_solver_options['solver']],
-            presolve=conv_opt.Presolve[self.dfba_solver_options['presolve']],
-            solver_options=self.dfba_solver_options['solver_options'])
 
         self._multi_reaction_constraints = self.initialize_neg_species_pop_constraints()
 
@@ -541,6 +544,27 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             self._conv_variables[rxn_id].upper_bound = max_constr
         self.bound_neg_species_pop_constraints()
 
+    def del_infeasible_rxns(self, conv_opt_model, copy_model=True):
+        """ Delete infeasible reactions from a convex optimization model
+
+        Delete reactions with lower bound == upper bound == 0.
+
+        Args:
+            conv_opt_model (:obj:`conv_opt.Model`): a convex optimization model
+            copy_model (:obj:`boolean`, optional): whether to copy the convex optimization model
+                before modifying it; defaults to :obj:`True`
+
+        Returns:
+            :obj:`conv_opt.Model`: the convex optimization model with infeasible reactions removed
+        """
+        infeasible_rxns = set()
+        # infeasible rxns are the variables with lower bound == upper bound == 0.
+        # remove infeasible rxns from the variables
+        # remove infeasible rxns from constraints that use them
+        # remove constraints that have no terms remaining
+        if copy_model:
+            conv_opt_model = copy.deepcopy(conv_opt_model)
+
     def compute_population_change_rates(self):
         """ Compute the rate of change of the populations of species used by this dFBA
 
@@ -661,15 +685,26 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         """
         self.determine_bounds()
         self.update_bounds()
-        # print('\n--- wc lang conv opt model ---')
+        # print('\n--- WC Sim dFBA conv opt model ---')
         # print(ShowConvOptElements.show_conv_opt_model(self.get_conv_model()))
 
         # scale just before solving
         scaled_conv_opt_model = self.scale_conv_opt_model(self.get_conv_model())
-        # print('\n--- SCALED wc lang conv opt model ---')
-        # print(ShowConvOptElements.show_conv_opt_model(scaled_conv_opt_model))
 
-        result = scaled_conv_opt_model.solve()
+        print('\n--- Scaled WC Sim dFBA conv opt model ---')
+        print(ShowConvOptElements.show_conv_opt_model(scaled_conv_opt_model))
+        print('--- END Scaled WC Sim dFBA conv opt model ---\n')
+
+        # Set options for conv_opt solver
+        options = conv_opt.SolveOptions(
+            solver=conv_opt.Solver[self.dfba_solver_options['solver']],
+            presolve=conv_opt.Presolve[self.dfba_solver_options['presolve']],
+            verbosity=conv_opt.Verbosity[self.dfba_solver_options['verbosity']],
+            solver_options=self.dfba_solver_options['solver_options']
+        )
+
+        # solve optimization model
+        result = scaled_conv_opt_model.solve(options=options)
         end_time = self.time + self.time_step
         if result.status_code != conv_opt.StatusCode(0):
             raise DynamicMultialgorithmError(self.time, f"DfbaSubmodel {self.id}: "
