@@ -6,6 +6,7 @@
 :License: MIT
 """
 
+from capturer import CaptureOutput
 import copy
 import itertools
 import math
@@ -717,18 +718,27 @@ class TestDfbaSubmodel(unittest.TestCase):
         self.dfba_submodel_options['dfba_bound_scale_factor'] = 1.
         self.dfba_submodel_options['dfba_coef_scale_factor'] = 1.
 
+        # test verbosity
+        self.dfba_submodel_options['verbosity'] = 'status'
+        dfba_submodel_3 = self.make_dfba_submodel(self.model,
+                                                  submodel_options=self.dfba_submodel_options)
+        with CaptureOutput(relay=False) as captured:
+            dfba_submodel_3.run_fba_solver()
+            self.assertIn('Version identifier', captured.get_text())
+            self.assertIn('Iteration:     1   Dual objective     =            12.000000', captured.get_text())
+
         # test raise DynamicMultialgorithmError
         self.model.reactions.get_one(id='ex_m1_forward').flux_bounds.min = 1000.
         self.model.reactions.get_one(id='ex_m1_forward').flux_bounds.max = 1000.
-        dfba_submodel_3 = self.make_dfba_submodel(self.model,
+        dfba_submodel_4 = self.make_dfba_submodel(self.model,
                                                   submodel_options=self.dfba_submodel_options)
-        dfba_submodel_3.time = 0.1
-        dfba_submodel_3.time_step = 1.
+        dfba_submodel_4.time = 0.1
+        dfba_submodel_4.time_step = 1.
         with self.assertRaisesRegexp(DynamicMultialgorithmError,
                                     re.escape("0.1: "
                                     "DfbaSubmodel metabolism: No optimal solution found: "
                                     "'infeasible' for time step [0.1, 1.1]")):
-            dfba_submodel_3.run_fba_solver()
+            dfba_submodel_4.run_fba_solver()
 
         species = ['m1[c]', 'm2[c]', 'm3[c]']
         expected_population = dict(zip(species, [
