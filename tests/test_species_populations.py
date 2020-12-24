@@ -296,7 +296,8 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         self.local_species_pop_no_init_pop_slope = \
             LocalSpeciesPopulation('test',
                                    self.init_populations,
-                                   self.molecular_weights)
+                                   self.molecular_weights,
+                                   random_state=RandomStateManager.instance())
 
         self.MODEL_FILENAME = os.path.join(os.path.dirname(__file__), 'fixtures',
                                            'test_model_for_access_species_populations.xlsx')
@@ -309,7 +310,8 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
 
     def test_init(self):
         self.assertEqual(self.local_species_pop_no_init_pop_slope._all_species(), set(self.species_ids))
-        an_LSP = LocalSpeciesPopulation('test', {}, {}, retain_history=False)
+        an_LSP = LocalSpeciesPopulation('test', {}, {}, random_state=RandomStateManager.instance(),
+                                        retain_history=False)
         s1_id = 's1[c]'
         mw = 1.5
         an_LSP.init_cell_state_species(s1_id, 2, mw)
@@ -642,7 +644,8 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         init_populations = dict(zip(species_ids, [1]*num_mws))
         local_species_pop = LocalSpeciesPopulation('test_invalid_weights',
                                                    init_populations,
-                                                   molecular_weights)
+                                                   molecular_weights,
+                                                   random_state=RandomStateManager.instance())
         ids_w_bad_mws = species_ids[:len(bad_molecular_weights)]
         self.assertEqual(local_species_pop.invalid_weights(), set(ids_w_bad_mws))
         ids_w_bad_or_no_mw = ['x'] + ids_w_bad_mws
@@ -785,17 +788,21 @@ class TestDynamicSpeciesState(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, 'cont_submodel_ids must be None or a list'):
             DynamicSpeciesState('s0[c]', self.random_state, pop, cont_submodel_ids=3)
 
-        with self.assertRaisesRegex(AssertionError,
-                                    re.escape("a species population modeled only by discrete submodel(s) "
-                                              "must be a non-negative integer")):
-            DynamicSpeciesState('s0[c]', self.random_state, 1.5)
+    def test_modeled_discretely(self):
+
+        pop = 3.4
+        s0 = DynamicSpeciesState('s0[c]', self.random_state, pop)
+        self.assertIn(s0.last_population, [round(pop), round(pop) + 1])
+        self.assertFalse(s0.modeled_continuously())
 
     def test_modeled_continuously(self):
 
         s0 = DynamicSpeciesState('s0[c]', self.random_state, 3)
         self.assertFalse(s0.modeled_continuously())
 
-        s1 = DynamicSpeciesState('s1[c]', self.random_state, 1.5, cont_submodel_ids=['ode'])
+        pop = 3.4
+        s1 = DynamicSpeciesState('s1[c]', self.random_state, pop, cont_submodel_ids=['ode'])
+        self.assertEqual(pop, s1.last_population)
         self.assertTrue(s1.modeled_continuously())
 
     def test__all_slopes_set(self):
@@ -1176,7 +1183,7 @@ class TestDynamicSpeciesState(unittest.TestCase):
         config_multialgorithm['interpolate'] = existing_interpolate
 
     def test_temp_populations(self):
-        ds = DynamicSpeciesState('s[c]', None, 0)
+        ds = DynamicSpeciesState('s[c]', self.random_state, 0)
         self.assertEqual(ds.get_temp_population_value(), None)
         population = 3
         ds.set_temp_population_value(population)

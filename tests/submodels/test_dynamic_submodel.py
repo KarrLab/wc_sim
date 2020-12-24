@@ -67,13 +67,6 @@ class TestDynamicSubmodelStatically(unittest.TestCase):
         for dynamic_submodel in self.dynamic_submodels.values():
             self.assertEqual(dynamic_submodel.get_num_submodels(), 1)
 
-    def expected_molar_conc(self, dynamic_submodel, species_id):
-        species = list(filter(lambda s: s.id == species_id, dynamic_submodel.species))[0]
-        init_volume = species.compartment.init_volume.mean
-        copy_num = ModelUtilities.sample_copy_num_from_concentration(species, init_volume, RandomStateManager.instance())
-        volume = dynamic_submodel.dynamic_compartments[species.compartment.id].volume()
-        return copy_num / (volume * Avogadro)
-
     def test_calc_reaction_rates(self):
         # set standard deviation of initial conc. to 0
         self.setUp(std_init_concentrations=0.)

@@ -602,7 +602,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
                                              sim_time=self.time)
 
     def init_cell_state_species(self, species_id, population, molecular_weight, cont_submodel_ids=None):
-        """ Initialize a species with the given population and ids of continuous submodels that model it
+        """ Initialize a species with the given population and, optionally, the ids of continuous submodels that model it
 
         Add a species to the cell state.
 
@@ -1499,6 +1499,8 @@ class DynamicSpeciesState(object):
                  record_history=False, default_rounding=None):
         """ Initialize a species object, defaulting to a simulation time start time of 0
 
+        If a species is not modeled continuously then its initial population is stochastically rounded to an integer.
+
         Args:
             species_name (:obj:`str`): the species' name; not logically needed, but helpful for error
                 reporting, logging, debugging, etc.
@@ -1517,12 +1519,13 @@ class DynamicSpeciesState(object):
         assert cont_submodel_ids is None or isinstance(cont_submodel_ids, list), \
             (f"DynamicSpeciesState '{species_name}': cont_submodel_ids must be None or a list "
              f"but is a(n) {type(cont_submodel_ids).__name__}")
-        # if a species is not modeled continuously then its initial population must be a non-negative integer
-        assert cont_submodel_ids is not None or float(initial_population).is_integer(), \
-            (f"DynamicSpeciesState '{species_name}': a species population modeled only by discrete submodel(s) "
-             f"must be a non-negative integer, but {initial_population} isn't")
+
         self.random_state = random_state
+
         self.last_population = initial_population
+        if cont_submodel_ids is None:
+            self.last_population = self.random_state.round(initial_population)
+
         if cont_submodel_ids is not None:
             # initialize population_slopes to None for each submodel
             self.population_slopes = dict.fromkeys(cont_submodel_ids, None)

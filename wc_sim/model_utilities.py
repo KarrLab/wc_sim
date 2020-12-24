@@ -43,7 +43,7 @@ class ModelUtilities(object):
             return_ids (:obj:`boolean`, optional): if set, return object ids rather than references
 
         Returns:
-            dict: a dict that maps each submodel to a set containing the species
+            :obj:`dict`: a dict that maps each submodel to a set containing the species
                 modeled by only the submodel.
         """
         species_to_submodels = collections.defaultdict(list)
@@ -78,7 +78,7 @@ class ModelUtilities(object):
             return_ids (:obj:`boolean`, optional): if set, return object ids rather than references
 
         Returns:
-            set: a set containing the shared species.
+            :obj:`set`: a set containing the shared species.
         """
         all_species = model.get_species()
 
@@ -95,8 +95,8 @@ class ModelUtilities(object):
     def sample_copy_num_from_concentration(species, volume, random_state):
         """ Provide the initial copy number of `species` from its specified value
 
-        The initial copy number is sampled from a specified distribution in molecules or molarity.
-        Copy number is rounded to the closest integer to avoid truncating small populations.
+        The initial copy number is sampled from a specified distribution whose mean is given
+        in molecules or molarity.
 
         Args:
             species (:obj:`Species`): a `Species` instance; the `species.concentration.units` must
@@ -106,7 +106,7 @@ class ModelUtilities(object):
                 concentrations
 
         Returns:
-            `int`: the `species'` copy number
+            :obj:`float`: the `species'` copy number
 
         Raises:
             :obj:`ValueError`: if the concentration uses illegal or unsupported units
@@ -129,14 +129,13 @@ class ModelUtilities(object):
 
             try:
                 scale = units.to(unit_registry.parse_units('molecule'))
-                return round(scale.magnitude * conc)
+                return scale.magnitude * conc
             except pint.DimensionalityError:
                 pass
             
             try:
                 scale = units.to(unit_registry.parse_units('M'))
-                # population must be rounded to the closest integer to avoid truncating small populations
-                return int(round(scale.magnitude * conc * volume * Avogadro))
+                return scale.magnitude * conc * volume * Avogadro
             except pint.DimensionalityError as error:
                 pass
 
@@ -153,7 +152,7 @@ class ModelUtilities(object):
             species_ids (:obj:`iterator`): an iterator that provides specie ids
 
         Returns:
-            `list`: an iterator over the specie type ids in `species_ids`
+            :obj:`list`: an iterator over the specie type ids in `species_ids`
         """
         species_types = set()
         species_types_list = []

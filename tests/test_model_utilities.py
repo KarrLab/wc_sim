@@ -110,12 +110,15 @@ class TestModelUtilities(unittest.TestCase):
         self.assertEqual(copy_number, 10**-6 * conc_value * Avogadro)
         copy_number = conc_to_molecules(species['nanomolar'], species['nanomolar'].compartment.init_volume.mean, random_state)
         self.assertEqual(copy_number, 10**-9 * conc_value * Avogadro)
-        copy_number = conc_to_molecules(species['picomolar'], species['picomolar'].compartment.init_volume.mean, random_state)
+        copy_number = round(conc_to_molecules(species['picomolar'],
+                                              species['picomolar'].compartment.init_volume.mean, random_state))
         self.assertEqual(copy_number, 10**-12 * conc_value * Avogadro)
-        copy_number = conc_to_molecules(species['femtomolar'], species['femtomolar'].compartment.init_volume.mean, random_state)
-        self.assertAlmostEqual(copy_number, 10**-15 * conc_value * Avogadro, delta=1)
-        copy_number = conc_to_molecules(species['attomolar'], species['attomolar'].compartment.init_volume.mean, random_state)
-        self.assertAlmostEqual(copy_number, 10**-18 * conc_value * Avogadro, delta=1)
+        copy_number = round(conc_to_molecules(species['femtomolar'],
+                                              species['femtomolar'].compartment.init_volume.mean, random_state))
+        self.assertEqual(copy_number, 10**-15 * conc_value * Avogadro)
+        copy_number = round(conc_to_molecules(species['attomolar'],
+                                              species['attomolar'].compartment.init_volume.mean, random_state))
+        self.assertEqual(copy_number, 10**-18 * conc_value * Avogadro)
         copy_number = conc_to_molecules(species['no_concentration'],
                                         species['no_concentration'].compartment.init_volume.mean, random_state)
         self.assertEqual(copy_number, 0)
