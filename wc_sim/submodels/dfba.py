@@ -242,6 +242,8 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         self.set_up_dfba_submodel()
         self.set_up_optimizations()
 
+        self._model_dumps = 0
+
     def set_up_dfba_submodel(self):
         """ Set up a dFBA submodel, by converting to a linear programming matrix
 
@@ -470,6 +472,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         self.set_up_continuous_time_optimizations()
 
         # pre-allocate dict of reaction fluxes
+        # TODO (APG): expand checkpoints and results: s/None/NaN/
         self.reaction_fluxes = {rxn.id: None for rxn in self.reactions}
 
         # initialize adjustments, the dict that will hold the species population change rates
@@ -482,6 +485,8 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         for met_id, expression in self._conv_metabolite_matrices.items():
             self._conv_model.constraints.append(conv_opt.Constraint(expression, name=met_id,
                 upper_bound=0.0, lower_bound=0.0))
+
+    # TODO (APG): expand checkpoints and results: add def get_reaction_fluxes(self):
 
     def determine_bounds(self):
         """ Determine the minimum and maximum flux bounds for each reaction
@@ -506,7 +511,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
 
             # if a rate law is available, use it to compute a max bound
             if reaction.rate_laws:
-                max_constr = self.calc_reaction_rate(reaction)
+                max_constr = self.calc_reaction_rate(reaction, use_enabled=False)
 
             # otherwise use the fixed bounds
             elif reaction.flux_bounds:
@@ -691,17 +696,25 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         # scale just before solving
         scaled_conv_opt_model = self.scale_conv_opt_model(self.get_conv_model())
 
-        print('\n--- Scaled WC Sim dFBA conv opt model ---')
-        print(ShowConvOptElements.show_conv_opt_model(scaled_conv_opt_model))
-        print('--- END Scaled WC Sim dFBA conv opt model ---\n')
+        if self._model_dumps % 100 == 0:
+            print('\n--- Scaled WC Sim dFBA conv opt model ---')
+            print(ShowConvOptElements.show_conv_opt_model(scaled_conv_opt_model))
+            print('--- END Scaled WC Sim dFBA conv opt model ---\n')
 
         # Set options for conv_opt solver
         options = conv_opt.SolveOptions(
             solver=conv_opt.Solver[self.dfba_solver_options['solver']],
             presolve=conv_opt.Presolve[self.dfba_solver_options['presolve']],
-            verbosity=conv_opt.Verbosity[self.dfba_solver_options['verbosity']],
             solver_options=self.dfba_solver_options['solver_options']
         )
+        if self._model_dumps % 100 == 0:
+            # Set options for conv_opt solver
+            options = conv_opt.SolveOptions(
+                solver=conv_opt.Solver[self.dfba_solver_options['solver']],
+                presolve=conv_opt.Presolve[self.dfba_solver_options['presolve']],
+                verbosity=conv_opt.Verbosity[self.dfba_solver_options['verbosity']],
+                solver_options=self.dfba_solver_options['solver_options']
+            )
 
         # solve optimization model
         result = scaled_conv_opt_model.solve(options=options)
@@ -715,13 +728,15 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         self.save_fba_solution(scaled_conv_opt_model, result)
         self.unscale_conv_opt_solution()
 
-        '''
-        print()
-        print('--- solution ---')
-        print('reaction fluxes')
-        for rxn_id, flux in self.reaction_fluxes.items():
-            print(f"{rxn_id:<20} {flux:>10.2g}")
-        '''
+        if self._model_dumps % 100 == 0:
+            print()
+            print('--- solution ---')
+            non_zero_fluxes = [f for f in self.reaction_fluxes.values() if 0 < f]
+            print(f'{len(non_zero_fluxes)} non-zero reaction fluxes')
+            for rxn_id, flux in self.reaction_fluxes.items():
+                if 0 < flux:
+                    print(f"{rxn_id:<20} {flux:>10.2g}")
+            print(f"objective {self._optimal_obj_func_value:>10.2g}")
 
         # Compute the population change rates
         self.compute_population_change_rates()
@@ -734,7 +749,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         # TODO (APG): OPTIMIZE DFBA CACHING: minimize flushing by implementing OPTIMIZE DFBA CACHING todos elsewhere
         self.dynamic_model.continuous_submodel_flush_after_populations_change(self.id)
 
-        # print(self.dynamic_model.species_population)
+        self._model_dumps += 1
 
     ### handle DES events ###
     def handle_RunFba_msg(self, event):

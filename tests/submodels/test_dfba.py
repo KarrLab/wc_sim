@@ -645,12 +645,6 @@ class TestDfbaSubmodel(unittest.TestCase):
         # file "tests/submodels/fixtures/Solutions to test dFBA models, by hand.txt"
         # TODO (APG): update this file for split, irreversible reactions
         TEST_NAME = 'I: No scaling (scaling factors equal 1) and no negative species population checks'
-        '''
-        print('flux_bounds before')
-        for r_id in ['ex_m1_backward', 'ex_m1_forward', 'ex_m2_backward', 'ex_m2_forward']:
-            r = self.model.reactions.get_one(id=r_id)
-            print(f"{r_id}: ({r.flux_bounds.min}, {r.flux_bounds.max})")
-        '''
         self.model.reactions.get_one(id='ex_m1_backward').flux_bounds.max *= 1e11
         self.model.reactions.get_one(id='ex_m2_backward').flux_bounds.max *= 1e11
 
