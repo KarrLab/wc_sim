@@ -938,6 +938,34 @@ class DynamicModel(object):
             evaluated_functions[dyn_function_id] = self.dynamic_functions[dyn_function_id].eval(time)
         return evaluated_functions
 
+    def eval_dynamic_rate_laws(self, time):
+        """ Evaluate all dynamic rate laws at time `time`
+
+        Does not consider whether a rate law's reaction is enabled.
+
+        Args:
+            time (:obj:`float`): the simulation time
+
+        Returns:
+            :obj:`dict`: map from the IDs of dynamic rate laws to their values at simulation time `time`
+        """
+        evaluated_rate_laws = {}
+        for rate_law_id, rate_law in self.dynamic_rate_laws.items():
+            evaluated_rate_laws[rate_law_id] = self.dynamic_rate_laws[rate_law_id].eval(time)
+        return evaluated_rate_laws
+
+    def get_reaction_fluxes(self):
+        """ Obtain the most recent flux for all reactions modeled by dFBA submodels
+
+        Returns:
+            :obj:`dict`: map from the IDs of reactions modeled by dFBA submodels to their most recent fluxes
+        """
+        reaction_fluxes = {}
+        for dynamic_submodel in self.dynamic_submodels.values():
+            if isinstance(dynamic_submodel, wc_sim.submodels.dfba.DfbaSubmodel):
+                reaction_fluxes = {**reaction_fluxes, **dynamic_submodel.get_reaction_fluxes()}
+        return reaction_fluxes
+
     def get_num_submodels(self):
         """ Provide the number of submodels
 

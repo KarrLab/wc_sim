@@ -472,8 +472,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         self.set_up_continuous_time_optimizations()
 
         # pre-allocate dict of reaction fluxes
-        # TODO (APG): expand checkpoints and results: s/None/NaN/
-        self.reaction_fluxes = {rxn.id: None for rxn in self.reactions}
+        self.reaction_fluxes = {rxn.id: float('NaN') for rxn in self.reactions}
 
         # initialize adjustments, the dict that will hold the species population change rates
         self.adjustments = {}
@@ -486,7 +485,13 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             self._conv_model.constraints.append(conv_opt.Constraint(expression, name=met_id,
                 upper_bound=0.0, lower_bound=0.0))
 
-    # TODO (APG): expand checkpoints and results: add def get_reaction_fluxes(self):
+    def get_reaction_fluxes(self):
+        """ Get the reaction fluxes
+
+        Returns:
+            :obj:`dict` of :obj:`str`: :obj:`float`: reaction fluxes
+        """
+        return self.reaction_fluxes
 
     def determine_bounds(self):
         """ Determine the minimum and maximum flux bounds for each reaction

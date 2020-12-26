@@ -45,15 +45,21 @@ class AccessState(AccessStateObjectInterface):
             time (:obj:`float`): the simulation time of the checkpoing being created
 
         Returns:
-            :obj:`dict` of `dict`: dictionaries containing the simulation's state: `population` has
-                the simulation's species populations, `aggregate_state` contains its aggregrate compartment
-                states, and `observables` contains all of its observables
+            :obj:`dict` of `dict`: dictionaries containing the simulation's state:
+                `population` has the simulation's species populations,
+                `observables` contains all of its observables,
+                `functions` contains all of its functions,
+                `rate_laws` contains the values of all of its rate laws,
+                `dfba_reaction_fluxes` contains the most recent fluxes of all dFBA reactions, and
+                `aggregate_state` contains its aggregrate compartment states.
         """
         state = {
             'population': self.local_species_population.read(time, round=False),
-            'aggregate_state': self.dynamic_model.get_aggregate_state(),
             'observables': self.dynamic_model.eval_dynamic_observables(time),
             'functions': self.dynamic_model.eval_dynamic_functions(time),
+            'rate_laws': self.dynamic_model.eval_dynamic_rate_laws(time),
+            'dfba_reaction_fluxes': self.dynamic_model.get_reaction_fluxes(),
+            'aggregate_state': self.dynamic_model.get_aggregate_state(),
         }
         return state
 

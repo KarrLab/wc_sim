@@ -38,9 +38,12 @@ class RunResults(object):
     # components stored in a RunResults instance and the HDF file it manages
     COMPONENTS = {
         'populations',          # predicted populations of species at all checkpoint times
-        'aggregate_states',     # predicted aggregate states of the cell at all checkpoint times
         'observables',          # predicted values of all observables at all checkpoint times
         'functions',            # predicted values of all functions at all checkpoint times
+        'rate_laws',            # predicted values of all rate laws at all checkpoint times;
+                                # does not consider whether a rate law's reaction is enabled
+        'dfba_reaction_fluxes', # most recent predicted fluxes of reactions modeled by dFBA submodels at all checkpoint times
+        'aggregate_states',     # predicted aggregate states of the cell at all checkpoint times
         'random_states',        # states of the simulation's random number generators at all checkpoint times
     }
 
@@ -74,8 +77,8 @@ class RunResults(object):
         if not os.path.isfile(self._hdf_file()):
 
             # create the HDF file containing the run results
-            population_df, observables_df, functions_df, aggregate_states_df, random_states_s = \
-                self.convert_checkpoints()
+            (population_df, observables_df, functions_df, rate_laws_df, dfba_reaction_fluxes_df,
+                aggregate_states_df, random_states_s) = self.convert_checkpoints()
 
             # populations
             population_df.to_hdf(self._hdf_file(), 'populations')
@@ -85,6 +88,12 @@ class RunResults(object):
 
             # functions
             functions_df.to_hdf(self._hdf_file(), 'functions')
+
+            # rate laws
+            rate_laws_df.to_hdf(self._hdf_file(), 'rate_laws')
+
+            # dfba reaction fluxes
+            dfba_reaction_fluxes_df.to_hdf(self._hdf_file(), 'dfba_reaction_fluxes')
 
             # aggregate states
             aggregate_states_df.to_hdf(self._hdf_file(), 'aggregate_states')
@@ -322,20 +331,23 @@ class RunResults(object):
 
     @staticmethod
     def get_state_components(state):
-        return (state['population'], state['observables'], state['functions'], state['aggregate_state'])
+        return (state['population'], state['observables'], state['functions'], state['rate_laws'],
+                state['dfba_reaction_fluxes'], state['aggregate_state'])
 
     def convert_checkpoints(self):
         """ Convert the data in saved checkpoints into pandas dataframes for loading into hdf
 
         Returns:
             :obj:`tuple` of pandas objects: dataframes of the components of a simulation checkpoint history
-                population_df, observables_df, functions_df, aggregate_states_df, random_states_s
+                population_df, observables_df, functions_df, rate_laws_df, dfba_reaction_fluxes_df,
+                aggregate_states_df, random_states_s
         """
         # create pandas objects for species populations, aggregate states and simulation random states
         access_checkpoints = AccessCheckpoints(self.results_dir)
         checkpoints = access_checkpoints.list_checkpoints()
         first_checkpoint = access_checkpoints.get_checkpoint(time=checkpoints[0])
-        species_pop, observables, functions, aggregate_state = self.get_state_components(first_checkpoint.state)
+        species_pop, observables, functions, rate_laws, dfba_reaction_fluxes, aggregate_state = \
+            self.get_state_components(first_checkpoint.state)
 
         species_ids = species_pop.keys()
         population_make_df = MakeDataFrame(checkpoints, species_ids)
@@ -344,7 +356,13 @@ class RunResults(object):
         observables_make_df = MakeDataFrame(checkpoints, observable_ids)
 
         function_ids = functions.keys()
-        function_make_df = MakeDataFrame(checkpoints, function_ids)
+        functions_make_df = MakeDataFrame(checkpoints, function_ids)
+
+        rate_laws_ids = rate_laws.keys()
+        rate_laws_make_df = MakeDataFrame(checkpoints, rate_laws_ids)
+
+        dfba_reaction_fluxes_ids = dfba_reaction_fluxes.keys()
+        dfba_reaction_fluxes_make_df = MakeDataFrame(checkpoints, dfba_reaction_fluxes_ids)
 
         compartments = list(aggregate_state['compartments'].keys())
         properties = list(aggregate_state['compartments'][compartments[0]].keys())
@@ -357,13 +375,18 @@ class RunResults(object):
         for time in access_checkpoints.list_checkpoints():
 
             checkpoint = access_checkpoints.get_checkpoint(time=time)
-            species_populations, observables, functions, aggregate_state = self.get_state_components(checkpoint.state)
+            species_populations, observables, functions, rate_laws, dfba_reaction_fluxes, aggregate_state = \
+                self.get_state_components(checkpoint.state)
 
             population_make_df.add(time, species_populations)
 
             observables_make_df.add(time, observables)
 
-            function_make_df.add(time, functions)
+            functions_make_df.add(time, functions)
+
+            rate_laws_make_df.add(time, rate_laws)
+
+            dfba_reaction_fluxes_make_df.add(time, dfba_reaction_fluxes)
 
             compartment_states = aggregate_state['compartments']
             for compartment_id, agg_states in compartment_states.items():
@@ -374,8 +397,11 @@ class RunResults(object):
 
         population_df = population_make_df.finish()
         observables_df = observables_make_df.finish()
-        functions_df = function_make_df.finish()
-        return (population_df, observables_df, functions_df, aggregate_states_df, random_states_s)
+        functions_df = functions_make_df.finish()
+        rate_laws_df = rate_laws_make_df.finish()
+        dfba_reaction_fluxes_df = dfba_reaction_fluxes_make_df.finish()
+        return (population_df, observables_df, functions_df, rate_laws_df, dfba_reaction_fluxes_df,
+                aggregate_states_df, random_states_s)
 
     def semantically_equal(self, other, debug=False):
         """ Are the predictions and metadata in two :obj:`RunResults` objects semantically equal?

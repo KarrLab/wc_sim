@@ -241,17 +241,18 @@ class TestDfbaSubmodel(unittest.TestCase):
         self.assertTrue(set(dfba_submodel.species_ids) == dfba_submodel.species_ids_set \
             == set(dfba_submodel.adjustments.keys()))
         self.assertEqual(dfba_submodel.populations.shape, ((len(dfba_submodel.species_ids), )))
-        self.assertEqual(dfba_submodel.reaction_fluxes, {'ex_m1_backward': None,
-                                                         'ex_m1_forward': None,
-                                                         'ex_m2_backward': None,
-                                                         'ex_m2_forward': None,
-                                                         'ex_m3': None,
-                                                         'r1_backward': None,
-                                                         'r1_forward': None,
-                                                         'r2_backward': None,
-                                                         'r2_forward': None,
-                                                         'r3': None,
-                                                         'r4': None})
+        expected_rxn_fluxes = {'ex_m3': float('NaN'),
+                               'r3': float('NaN'),
+                               'r4': float('NaN'),
+                               'ex_m1_forward': float('NaN'),
+                               'ex_m1_backward': float('NaN'),
+                               'ex_m2_forward': float('NaN'),
+                               'ex_m2_backward': float('NaN'),
+                               'r1_forward': float('NaN'),
+                               'r1_backward': float('NaN'),
+                               'r2_forward': float('NaN'),
+                               'r2_backward': float('NaN')}
+        self.assertEqual(dfba_submodel.get_reaction_fluxes().keys(), expected_rxn_fluxes.keys())
 
     def test_set_up_dfba_submodel(self):
         # test exception when the ids in DfbaObjReactions and Reactions intersect
@@ -643,7 +644,6 @@ class TestDfbaSubmodel(unittest.TestCase):
     def test_run_fba_solver(self):
         # Algebraic solutions to these tests are documented in the
         # file "tests/submodels/fixtures/Solutions to test dFBA models, by hand.txt"
-        # TODO (APG): update this file for split, irreversible reactions
         TEST_NAME = 'I: No scaling (scaling factors equal 1) and no negative species population checks'
         self.model.reactions.get_one(id='ex_m1_backward').flux_bounds.max *= 1e11
         self.model.reactions.get_one(id='ex_m2_backward').flux_bounds.max *= 1e11
@@ -662,6 +662,22 @@ class TestDfbaSubmodel(unittest.TestCase):
                                   'm2[c]': -12,
                                   'm3[c]': 12}
         self.check_expected_solution(dfba_submodel_2, 12, expected_adjustments_I)
+        # test predicted fluxes; reversible reactions have been split
+        expected_rxn_fluxes = dict(ex_m1_forward=0,
+                                   ex_m1_backward=12,
+                                   ex_m2_forward=0,
+                                   ex_m2_backward=12,
+                                   ex_m3=0,
+                                   r1_forward=1,
+                                   r1_backward=0,
+                                   r2_forward=1,
+                                   r2_backward=0,
+                                   r3=5,
+                                   r4=6,
+                                   biomass_reaction=12)
+        for rxn_id, expected_flux in expected_rxn_fluxes.items():
+            self.assertAlmostEqual(dfba_submodel_2.get_reaction_fluxes()[rxn_id], expected_flux)
+            self.assertAlmostEqual(dfba_submodel_2.dynamic_model.get_reaction_fluxes()[rxn_id], expected_flux)
 
         TEST_NAME = 'II: Add negative species population constraints to I'
         self.dfba_submodel_options['negative_pop_constraints'] = True

@@ -89,23 +89,23 @@ class TestRunResults(unittest.TestCase):
 
     def test__check_component(self):
         for component in RunResults.COMPONENTS:
-            self.assertEqual(self.run_results_1_cmpt._check_component(component), None)
+            if component != 'dfba_reaction_fluxes':
+                self.assertEqual(self.run_results_1_cmpt._check_component(component), None)
         self.run_results_1_cmpt.run_results['populations'] = DataFrame()
         with self.assertRaisesRegex(MultialgorithmError, "component is empty"):
             self.run_results_1_cmpt._check_component('populations')
 
     def test_get(self):
-        run_results_2 = RunResults(self.results_dir_1_cmpt)
+        run_results = RunResults(self.results_dir_1_cmpt)
         for component in RunResults.COMPONENTS:
-            self.assertTrue(self.run_results_1_cmpt.get(component).equals(run_results_2.get(component)))
+            self.assertTrue(self.run_results_1_cmpt.get(component).equals(run_results.get(component)))
 
         expected_times = pandas.Float64Index(np.linspace(0, self.max_time,
                                                             int(1 + self.max_time/self.checkpoint_period)))
-        for component in ['populations', 'observables', 'functions', 'aggregate_states', 'random_states']:
+        for component in ['populations', 'observables', 'functions', 'rate_laws', 'aggregate_states', 'random_states']:
             component_data = self.run_results_1_cmpt.get(component)
             self.assertFalse(component_data.empty)
             self.assertTrue(component_data.index.equals(expected_times))
-
         # total population is invariant
         populations = self.run_results_1_cmpt.get('populations')
         pop_sum = populations.sum(axis='columns')

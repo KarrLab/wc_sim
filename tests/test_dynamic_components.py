@@ -112,6 +112,10 @@ class TestInitialDynamicComponentsComprehensively(unittest.TestCase):
         for id, dynamic_rate_law in self.dynamic_model.dynamic_rate_laws.items():
             expected_value = float(self.model.get_rate_laws(id=id)[0].comments)
             numpy.testing.assert_approx_equal(dynamic_rate_law.eval(0), expected_value)
+        # test eval_dynamic_rate_laws()
+        for rl_id, value in self.dynamic_model.eval_dynamic_rate_laws(0).items():
+            expected_value = float(self.model.get_rate_laws(id=id)[0].comments)
+            numpy.testing.assert_approx_equal(dynamic_rate_law.eval(0), expected_value)
 
         ### Test DynamicComponents ###
         # DynamicCompartment
