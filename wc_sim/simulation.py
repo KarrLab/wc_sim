@@ -112,7 +112,8 @@ class Simulation(object):
             verbose (:obj:`bool`, optional): whether to print success output
             object_memory_change_interval (:obj:`int`, optional): event interval between memory profiles
                 of the simulation; default of 0 indicates no profile
-            options (:obj:`dict`, optional): options for submodels, passed to `MultialgorithmSimulation`
+            options (:obj:`dict`, optional): options for submodels, keyed by submodel class name;
+                are passed to :obj:`MultialgorithmSimulation`
 
         Returns:
             :obj:`SimulationReturnValue`: containing 1) an :obj:`int` holding the number of simulation
@@ -163,8 +164,6 @@ class Simulation(object):
         multialgorithm_simulation = MultialgorithmSimulation(self.model, self.wc_sim_config, options)
         self.simulator, self.dynamic_model = multialgorithm_simulation.build_simulation()
         self.simulator.initialize()
-        print('*** Model initialized ***')
-        print(self.dynamic_model.species_population)
 
         # set stop_condition after the dynamic model is created
         self.de_sim_config.stop_condition = self.dynamic_model.get_stop_condition()
@@ -178,8 +177,10 @@ class Simulation(object):
         except SimulatorError as e:     # pragma: no cover
             raise MultialgorithmError(f'Simulation terminated with simulator error:\n{e}')
         except BaseException as e:      # pragma: no cover
+            '''
             print('*** BaseException ***')
             print(self.dynamic_model.species_population)
+            '''
             raise MultialgorithmError(f'Simulation terminated with error:\n{e}')
 
         if verbose:
