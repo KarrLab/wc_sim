@@ -118,7 +118,7 @@ class DynamicSubmodel(SimulationObject):
 
         Args:
             reaction (:obj:`Reaction`): the reaction to evaluate
-            use_enabled (:obj:`boolean`): if reaction is not enabled, return rate of 0.
+            use_enabled (:obj:`boolean`, optional): if reaction is not enabled, return rate of 0.
 
         Returns:
             :obj:`float`: the reaction's rate
