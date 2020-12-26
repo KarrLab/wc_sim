@@ -59,6 +59,8 @@ Solution:
         r3 = 5
         r4 = 6
         biomass_reaction = 12
+    Transformation of reversible reactions to split, irreversible reactions is simple and
+    not done here.
 
     Species population change rates:
         Only exchange and objective reactions contribute to population changes
