@@ -735,7 +735,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
 
         if self._model_dumps % 100 == 0:
             print()
-            print('--- solution ---')
+            print(f'--- {self.time}: solution ---')
             non_zero_fluxes = [f for f in self.reaction_fluxes.values() if 0 < f]
             print(f'{len(non_zero_fluxes)} non-zero reaction fluxes')
             for rxn_id, flux in self.reaction_fluxes.items():
@@ -767,9 +767,10 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         self.schedule_next_periodic_analysis()
 
 
+# TODO (APG): in conv. opt. model output: cleanup; unittests; docstrings; move to conv_opt, etc.
+# TODO (APG): report on values that are "not a double precision number (NaN)"
+# TODO (APG): move to conv. opt. package
 class ObjToRow(object):
-    # TODO (APG): later: cleanup; unittests; docstrings; move to conv_opt, etc.
-    # TODO (APG): later: report on values that are "not a double precision number (NaN)"
 
     def __init__(self, col_widths, headers, attrs):
         self.col_widths = col_widths
@@ -801,8 +802,6 @@ class ObjToRow(object):
 
 
 class ShowConvOptElements(object):
-    # TODO (APG): later: cleanup; unittests; docstrings; move to conv_opt, etc.
-    # TODO (APG): later: report on values that are "not a double precision number (NaN)"
 
     @staticmethod
     def show_conv_opt_variable(header=False, variable=None):

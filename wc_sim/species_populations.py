@@ -997,7 +997,6 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             raise DynamicSpeciesPopulationError(time, "adjust_continuously error(s):\n{}".format('\n'.join(errors)))
 
     # TODO(Arthur): don't need compartment_id, because compartment is part of the species_ids
-    # TODO(Arthur): to speed-up convert species ids, molecular weights and populations into arrays
     # TODO(Arthur): raise an error if time is in the future
     def compartmental_mass(self, compartment_id, species_ids=None, time=None):
         """ Compute the current mass of some, or all, species in a compartment
@@ -1030,6 +1029,30 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
                 if not np.isnan(mw):
                     mass += mw * self.read_one(time, species_id)
         return mass / Avogadro
+
+    def fractional_masses(self, compartment_id):
+        """ Report on the fractional mass contribution of each species in a compartment
+
+        Args:
+            compartment_id (:obj:`str`): the ID of the compartment
+
+        Returns:
+            :obj:`str`: a tab-separated table containing the fractional mass contribution of each species
+            in `compartment`
+        """
+        time = self.time
+        species_ids = self._all_species()
+        compartment_mw = self.compartmental_mass(compartment_id) * Avogadro
+        header = '\t'.join(['species', 'MW', 'population', 'mass frac.'])
+        rows = [header]
+        for species_id in species_ids:
+            comp = self._population[species_id].compartment_id
+            if comp == compartment_id:
+                mw = self._molecular_weights[species_id]
+                if not np.isnan(mw):
+                    pop = self.read_one(time, species_id)
+                    rows.append('\t'.join([species_id, f"{mw}", f"{pop}", f"{mw * pop/compartment_mw:>6}"]))
+        return '\n'.join(rows)
 
     def invalid_weights(self, species_ids=None):
         """ Find the species that do not have a positive, numerical molecular weight

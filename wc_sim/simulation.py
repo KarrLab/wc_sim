@@ -177,10 +177,6 @@ class Simulation(object):
         except SimulatorError as e:     # pragma: no cover
             raise MultialgorithmError(f'Simulation terminated with simulator error:\n{e}')
         except BaseException as e:      # pragma: no cover
-            '''
-            print('*** BaseException ***')
-            print(self.dynamic_model.species_population)
-            '''
             raise MultialgorithmError(f'Simulation terminated with error:\n{e}')
 
         if verbose:
