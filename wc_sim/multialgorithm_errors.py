@@ -36,10 +36,11 @@ class DynamicMultialgorithmError(Error):
         time (:obj:`float`): the simulation time at which the error occurs
         message (:obj:`str`): the exception's message
     """
+    TIME_PRECISION = 5
 
     def __init__(self, time, message=None):
         self.time = time
-        super().__init__(f"{time}: {message}")
+        super().__init__(f"{time:.{self.TIME_PRECISION}E}: {message}")
 
 
 class SpeciesPopulationError(Error):

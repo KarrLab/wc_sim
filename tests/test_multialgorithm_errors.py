@@ -6,6 +6,7 @@
 """
 
 import os
+import re
 import unittest
 
 from wc_sim.multialgorithm_errors import (DynamicFrozenSimulationError, DynamicMultialgorithmError,
@@ -28,7 +29,7 @@ class TestMultialgorithmErrors(unittest.TestCase):
             raise SpeciesPopulationError(msg)
 
         def expected(time, msg):
-            return f"{time}: {msg}"
+            return re.escape(f"{time:.{DynamicMultialgorithmError.TIME_PRECISION}E}: {msg}")
 
         time = 3.5
         with self.assertRaisesRegexp(DynamicFrozenSimulationError, expected(time, msg)):
