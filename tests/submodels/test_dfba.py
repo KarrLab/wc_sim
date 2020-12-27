@@ -34,7 +34,6 @@ class TestDfbaSubmodel(unittest.TestCase):
 
     def get_model(self):
         test_model = os.path.join(os.path.dirname(__file__), 'fixtures', 'dfba_test_model.xlsx')
-        # TODO (APG): test with model that uses extracellular compartment w id == EXTRACELLULAR_COMPARTMENT_ID in config
         return Reader().run(test_model, validate=False)[wc_lang.Model][0]
 
     def setUp(self):
