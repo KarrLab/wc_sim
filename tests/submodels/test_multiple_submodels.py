@@ -29,7 +29,8 @@ class TestMultipleSubmodels(unittest.TestCase):
 
     def setUp(self):
         self.test_dir = tempfile.mkdtemp()
-        self.model = Reader().run(self.EXAMPLE_WC_MODEL, validate=True)[wc_lang.Model][0]
+        with EnvironUtils.temp_config_env([(['wc_lang', 'validation', 'validate_element_charge_balance'], 'False')]):
+            self.model = Reader().run(self.EXAMPLE_WC_MODEL, validate=True)[wc_lang.Model][0]
 
     def tearDown(self):
         shutil.rmtree(self.test_dir)
@@ -98,16 +99,18 @@ class TestMultipleSubmodels(unittest.TestCase):
                                          verbosity='status'))
         options = {'DfbaSubmodel': dfba_options}
         for i in range(N):
-            model = Reader().run(self.EXAMPLE_WC_MODEL, validate=True)[wc_lang.Model][0]
-            print(util.get_model_summary(model))
-            print(f"\n*** RUN {i} with seed {seeds[i]} ***")
-            try:
-                # TODO: remove when 4_submodel_MP_model.xlsx has an accounted mass fraction below the default
-                with EnvironUtils.temp_config_env([(['wc_sim', 'multialgorithm', 'max_allowed_init_accounted_fraction'],
-                                                    str(3.0))]):
-                    simulation_rv = self.run_simulation(wc_sim.Simulation(model), max_time=max_time, seed=seeds[i],
-                                                        options=options)
-                print(f"Simulated {simulation_rv.num_events} events")
-                print(f"Results in '{simulation_rv.results_dir}'")
-            except wc_sim.multialgorithm_errors.MultialgorithmError as e:
-                print(f"MultialgorithmError {e}")
+            with EnvironUtils.temp_config_env([(['wc_lang', 'validation', 'validate_element_charge_balance'], 'False')]):
+                model = Reader().run(self.EXAMPLE_WC_MODEL, validate=True)[wc_lang.Model][0]
+                print(util.get_model_summary(model))
+                print(f"\n*** RUN {i} with seed {seeds[i]} ***")
+                try:
+                    # TODO: remove when 4_submodel_MP_model.xlsx has an accounted mass fraction below the default
+                    with EnvironUtils.temp_config_env([(['wc_sim', 'multialgorithm',
+                                                         'max_allowed_init_accounted_fraction'],
+                                                        str(3.0))]):
+                        simulation_rv = self.run_simulation(wc_sim.Simulation(model), max_time=max_time, seed=seeds[i],
+                                                            options=options)
+                    print(f"Simulated {simulation_rv.num_events} events")
+                    print(f"Results in '{simulation_rv.results_dir}'")
+                except wc_sim.multialgorithm_errors.MultialgorithmError as e:
+                    print(f"MultialgorithmError {e}")

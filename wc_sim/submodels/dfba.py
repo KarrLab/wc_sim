@@ -19,7 +19,6 @@ import wc_lang
 from wc_sim import message_types
 from wc_sim.config import core as config_core_multialgorithm
 from wc_sim.multialgorithm_errors import DynamicMultialgorithmError, MultialgorithmError
-from wc_sim.species_populations import TempPopulationsLSP
 from wc_sim.submodels.dynamic_submodel import ContinuousTimeSubmodel
 
 

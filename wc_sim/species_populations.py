@@ -817,7 +817,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             :obj:`float`: the predicted population of `species_id` at simulation time `time`.
         """
         species_id_in_set = {species_id}
-        self._check_species(None, species_id_in_set, check_early_accesses=False)
+        self._check_species(time, species_id_in_set, check_early_accesses=False)
         dynamic_species_state = self._population[species_id]
         if not dynamic_species_state.get_temp_population_value() is None:
             return dynamic_species_state.get_temp_population_value()
@@ -867,12 +867,13 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
             populations[idx] = self._population[species_id].get_population(time, round=round)
     # todo: combine read() and read_into_array() into 1 method
 
-    def set_temp_populations(self, populations):
+    def set_temp_populations(self, time, populations):
         """ Set temporary population values for multiple species
 
         Used to solve ODE submodels
 
         Args:
+            time (:obj:`float`): simulation time
             populations (:obj:`dict` of :obj:`float`): map: species_id -> temporary_population_value
 
         Raises:
@@ -880,7 +881,7 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
                 or if any population value would become negative
         """
         species_ids = set(populations)
-        self._check_species(None, species_ids, check_early_accesses=False)
+        self._check_species(time, species_ids, check_early_accesses=False)
         errors = []
         for species_id, population in populations.items():
             if population < 0:
@@ -890,16 +891,17 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         for species_id, population in populations.items():
             self._population[species_id].set_temp_population_value(population)
 
-    def clear_temp_populations(self, species_ids):
+    def clear_temp_populations(self, time, species_ids):
         """ Clear temporary population values for multiple species
 
         Used to solve ODE submodels
 
         Args:
+            time (:obj:`float`): simulation time
             species_ids (:obj:`iterator`): an iterator over some species ids
         """
         species_ids = set(species_ids)
-        self._check_species(None, species_ids, check_early_accesses=False)
+        self._check_species(time, species_ids, check_early_accesses=False)
         for species_id in species_ids:
             self._population[species_id].clear_temp_population_value()
 
@@ -1238,16 +1240,18 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
 class TempPopulationsLSP(object):
     """ A context manager for using temporary population values in a LocalSpeciesPopulation
     """
-    def __init__(self, local_species_population, temporary_populations):
+    def __init__(self, time, local_species_population, temporary_populations):
         """ Set populations temporarily, as specified in `temporary_populations`
 
         Args:
+            time (:obj:`float`): simulation time
             local_species_population (:obj:`LocalSpeciesPopulation`): an existing `LocalSpeciesPopulation`
             temporary_populations (:obj:`dict` of :obj:`float`): map: species_id -> temporary_population_value;
                 temporary populations for some species in `local_species_population`
         """
+        self.time = time
         self.local_species_population = local_species_population
-        local_species_population.set_temp_populations(temporary_populations)
+        local_species_population.set_temp_populations(self.time, temporary_populations)
         self.species_ids = set(temporary_populations)
         self.local_species_population.temporary_mode = True
 
@@ -1257,7 +1261,7 @@ class TempPopulationsLSP(object):
     def __exit__(self, type, value, traceback):
         """ Clear the temporary population values
         """
-        self.local_species_population.clear_temp_populations(self.species_ids)
+        self.local_species_population.clear_temp_populations(self.time, self.species_ids)
         self.local_species_population.temporary_mode = False
 
 

@@ -744,8 +744,7 @@ class TestDfbaSubmodel(unittest.TestCase):
         dfba_submodel_4.time = 0.1
         dfba_submodel_4.time_step = 1.
         with self.assertRaisesRegexp(DynamicMultialgorithmError,
-                                    re.escape("0.1: "
-                                    "DfbaSubmodel metabolism: No optimal solution found: "
+                                    re.escape("DfbaSubmodel metabolism: No optimal solution found: "
                                     "'infeasible' for time step [0.1, 1.1]")):
             dfba_submodel_4.run_fba_solver()
 

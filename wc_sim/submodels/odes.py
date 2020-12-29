@@ -201,7 +201,7 @@ class OdeSubmodel(ContinuousTimeSubmodel):
         # Hindmarsh, Serban and Reynolds, User Documentation for cvode v5.0.0, 2019
         self.non_negative_populations = np.maximum(self.zero_populations, new_species_populations)
         temporary_populations = dict(zip(self.species_ids, self.non_negative_populations))
-        with TempPopulationsLSP(self.local_species_population, temporary_populations):
+        with TempPopulationsLSP(time, self.local_species_population, temporary_populations):
 
             # flush expressions that depend on species and reactions modeled by this ODE submodel from cache
             self.dynamic_model.continuous_submodel_flush_after_populations_change(self.id)

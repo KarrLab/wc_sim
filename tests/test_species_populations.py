@@ -450,7 +450,7 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
             self.local_species_pop.adjust_continuously(time, self.cont_submodel_id, {self.species_ids[0]: -10})
             with self.assertRaises(DynamicSpeciesPopulationError) as context:
                 self.local_species_pop.adjust_continuously(time + 2, self.cont_submodel_id, {self.species_ids[0]: 0})
-            self.assertIn(f"{time + 2}: adjust_continuously error(s):", str(context.exception))
+            self.assertIn("adjust_continuously error(s):", str(context.exception))
             self.assertIn("negative population predicted", str(context.exception))
 
     def test_temp_lsp_populations(self):
@@ -458,24 +458,24 @@ class TestLocalSpeciesPopulation(unittest.TestCase):
         time = 1
         pop_s_0 = self.local_species_pop.read_one(time, s_0)
         temp_pop_s_0 = 18
-        self.local_species_pop.set_temp_populations({s_0: temp_pop_s_0})
+        self.local_species_pop.set_temp_populations(time, {s_0: temp_pop_s_0})
         self.assertEqual(self.local_species_pop.read_one(time, s_0), temp_pop_s_0)
-        self.local_species_pop.clear_temp_populations({s_0})
+        self.local_species_pop.clear_temp_populations(time, {s_0})
         self.assertEqual(self.local_species_pop.read_one(time, s_0), pop_s_0)
 
         wc_sim.species_populations.RUN_TIME_ERROR_CHECKING = True
         with self.assertRaises(DynamicSpeciesPopulationError):
-            self.local_species_pop.set_temp_populations({'not a species id': temp_pop_s_0})
+            self.local_species_pop.set_temp_populations(time, {'not a species id': temp_pop_s_0})
 
         with self.assertRaisesRegex(SpeciesPopulationError, 'cannot use negative population'):
-            self.local_species_pop.set_temp_populations({s_0: -4})
+            self.local_species_pop.set_temp_populations(time, {s_0: -4})
 
         with self.assertRaises(DynamicSpeciesPopulationError):
-            self.local_species_pop.clear_temp_populations(['not a species id'])
+            self.local_species_pop.clear_temp_populations(time, ['not a species id'])
 
         wc_sim.species_populations.RUN_TIME_ERROR_CHECKING = False
         with self.assertRaises(KeyError):
-            self.local_species_pop.set_temp_populations({'not a species id': temp_pop_s_0})
+            self.local_species_pop.set_temp_populations(time, {'not a species id': temp_pop_s_0})
 
     def test_concentrations_api(self):
         self.assertFalse(self.local_species_pop.concentrations_api())
@@ -690,7 +690,8 @@ class TestTempPopulationsLSP(unittest.TestCase):
         temp_pop = 123
         temp_pops = dict(zip(species_ids, [temp_pop]*num_species))
         self.assertEqual(self.test_lsp.temporary_mode, False)
-        with TempPopulationsLSP(self.test_lsp, temp_pops):
+        time = 0
+        with TempPopulationsLSP(time, self.test_lsp, temp_pops):
             self.assertEqual(self.test_lsp.temporary_mode, True)
             for i in range(num_species):
                 self.assertEqual(self.test_lsp.read_one(1, species_ids[i]), temp_pop)
