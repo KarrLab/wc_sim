@@ -705,7 +705,6 @@ class TestDfbaSubmodel(unittest.TestCase):
                                    'm2[c]': -12,
                                    'm3[c]': 10}
         self.check_expected_solution(dfba_submodel_2, 10, expected_adjustments_IV)
-        dfba_submodel_2.time_step = 1
 
         TEST_NAME = "V: Modify II by scaling the coefficients of objective function's terms by 10"
         self.dfba_submodel_options['dfba_coef_scale_factor'] = 10.

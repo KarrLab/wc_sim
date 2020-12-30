@@ -671,9 +671,9 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         if dfba_coef_scale_factor is None:
             dfba_coef_scale_factor = self.dfba_solver_options['dfba_coef_scale_factor']
 
-        self._optimal_obj_func_value /= (dfba_coef_scale_factor * dfba_bound_scale_factor)
         for rxn_variable in self._conv_model.variables:
             self.reaction_fluxes[rxn_variable.name] /= dfba_bound_scale_factor
+        self._optimal_obj_func_value /= (dfba_coef_scale_factor * dfba_bound_scale_factor)
 
     def save_fba_solution(self, conv_opt_model, conv_opt_solution):
         """ Assign a FBA solution to local variables
