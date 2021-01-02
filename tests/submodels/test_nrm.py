@@ -43,7 +43,7 @@ class TestNrmSubmodel(unittest.TestCase):
         attributes_prepared = ['dependencies', 'propensities', 'execution_time_priority_queue']
         for attr in attributes_prepared:
             setattr(self.nrm_submodel, attr, None)
-        self.nrm_submodel.prepare()
+        self.nrm_submodel.prepare_submodel()
         for attr in attributes_prepared:
             self.assertTrue(len(getattr(self.nrm_submodel, attr)))
 
@@ -144,7 +144,7 @@ class TestNrmSubmodel(unittest.TestCase):
         dynamic_model._stop_caching()
 
         ### single step a mock simulation ###
-        nrm_submodel_0_props.prepare()
+        nrm_submodel_0_props.prepare_submodel()
 
         # execute this sequence of reactions, all of which are enabled and have propensity > 0
         reaction_sequence = [0, 1, 1, 1]

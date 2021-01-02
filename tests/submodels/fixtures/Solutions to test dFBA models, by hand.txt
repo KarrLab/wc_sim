@@ -12,7 +12,7 @@ all species are assumed to be in steady state.
     m3[c]: -ex_m3 + r1 + r3 + r4 - biomass_reaction = 0          (3)
 
 Reaction bound constraints (calculated from initial bounds and rate laws) (1/sec).
-(The minimum bounds for ex_m1 and ex_m2 have been scaled by 1e11.)
+(The minimum bounds for ex_m1 and ex_m2 have been scaled by 1e11 from their values in dfba_test_model.xlsx.)
 
     -12 <= ex_m1 <= -1e-10
     -12 <= ex_m2 <= -1e-10

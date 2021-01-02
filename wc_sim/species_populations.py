@@ -923,12 +923,14 @@ class LocalSpeciesPopulation(AccessSpeciesPopulationInterface):
         errors = []
         for species in adjustments:
             try:
+                # TODO: HANDLE NEG POPS IN NRM: refactor: raise DynamicNegativePopulationError if ANY adjustments might go negative, before any do
                 self._population[species].discrete_adjustment(self.time, adjustments[species])
                 self._update_access_times(time, {species})
                 self.log_event('discrete_adjustment', self._population[species])
             except DynamicNegativePopulationError as e:
                 errors.append(str(e))
         if errors:
+            # TODO: HANDLE NEG POPS IN NRM: re-raise as DynamicNegativePopulationError, so can be trapped by execute_nrm_reaction
             raise DynamicSpeciesPopulationError(time, "adjust_discretely error(s):\n{}".format(
                                                 '\n'.join(errors)))
         # TODO(Arthur): exact caching: adjust mass

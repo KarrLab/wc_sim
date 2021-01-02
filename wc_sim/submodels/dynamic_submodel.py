@@ -65,7 +65,7 @@ class DynamicSubmodel(SimulationObject):
                                              f"reactions: {[reaction.id for reaction in reactions]}",
                                              sim_time=self.time)
 
-    def prepare(self):
+    def prepare_submodel(self):
         """ If necessary, prepare a submodel after the :obj:`DynamicModel` has been fully initialized
         """
         pass

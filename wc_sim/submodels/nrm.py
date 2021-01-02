@@ -74,7 +74,9 @@ class NrmSubmodel(DynamicSubmodel):
                          local_species_population)
         self.random_state = RandomStateManager.instance()
 
-    def prepare(self):
+    def prepare_submodel(self):
+        """ Prepare this submodel after the :obj:`DynamicModel` has been fully initialized
+        """
         self.dependencies = self.determine_dependencies()
         self.propensities = self.initialize_propensities()
         self.initialize_execution_time_priorities()
@@ -159,17 +161,16 @@ class NrmSubmodel(DynamicSubmodel):
         return rate_laws_depend_on_rxns_as_indices_in_seqs
 
     def initialize_propensities(self):
-        """ Get the initial propensities of all reactions that have enough species counts to execute
+        """ Get the initial propensities of all reactions
 
         Propensities of reactions with inadequate species counts are set to 0.
 
         Returns:
-            :obj:`np.ndarray`: the propensities of the reactions modeled by this NRM submodel which
-                have adequate species counts to execute
+            :obj:`np.ndarray`: the propensities of the reactions modeled by this NRM submodel
         """
         propensities = self.calc_reaction_rates()
 
-        # avoid reactions with inadequate species counts
+        # set propensities of reactions with inadequate reactant species counts to 0
         enabled_reactions = self.identify_enabled_reactions()
         propensities = enabled_reactions * propensities
         return propensities
@@ -261,12 +262,38 @@ class NrmSubmodel(DynamicSubmodel):
         # schedule the next reaction
         self.schedule_reaction()
 
+    def schedule_after_rxn_retraction(self, ):
+        """ Schedule the next reaction after a reaction was retracted
+
+        Args:
+            reaction_index (:obj:`int`): index of the reaction that was retracted
+        """
+        # TODO: HANDLE NEG POPS IN NRM: reschedule rxn reaction_index that can't execute cuz of DynamicNegativePopulationError
+        # TODO: perhaps reschedule the other reactions based on new propensities
+        # reschedule the reaction that was retracted to infinity
+        # propensity should be 0
+        # 1. compute new propensity
+        propensity_new = self.calc_reaction_rate(self.reactions[reaction_index])
+        assert propensity_new == 0, f"rxn {reaction_index} could not be executed, so its propensity should be 0"
+        self.propensities[reaction_index] = 0
+
+        # 2. compute new tau
+        tau_new = float('inf')
+
+        # 3. update the reaction's order in the indexed priority queue
+        self.execution_time_priority_queue[reaction_index] = tau_new
+
+        # schedule the next reaction
+        self.schedule_reaction()
+
     def execute_nrm_reaction(self, reaction_index):
         """ Execute a reaction now
 
         Args:
             reaction_index (:obj:`int`): index of the reaction to execute
         """
+        # TODO: HANDLE NEG POPS IN NRM: reschedule rxns that can't execute cuz of DynamicNegativePopulationError
+        # catch DynamicNegativePopulationError, count cancelled reaction, and call schedule_after_rxn_retraction()
         self.execute_reaction(self.reactions[reaction_index])
 
     def handle_ExecuteAndScheduleNrmReaction_msg(self, event):
@@ -279,5 +306,6 @@ class NrmSubmodel(DynamicSubmodel):
         reaction_index = event.message.reaction_index
         self.execute_nrm_reaction(reaction_index)
 
+        # TODO: HANDLE NEG POPS IN NRM: move to normal branch in execute_nrm_reaction()
         # schedule the next reaction
         self.schedule_next_reaction(reaction_index)
