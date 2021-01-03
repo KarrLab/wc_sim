@@ -13,7 +13,7 @@ import warnings
 from de_sim.simulation_object import SimObjClassPriority
 from de_sim.simulator import Simulator
 from wc_lang import Model, Compartment, Species, Validator
-from wc_lang.transform import PrepForWcSimTransform
+from wc_lang.transform import MergeAlgorithmicallyLikeSubmodelsTransform, PrepForWcSimTransform
 from wc_onto import onto
 from wc_sim.config import core as config_core_multialgorithm
 from wc_sim.dynamic_components import DynamicModel, DynamicCompartment
@@ -176,6 +176,7 @@ class MultialgorithmSimulation(object):
         # execute PrepForWcSimTransform on the model only once
         if not hasattr(self.model, '_transformed') or not self.model._transformed:
             PrepForWcSimTransform().run(self.model)
+            MergeAlgorithmicallyLikeSubmodelsTransform().run(self.model)
             self.model._transformed = True
         errors = Validator().run(self.model)
         if errors:

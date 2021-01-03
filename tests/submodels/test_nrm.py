@@ -66,8 +66,6 @@ class TestNrmSubmodel(unittest.TestCase):
         # make the DSA submodel an NRM submodel
         dsa_submodel = dependencies_model.submodels.get_one(id='dsa_submodel')
         dsa_submodel.id = 'nrm_submodel'
-        dfba_obj = dependencies_model.dfba_objs.get_one(id='dfba-obj-dsa_submodel')
-        dfba_obj.id = 'dfba-obj-nrm_submodel'
         dsa_submodel.framework = onto['WC:next_reaction_method']
         _, dynamic_model = self.make_sim_w_nrm_submodel(dependencies_model)
         nrm_submodel = dynamic_model.dynamic_submodels['nrm_submodel']
