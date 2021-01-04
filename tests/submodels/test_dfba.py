@@ -40,7 +40,6 @@ class TestDfbaSubmodel(unittest.TestCase):
         self.model = model = self.get_model()
         self.cell_volume = model.compartments.get_one(id='c').init_volume.mean + \
                            model.compartments.get_one(id='n').init_volume.mean
-        self.submodel = model.submodels.get_one(id='metabolism')
         self.dfba_submodel_options = {
             'dfba_bound_scale_factor': 1e2,
             'dfba_coef_scale_factor': 10,
@@ -264,8 +263,8 @@ class TestDfbaSubmodel(unittest.TestCase):
             self.make_dfba_submodel(model)
 
         self.dfba_submodel_1.set_up_dfba_submodel()
-        self.assertEqual(len(self.dfba_submodel_1._conv_variables), len(self.submodel.reactions) + 1)
-        self.assertEqual('biomass_reaction' in self.dfba_submodel_1._conv_variables, True)
+        self.assertEqual(len(self.dfba_submodel_1._conv_variables), len(self.dfba_submodel_1.reactions) + 1)
+        self.assertIn('biomass_reaction', self.dfba_submodel_1._conv_variables)
         for k,v in self.dfba_submodel_1._conv_variables.items():
             self.assertEqual(k, v.name)
 
@@ -322,7 +321,7 @@ class TestDfbaSubmodel(unittest.TestCase):
                                                   submodel_options=self.dfba_submodel_options,
                                                   dfba_obj_with_regular_rxn=True)
 
-        self.assertEqual(len(dfba_submodel_2._conv_variables), len(self.submodel.reactions) + 1)
+        self.assertEqual(len(dfba_submodel_2._conv_variables), len(dfba_submodel_2.reactions) + 1)
         self.assertEqual('biomass_reaction' in dfba_submodel_2._conv_variables, True)
         for rxn_id, conv_opt_var in dfba_submodel_2._conv_variables.items():
             self.assertEqual(rxn_id, conv_opt_var.name)
