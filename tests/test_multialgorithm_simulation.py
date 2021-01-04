@@ -395,8 +395,8 @@ class TestRunSSASimulation(unittest.TestCase):
 
     def setUp(self):
         self.results_dir = tempfile.mkdtemp()
-        de_simulation_config = SimulationConfig(max_time=10, output_dir=self.results_dir)
-        self.wc_sim_config = WCSimulationConfig(de_simulation_config, dfba_time_step=1, checkpoint_period=10)
+        self.de_simulation_config = SimulationConfig(max_time=10, output_dir=self.results_dir)
+        self.wc_sim_config = WCSimulationConfig(self.de_simulation_config, dfba_time_step=1, checkpoint_period=10)
         self.out_dir = tempfile.mkdtemp()
 
     def tearDown(self):
@@ -405,17 +405,20 @@ class TestRunSSASimulation(unittest.TestCase):
 
     def make_model_and_simulation(self, model_type, num_submodels, species_copy_numbers=None,
                                   species_stds=None, init_vols=None,
-                                  submodel_framework='WC:stochastic_simulation_algorithm'):
+                                  submodel_framework='WC:stochastic_simulation_algorithm',
+                                  wc_sim_config=None):
         # make simple model
         if init_vols is not None:
             if not isinstance(init_vols, list):
                 init_vols = [init_vols]*num_submodels
+        if wc_sim_config is None:
+            wc_sim_config = self.wc_sim_config
         model = MakeModel.make_test_model(model_type, num_submodels=num_submodels,
                                           species_copy_numbers=species_copy_numbers,
                                           species_stds=species_stds,
                                           init_vols=init_vols,
                                           submodel_framework=submodel_framework)
-        multialgorithm_simulation = MultialgorithmSimulation(model, self.wc_sim_config)
+        multialgorithm_simulation = MultialgorithmSimulation(model, wc_sim_config)
         simulator, _ = multialgorithm_simulation.build_simulation()
         return (model, multialgorithm_simulation, simulator)
 
@@ -540,16 +543,18 @@ class TestRunSSASimulation(unittest.TestCase):
                                   init_vols=1E-22)
 
     def prep_simulation(self, num_ssa_submodels, submodel_framework='WC:stochastic_simulation_algorithm'):
+        wc_sim_config = WCSimulationConfig(self.de_simulation_config, dfba_time_step=1, checkpoint_period=10,
+                                           merge_like_submodels=False)
         model, multialgorithm_simulation, simulator = self.make_model_and_simulation(
             '2 species, a pair of symmetrical reactions, and rates given by reactant population',
             num_ssa_submodels,
             init_vols=1E-18,
-            submodel_framework=submodel_framework)
+            submodel_framework=submodel_framework,
+            wc_sim_config=wc_sim_config)
         local_species_pop = multialgorithm_simulation.local_species_population
         simulator.initialize()
         return simulator
 
-    # @unittest.skip("performance scaling test; runs slowly")
     def test_performance(self):
         end_sim_time = 100
         min_num_ssa_submodels = 2

@@ -36,6 +36,7 @@ class WCSimulationConfig(EnhancedDataClass):
     - Checkpoint period
     - Submodels to skip
     - Whether to produce verbose output
+    - Whether to merge algorithmically-like submodels into individual submodels
     - Model changes: Instructions to change parameter values and add or remove model
       components. These instructions are executed before the initial conditions are
       calculated
@@ -52,6 +53,8 @@ class WCSimulationConfig(EnhancedDataClass):
         submodels_to_skip (:obj:`list` of :obj:`str`, optional): submodels that should not be run,
             identified by their ids
         verbose (:obj:`bool`, optional): whether to produce verbose output
+        merge_like_submodels (:obj:`bool`, optional): whether to merge algorithmically-like submodels
+            into individual submodels
         changes (:obj:`list`, optional): list of desired model changes (e.g. modified parameter values,
             additional species/reactions, removed species/reactions)
         perturbations (:obj:`list`, optional): list of desired simulated perturbations (e.g. set state
@@ -65,6 +68,7 @@ class WCSimulationConfig(EnhancedDataClass):
     checkpoint_period: float = None
     submodels_to_skip: list = None
     verbose: bool = False
+    merge_like_submodels: bool = True
     changes: list = None
     perturbations: list = None
 
@@ -199,7 +203,8 @@ class WCSimulationConfig(EnhancedDataClass):
             self.ode_time_step == other.ode_time_step and \
             self.dfba_time_step == other.dfba_time_step and \
             self.checkpoint_period == other.checkpoint_period and \
-            self.submodels_to_skip == other.submodels_to_skip
+            self.submodels_to_skip == other.submodels_to_skip and \
+            self.merge_like_submodels == other.merge_like_submodels
 
 
 Change = wc_lang.transform.ChangeValueTransform

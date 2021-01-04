@@ -176,7 +176,8 @@ class MultialgorithmSimulation(object):
         # execute PrepForWcSimTransform on the model only once
         if not hasattr(self.model, '_transformed') or not self.model._transformed:
             PrepForWcSimTransform().run(self.model)
-            MergeAlgorithmicallyLikeSubmodelsTransform().run(self.model)
+            if self.wc_sim_config.merge_like_submodels:
+                MergeAlgorithmicallyLikeSubmodelsTransform().run(self.model)
             self.model._transformed = True
         errors = Validator().run(self.model)
         if errors:
