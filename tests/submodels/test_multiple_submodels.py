@@ -92,8 +92,8 @@ class TestMultipleSubmodels(unittest.TestCase):
         print(f'Reactants in dfba_obj_reactions that lack initial concentrations:')
         print('\n'.join(sorted_reactant_ids))
 
-        N = 2
-        max_time = 100    # 3 * 60 * 60
+        N = 1
+        max_time = 50    # 3 * 60 * 60
         seeds = [17, 19, 23, 29, 31]
         dfba_options = dict(options=dict(presolve='on',
                                          verbosity='status'))

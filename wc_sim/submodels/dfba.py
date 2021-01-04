@@ -734,7 +734,7 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
 
         if self._model_dumps % 100 == 0:
             print()
-            print(f'--- {self.time}: solution ---')
+            print(f'--- time {self.time}: solution ---')
             non_zero_fluxes = [f for f in self.reaction_fluxes.values() if 0 < f]
             print(f'{len(non_zero_fluxes)} non-zero reaction fluxes')
             for rxn_id, flux in self.reaction_fluxes.items():
