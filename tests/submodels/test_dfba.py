@@ -562,7 +562,6 @@ class TestDfbaSubmodel(unittest.TestCase):
                 self.model.distribution_init_concentrations.get_one(
                     species=self.model.species.get_one(id=species_id)).mean)
 
-    # TODO (APG): later: why didn't these 2 unit tests find problems with scaling/unscaling?
     def test_scale_conv_opt_model(self):
         dfba_submodel_1 = self.dfba_submodel_1
         dfba_submodel_1.determine_bounds()
@@ -570,10 +569,11 @@ class TestDfbaSubmodel(unittest.TestCase):
         # rxn and constraint bounds have not been set in the conv opt model
         scaled_co_model = dfba_submodel_1.scale_conv_opt_model(dfba_submodel_1.get_conv_model())
         old_co_model = dfba_submodel_1.get_conv_model()
-        # check that they have not changed
+        # check that bounds have not changed
         for old_var, new_var in zip(old_co_model.variables, scaled_co_model.variables):
             self.assertEqual(old_var.lower_bound, new_var.lower_bound)
             self.assertEqual(old_var.upper_bound, new_var.upper_bound)
+        # check that constraints have not changed
         for old_const, new_const in zip(old_co_model.constraints, scaled_co_model.constraints):
             self.assertEqual(old_const.lower_bound, new_const.lower_bound)
             self.assertEqual(old_const.upper_bound, new_const.upper_bound)
@@ -582,11 +582,38 @@ class TestDfbaSubmodel(unittest.TestCase):
         scaled_co_model = dfba_submodel_1.scale_conv_opt_model(dfba_submodel_1.get_conv_model())
         # a new conv opt model has been made
         self.assertNotEqual(id(scaled_co_model), id(dfba_submodel_1.get_conv_model()))
-
-        ## invert scale factors and test round-trip ##
-        # supply scaling factors
+        # check that bounds of variables have been scaled
         bound_scale_factor = dfba_submodel_1.dfba_solver_options['dfba_bound_scale_factor']
         coef_scale_factor = dfba_submodel_1.dfba_solver_options['dfba_coef_scale_factor']
+        for old_var, new_var in zip(old_co_model.variables, scaled_co_model.variables):
+            if isinstance(old_var.lower_bound, (int, float)):
+                self.assertEqual(old_var.lower_bound*bound_scale_factor, new_var.lower_bound)
+            else:
+                self.assertEqual(old_var.lower_bound, new_var.lower_bound)
+            if isinstance(old_var.upper_bound, (int, float)):    
+                self.assertEqual(old_var.upper_bound*bound_scale_factor, new_var.upper_bound)
+            else:
+                self.assertEqual(old_var.upper_bound, new_var.upper_bound)
+        # check that bounds of constraints have been scaled
+        for old_const, new_const in zip(old_co_model.constraints, scaled_co_model.constraints):
+            if isinstance(old_const.lower_bound, (int, float)):
+                self.assertEqual(old_const.lower_bound*bound_scale_factor, new_const.lower_bound)
+            else:
+                self.assertEqual(old_const.lower_bound, new_const.lower_bound)
+            if isinstance(old_const.upper_bound, (int, float)):
+                self.assertEqual(old_const.upper_bound*bound_scale_factor, new_const.upper_bound)
+            else:        
+                self.assertEqual(old_const.upper_bound, new_const.upper_bound)
+        # check that stoichiometric coefficients of objective reaction have been scaled
+        for old_const, new_const in zip(old_co_model.constraints, scaled_co_model.constraints):
+            for ind, linear_term in enumerate(old_const.terms):
+                if linear_term.variable.name=='biomass_reaction':
+                    self.assertEqual(linear_term.coefficient*coef_scale_factor, new_const.terms[ind].coefficient)
+                else:
+                    self.assertEqual(linear_term.coefficient, new_const.terms[ind].coefficient)
+
+        ## invert scale factors and test round-trip ##
+        # supply scaling factors        
         unscaled_co_model = dfba_submodel_1.scale_conv_opt_model(scaled_co_model,
                                                                  dfba_bound_scale_factor=1.0/bound_scale_factor,
                                                                  dfba_coef_scale_factor=1.0/coef_scale_factor)
@@ -599,10 +626,11 @@ class TestDfbaSubmodel(unittest.TestCase):
         for old_const, new_const in zip(old_co_model.constraints, unscaled_co_model.constraints):
             self.assertAlmostEqual(old_const.lower_bound, new_const.lower_bound)
             self.assertAlmostEqual(old_const.upper_bound, new_const.upper_bound)
-        # check coefficient terms in conv_opt model objective
-        for old_term, new_term in zip(old_co_model.objective_terms, unscaled_co_model.objective_terms):
-            self.assertAlmostEqual(old_term.coefficient, new_term.coefficient)
-
+        # check stoichometric coefficients
+        for old_const, new_const in zip(old_co_model.constraints, unscaled_co_model.constraints):
+            for ind, linear_term in enumerate(old_const.terms):
+                self.assertEqual(linear_term.coefficient, new_const.terms[ind].coefficient)
+        
         # alter the conv opt model in place
         modified_co_model = dfba_submodel_1.scale_conv_opt_model(dfba_submodel_1.get_conv_model(),
                                                                  copy_model=False)
@@ -618,10 +646,18 @@ class TestDfbaSubmodel(unittest.TestCase):
         dfba_submodel_1.save_fba_solution(dfba_submodel_1.get_conv_model(), conv_opt_solution)
         original_dfba_submodel_1__optimal_obj_func_value = dfba_submodel_1._optimal_obj_func_value
         original_dfba_submodel_1__reaction_fluxes = copy.deepcopy(dfba_submodel_1.reaction_fluxes)
-
+        
         dfba_submodel_1.unscale_conv_opt_solution()
         bound_scale_factor = dfba_submodel_1.dfba_solver_options['dfba_bound_scale_factor']
         coef_scale_factor = dfba_submodel_1.dfba_solver_options['dfba_coef_scale_factor']
+        # check _optimal_obj_func_value
+        self.assertAlmostEqual(original_dfba_submodel_1__optimal_obj_func_value/bound_scale_factor*coef_scale_factor,
+                               dfba_submodel_1._optimal_obj_func_value)
+        # check reaction_fluxes
+        for rxn_variable in dfba_submodel_1.get_conv_model().variables:
+            self.assertAlmostEqual(original_dfba_submodel_1__reaction_fluxes[rxn_variable.name]/bound_scale_factor,
+                                   dfba_submodel_1.reaction_fluxes[rxn_variable.name])
+
         # reverse the removal of scaling factors
         dfba_submodel_1.unscale_conv_opt_solution(dfba_bound_scale_factor=1.0/bound_scale_factor,
                                                   dfba_coef_scale_factor=1.0/coef_scale_factor)
@@ -634,7 +670,7 @@ class TestDfbaSubmodel(unittest.TestCase):
                                    dfba_submodel_1.reaction_fluxes[rxn_variable.name])
 
     def check_expected_solution(test_case, dfba_submodel, obj_func_value, expected_adjustments):
-        test_case.assertEqual(dfba_submodel._optimal_obj_func_value, obj_func_value)
+        test_case.assertAlmostEqual(dfba_submodel._optimal_obj_func_value, obj_func_value, delta=1e-12)
         for species_id, expected_adjustment in expected_adjustments.items():
             test_case.assertAlmostEqual(dfba_submodel.adjustments[species_id], expected_adjustment,
                                    delta=1e-09)
@@ -705,7 +741,7 @@ class TestDfbaSubmodel(unittest.TestCase):
                                    'm3[c]': 10}
         self.check_expected_solution(dfba_submodel_2, 10, expected_adjustments_IV)
 
-        TEST_NAME = "V: Modify II by scaling the coefficients of objective function's terms by 10"
+        TEST_NAME = "V: Modify II by scaling the stoichiometric coefficients of objective reaction by 10"
         self.dfba_submodel_options['dfba_coef_scale_factor'] = 10.
         dfba_submodel_2 = self.make_dfba_submodel(self.model,
                                                   submodel_options=self.dfba_submodel_options)

@@ -28,8 +28,8 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
     Attributes:
         DFBA_BOUND_SCALE_FACTOR (:obj:`float`): scaling factor for the bounds on reactions and
             constraints that avoid negative species populations; the default value is 1.
-        DFBA_COEF_SCALE_FACTOR (:obj:`float`): scaling factor for the coefficients in dFBA objectives;
-            the default value is 1.
+        DFBA_COEF_SCALE_FACTOR (:obj:`float`): scaling factor for the stoichiometric coefficients in 
+            dFBA objective reactions; the default value is 1.
         SOLVER (:obj:`str`): name of the selected solver in conv_opt, the default value is 'cplex'
         PRESOLVE (:obj:`str`): presolve mode in `conv_opt` ('auto', 'on', 'off'), the default
             value is 'on'
@@ -603,13 +603,13 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
                              dfba_bound_scale_factor=None, dfba_coef_scale_factor=None):
         """ Apply scaling factors to a `conv_opt` model
 
-        Scaling factors can be used to scale the size of bounds and objective function term
-        coefficients to address numerical problems with the linear programming solver.
+        Scaling factors can be used to scale the size of bounds and objective reaction 
+        stoichiometric coefficients to address numerical problems with the linear programming solver.
         They are elements of `dfba_solver_options`.
         The `dfba_bound_scale_factor` option scales the bounds on reactions and constraints
         that avoid negative species populations.
-        The `dfba_coef_scale_factor` scales the coefficients in dFBA objectives.
-        Scaling is done by the this method.
+        The `dfba_coef_scale_factor` scales the stoichiometric coefficients in dFBA objective
+        reactions. Scaling is done by the this method.
         Symmetrically, the solution results are returned to the scale of the whole-cell model by
         inverting the consequences of these scaling factors.
         This is done by the `unscale_conv_opt_solution` method.
@@ -621,8 +621,9 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             dfba_bound_scale_factor (:obj:`float`, optional): factor used to scale the bounds on
                 reactions and constraints that avoid negative species populations; if not supplied,
                 is taken from `self.dfba_solver_options`
-            dfba_coef_scale_factor (:obj:`float`, optional): factor used to scale the coefficients
-                in dFBA objectives; if not supplied, is taken from `self.dfba_solver_options`
+            dfba_coef_scale_factor (:obj:`float`, optional): factor used to scale the stoichiometric 
+                coefficients in dFBA objective reactions; if not supplied, is taken from 
+                `self.dfba_solver_options`
 
         Returns:
             :obj:`conv_opt.Model`: the scaled convex optimization model
@@ -651,9 +652,23 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             if isinstance(constraint.upper_bound, (int, float)):
                 constraint.upper_bound *= dfba_bound_scale_factor
 
-        # scale coefficient terms in conv_opt model objective
-        for objective_term in conv_opt_model.objective_terms:
-            objective_term.coefficient *= dfba_coef_scale_factor
+        # scale stoichiometric coefficient of dfba objective reactions
+        for rxn in self._dfba_obj_reactions.values():
+            rxn_variable = [i for i in conv_opt_model.variables if i.name==rxn.id][0]
+            for part in rxn.dfba_obj_species:
+                # scale stoichiometric coefficient in steady-state constraint
+                steady_state_const = [i for i in conv_opt_model.constraints if i.name==part.species.id][0]
+                lin_terms = steady_state_const.terms
+                obj_rxn_term = [i for i in lin_terms if i.variable==rxn_variable][0]
+                obj_rxn_term.coefficient *= dfba_coef_scale_factor
+
+                # scale stoichiometric coefficient in negative population constraint
+                constraint_id = DfbaSubmodel.gen_neg_species_pop_constraint_id(part.species.id)
+                neg_pop_const = [i for i in conv_opt_model.constraints if i.name==constraint_id]
+                if neg_pop_const:
+                    lin_terms = neg_pop_const[0].terms
+                    obj_rxn_term = [i for i in lin_terms if i.variable==rxn_variable][0]
+                    obj_rxn_term.coefficient *= dfba_coef_scale_factor
 
         return conv_opt_model
 
@@ -663,8 +678,9 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
         Args:
             dfba_bound_scale_factor (:obj:`float`, optional): factor used to scale reaction and
                 constraint bounds; if not supplied, is taken from `self.dfba_solver_options`
-            dfba_coef_scale_factor (:obj:`float`, optional): factor used to scale the coefficients
-                in dFBA objectives; if not supplied, is taken from `self.dfba_solver_options`
+            dfba_coef_scale_factor (:obj:`float`, optional): factor used to scale the stoichiometric
+                coefficients in dFBA objective reactions; if not supplied, is taken from 
+                `self.dfba_solver_options`
         """
         if dfba_bound_scale_factor is None:
             dfba_bound_scale_factor = self.dfba_solver_options['dfba_bound_scale_factor']
@@ -672,8 +688,11 @@ class DfbaSubmodel(ContinuousTimeSubmodel):
             dfba_coef_scale_factor = self.dfba_solver_options['dfba_coef_scale_factor']
 
         for rxn_variable in self._conv_model.variables:
-            self.reaction_fluxes[rxn_variable.name] /= dfba_bound_scale_factor
-        self._optimal_obj_func_value /= (dfba_coef_scale_factor * dfba_bound_scale_factor)
+            if rxn_variable.name in self._dfba_obj_reactions:
+                self.reaction_fluxes[rxn_variable.name] /= (dfba_bound_scale_factor / dfba_coef_scale_factor)
+            else:    
+                self.reaction_fluxes[rxn_variable.name] /= dfba_bound_scale_factor
+        self._optimal_obj_func_value /= (dfba_bound_scale_factor / dfba_coef_scale_factor)
 
     def save_fba_solution(self, conv_opt_model, conv_opt_solution):
         """ Assign a FBA solution to local variables

@@ -146,15 +146,15 @@ IV: Alter II so that a negative species population constraints change the soluti
 
             Consumption of m3[c] equals the -10/sec, the maximum rate permitted by constraint (9), as expected.
 
-V: Modify II by scaling the coefficients of objective function's terms by 10
+V: Modify II by scaling the stoichiometric coefficients of objective reaction by 10
 
-    Scale the stoichiometric coefficients of the objective function's terms by 10.
-    The constraint problem doesn't change until it is scaled. Then it is scaled, the model is solved and the solution is unscale.
+    Scale the stoichiometric coefficients of objective reaction by 10.
+    The constraint problem doesn't change until it is scaled. Then it is scaled, the model is solved and the solution is unscaled.
     This should produce the same solution as in II.
 
 VI: Modify V by scaling bounds by 5
 
-    Scale the stoichiometric coefficients of the objective function's terms by 10 and scale the bounds by 5
+    Scale the stoichiometric coefficients of objective reaction by 10 and scale the bounds by 5
     This should produce the same solution as in II.
 
 OTHER IDEAS:
