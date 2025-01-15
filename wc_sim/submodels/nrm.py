@@ -6,7 +6,7 @@
 :License: MIT
 """
 
-from pqdict import PQDict
+from pqdict import pqdict
 from scipy.constants import Avogadro
 import collections
 import math
@@ -32,7 +32,7 @@ class NrmSubmodel(DynamicSubmodel):
     Attributes:
         dependencies (:obj:`list` of :obj:`tuple`): dependencies that rate laws have on executed
             reactions; entry i provides the indices of reactions whose rate laws depend on reaction i
-        execution_time_priority_queue (:obj:`PQDict`): NRM indexed priority queue of reactions, with
+        execution_time_priority_queue (:obj:`pqdict`): NRM indexed priority queue of reactions, with
             the earliest scheduled reaction at the front of the queue
         propensities (:obj:`np.ndarray`): the most recently calculated propensities of the reactions
             modeled by this NRM submodel
@@ -178,7 +178,7 @@ class NrmSubmodel(DynamicSubmodel):
     def initialize_execution_time_priorities(self):
         """ Initialize the NRM indexed priority queue of reactions
         """
-        self.execution_time_priority_queue = PQDict()
+        self.execution_time_priority_queue = pqdict()
         for reaction_idx, propensity in enumerate(self.propensities):
             if propensity == 0:
                 self.execution_time_priority_queue[reaction_idx] = float('inf')
